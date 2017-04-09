@@ -207,9 +207,16 @@ constraints(unsigned num_variables, const double* variables,
         bool /*new_variables*/,
         unsigned num_constraints, double* constr) const
 {
-    // TODO cache constraint values? we are ignoring new_variables.
-    trace_constraints(m_constraints_tag,
-            num_variables, variables, num_constraints, constr);
+    if (m_countJTODO > 0) {
+        // TODO clean this up!
+        function(m_constraints_tag, num_constraints, num_variables,
+                 const_cast<double*>(variables), constr);
+    } else {
+        // TODO cache constraint values? we are ignoring new_variables.
+        trace_constraints(m_constraints_tag,
+                          num_variables, variables, num_constraints, constr);
+        m_countJTODO += 1;
+    }
 }
 
 void OptimizationProblem<adouble>::Proxy::
@@ -231,39 +238,44 @@ void OptimizationProblem<adouble>::Proxy::
 jacobian(unsigned num_variables, const double* x, bool /*new_x*/,
         unsigned /*num_nonzeros*/, double* nonzeros) const
 {
-    // TODO removing the "new_x" optimization until we handle the fact that
-    // a previous evaluation might have been of one of the functions that does
-    // NOT compute the constraints (e.g., the objective).
-    // TODO if (new_x) {
+    int repeated_call = 0;
+    if (m_countJTODO > 0/*TODO should be 0*/) repeated_call = 1;
+    m_countJTODO += 1;
+    if (!repeated_call) {
+        // TODO removing the "new_x" optimization until we handle the fact that
+        // a previous evaluation might have been of one of the functions that does
+        // NOT compute the constraints (e.g., the objective).
+        // TODO if (new_x) {
         // TODO where to get num_constraints from? Store in local variable.
         VectorXd g(num_constraints());
         trace_constraints(m_constraints_tag,
-                num_variables, x, num_constraints(), g.data());
-    // TODO }
+                          num_variables, x, num_constraints(), g.data());
+        // TODO }
+    }
 
-    int repeated_call = 0;
-    int num_nz = -1; /*TODO*/
-    unsigned int* row_indices = NULL; // Allocated by ADOL-C.
-    unsigned int* col_indices = NULL; // Allocated by ADOL-C.
-    double* jacobian = NULL;          // Allocated by ADOL-C.
+//    int num_nz = -1; /*TODO*/
+//    unsigned int* row_indices = NULL; // Allocated by ADOL-C.
+//    unsigned int* col_indices = NULL; // Allocated by ADOL-C.
+//    double* jacobian = NULL;          // Allocated by ADOL-C.
     int options[4];
     options[0] = 0; /*TODO*/
     options[1] = 0; /*TODO*/
     options[2] = 0; /*TODO*/
     options[3] = 0; /*TODO*/
     int success = sparse_jac(m_constraints_tag, num_constraints(),
-            num_variables, repeated_call, x,
-            &num_nz, &row_indices, &col_indices,
-            &jacobian, options);
+                             num_variables, repeated_call, x,
+                             &m_jacobian_num_nonzeros, &m_jacobian_row_indices,
+                             &m_jacobian_col_indices,
+                             &m_jacobian_values, options);
     assert(success);
     // TODO ideally we would avoid this copy. Should we use std::copy?
-    for (int inz = 0; inz < num_nz; ++inz) {
-        nonzeros[inz] = jacobian[inz];
+    for (int inz = 0; inz < m_jacobian_num_nonzeros; ++inz) {
+        nonzeros[inz] = m_jacobian_values[inz];
     }
-
-    delete [] row_indices;
-    delete [] col_indices;
-    delete [] jacobian;
+// TODO
+//    delete [] row_indices;
+//    delete [] col_indices;
+//    delete [] jacobian;
 }
 
 void OptimizationProblem<adouble>::Proxy::
@@ -273,6 +285,11 @@ hessian_lagrangian(unsigned num_variables, const double* x,
         bool /*new_lambda TODO */,
         unsigned num_nonzeros, double* nonzeros) const
 {
+    // TODO efficiently use the "repeat" argument.
+    int repeated_call = 0;
+    // TODO this is causing at least one excessive allocation.
+    if (m_countTODO > 1/*TODO should be 0*/) repeated_call = 1;
+    m_countTODO += 1;
 
     // TODO this hessian must include the constraint portion!!!
     // TODO if not new_x, then do NOT re-eval objective()!!!
@@ -280,37 +297,38 @@ hessian_lagrangian(unsigned num_variables, const double* x,
     // TODO remove from here and utilize new_x.
     // TODO or can I reuse the tape?
     short int tag = 0;
-    // -----------------------------------------------------------------
-    // START ACTIVE
-    trace_on(tag);
-    VectorXa x_adouble(num_variables);
-    VectorXd lambda_vector(num_constraints); // TODO use Eigen::Map.
-    adouble lagrangian_adouble;
-    double lagr;
-    for (unsigned ivar = 0; ivar < num_variables; ++ivar) {
-        // TODO add this operator for std::vector.
-        x_adouble[ivar] <<= x[ivar];
+    if (!repeated_call) {
+        // -----------------------------------------------------------------
+        // START ACTIVE
+        trace_on(tag);
+        VectorXa x_adouble(num_variables);
+        VectorXd lambda_vector(num_constraints); // TODO use Eigen::Map.
+        adouble lagrangian_adouble;
+        double lagr;
+        for (unsigned ivar = 0; ivar < num_variables; ++ivar) {
+            // TODO add this operator for std::vector.
+            x_adouble[ivar] <<= x[ivar];
+        }
+        for (unsigned icon = 0; icon < num_constraints; ++icon) {
+            lambda_vector[icon] = lambda[icon];
+        }
+        lagrangian(obj_factor, x_adouble, lambda_vector, lagrangian_adouble);
+        lagrangian_adouble >>= lagr;
+        trace_off();
+        // END ACTIVE
+        // -----------------------------------------------------------------
     }
-    for (unsigned icon = 0; icon < num_constraints; ++icon) {
-        lambda_vector[icon] = lambda[icon];
-    }
-    lagrangian(obj_factor, x_adouble, lambda_vector, lagrangian_adouble);
-    lagrangian_adouble >>= lagr;
-    trace_off();
-    // END ACTIVE
-    // -----------------------------------------------------------------
-    // TODO efficiently use the "repeat" argument.
-    int repeated_call = 0;
+
     int options[2];
     options[0] = 0; /* test the computational graph control flow? TODO*/
     options[1] = 0; /* way of recovery TODO */
     // TODO make general:
-    unsigned int* row_indices = NULL;
-    unsigned int* col_indices = NULL;
+//    unsigned int* m_hessian_row_indices = NULL;
+//    unsigned int* m_hessian_col_indices = NULL;
     // TODO hope that the row indices are the same between IpOopt and
     // ADOL-C.
-    double* vals = NULL;
-    int num_nz;
+//    double* vals = NULL;
+    // TODO int num_nz;
     // TODO compute sparse hessian for each element of the constraint
     // vector....TODO trace with respect to both x and lambda..
     // http://list.coin-or.org/pipermail/adol-c/2013-April/000900.html
@@ -343,18 +361,20 @@ hessian_lagrangian(unsigned num_variables, const double* x,
     //for (unsigned icon = 0; icon < num_constraints; ++icon) {
     //    x_and_lambda[icon + num_variables] = lambda[icon];
     //}
+    // TODO use set_param_vec().
     int success = sparse_hess(tag, num_variables, repeated_call,
-            x, &num_nz, &row_indices, &col_indices,
-            &vals, options);
+                              x, &m_hessian_num_nonzeros,
+                              &m_hessian_row_indices, &m_hessian_col_indices,
+                              &m_hessian_values, options);
     assert(success);
     for (unsigned i = 0; i < num_nonzeros; ++i) {
-        nonzeros[i] = vals[i];
+        nonzeros[i] = m_hessian_values[i];
     }
-    // TODO try to use modern memory management.
-    delete [] row_indices;
-    delete [] col_indices;
-    // TODO avoid reallocating vals each time!!!
-    delete [] vals;
+    // TODO // TODO try to use modern memory management.
+    // TODO delete [] row_indices;
+    // TODO delete [] col_indices;
+    // TODO // TODO avoid reallocating vals each time!!!
+    // TODO delete [] vals;
 }
 
 void OptimizationProblem<adouble>::Proxy::

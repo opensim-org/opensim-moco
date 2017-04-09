@@ -219,6 +219,21 @@ template<>
 class OptimizationProblem<adouble>::Proxy : public OptimizationProblemProxy {
 public:
     Proxy(const OptimizationProblem<adouble>& problem) : m_problem(problem) {}
+    ~Proxy() {
+        // TODO try to use modern memory management.
+        delete [] m_jacobian_row_indices;
+        delete [] m_jacobian_col_indices;
+        delete [] m_jacobian_values;
+        m_jacobian_row_indices = nullptr;
+        m_jacobian_col_indices = nullptr;
+        m_jacobian_values = nullptr;
+        delete [] m_hessian_row_indices;
+        delete [] m_hessian_col_indices;
+        delete [] m_hessian_values;
+        m_hessian_row_indices = nullptr;
+        m_hessian_col_indices = nullptr;
+        m_hessian_values = nullptr;
+    }
     // TODO might not use eigen...just raw C arrays...
     unsigned num_variables() const override
     {   return m_problem.get_num_variables(); }
@@ -273,6 +288,20 @@ private:
     const OptimizationProblem<adouble>& m_problem;
     static const short int m_objective_tag   = 1;
     static const short int m_constraints_tag = 2;
+    // TODO don't make these mutable?
+     // These arrays are allocated by ADOL-C, but we must delete them.
+    mutable int m_jacobian_num_nonzeros = -1; /*TODO*/
+    mutable unsigned int* m_jacobian_row_indices = NULL;
+    mutable unsigned int* m_jacobian_col_indices = NULL;
+    mutable double* m_jacobian_values = NULL;
+
+    mutable int m_hessian_num_nonzeros = -1;
+    mutable unsigned int* m_hessian_row_indices = NULL;
+    mutable unsigned int* m_hessian_col_indices = NULL;
+    mutable double* m_hessian_values = NULL;
+
+    mutable int m_countTODO = 0;
+    mutable int m_countJTODO = 0;
 };
 
 
