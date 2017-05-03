@@ -131,28 +131,28 @@ solveForTrajectoryGlobalStaticOptimizationSolver() {
 
     // Compute actual inverse dynamics moment, for debugging.
     // ------------------------------------------------------
-    // TimeSeriesTable actualInvDyn;
-    // actualInvDyn.setColumnLabels({"inverse_dynamics"});
-    // DeGroote2016Muscle<double> muscle(ocp->max_isometric_force,
-    //                                   ocp->optimal_fiber_length,
-    //                                   ocp->tendon_slack_length,
-    //                                   ocp->pennation_angle_at_optimal,
-    //                                   ocp->max_contraction_velocity);
-    // for (Eigen::Index iTime = 0; iTime < ocp_solution.time.size(); ++iTime) {
-    //     const auto& position = ocp_solution.states(0, iTime);
-    //     const auto& speed = ocp_solution.states(1, iTime);
-    //     const auto& activation = ocp_solution.controls(0, iTime);
-    //     const auto normTendonForce =
-    //             muscle.calcRigidTendonNormFiberForceAlongTendon(activation,
-    //                                                             position,
-    //                                                             speed);
-    //     const auto tendonForce = muscle.get_max_isometric_force()
-    //                            * normTendonForce;
-    //     actualInvDyn.appendRow(ocp_solution.time(iTime),
-    //                            SimTK::RowVector(1, -tendonForce));
-    // }
-    // CSVFileAdapter::write(actualInvDyn,
-    //                       "DEBUG_testLiftingMass_GSO_actualInvDyn.csv");
+	// TimeSeriesTable actualInvDyn;
+	// actualInvDyn.setColumnLabels({"inverse_dynamics"});
+	// DeGroote2016Muscle<double> muscle(ocp->max_isometric_force,
+	//                                   ocp->optimal_fiber_length,
+	//                                   ocp->tendon_slack_length,
+	//                                   ocp->pennation_angle_at_optimal,
+	//                                   ocp->max_contraction_velocity);
+	// for (Eigen::Index iTime = 0; iTime < ocp_solution.time.size(); ++iTime) {
+	//     const auto& position = ocp_solution.states(0, iTime);
+	//     const auto& speed = ocp_solution.states(1, iTime);
+	//     const auto& activation = ocp_solution.controls(0, iTime);
+	//     const auto normTendonForce =
+	//             muscle.calcRigidTendonNormFiberForceAlongTendon(activation,
+	//                                                             position,
+	//                                                             speed);
+	//     const auto tendonForce = muscle.get_max_isometric_force()
+	//                            * normTendonForce;
+	//     actualInvDyn.appendRow(ocp_solution.time(iTime),
+	//                            SimTK::RowVector(1, -tendonForce));
+	// }
+	// CSVFileAdapter::write(actualInvDyn,
+	//                       "DEBUG_testLiftingMass_GSO_actualInvDyn.csv");
 
     // TODO add regression test!!!
 
@@ -260,6 +260,7 @@ solveForTrajectoryMuscleRedundancySolver() {
     // Solve a trajectory optimization problem.
     // ----------------------------------------
     auto ocp = std::make_shared<DeGroote2016MuscleLiftMinTimeDynamic>();
+
     ocp->print_description();
     mesh::DirectCollocationSolver<adouble> dircol(ocp, "trapezoidal",
                                                   "ipopt", 100);

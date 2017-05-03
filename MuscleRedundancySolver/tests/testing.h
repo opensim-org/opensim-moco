@@ -54,4 +54,18 @@ void rootMeanSquare(
     SimTK_TEST((actual - expected).normRMS() < tol);
 };
 
+void rootMeanSquare_temp(
+	const OpenSim::TimeSeriesTable& actualTable,
+	const std::string& actualColumnLabel,
+	const OpenSim::TimeSeriesTable& expectedTable,
+	const std::string& expectedColumnLabel,
+	double tol) {
+	const auto& actual = actualTable.getDependentColumn(actualColumnLabel);
+	SimTK::Vector expected = interp(actualTable, expectedTable,
+		expectedColumnLabel);
+	SimTK_TEST((actual - expected).normRMS() < tol);
+};
+
+
+
 #endif // TOMU_TESTING_H
