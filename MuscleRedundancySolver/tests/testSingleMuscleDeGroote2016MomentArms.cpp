@@ -423,7 +423,7 @@ void testLiftingMassGlobalStaticOptimizationSolver(
     rootMeanSquare(solution.activation, ocpSolution, "activation", 0.03);
     auto reserveForceRMS = reserveOptimalForce *
          solution.other_controls.getDependentColumnAtIndex(0).normRMS();
-    SimTK_TEST(reserveForceRMS < 0.02);
+    SimTK_TEST(reserveForceRMS < 0.03);
 }
 
 // Reproduce the trajectory (generated with muscle dynamics) using the

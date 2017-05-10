@@ -24,7 +24,7 @@ using namespace OpenSim;
 /// Lift a muscle against gravity from a fixed starting state to a fixed end
 /// position and velocity, in minimum time.
 /// Here's a sketch of the problem we solve, without muscle dynamics:
-/// @verbatim
+/// @verbatim                                                                  
 ///   minimize   t_f
 ///   subject to qdot = u             kinematics
 ///              udot = (mg - f_t)/m  dynamics
@@ -169,11 +169,11 @@ solveForTrajectoryGlobalStaticOptimizationSolver() {
 ///              adot = f_a(e, a)     activation dynamics
 ///              lmdot = vmdot        fiber dynamics
 ///              (a f_l(lm) f_v(vm) + f_p(lm)) cos(alpha) = f_t(lt) equilibrium
-///              q(0) = 0.2
+///              q(0) = 0.15
 ///              u(0) = 0
 ///              a(0) = 0
 ///              vm(0) = 0
-///              q(t_f) = 0.15
+///              q(t_f) = 0.10
 ///              u(t_f) = 0
 /// @endverbatim
 /// Making the initial fiber velocity 0 helps avoid a sharp spike in fiber
@@ -260,6 +260,7 @@ solveForTrajectoryMuscleRedundancySolver() {
     // Solve a trajectory optimization problem.
     // ----------------------------------------
     auto ocp = std::make_shared<DeGroote2016MuscleLiftMinTimeDynamic>();
+
     ocp->print_description();
     mesh::DirectCollocationSolver<adouble> dircol(ocp, "trapezoidal",
                                                   "ipopt", 100);
@@ -342,7 +343,7 @@ OpenSim::Model buildLiftingMassModel() {
     model.addComponent(joint);
 
     auto* actu = new Millard2012EquilibriumMuscle();
-    actu->setName("actuator");
+    actu->setName("muscle");
     actu->set_max_isometric_force(ocp.max_isometric_force);
     actu->set_optimal_fiber_length(ocp.optimal_fiber_length);
     actu->set_tendon_slack_length(ocp.tendon_slack_length);
@@ -389,7 +390,8 @@ void testLiftingMassGlobalStaticOptimizationSolver(
 
     // The rationale for the tolerances: as tight as they could be for the
     // test to pass.
-    rootMeanSquare(solution.activation, ocpSolution, "activation", 0.05);
+    rootMeanSquare(solution.activation, "/hanging_muscle/muscle", 
+        ocpSolution, "activation", 0.05);
 }
 
 // Reproduce the trajectory using the MuscleRedundancy, without specifying an
@@ -434,14 +436,17 @@ void testLiftingMassMuscleRedundancySolver(
     // The states match better than the controls.
     // The rationale for the tolerances: as tight as they could be for the
     // test to pass.
-    compare(solution.activation, ocpSolution, "activation", 0.04);
-    compare(solution.norm_fiber_length, ocpSolution, "norm_fiber_length",
-            0.01);
+    compare(solution.activation, "/hanging_muscle/muscle", 
+        ocpSolution, "activation", 0.04);
+    compare(solution.norm_fiber_length, "/hanging_muscle/muscle",
+        ocpSolution, "norm_fiber_length", 0.01);
 
     // We use a weaker check for the controls; they don't match as well.
-    rootMeanSquare(solution.excitation, ocpSolution, "excitation", 0.08);
-    rootMeanSquare(solution.norm_fiber_velocity, ocpSolution,
-                   "norm_fiber_velocity", 0.04);
+    rootMeanSquare(solution.excitation, "/hanging_muscle/muscle",
+        ocpSolution, "excitation", 0.08);
+    rootMeanSquare(solution.norm_fiber_velocity, 
+        "/hanging_muscle/muscle", ocpSolution, 
+        "norm_fiber_velocity", 0.04);
 }
 
 int main() {
