@@ -205,7 +205,7 @@ public:
 protected:
     static T gaussian(const T& x, const double& b1, const double& b2,
                       const double& b3, const double& b4) {
-        return b1*exp((-0.5*pow(x - b2, 2))/(b3 + b4*x));
+        return b1*exp((-0.5*pow(x - b2, 2))/pow(b3 + b4*x, 2));
     };
 
 private:

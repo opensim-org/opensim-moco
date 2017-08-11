@@ -37,12 +37,12 @@ public:
     const double g = 9.81;
     const double mass = 0.5;
     // TODO move to a common place.
-    const double max_isometric_force_1 = 20;
-    const double max_isometric_force_2 = 10;
-    const double optimal_fiber_length_1 = 0.075;
-    const double optimal_fiber_length_2 = 0.125;
+    const double max_isometric_force_1 = 30;
+    const double max_isometric_force_2 = 30;
+    const double optimal_fiber_length_1 = 0.10;
+    const double optimal_fiber_length_2 = 0.10;
     const double tendon_slack_length = 0.05;
-    const double pennation_angle_at_optimal = 0.1;
+    const double pennation_angle_at_optimal = 0.0;
     // optimal fiber lengths per second:
     const double max_contraction_velocity = 10;
 
@@ -52,8 +52,8 @@ public:
         // TODO these functions should return indices for these variables.
         this->add_state("position", { 0, 0.3 }, 0.15, 0.10);
         this->add_state("speed", { -10, 10 }, 0, 0);
-        this->add_control("activation_1", { 0, 1 });
-        this->add_control("activation_2", { 0, 1 });
+        this->add_control("activation_1", { 0, 1 }, 0);
+        this->add_control("activation_2", { 0, 1 }, 0);
         // TODO move these to a constructor parameter.
         m_muscle_1 = DeGroote2016Muscle<T>(
                 max_isometric_force_1, optimal_fiber_length_1, 
@@ -127,8 +127,8 @@ solveForTrajectoryGlobalStaticOptimizationSolver() {
     TimeSeriesTable kinematics;
     kinematics.setColumnLabels({"joint/height/value",
                                 "joint/height/speed"});
-    const auto& position = ocpSolution.getDependentColumn("position");
-    const auto& speed = ocpSolution.getDependentColumn("speed");
+    auto position = ocpSolution.getDependentColumn("position");
+    auto speed = ocpSolution.getDependentColumn("speed");
     for (size_t iRow = 0; iRow < ocpSolution.getNumRows(); ++iRow) {
         SimTK::RowVector row(2);
         row[0] = position[iRow];
@@ -205,10 +205,10 @@ public:
     using T = adouble;
     double g = 9.81;
     double mass = 0.5;
-    double max_isometric_force_1 = 20;
-    double max_isometric_force_2 = 10;
-    double optimal_fiber_length_1 = 0.075;
-    double optimal_fiber_length_2 = 0.125;
+    double max_isometric_force_1 = 30;
+    double max_isometric_force_2 = 30;
+    double optimal_fiber_length_1 = 0.10;
+    double optimal_fiber_length_2 = 0.10;
     double tendon_slack_length = 0.05;
     double pennation_angle_at_optimal = 0;
     // optimal fiber lengths per second:
