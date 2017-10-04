@@ -143,6 +143,7 @@ void testGait10dof18musc_INDYGO(const std::string& fiberDynamicsMode,
         const std::string& activationDynamicsMode,
         const int& meshPointFrequency) {
     INDYGO mrs("testGait10dof18musc_INDYGO_setup.xml");
+    mrs.set_initial_guess("bounds"); //TODO
     mrs.set_fiber_dynamics_mode(fiberDynamicsMode);
     mrs.set_activation_dynamics_mode(activationDynamicsMode);
     mrs.set_mesh_point_frequency(meshPointFrequency);
@@ -217,9 +218,9 @@ int main() {
     SimTK_START_TEST("testGait10dof18musc");
         SimTK_SUBTEST(testGait10dof18musc_GSO);
         SimTK_SUBTEST3(testGait10dof18musc_INDYGO,
-                "fiber_length", "explicit", 300);
-        SimTK_SUBTEST3(testGait10dof18musc_INDYGO,
-                "tendon_force", "explicit", 300);
+                "fiber_length", "explicit", 50);
+//        SimTK_SUBTEST3(testGait10dof18musc_INDYGO,
+//                "tendon_force", "explicit", 300);
 //        SimTK_SUBTEST2(testGait10dof18musc_INDYGO, "fiber_length", "implicit");
 //        SimTK_SUBTEST2(testGait10dof18musc_INDYGO, "tendon_force", "implicit");
     SimTK_END_TEST();
