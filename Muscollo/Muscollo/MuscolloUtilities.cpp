@@ -57,7 +57,6 @@ Storage OpenSim::convertTableToStorage(const TimeSeriesTable& table) {
     return sto;
 }
 
-/// TODO: doc
 OSIMMUSCOLLO_API TimeSeriesTable OpenSim::filterLowpass(const TimeSeriesTable & table, double cutoffFreq, bool padData) {
     auto storage = convertTableToStorage(table);
     if (padData) {

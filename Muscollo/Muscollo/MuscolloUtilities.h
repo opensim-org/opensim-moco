@@ -40,7 +40,7 @@ SimTK::Vector createVectorLinspace(int length, double start, double end);
 // TODO move to the Storage class.
 OSIMMUSCOLLO_API Storage convertTableToStorage(const TimeSeriesTable&);
 
-/// TODO: doc
+/// Filter (and optionally pad) data in a TimeSeriesTable.
 OSIMMUSCOLLO_API TimeSeriesTable filterLowpass(const TimeSeriesTable& table, 
     double cutoffFreq, bool padData = false);
 

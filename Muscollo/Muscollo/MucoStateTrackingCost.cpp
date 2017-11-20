@@ -52,24 +52,40 @@ void MucoStateTrackingCost::initializeImpl() const {
                 " the user supplied neither.");
     }
 
+    // Check if table is in degrees and convert if necessary.
     if (tableToUse.hasTableMetaDataKey("inDegrees") &&
         tableToUse.getTableMetaDataAsString("inDegrees") == "yes") {
         getModel().getSimbodyEngine().convertDegreesToRadians(tableToUse);
     }
 
+    // Create spline set from table.
     auto allSplines = GCVSplineSet(tableToUse);
+
+    // Clear member variables so they're not used by a subsequent cost 
+    // function by accident.
     m_refsplines.clearAndDestroy();
     m_sysYIndices.clear();
     m_state_weights.clear();
 
-
-    // TODO throw exception if a weight is specified for a nonexistant state.
-
+    //// Throw exception if a weight is specified for a nonexistant state.
     auto allSysYIndices = createSystemYIndexMap(getModel());
+    for (int i = 0; i < get_state_weights().getSize(); ++i) {
+        const auto& weightName = get_state_weights().get(i).getName();
+        if (allSysYIndices.count(weightName) == 0) {
+            OPENSIM_THROW_FRMOBJ(Exception,
+                "Weight provided with name '" + weightName + "' but this is "
+                "not a recognized state.");
+        }
+    }
+
+    // Populate member variables need to compute cost. Unless the property
+    // allow_unused_references is set to true, an exception is thrown for
+    // names in the references that don't correspond to a state variable. 
+    // allSysYIndices = createSystemYIndexMap(getModel());
     for (int iref = 0; iref < allSplines.getSize(); ++iref) {
         const auto& refName = allSplines[iref].getName();
         if (allSysYIndices.count(refName) == 0) {
-            if (get_allow_unused_refs()) {
+            if (get_allow_unused_references()) {
                 continue;
             } else {
                 OPENSIM_THROW_FRMOBJ(Exception,
