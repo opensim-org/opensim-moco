@@ -1,7 +1,7 @@
 MuscolloAddSandboxExecutable(NAME sandboxMarkerTrackingWholeBody
-        LIB_DEPENDS osimMuscollo tropter
+	    LIB_DEPENDS osimMuscollo tropter
 		RESOURCES
 			subject01.osim
-			marker_trajectories.trc
-			state_reference.mot
+			../walk_marker_trajectories.trc
+			../walk_gait1018_state_reference.mot
 		)
