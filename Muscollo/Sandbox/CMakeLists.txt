@@ -27,3 +27,4 @@ MuscolloAddSandboxExecutable(NAME sandboxImplicitActivationDynamics
 		
 add_subdirectory(sandboxWholeBodyTracking)
 add_subdirectory(sandboxMarkerTrackingWholeBody)
+add_subdirectory(sandboxMarkerTrackingContactWholeBody)
