@@ -18,6 +18,11 @@
  * limitations under the License.                                             *
  * -------------------------------------------------------------------------- */
 
+#include <OpenSim/Common/osimCommon.h>
+#include <OpenSim/Simulation/osimSimulation.h>
+#include <OpenSim/Actuators/osimActuators.h>
+#include <Muscollo/MucoCost.h>
+
 namespace OpenSim {
 
 /// Similar to CoordinateActuator (simply produces a generalized force) but
@@ -120,11 +125,12 @@ public:
 
         const SimTK::Real velSlidingScaling =
                 get_tangent_velocity_scaling_factor();
-        const SimTK::Real z0 = exp(-velSliding / velSlidingScaling);
-        // TODO decide direction!!!
+        // The paper used (1 - exp(-x)) / (1 + exp(-x)) = tanh(2x).
+        // tanh() has a wider domain than using exp().
+        const SimTK::Real transition = tanh(velSliding / velSlidingScaling / 2);
 
         const SimTK::Real frictionForce =
-                -(1 - z0) / (1 + z0) * get_friction_coefficient() * force[1];
+                -transition * get_friction_coefficient() * force[1];
 
         force[0] = frictionForce;
         return force;
@@ -219,14 +225,6 @@ protected:
                     dynamic_cast<const AckermannVanDenBogert2010Force&>(
                             getModel().getComponent(get_forces(i))));
         }
-        // TODO this is a complete hack!
-        auto data = STOFileAdapter::read("walk_gait1018_subject01_grf.mot");
-
-        auto time = data.getIndependentColumn();
-        SimTK::Vector Fx = data.getDependentColumn("ground_force_vx");
-        SimTK::Vector Fy = data.getDependentColumn("ground_force_vy");
-        m_refspline_x = GCVSpline(5, (int)time.size(), time.data(), &Fx[0]);
-        m_refspline_y = GCVSpline(5, (int)time.size(), time.data(), &Fy[0]);
     }
 
     void calcIntegralCostImpl(const SimTK::State& state, double& integrand)
@@ -249,6 +247,7 @@ private:
     std::vector<SimTK::ReferencePtr<const AckermannVanDenBogert2010Force>>
             m_forces;
 
+public: // TODO
     mutable GCVSpline m_refspline_x;
     mutable GCVSpline m_refspline_y;
 };
