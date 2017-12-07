@@ -41,7 +41,7 @@ ActivationCoordinateActuator : public CoordinateActuator {
             CoordinateActuator);
 public:
     OpenSim_DECLARE_PROPERTY(activation_time_constant, double,
-    "Larger value means activation can change more rapidly (units: seconds).");
+    "Smaller value means activation can change more rapidly (units: seconds).");
 
     OpenSim_DECLARE_PROPERTY(default_activation, double,
     "Value of activation in the default state returned by initSystem().");
