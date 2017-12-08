@@ -123,7 +123,8 @@ public:
     }
 
     // TODO no need to do clamping, etc; CoordinateActuator is bidirectional.
-    void computeStateVariableDerivatives(const SimTK::State& s) const override {
+    void computeStateVariableDerivatives(const SimTK::State& s) const override 
+    {
         const auto& tau = get_activation_time_constant();
         const auto& u = getControl(s);
         const auto& a = getStateVariableValue(s, "activation");
