@@ -349,6 +349,7 @@ class MucoForceTrackingCost : public MucoCost {
     OpenSim_DECLARE_CONCRETE_OBJECT(MucoForceTrackingCost, MucoCost);
 public:
     OpenSim_DECLARE_LIST_PROPERTY(forces, std::string, "TODO");
+    OpenSim_DECLARE_PROPERTY(tracked_grf_components, std::string, "TODO");
 
     MucoForceTrackingCost() {
         constructProperties();
@@ -375,11 +376,18 @@ protected:
         ref[0] = m_refspline_x.calcValue(timeVec);
         ref[1] = m_refspline_y.calcValue(timeVec);
 
-        integrand = (netForce - ref).normSqr();
+        // TODO: flag to specify error power?
+        if (get_tracked_grf_components() == "all") {
+            integrand = (netForce - ref).normSqr();
+        } else if (get_tracked_grf_components() == "vertical") {
+            integrand = abs(netForce[1] - ref[1]);
+        }
+        
     }
 private:
     void constructProperties() {
         constructProperty_forces();
+        constructProperty_tracked_grf_components("all");
     }
     mutable 
     std::vector<SimTK::ReferencePtr<const AckermannVanDenBogert2010Force>>
