@@ -378,7 +378,7 @@ protected:
         ref[1] = m_refspline_y.calcValue(timeVec);
 
         // TODO: flag to specify error power?
-        double error;
+        double error = 0;
         if (get_tracked_grf_components() == "all") {
             error = (netForce - ref).normSqr();
         } else if (get_tracked_grf_components() == "vertical") {
