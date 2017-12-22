@@ -22,6 +22,8 @@
 
 #include "osimMuscolloDLL.h"
 
+#include <set>
+
 namespace OpenSim {
 
 class StatesTrajectory;
