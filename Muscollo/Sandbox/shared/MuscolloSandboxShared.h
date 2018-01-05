@@ -254,7 +254,7 @@ public:
 
         SimTK::Real Fspring = 
             -sp * (vp * y - c * log(cosh((y + h) / c))) - constant;
-        if (isnan(Fspring) || isinf(Fspring)) {
+        if (SimTK::isNaN(Fspring) || SimTK::isInf(Fspring)) {
             Fspring = 0;
         }
 
