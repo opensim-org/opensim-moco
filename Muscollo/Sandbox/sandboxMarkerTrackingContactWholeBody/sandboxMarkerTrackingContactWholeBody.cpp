@@ -32,7 +32,7 @@ const bool useActivationCoordinateActuators = false;
 using namespace OpenSim;
 
 /// Convenience function to apply an ActivationCoordinateActuator to the model.
-void addActivationCoordinateActuator(Model& model, std::string coordName,
+void addCoordinateActuator(Model& model, std::string coordName,
     double optimalForce) {
 
     auto& coordSet = model.updCoordinateSet();
@@ -69,19 +69,19 @@ void setModelAndBounds(MucoProblem& mp) {
 
     Model model("gait1018_subject01_onefoot_v30516.osim");
 
-    //addActivationCoordinateActuator(model, "lumbar_extension", 100);
-    //addActivationCoordinateActuator(model, "pelvis_tilt", 100);
-    //addActivationCoordinateActuator(model, "pelvis_tx", 1000);
-    //addActivationCoordinateActuator(model, "pelvis_ty", 1000);
-    //addActivationCoordinateActuator(model, "hip_flexion_r", 100);
-    //addActivationCoordinateActuator(model, "knee_angle_r", 100);
-    //addActivationCoordinateActuator(model, "ankle_angle_r", 100);
-    //addActivationCoordinateActuator(model, "hip_flexion_l", 100);
-    //addActivationCoordinateActuator(model, "knee_angle_l", 100);
-    //addActivationCoordinateActuator(model, "ankle_angle_l", 100);
-    addActivationCoordinateActuator(model, "rz", 250); // TODO 100);
-    addActivationCoordinateActuator(model, "tx", 5000); // TODO 1000);
-    addActivationCoordinateActuator(model, "ty", 5000); // TODO 1000);
+    //addCoordinateActuator(model, "lumbar_extension", 100);
+    //addCoordinateActuator(model, "pelvis_tilt", 100);
+    //addCoordinateActuator(model, "pelvis_tx", 1000);
+    //addCoordinateActuator(model, "pelvis_ty", 1000);
+    //addCoordinateActuator(model, "hip_flexion_r", 100);
+    //addCoordinateActuator(model, "knee_angle_r", 100);
+    //addCoordinateActuator(model, "ankle_angle_r", 100);
+    //addCoordinateActuator(model, "hip_flexion_l", 100);
+    //addCoordinateActuator(model, "knee_angle_l", 100);
+    //addCoordinateActuator(model, "ankle_angle_l", 100);
+    addCoordinateActuator(model, "rz", 250); // TODO 100);
+    addCoordinateActuator(model, "tx", 5000); // TODO 1000);
+    addCoordinateActuator(model, "ty", 5000); // TODO 1000);
 
     const auto& calcn = dynamic_cast<Body&>(model.updComponent("calcn_r"));
     model.addMarker(new Marker("R.Heel.Distal", calcn,
@@ -311,7 +311,8 @@ MucoSolution solveMarkerTrackingProblem() {
 
     tracking.setMarkersReference(markersRef);
     tracking.setAllowUnusedReferences(true);
-    tracking.set_weight(0.000001);
+    tracking.set_weight(1);
+    // TODO tracking.set_weight(0.000001);
     tracking.setFreeRadius(0.01);
     tracking.setTrackedMarkerComponents("xy");
     mp.addCost(tracking);
@@ -328,7 +329,8 @@ MucoSolution solveMarkerTrackingProblem() {
     grfTracking.m_refspline_y =
             GCVSpline(5, (int)time.size(), time.data(), &Fy[0]);
     double normGRFs = 0.001;
-    double weight = 0.000001;
+    double weight = 0.001;
+    // TODO double weight = 0.000001;
     grfTracking.set_weight(normGRFs * weight);
     grfTracking.append_forces("R.Heel.Distal_contact");
     grfTracking.append_forces("R.Ball.Lat_contact");
@@ -350,6 +352,8 @@ MucoSolution solveMarkerTrackingProblem() {
     ms.set_optim_hessian_approximation("exact");
     ms.set_dynamics_mode("implicit");
     ms.set_optim_max_iterations(1000);
+    ms.set_optim_convergence_tolerance(1e-3);
+    ms.set_optim_constraint_tolerance(1e-3);
 
     // Create guess.
     // =============
@@ -362,6 +366,7 @@ MucoSolution solveMarkerTrackingProblem() {
     //STOFileAdapter::write(statesRefFilt, "state_reference_radians.sto");
     //guess.setStatesTrajectory(statesRefFilt, true, true);
     //ms.setGuess(guess);
+    // TODO describe how this guess is generated (without contact).
     ms.setGuess(MucoIterate(
             "sandboxMarkerTrackingContactWholeBody_guess.sto"));
 

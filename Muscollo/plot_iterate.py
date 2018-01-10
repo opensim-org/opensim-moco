@@ -68,6 +68,9 @@ for ifile, filepath in enumerate(datafiles):
         else:
             column_names = list(set(column_names) & set(curr_column_names))
 
+        # Without this, the ordering of plots is not deterministic.
+        column_names.sort()
+
         # Clear current column names list.
         curr_column_names = []
     else:
