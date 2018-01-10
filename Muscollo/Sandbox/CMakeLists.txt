@@ -11,6 +11,8 @@ function(MuscolloAddSandboxExecutable)
     set_target_properties(${MUCOSAND_NAME} PROPERTIES
             FOLDER "Muscollo/Sandbox")
     target_link_libraries(${MUCOSAND_NAME} ${MUCOSAND_LIB_DEPENDS})
+    target_include_directories(${MUCOSAND_NAME} PRIVATE
+            ${CMAKE_SOURCE_DIR}/Muscollo/Sandbox/shared)
     file(COPY ${MUCOSAND_RESOURCES} DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
 endfunction()
 
@@ -27,3 +29,4 @@ MuscolloAddSandboxExecutable(NAME sandboxImplicitActivationDynamics
 		
 add_subdirectory(sandboxWholeBodyTracking)
 add_subdirectory(sandboxMarkerTrackingWholeBody)
+add_subdirectory(sandboxMarkerTrackingContactWholeBody)

@@ -302,7 +302,7 @@ MucoSolution solveStateTrackingProblem(bool usingMuscleLikeActuators,
     // Cost.
     // -----
     MucoStateTrackingCost tracking;
-    auto ref = STOFileAdapter::read("state_reference.mot");
+    auto ref = STOFileAdapter::read("walk_gait1018_state_reference.mot");
     auto refFilt = filterLowpass(ref, 6.0, true);
     tracking.setReference(refFilt);
     //tracking.setAllowUnusedReferences(true);
@@ -376,7 +376,7 @@ MucoSolution solveMarkerTrackingProblem(bool usingMuscleLikeActuators,
     // -----
     MucoMarkerTrackingCost tracking;
     tracking.setName("tracking");
-    auto ref = TRCFileAdapter::read("marker_trajectories.trc");
+    auto ref = TRCFileAdapter::read("walk_marker_trajectories.trc");
     TimeSeriesTable refFilt = filterLowpass(ref.flatten(), 6.0, true);
     auto refPacked = refFilt.pack<double>();
     TimeSeriesTableVec3 refToUse(refPacked);
@@ -419,7 +419,7 @@ MucoSolution solveMarkerTrackingProblem(bool usingMuscleLikeActuators,
         MucoIterate guess = ms.createGuess();
         auto model = mp.getPhase().getModel();
         model.initSystem();
-        auto statesRef = STOFileAdapter::read("state_reference.mot");
+        auto statesRef = STOFileAdapter::read("walk_gait1018_state_reference.mot");
         auto statesRefFilt = filterLowpass(statesRef, 6.0, true);
         model.getSimbodyEngine().convertDegreesToRadians(statesRefFilt);
         STOFileAdapter::write(statesRefFilt, "state_reference_radians.sto");

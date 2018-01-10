@@ -62,6 +62,16 @@ public:
         set_allow_unused_references(tf);
     }
 
+    /// TODO: description
+    void setFreeRadius(double value) {
+        set_free_radius(value);
+    }
+
+    /// TODO: description, better name
+    void setTrackedMarkerComponents(std::string components) {
+        set_tracked_marker_components(components);
+    }
+
 protected:
     void initializeImpl() const override;
     void calcIntegralCostImpl(const SimTK::State& state,
@@ -78,9 +88,17 @@ private:
             "Allow markers_reference to contain marker data for a marker "
             "not in the model (such data would be ignored). Default: false.");
 
+    OpenSim_DECLARE_PROPERTY(free_radius, double, 
+            "TODO");
+
+    OpenSim_DECLARE_PROPERTY(tracked_marker_components, std::string, 
+            "TODO");
+
     void constructProperties() {
         constructProperty_markers_reference(MarkersReference());
         constructProperty_allow_unused_references(false);
+        constructProperty_free_radius(0.0);
+        constructProperty_tracked_marker_components("xyz");
     };
 
     mutable GCVSplineSet m_refsplines;
