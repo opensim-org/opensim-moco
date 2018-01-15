@@ -109,21 +109,28 @@ void OptimalControlProblem<T>::
 initialize_on_mesh(const Eigen::VectorXd&) const
 {}
 
-template<typename T>
-void OptimalControlProblem<T>::
-calc_differential_algebraic_equations(const DAEInput<T>&, DAEOutput<T>) const
-{}
+//template<typename T>
+//void OptimalControlProblem<T>::
+//calc_differential_algebraic_equations(const DAEInput<T>&, DAEOutput<T>) const
+//{}
+//
+//template<typename T>
+//void OptimalControlProblem<T>::
+//calc_endpoint_cost(const T&, const VectorX<T>&, const VectorX<T>&, T&) const
+//{}
+//
+//template<typename T>
+//void OptimalControlProblem<T>::
+//calc_integral_cost(const T&, const VectorX<T>&, const VectorX<T>&,
+//        const VectorX<T>&, T&) const
+//{}
 
 template<typename T>
 void OptimalControlProblem<T>::
-calc_endpoint_cost(const T&, const VectorX<T>&, const VectorX<T>&, T&) const
-{}
-
+calc_continuous(const ContinuousInput<T>&, ContinuousOutput<T>) const {}
 template<typename T>
 void OptimalControlProblem<T>::
-calc_integral_cost(const T&, const VectorX<T>&, const VectorX<T>&, 
-        const VectorX<T>&, T&) const
-{}
+calc_endpoint(const EndpointInput<T>&, EndpointOutput<T>) const {}
 
 template<typename T>
 void OptimalControlProblem<T>::
@@ -204,7 +211,7 @@ set_parameter_guess(OptimalControlIterate& guess,
     if (guess.parameters.size() == 0) {
         guess.parameters.resize(m_parameter_infos.size());
     }
-    else if (guess.parameters.size() != m_parameter_infos.size()) {
+    else if (guess.parameters.size() != (int)m_parameter_infos.size()) {
         TROPTER_THROW("Expected guess.parameters to have %i elements "
             "but it has %i elements.",
             m_parameter_infos.size(), guess.parameters.size());
@@ -242,6 +249,8 @@ void OptimalControlProblem<T>::get_all_bounds(
         Eigen::Ref<Eigen::VectorXd> final_controls_upper,
         Eigen::Ref<Eigen::VectorXd> parameters_lower,
         Eigen::Ref<Eigen::VectorXd> parameters_upper,
+        Eigen::Ref<Eigen::VectorXd> integrals_lower,
+        Eigen::Ref<Eigen::VectorXd> integrals_upper,
         Eigen::Ref<Eigen::VectorXd> path_constraints_lower,
         Eigen::Ref<Eigen::VectorXd> path_constraints_upper) const {
     initial_time_lower = m_initial_time_bounds.lower;
@@ -293,6 +302,11 @@ void OptimalControlProblem<T>::get_all_bounds(
         const auto& info = m_parameter_infos[ip];
         parameters_lower[ip] = info.bounds.lower;
         parameters_upper[ip] = info.bounds.upper;
+    }
+    for (unsigned ip = 0; ip < m_integral_infos.size(); ++ip) {
+        const auto& info = m_integral_infos[ip];
+        integrals_lower[ip] = info.bounds.lower;
+        integrals_upper[ip] = info.bounds.upper;
     }
     for (unsigned ipc = 0; ipc < m_path_constraint_infos.size(); ++ipc) {
         const auto& info = m_path_constraint_infos[ipc];

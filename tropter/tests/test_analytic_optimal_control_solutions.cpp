@@ -37,22 +37,39 @@ public:
         this->add_state("x0", {-10, 10}, {0}, {5});
         this->add_state("x1", {-10, 10}, {0}, {2});
         this->add_control("u", {-50, 50});
+        this->add_integral("effort");
     }
-    void calc_differential_algebraic_equations(
-            const DAEInput<T>& in, DAEOutput<T> out) const override {
+    // TODO
+    //void calc_differential_algebraic_equations(
+    //        const DAEInput<T>& in, DAEOutput<T> out) const override {
+    //    const auto& x = in.states;
+    //    const auto& u = in.controls;
+    //    out.dynamics[0] = x[1];
+    //    out.dynamics[1] = x[1] + u[0];
+    //    // xdot.row(0) = x.row(1);
+    //    // xdot.row(1) = -x.row(1) + u.row(0);
+    //}
+    //void calc_integral_cost(const T& /*t*/,
+    //        const VectorX<T>& /*x*/,
+    //        const VectorX<T>& u,
+    //        const VectorX<T>& /*p*/,
+    //        T& integrand) const override {
+    //    integrand = 0.5 * u[0] * u[0];
+    //}
+    //void calc_continuous(const ConIn<T>& in, ConOut<T> out) const override {
+    void calc_continuous(
+            const ContinuousInput<T>& in,
+            ContinuousOutput<T> out) const override {
         const auto& x = in.states;
         const auto& u = in.controls;
-        out.dynamics[0] = x[1];
-        out.dynamics[1] = x[1] + u[0];
-        // xdot.row(0) = x.row(1);
-        // xdot.row(1) = -x.row(1) + u.row(0);
+        out.dynamics.row(0) = x.row(1);
+        out.dynamics.row(1) = -/*TODO*/x.row(1) + u.row(0);
+        out.integrands.row(0) = T(0.5) * u.row(0).array().square();
     }
-    void calc_integral_cost(const T& /*t*/,
-            const VectorX<T>& /*x*/,
-            const VectorX<T>& u,
-            const VectorX<T>& /*p*/,
-            T& integrand) const override {
-        integrand = 0.5 * u[0] * u[0];
+    void calc_endpoint(
+            const EndpointInput<T>& in,
+            EndpointOutput<T> out) const override {
+        out.objective = in.integrals[0];
     }
     MatrixXd states_solution(const VectorXd& time) const {
         using std::exp;
@@ -96,7 +113,7 @@ public:
         //solution.write("second_order_linear_min_effort_solution.csv");
 
         MatrixXd expected_states = ocp->states_solution(solution.time);
-        TROPTER_REQUIRE_EIGEN(solution.states, expected_states, 0.005);
+        TROPTER_REQUIRE_EIGEN(solution.states, expected_states, .005);
     }
 };
 
@@ -104,6 +121,8 @@ TEST_CASE("Second order linear min effort", "[adolc][trapezoidal]") {
     SECTION("ADOL-C") {
         SecondOrderLinearMinEffort<adouble>::run_test(1000, "ipopt", "exact");
     }
+    //SecondOrderLinearMinEffort<double>::run_test(1000, "ipopt",
+    //        "limited-memory");
     //SECTION("Finite differences") {
     //    SecondOrderLinearMinEffort<double>::run_test(20, "ipopt", "exact");
     //}

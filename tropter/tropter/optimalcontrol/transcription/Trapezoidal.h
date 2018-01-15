@@ -76,9 +76,9 @@ public:
     /// to efficiently determine the sparsity pattern of the entire Hessian.
     /// We only need to perturb the optimal control functions at one mesh point,
     /// not the entire NLP objective and constraint functions.
-    void calc_sparsity_hessian_lagrangian(const Eigen::VectorXd& x,
-            SymmetricSparsityPattern&,
-            SymmetricSparsityPattern&) const override;
+    //void calc_sparsity_hessian_lagrangian(const Eigen::VectorXd& x,
+    //        SymmetricSparsityPattern&,
+    //        SymmetricSparsityPattern&) const override;
 
     /// This function checks the dimensions of the matrices in traj.
     Eigen::VectorXd
@@ -108,13 +108,21 @@ protected:
         Eigen::Unaligned,
         Eigen::InnerStride<1>>;
     template<typename S>
+    using IntegralsViewConst = Eigen::Map<const VectorX<S>,
+            Eigen::Unaligned,
+            Eigen::InnerStride<1>>;
+    template<typename S>
     using TrajectoryViewConst = Eigen::Map<const MatrixX<S>,
             Eigen::Unaligned,
             Eigen::OuterStride<Eigen::Dynamic>>;
     template<typename S>
-    using ParameterView = Eigen::Map<VectorX<S>,
+    using ParametersView = Eigen::Map<VectorX<S>,
         Eigen::Unaligned,
         Eigen::InnerStride<1>>;
+    template<typename S>
+    using IntegralsView = Eigen::Map<VectorX<S>,
+            Eigen::Unaligned,
+            Eigen::InnerStride<1>>;
     template<typename S>
     using TrajectoryView = Eigen::Map<MatrixX<S>,
             Eigen::Unaligned,
@@ -124,6 +132,9 @@ protected:
     ParameterViewConst<S>
     make_parameters_view(const VectorX<S>& variables) const;
     template<typename S>
+    IntegralsViewConst<S>
+    make_integrals_view(const VectorX<S>& variables) const;
+    template<typename S>
     TrajectoryViewConst<S>
     make_states_trajectory_view(const VectorX<S>& variables) const;
     template<typename S>
@@ -132,8 +143,11 @@ protected:
     // TODO find a way to avoid these duplicated functions, using SFINAE.
     /// This provides a view to which you can write.
     template<typename S>
-    ParameterView<S>
+    ParametersView<S>
     make_parameters_view(VectorX<S>& variables) const;
+    template<typename S>
+    IntegralsView<S>
+    make_integrals_view(VectorX<S>& variables) const;
     /// This provides a view to which you can write.
     template<typename S>
     TrajectoryView<S>
@@ -145,14 +159,19 @@ protected:
 
 
     // TODO templatize.
+    using IntegralConstraintsView = Eigen::Map<VectorX<T>>;
     using DefectsTrajectoryView = Eigen::Map<MatrixX<T>>;
     using PathConstraintsTrajectoryView = Eigen::Map<MatrixX<T>>;
 
     struct ConstraintsView {
-        ConstraintsView(DefectsTrajectoryView d,
+        ConstraintsView(
+                IntegralConstraintsView ic,
+                DefectsTrajectoryView d,
                 PathConstraintsTrajectoryView pc)
-                : defects(d),
+                : integral_constraints(ic),
+                  defects(d),
                   path_constraints(pc) {}
+        IntegralConstraintsView integral_constraints = {nullptr, 0, 0};
         // TODO what is the proper name for this? dynamic defects?
         DefectsTrajectoryView defects = {nullptr, 0, 0};
         PathConstraintsTrajectoryView path_constraints = {nullptr, 0, 0};
@@ -167,6 +186,7 @@ private:
     int m_num_mesh_points;
     int m_num_time_variables = -1;
     int m_num_parameters = -1;
+    int m_num_integrals = -1;
     // The sum total of time_variables and parameters. Here, "dense" means that
     // a dense row and column are added to the sparsity pattern of the Hessian 
     // for each dense_variable added.
@@ -177,10 +197,12 @@ private:
     int m_num_continuous_variables = -1;
     int m_num_dynamics_constraints = -1;
     int m_num_path_constraints = -1;
+    // Normalized time (in [0, 1]) of each mesh point.
+    Eigen::VectorXd m_mesh_points;
     Eigen::VectorXd m_trapezoidal_quadrature_coefficients;
 
     // Working memory.
-    mutable VectorX<T> m_integrand;
+    mutable MatrixX<T> m_integrands;
     mutable MatrixX<T> m_derivs;
 };
 

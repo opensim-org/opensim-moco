@@ -48,7 +48,7 @@ struct FinalBounds : public Bounds {
 /// This struct holds inputs to
 /// OptimalControlProblem::calc_differntial_algebraic_equations().
 /// @ingroup optimalcontrol
-template<typename T>
+template <typename T>
 struct DAEInput {
     /// This index may be helpful for using a cache computed in
     /// OptimalControlProblem::initialize_on_mesh().
@@ -78,7 +78,7 @@ struct DAEInput {
 /// This struct holds the outputs of
 /// OptimalControlProblem::calc_differntial_algebraic_equations().
 /// @ingroup optimalcontrol
-template<typename T>
+template <typename T>
 struct DAEOutput {
     /// Store the right-hand-side of the differential equations in this
     /// variable. The length of this vector is num_states.
@@ -99,6 +99,35 @@ struct DAEOutput {
     /// reference.
     Eigen::Ref<VectorX<T>> path;
 };
+
+template <typename T>
+struct ContinuousInput {
+    // TODO use Map? Use ParametersView, etc. directly?
+    const Eigen::Ref<const MatrixX<T>>& times;
+    const Eigen::Ref<const MatrixX<T>>& states;
+    const Eigen::Ref<const MatrixX<T>>& controls;
+    const Eigen::Ref<const VectorX<T>>& parameters;
+};
+template <typename T>
+struct ContinuousOutput {
+    Eigen::Ref<MatrixX<T>> dynamics;
+    Eigen::Ref<MatrixX<T>> path;
+    Eigen::Ref<MatrixX<T>> integrands;
+};
+template <typename T>
+struct EndpointInput {
+    const T& initial_time;
+    const T& final_time;
+    const Eigen::Ref<const VectorX<T>>& initial_states;
+    const Eigen::Ref<const VectorX<T>>& final_states;
+    const Eigen::Ref<const VectorX<T>>& parameters;
+    const Eigen::Ref<const VectorX<T>>& integrals;
+};
+template <typename T>
+struct EndpointOutput {
+    T& objective;
+};
+
 
 /// We use the following terms to describe an optimal control problem:
 /// - *state*: a single state variable.
@@ -129,6 +158,10 @@ private:
         const std::string name;
         const Bounds bounds;
     };
+    struct IntegralInfo {
+        const std::string name;
+        const Bounds bounds;
+    };
 public:
 
     OptimalControlProblem() = default;
@@ -142,6 +175,8 @@ public:
     {   return (int)m_control_infos.size(); }
     int get_num_parameters() const
     {   return (int)m_parameter_infos.size(); }
+    int get_num_integrals() const
+    {   return (int)m_integral_infos.size(); }
     int get_num_path_constraints() const
     {   return (int)m_path_constraint_infos.size(); }
     /// Get the names of all the states in the order they appear in the
@@ -170,6 +205,13 @@ public:
     std::vector<std::string> get_parameter_names() const {
         std::vector<std::string> names;
         for (const auto& info : m_parameter_infos) {
+            names.push_back(info.name);
+        }
+        return names;
+    }
+    std::vector<std::string> get_integral_names() const {
+        std::vector<std::string> names;
+        for (const auto& info : m_integral_infos) {
             names.push_back(info.name);
         }
         return names;
@@ -228,6 +270,14 @@ public:
         m_parameter_infos.push_back({name, bounds});
         return (int)m_parameter_infos.size() - 1;
     }
+    int add_integral(const std::string& name) {
+        // TODO use emplace_back()
+        // TODO add bounds? infinity?
+        Bounds bounds(-std::numeric_limits<double>::infinity(),
+                      std::numeric_limits<double>::infinity());
+        m_integral_infos.push_back({name, bounds});
+        return (int)m_integral_infos.size() - 1;
+    }
     /// This returns an index that can be used to access this specific path
     /// constraint element within `path_constraints()`.
     /// TODO check if a path constraint with the provided name already exists.
@@ -262,8 +312,10 @@ public:
     /// The initial values in `derivatives` and `constraints` are arbitrary and
     /// cannot be assumed to be 0, etc. You must set entries to 0 explicitly if
     /// you want that.
+    /*
     virtual void calc_differential_algebraic_equations(
             const DAEInput<T>& in, DAEOutput<T> out) const;
+            */
     // TODO alternate form that takes a matrix; state at every time.
     //virtual void continuous(const MatrixX<T>& x, MatrixX<T>& xdot) const = 0;
     // TODO Maybe this one signature could be used for both the "continuous,
@@ -275,6 +327,7 @@ public:
     //    out.constraints[0] = ...
     //}
     // TODO endpoint or terminal cost?
+    /* TODO
     virtual void calc_endpoint_cost(const T& final_time,
             const VectorX<T>& final_states,
             const VectorX<T>& parameters,
@@ -284,6 +337,14 @@ public:
             const VectorX<T>& controls,
             const VectorX<T>& parameters,
             T& integrand) const;
+            */
+    virtual void calc_continuous(
+            const ContinuousInput<T>& in,
+            ContinuousOutput<T> out) const;
+    // TODO make `out` a reference.
+    virtual void calc_endpoint(
+            const EndpointInput<T>& in,
+            EndpointOutput<T> out) const;
     /// @}
 
     /// @name Helpers for setting an initial guess
@@ -338,6 +399,7 @@ public:
     void set_parameter_guess(OptimalControlIterate& guess,
             const std::string& name,
             const double& value);
+    // TODO set_integral_guess.
     /// @}
 
     // TODO move to "getter" portion.
@@ -363,6 +425,8 @@ public:
             Eigen::Ref<Eigen::VectorXd> final_controls_upper,
             Eigen::Ref<Eigen::VectorXd> parameters_lower,
             Eigen::Ref<Eigen::VectorXd> parameters_upper,
+            Eigen::Ref<Eigen::VectorXd> integrals_lower,
+            Eigen::Ref<Eigen::VectorXd> integrals_upper,
             Eigen::Ref<Eigen::VectorXd> path_constraints_lower,
             Eigen::Ref<Eigen::VectorXd> path_constraints_upper) const;
     /// @}
@@ -373,6 +437,7 @@ private:
     std::vector<ContinuousVariableInfo> m_state_infos;
     std::vector<ContinuousVariableInfo> m_control_infos;
     std::vector<ParameterInfo> m_parameter_infos;
+    std::vector<IntegralInfo> m_integral_infos;
     std::vector<PathConstraintInfo> m_path_constraint_infos;
 };
 
