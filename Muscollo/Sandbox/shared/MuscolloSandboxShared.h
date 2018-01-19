@@ -174,14 +174,15 @@ public:
             // Normalize contact force vector by body weight so that the line
             // is 1 meter long if the contact force magnitude is equal to
             // body weight.
-            const double mg =
-                    getModel().getTotalMass(s) * getModel().getGravity().norm();
+            const double arrowLengthPerForce = 1.0 / 1000.0; // meters / Newton
+            //const double mg =
+            //        getModel().getTotalMass(s) * getModel().getGravity().norm();
             // TODO avoid recalculating.
             const auto& pt = getConnectee<Station>("station");
             const auto pt1 = pt.getLocationInGround(s);
             const SimTK::Vec3 force = calcContactForce(s);
             // std::cout << "DEBUGgd force " << force << std::endl;
-            const SimTK::Vec3 pt2 = pt1 + force / mg;
+            const SimTK::Vec3 pt2 = pt1 + force * arrowLengthPerForce; // mg;
             SimTK::DecorativeLine line(pt1, pt2);
             line.setColor(SimTK::Green);
             line.setLineThickness(0.10);
