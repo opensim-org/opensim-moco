@@ -209,63 +209,63 @@ public:
         // Multiply A and b by the moment arm matrix.
     }
 
-    void calc_differential_algebraic_equations(
-            const tropter::DAEInput<T>& in,
-            tropter::DAEOutput<T> out) const override {
-        const auto& i_mesh = in.mesh_index;
-
-        // Actuator equilibrium.
-        // =====================
-        // TODO in the future, we want this to be:
-        // model.calcImplicitResidual(state); (would handle muscles AND moments)
-
-        // Assemble generalized forces to apply to the joints.
-        // TODO avoid reallocating this each time?
-        tropter::VectorX<T> genForce(_numCoordsToActuate);
-        genForce.setZero();
-
-        // CoordinateActuators.
-        // --------------------
-        for (Eigen::Index i_act = 0; i_act < _numCoordActuators; ++i_act) {
-            genForce[_coordActuatorDOFs[i_act]]
-                    += _optimalForce[i_act] * in.controls[i_act];
-        }
-
-        // Muscles.
-        // --------
-        if (_numMuscles) {
-            tropter::VectorX<T> muscleForces(_numMuscles);
-            for (Eigen::Index i_act = 0; i_act < _numMuscles; ++i_act) {
-                // Unpack variables.
-                const T& activation = in.controls[_numCoordActuators + i_act];
-
-                // Get the total muscle-tendon length and velocity from the
-                // data.
-                const T& musTenLen = _muscleTendonLengths(i_act, i_mesh);
-                const T& musTenVel = _muscleTendonVelocities(i_act, i_mesh);
-
-                muscleForces[i_act] =
-                        _muscles[i_act].calcRigidTendonFiberForceAlongTendon(
-                                activation, musTenLen, musTenVel);
-            }
-
-            // Compute generalized forces from muscles.
-            const auto& momArms = _momentArms[i_mesh];
-            genForce += momArms.template cast<adouble>() * muscleForces;
-        }
-
-        // Achieve the motion.
-        // ===================
-        out.path = _desiredMoments.col(i_mesh).template cast<adouble>()
-                 - genForce;
-    }
-    void calc_integral_cost(const T& /*time*/,
-            const tropter::VectorX<T>& /*states*/,
-            const tropter::VectorX<T>& controls,
-            const tropter::VectorX<T>& /*parameters*/,
-            T& integrand) const override {
-        integrand = controls.squaredNorm();
-    }
+//    void calc_differential_algebraic_equations(
+//            const tropter::DAEInput<T>& in,
+//            tropter::DAEOutput<T> out) const override {
+//        const auto& i_mesh = in.mesh_index;
+//
+//        // Actuator equilibrium.
+//        // =====================
+//        // TODO in the future, we want this to be:
+//        // model.calcImplicitResidual(state); (would handle muscles AND moments)
+//
+//        // Assemble generalized forces to apply to the joints.
+//        // TODO avoid reallocating this each time?
+//        tropter::VectorX<T> genForce(_numCoordsToActuate);
+//        genForce.setZero();
+//
+//        // CoordinateActuators.
+//        // --------------------
+//        for (Eigen::Index i_act = 0; i_act < _numCoordActuators; ++i_act) {
+//            genForce[_coordActuatorDOFs[i_act]]
+//                    += _optimalForce[i_act] * in.controls[i_act];
+//        }
+//
+//        // Muscles.
+//        // --------
+//        if (_numMuscles) {
+//            tropter::VectorX<T> muscleForces(_numMuscles);
+//            for (Eigen::Index i_act = 0; i_act < _numMuscles; ++i_act) {
+//                // Unpack variables.
+//                const T& activation = in.controls[_numCoordActuators + i_act];
+//
+//                // Get the total muscle-tendon length and velocity from the
+//                // data.
+//                const T& musTenLen = _muscleTendonLengths(i_act, i_mesh);
+//                const T& musTenVel = _muscleTendonVelocities(i_act, i_mesh);
+//
+//                muscleForces[i_act] =
+//                        _muscles[i_act].calcRigidTendonFiberForceAlongTendon(
+//                                activation, musTenLen, musTenVel);
+//            }
+//
+//            // Compute generalized forces from muscles.
+//            const auto& momArms = _momentArms[i_mesh];
+//            genForce += momArms.template cast<adouble>() * muscleForces;
+//        }
+//
+//        // Achieve the motion.
+//        // ===================
+//        out.path = _desiredMoments.col(i_mesh).template cast<adouble>()
+//                 - genForce;
+//    }
+//    void calc_integral_cost(const T& /*time*/,
+//            const tropter::VectorX<T>& /*states*/,
+//            const tropter::VectorX<T>& controls,
+//            const tropter::VectorX<T>& /*parameters*/,
+//            T& integrand) const override {
+//        integrand = controls.squaredNorm();
+//    }
     GlobalStaticOptimization::Solution deconstruct_iterate(
             const tropter::OptimalControlIterate& ocpVars) const {
 

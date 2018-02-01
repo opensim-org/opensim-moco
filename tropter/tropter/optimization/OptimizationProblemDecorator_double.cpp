@@ -152,11 +152,11 @@ calc_sparsity_hessian_lagrangian(
                     hesobj_sparsity);
             TROPTER_THROW_IF(hescon_sparsity.get_num_rows() != num_vars,
                     "Expected sparsity pattern of Hessian of constraints to "
-                    "have dimensions %i, but it has dimensions %i.",
+                    "have size %i, but it has size %i.",
                     num_vars, hescon_sparsity.get_num_rows());
             TROPTER_THROW_IF(hesobj_sparsity.get_num_rows() != num_vars,
                     "Expected sparsity pattern of Hessian of objective to "
-                    "have dimensions %i, but it has dimensions %i.",
+                    "have size %i, but it has size %i.",
                     num_vars, hesobj_sparsity.get_num_rows());
         } catch (const CalcSparsityHessianLagrangianNotImplemented&) {
             TROPTER_THROW("User requested use of user-supplied sparsity for "

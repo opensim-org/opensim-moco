@@ -783,7 +783,7 @@ TEST_CASE("Validate sparsity input") {
                 decorator->calc_sparsity(Vector4d(1, 2, 3, 4),
                         jac_row, jac_col, true, hess_row, hess_col),
                 Catch::Contains("Expected sparsity pattern of Hessian of "
-                        "constraints to have dimensions 4"));
+                        "constraints to have size 4"));
 
         problemd.m_hescon_sparsity = SymmetricSparsityPattern(4);
         problemd.m_hesobj_sparsity = SymmetricSparsityPattern(5);
@@ -791,7 +791,7 @@ TEST_CASE("Validate sparsity input") {
                 decorator->calc_sparsity(Vector4d(1, 2, 3, 4),
                         jac_row, jac_col, true, hess_row, hess_col),
                 Catch::Contains("Expected sparsity pattern of Hessian of "
-                        "objective to have dimensions 4"));
+                        "objective to have size 4"));
     }
 
     SECTION("Column indices too large") {
@@ -828,6 +828,59 @@ TEST_CASE("Validate sparsity input") {
         SymmetricSparsityPattern sparsity(2);
         REQUIRE_THROWS_WITH(sparsity.set_nonzero(1, 0),
                 Catch::Contains("must be in the upper triangle"));
+    }
+
+    SECTION("SymmetricSparsityPattern::add_gap()") {
+        {
+            int initial_size = 4;
+            SymmetricSparsityPattern sparsity(initial_size);
+            for (int i = 0; i < initial_size; ++i) {
+                for (int j = i; j < initial_size; ++j) {
+                    sparsity.set_nonzero(i, j);
+                }
+            }
+            int gap = 2;
+            sparsity.add_gap(3, gap);
+            int new_size = initial_size + gap;
+            REQUIRE(sparsity.get_num_rows() == new_size);
+
+            const auto crs = sparsity.convert_to_CompressedRowSparsity();
+            REQUIRE((int)crs.size() == new_size);
+            REQUIRE(crs[0].size() == 4);
+            REQUIRE(crs[0][0] == 0);
+            REQUIRE(crs[0][1] == 1);
+            REQUIRE(crs[0][2] == 2);
+            REQUIRE(crs[0][3] == 5);
+
+            REQUIRE(crs[1].size() == 3);
+            REQUIRE(crs[1][0] == 1);
+            REQUIRE(crs[1][1] == 2);
+            REQUIRE(crs[1][2] == 5);
+
+            REQUIRE(crs[2].size() == 2);
+            REQUIRE(crs[2][0] == 2);
+            REQUIRE(crs[2][1] == 5);
+
+            REQUIRE(crs[3].size() == 0);
+            REQUIRE(crs[4].size() == 0);
+
+            REQUIRE(crs[5].size() == 1);
+            REQUIRE(crs[5][0] == 5);
+        }
+        {
+            // It's okay to add a gap just at the end of the matrix.
+            SymmetricSparsityPattern sparsity(3);
+            sparsity.add_gap(3, 2);
+        }
+        {
+            // Can't add a gap way past the end of the matrix.
+            SymmetricSparsityPattern sparsity(3);
+            using Catch::Contains;
+            REQUIRE_THROWS_WITH(sparsity.add_gap(4, 2),
+                Contains("Expected istart <= size, but istart=4, size=3"));
+
+        }
+
     }
 
 }

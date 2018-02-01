@@ -81,7 +81,10 @@ public:
     /// - **bounds**: variable values are the midpoint between the variables'
     ///   bounds (the value for variables with ony one bound is the specified
     ///   bound). This is the default type.
-    /// - **random**: values are randomly generated within the bounds.
+    /// - **random**: values are randomly generated within the bounds. If
+    ///   either bound is infinite, then the range of values has a width of 2
+    ///   (from the finite bound, if any). If you want more control over the
+    ///   range of values, do not specify infinite bounds.
     /// @note Calling this method does *not* set an initial guess to be used
     /// in the solver; you must call setGuess() or setGuessFile() for that.
     /// @precondition You must have called setProblem().

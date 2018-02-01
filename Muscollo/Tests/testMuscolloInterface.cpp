@@ -358,7 +358,7 @@ void testStateTracking() {
         mp.addCost(tracking);
         MucoTropterSolver& ms = muco.initSolver();
         ms.set_num_mesh_points(5);
-        ms.set_optim_hessian_approximation("exact");
+        // TODO ms.set_optim_hessian_approximation("exact");
         solDirect = muco.solve();
     }
 

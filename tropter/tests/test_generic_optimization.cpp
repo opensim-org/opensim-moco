@@ -198,6 +198,20 @@ TEST_CASE("Generating an initial guess using problem bounds",
     }
 }
 
+TEST_CASE("Generating a random iterate", "[initialguess]") {
+    VarietyOfBounds<double> problem;
+    const auto decorator = problem.make_decorator();
+    for (int i = 0; i < 3; ++i) {
+        VectorXd actual = decorator->make_random_iterate_within_bounds();
+        // If any bounds are NaN, then the range of values has size 2.
+        REQUIRE((-1 <= actual[0] && actual[0] <= 1));
+        REQUIRE((-20 <= actual[1] && actual[1] <= 10));
+        REQUIRE((-10 <= actual[2] && actual[2] <= -8));
+        REQUIRE((50 <= actual[3] && actual[3] <= 52));
+    }
+}
+
+
 TEST_CASE("Test exceptions and error messages") {
     SECTION("OptimizationSolver max_iterations") {
         class Problem : public OptimizationProblem<double> {

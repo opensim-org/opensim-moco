@@ -151,75 +151,141 @@ public:
                     convert(info.getInitialBounds()),
                     convert(info.getFinalBounds()));
         }
+        // TODO only if there are any costs (or, separate integral for each
+        // integral cost).
+        this->add_integral("integral_cost");
     }
     void initialize_on_mesh(const Eigen::VectorXd&) const override {
         m_mucoProb.initialize(m_model);
     }
     // TODO rename argument "states" to "state".
-    void calc_differential_algebraic_equations(
-            const tropter::DAEInput<T>& in,
-            tropter::DAEOutput<T> out) const override {
+    //void calc_differential_algebraic_equations(
+    //        const tropter::DAEInput<T>& in,
+    //        tropter::DAEOutput<T> out) const override {
 
+    //    // TODO convert to implicit formulation.
+
+    //    const auto& states = in.states;
+    //    const auto& controls = in.controls;
+
+    //    m_state.setTime(in.time);
+
+    //    std::copy(states.data(), states.data() + states.size(),
+    //            &m_state.updY()[0]);
+    //    //
+    //    // TODO do not copy? I think this will still make a copy:
+    //    // TODO use m_state.updY() = SimTK::Vector(states.size(), states.data(), true);
+    //    //m_state.setY(SimTK::Vector(states.size(), states.data(), true));
+
+    //    if (m_model.getNumControls()) {
+    //        auto& osimControls = m_model.updControls(m_state);
+    //        std::copy(controls.data(), controls.data() + controls.size(),
+    //                &osimControls[0]);
+
+    //        m_model.realizeVelocity(m_state);
+    //        m_model.setControls(m_state, osimControls);
+    //    }
+
+    //    // TODO Antoine and Gil said realizing Dynamics is a lot costlier than
+    //    // realizing to Velocity and computing forces manually.
+    //    m_model.realizeAcceleration(m_state);
+    //    std::copy(&m_state.getYDot()[0], &m_state.getYDot()[0] + states.size(),
+    //            out.dynamics.data());
+
+    //}
+    //void calc_integral_cost(const T& time,
+    //        const VectorX<T>& states,
+    //        const VectorX<T>& controls,
+    //        const VectorX<T>& /*parameters*/, T& integrand) const override {
+    //    // TODO would it make sense to a vector of States, one for each mesh
+    //    // point, so that each can preserve their cache?
+    //    m_state.setTime(time);
+    //    std::copy(states.data(), states.data() + states.size(),
+    //            &m_state.updY()[0]);
+    //    if (m_model.getNumControls()) {
+    //        auto& osimControls = m_model.updControls(m_state);
+    //        std::copy(controls.data(), controls.data() + controls.size(),
+    //                &osimControls[0]);
+    //        m_model.realizePosition(m_state);
+    //        m_model.setControls(m_state, osimControls);
+    //    } else {
+    //        m_model.realizePosition(m_state);
+    //    }
+    //    integrand = m_phase0.calcIntegralCost(m_state);
+    //}
+    //void calc_endpoint_cost(const T& final_time, const VectorX<T>& states,
+    //        const VectorX<T>& /*parameters*/, T& cost) const override {
+    //    // TODO avoid all of this if there are no endpoint costs.
+    //    m_state.setTime(final_time);
+    //    std::copy(states.data(), states.data() + states.size(),
+    //            &m_state.updY()[0]);
+    //    // TODO cannot use control signals...
+    //    m_model.updControls(m_state).setToNaN();
+    //    cost = m_phase0.calcEndpointCost(m_state);
+    //}
+    void calc_continuous(
+            const tropter::ContinuousInput<T>& in,
+            tropter::ContinuousOutput<T> out) const override {
         // TODO convert to implicit formulation.
 
-        const auto& states = in.states;
-        const auto& controls = in.controls;
+        const auto& statesTraj = in.states;
+        const auto& controlsTraj = in.controls;
 
-        m_state.setTime(in.time);
+        for (int iTime = 0; iTime < in.times.size(); ++iTime) {
+            m_state.setTime(in.times[iTime]);
 
-        std::copy(states.data(), states.data() + states.size(),
-                &m_state.updY()[0]);
-        //
-        // TODO do not copy? I think this will still make a copy:
-        // TODO use m_state.updY() = SimTK::Vector(states.size(), states.data(), true);
-        //m_state.setY(SimTK::Vector(states.size(), states.data(), true));
+            const auto& states = statesTraj.col(iTime);
 
-        if (m_model.getNumControls()) {
-            auto& osimControls = m_model.updControls(m_state);
-            std::copy(controls.data(), controls.data() + controls.size(),
-                    &osimControls[0]);
+            std::copy(states.data(), states.data() + states.size(),
+                    &m_state.updY()[0]);
+            //
+            // TODO do not copy? I think this will still make a copy:
+            // TODO use m_state.updY() = SimTK::Vector(states.size(), states.data(), true);
+            //m_state.setY(SimTK::Vector(states.size(), states.data(), true));
 
-            m_model.realizeVelocity(m_state);
-            m_model.setControls(m_state, osimControls);
+            if (m_model.getNumControls()) {
+                const auto& controls = controlsTraj.col(iTime);
+                auto& osimControls = m_model.updControls(m_state);
+                std::copy(controls.data(), controls.data() + controls.size(),
+                        &osimControls[0]);
+
+                m_model.realizeVelocity(m_state);
+                m_model.setControls(m_state, osimControls);
+            }
+
+            // Dynamics.
+            // ---------
+
+            // TODO Antoine and Gil said realizing Dynamics is a lot costlier than
+            // realizing to Velocity and computing forces manually.
+            m_model.realizeAcceleration(m_state);
+            std::copy(&m_state.getYDot()[0],
+                    &m_state.getYDot()[0] + states.size(),
+                    out.dynamics.col(iTime).data());
+
+            // TODO path constraints.
+
+            // Integral cost.
+            // --------------
+            // There is only one integrand.
+            out.integrands(0, iTime) = m_phase0.calcIntegralCost(m_state);
         }
-
-        // TODO Antoine and Gil said realizing Dynamics is a lot costlier than
-        // realizing to Velocity and computing forces manually.
-        m_model.realizeAcceleration(m_state);
-        std::copy(&m_state.getYDot()[0], &m_state.getYDot()[0] + states.size(),
-                out.dynamics.data());
-
     }
-    void calc_integral_cost(const T& time,
-            const VectorX<T>& states,
-            const VectorX<T>& controls, 
-            const VectorX<T>& /*parameters*/, T& integrand) const override {
-        // TODO would it make sense to a vector of States, one for each mesh
-        // point, so that each can preserve their cache?
-        m_state.setTime(time);
-        std::copy(states.data(), states.data() + states.size(),
-                &m_state.updY()[0]);
-        if (m_model.getNumControls()) {
-            auto& osimControls = m_model.updControls(m_state);
-            std::copy(controls.data(), controls.data() + controls.size(),
-                    &osimControls[0]);
-            m_model.realizePosition(m_state);
-            m_model.setControls(m_state, osimControls);
-        } else {
-            m_model.realizePosition(m_state);
-        }
-        integrand = m_phase0.calcIntegralCost(m_state);
-    }
-    void calc_endpoint_cost(const T& final_time, const VectorX<T>& states,
-            const VectorX<T>& /*parameters*/, T& cost) const override {
-        // TODO avoid all of this if there are no endpoint costs.
-        m_state.setTime(final_time);
-        std::copy(states.data(), states.data() + states.size(),
+    void calc_endpoint(
+            const tropter::EndpointInput<T>& in,
+            tropter::EndpointOutput<T> out) const override {
+
+        m_state.setTime(in.final_time);
+        std::copy(in.final_states.data(),
+                in.final_states.data() + in.final_states.size(),
                 &m_state.updY()[0]);
         // TODO cannot use control signals...
         m_model.updControls(m_state).setToNaN();
-        cost = m_phase0.calcEndpointCost(m_state);
+        const auto endpointCost = m_phase0.calcEndpointCost(m_state);
+
+        out.objective = in.integrals[0] + endpointCost;
     }
+
 
 private:
     const MucoSolver& m_mucoSolver;
@@ -391,6 +457,9 @@ MucoSolution MucoTropterSolver::solveImpl() const {
             }
         }
     }
+
+    // TODO
+    optsolver.set_findiff_hessian_mode("slow");
 
     // Set advanced settings.
     //for (int i = 0; i < getProperty_optim_solver_options(); ++i) {

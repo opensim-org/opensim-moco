@@ -45,7 +45,7 @@ public:
     //    const auto& x = in.states;
     //    const auto& u = in.controls;
     //    out.dynamics[0] = x[1];
-    //    out.dynamics[1] = x[1] + u[0];
+    //    out.dynamics[1] = -x[1] + u[0];
     //    // xdot.row(0) = x.row(1);
     //    // xdot.row(1) = -x.row(1) + u.row(0);
     //}
@@ -63,7 +63,7 @@ public:
         const auto& x = in.states;
         const auto& u = in.controls;
         out.dynamics.row(0) = x.row(1);
-        out.dynamics.row(1) = -/*TODO*/x.row(1) + u.row(0);
+        out.dynamics.row(1) = -x.row(1) + u.row(0);
         out.integrands.row(0) = T(0.5) * u.row(0).array().square();
     }
     void calc_endpoint(
@@ -121,11 +121,12 @@ TEST_CASE("Second order linear min effort", "[adolc][trapezoidal]") {
     SECTION("ADOL-C") {
         SecondOrderLinearMinEffort<adouble>::run_test(1000, "ipopt", "exact");
     }
-    //SecondOrderLinearMinEffort<double>::run_test(1000, "ipopt",
-    //        "limited-memory");
-    //SECTION("Finite differences") {
-    //    SecondOrderLinearMinEffort<double>::run_test(20, "ipopt", "exact");
-    //}
+    SECTION("Finite differences") {
+        SecondOrderLinearMinEffort<double>::run_test(1000, "ipopt",
+                "limited-memory");
+        // TODO
+        SecondOrderLinearMinEffort<double>::run_test(200, "ipopt", "exact");
+    }
 }
 
 

@@ -103,7 +103,8 @@ struct DAEOutput {
 template <typename T>
 struct ContinuousInput {
     // TODO use Map? Use ParametersView, etc. directly?
-    const Eigen::Ref<const MatrixX<T>>& times;
+    const Eigen::Ref<const VectorX<T>>& times;
+    // TODO rename to states_trajectory
     const Eigen::Ref<const MatrixX<T>>& states;
     const Eigen::Ref<const MatrixX<T>>& controls;
     const Eigen::Ref<const VectorX<T>>& parameters;
@@ -125,6 +126,7 @@ struct EndpointInput {
 };
 template <typename T>
 struct EndpointOutput {
+    // TODO event constraints.
     T& objective;
 };
 
@@ -338,6 +340,13 @@ public:
             const VectorX<T>& parameters,
             T& integrand) const;
             */
+    // TODO alternatively, provide an apply_parameters()?
+
+    /// @note It is *vital* that you use the same dynamics across all mesh
+    /// points. Specifying different dynamics or path constraints at
+    /// different mesh points results in an ill-formed problem.
+    /// The finite difference calculations assume that the sparsity pattern of
+    /// the Hessian is the same for all mesh points.
     virtual void calc_continuous(
             const ContinuousInput<T>& in,
             ContinuousOutput<T> out) const;

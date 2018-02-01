@@ -218,132 +218,132 @@ public:
         }
     }
 
-    void calc_differential_algebraic_equations(
-            const tropter::DAEInput<T>& in,
-            tropter::DAEOutput<T> out) const override {
-
-        const auto& i_mesh = in.mesh_index;
-        const auto& states = in.states;
-        const auto& controls = in.controls;
-
-        // Actuator dynamics.
-        // ==================
-        for (Eigen::Index i_act = 0; i_act < _numMuscles; ++i_act) {
-
-            // Unpack variables.
-            const T& excitation = controls[_numCoordActuators + 2 * i_act];
-            const T& activation = states[2 * i_act];
-
-            // Activation dynamics.
-            _muscles[i_act].calcActivationDynamics(excitation, activation,
-                    out.dynamics[2 * i_act]);
-
-            // Fiber dynamics.
-            if (_useFiberLengthState) {
-                const T& normFibVel =
-                        controls[_numCoordActuators + 2 * i_act + 1];
-                out.dynamics[2 * i_act + 1] =
-                        _muscles[i_act].get_max_contraction_velocity()
-                                * normFibVel;
-            } else {
-                const T& tenForceRateControl =
-                        controls[_numCoordActuators + 2 * i_act + 1];
-                out.dynamics[2 * i_act + 1] = _tendonForceDynamicsScalingFactor
-                                * tenForceRateControl;
-            }
-        }
-
-        // TODO std::cout << "DEBUG dynamics " << derivatives << std::endl;
-
-        // Actuator equilibrium.
-        // =====================
-
-        // Assemble generalized forces to apply to the joints.
-        tropter::VectorX<T> genForce(_numCoordsToActuate);
-        genForce.setZero();
-
-        // CoordinateActuators.
-        // --------------------
-        for (Eigen::Index i_act = 0; i_act < _numCoordActuators; ++i_act) {
-            genForce[_coordActuatorDOFs[i_act]]
-                    += _optimalForce[i_act] * controls[i_act];
-        }
-
-        // Muscles.
-        // --------
-        if (_numMuscles) {
-            tropter::VectorX<T> tendonForces(_numMuscles);
-            for (Eigen::Index i_act = 0; i_act < _numMuscles; ++i_act) {
-                // Unpack variables.
-                const T& activation = states[2 * i_act];
-                // Get the total muscle-tendon length from the data.
-                const T& musTenLen = _muscleTendonLengths(i_act, i_mesh);
-
-                if (_useFiberLengthState) {
-                    const T& normFibVel = controls[_numCoordActuators+2*i_act+1];
-                    const T& normFibLen = states[2 * i_act + 1];
-                    T normTenForce;
-                    _muscles[i_act].calcEquilibriumResidual(activation,
-                            musTenLen, normFibLen, normFibVel,
-                            out.path[i_act],
-                            normTenForce);
-                    tendonForces[i_act] =
-                            _muscles[i_act].get_max_isometric_force()
-                                    * normTenForce;
-                } else {
-                    const T& tenForceRateControl =
-                            controls[_numCoordActuators + 2 * i_act + 1];
-                    const T& normTenForce = states[2 * i_act + 1];
-                    const T& musTenVel = _muscleTendonVelocities(i_act, i_mesh);
-
-                    const T normTenForceRate =
-                            _tendonForceDynamicsScalingFactor
-                                    * tenForceRateControl;
-                    _muscles[i_act].calcTendonForceStateEquilibriumResidual(
-                            activation, musTenLen, musTenVel, normTenForce,
-                            normTenForceRate,
-                            out.path[i_act], tendonForces[i_act]);
-                }
-            }
-
-            // Compute generalized forces from muscles.
-            const auto& momArms = _momentArms[i_mesh];
-            // TODO convert to type T once instead of in every iteration.
-            genForce += momArms.template cast<T>() * tendonForces;
-        }
-
-
-        // Achieve the motion.
-        // ===================
-        out.path.segment(_numMuscles, _numCoordsToActuate)
-                = _desiredMoments.col(i_mesh).template cast<T>()
-                - genForce;
-    }
-    void calc_integral_cost(const T& /*time*/,
-            const tropter::VectorX<T>& states,
-            const tropter::VectorX<T>& controls,
-            const tropter::VectorX<T>& /*parameters*/,
-            T& integrand) const override {
-        // Use a map to skip over fiber velocities.
-        using ExcitationsVector = Eigen::Map<const tropter::VectorX<T>,
-                /* pointer alignment: Unaligned */   0,
-                /* pointer increment btn elements */ Eigen::InnerStride<2>>;
-        ExcitationsVector muscleExcit(controls.data() + _numCoordActuators,
-                                      _numMuscles);
-
-        // Minimize activations to prevent the initial
-        // activation from being incorrectly large (b/c no penalty)
-        // TODO could also just minimize initial activation.
-        // Use a map to skip over fiber lengths.
-        using ActivationsVector = Eigen::Map<const tropter::VectorX<T>,
-                /* pointer alignment: Unaligned */   0,
-                /* pointer increment btn elements */ Eigen::InnerStride<2>>;
-        ActivationsVector muscleActiv(states.data(), _numMuscles);
-
-        integrand = controls.head(_numCoordActuators).squaredNorm()
-                  + muscleExcit.squaredNorm() +
-                  + muscleActiv.squaredNorm();
-    }
+//    void calc_differential_algebraic_equations(
+//            const tropter::DAEInput<T>& in,
+//            tropter::DAEOutput<T> out) const override {
+//
+//        const auto& i_mesh = in.mesh_index;
+//        const auto& states = in.states;
+//        const auto& controls = in.controls;
+//
+//        // Actuator dynamics.
+//        // ==================
+//        for (Eigen::Index i_act = 0; i_act < _numMuscles; ++i_act) {
+//
+//            // Unpack variables.
+//            const T& excitation = controls[_numCoordActuators + 2 * i_act];
+//            const T& activation = states[2 * i_act];
+//
+//            // Activation dynamics.
+//            _muscles[i_act].calcActivationDynamics(excitation, activation,
+//                    out.dynamics[2 * i_act]);
+//
+//            // Fiber dynamics.
+//            if (_useFiberLengthState) {
+//                const T& normFibVel =
+//                        controls[_numCoordActuators + 2 * i_act + 1];
+//                out.dynamics[2 * i_act + 1] =
+//                        _muscles[i_act].get_max_contraction_velocity()
+//                                * normFibVel;
+//            } else {
+//                const T& tenForceRateControl =
+//                        controls[_numCoordActuators + 2 * i_act + 1];
+//                out.dynamics[2 * i_act + 1] = _tendonForceDynamicsScalingFactor
+//                                * tenForceRateControl;
+//            }
+//        }
+//
+//        // TODO std::cout << "DEBUG dynamics " << derivatives << std::endl;
+//
+//        // Actuator equilibrium.
+//        // =====================
+//
+//        // Assemble generalized forces to apply to the joints.
+//        tropter::VectorX<T> genForce(_numCoordsToActuate);
+//        genForce.setZero();
+//
+//        // CoordinateActuators.
+//        // --------------------
+//        for (Eigen::Index i_act = 0; i_act < _numCoordActuators; ++i_act) {
+//            genForce[_coordActuatorDOFs[i_act]]
+//                    += _optimalForce[i_act] * controls[i_act];
+//        }
+//
+//        // Muscles.
+//        // --------
+//        if (_numMuscles) {
+//            tropter::VectorX<T> tendonForces(_numMuscles);
+//            for (Eigen::Index i_act = 0; i_act < _numMuscles; ++i_act) {
+//                // Unpack variables.
+//                const T& activation = states[2 * i_act];
+//                // Get the total muscle-tendon length from the data.
+//                const T& musTenLen = _muscleTendonLengths(i_act, i_mesh);
+//
+//                if (_useFiberLengthState) {
+//                    const T& normFibVel = controls[_numCoordActuators+2*i_act+1];
+//                    const T& normFibLen = states[2 * i_act + 1];
+//                    T normTenForce;
+//                    _muscles[i_act].calcEquilibriumResidual(activation,
+//                            musTenLen, normFibLen, normFibVel,
+//                            out.path[i_act],
+//                            normTenForce);
+//                    tendonForces[i_act] =
+//                            _muscles[i_act].get_max_isometric_force()
+//                                    * normTenForce;
+//                } else {
+//                    const T& tenForceRateControl =
+//                            controls[_numCoordActuators + 2 * i_act + 1];
+//                    const T& normTenForce = states[2 * i_act + 1];
+//                    const T& musTenVel = _muscleTendonVelocities(i_act, i_mesh);
+//
+//                    const T normTenForceRate =
+//                            _tendonForceDynamicsScalingFactor
+//                                    * tenForceRateControl;
+//                    _muscles[i_act].calcTendonForceStateEquilibriumResidual(
+//                            activation, musTenLen, musTenVel, normTenForce,
+//                            normTenForceRate,
+//                            out.path[i_act], tendonForces[i_act]);
+//                }
+//            }
+//
+//            // Compute generalized forces from muscles.
+//            const auto& momArms = _momentArms[i_mesh];
+//            // TODO convert to type T once instead of in every iteration.
+//            genForce += momArms.template cast<T>() * tendonForces;
+//        }
+//
+//
+//        // Achieve the motion.
+//        // ===================
+//        out.path.segment(_numMuscles, _numCoordsToActuate)
+//                = _desiredMoments.col(i_mesh).template cast<T>()
+//                - genForce;
+//    }
+//    void calc_integral_cost(const T& /*time*/,
+//            const tropter::VectorX<T>& states,
+//            const tropter::VectorX<T>& controls,
+//            const tropter::VectorX<T>& /*parameters*/,
+//            T& integrand) const override {
+//        // Use a map to skip over fiber velocities.
+//        using ExcitationsVector = Eigen::Map<const tropter::VectorX<T>,
+//                /* pointer alignment: Unaligned */   0,
+//                /* pointer increment btn elements */ Eigen::InnerStride<2>>;
+//        ExcitationsVector muscleExcit(controls.data() + _numCoordActuators,
+//                                      _numMuscles);
+//
+//        // Minimize activations to prevent the initial
+//        // activation from being incorrectly large (b/c no penalty)
+//        // TODO could also just minimize initial activation.
+//        // Use a map to skip over fiber lengths.
+//        using ActivationsVector = Eigen::Map<const tropter::VectorX<T>,
+//                /* pointer alignment: Unaligned */   0,
+//                /* pointer increment btn elements */ Eigen::InnerStride<2>>;
+//        ActivationsVector muscleActiv(states.data(), _numMuscles);
+//
+//        integrand = controls.head(_numCoordActuators).squaredNorm()
+//                  + muscleExcit.squaredNorm() +
+//                  + muscleActiv.squaredNorm();
+//    }
     /// If mrsVars seems to be empty (no rows in either the
     /// mrsVars.activation or mrsVars.other_controls tables), then this returns
     /// an empty iterate.

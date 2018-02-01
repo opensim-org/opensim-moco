@@ -81,10 +81,31 @@ public:
     /// Only upper triangular elements can be appended.
     void set_nonzero(unsigned int row_index, unsigned int col_index) override;
     /// Add in a nonzero block, placing the block's upper left corner at
-    /// (irowstart, icolstart) in this matrix.
+    /// (istart, istart) in this matrix.
     /// Note, no nonzeros are "removed", only added.
-    void set_nonzero_block(unsigned int irowstart, unsigned int icolstart,
+    void set_nonzero_block(unsigned int istart,
             SymmetricSparsityPattern& block);
+
+    /// Add a symmetric gap (of zeros) in the sparsity pattern. If you started
+    /// with the following 4 x 4 sparsity pattern (x is a nonzero, 0 is a zero):
+    /// @verbatim
+    /// x x x x
+    /// x x x x
+    /// x x x x
+    /// x x x x
+    /// @endverbatim
+    /// and you call `add_gap(3, 2)`, then the resulting sparsity pattern is
+    /// the following:
+    /// @verbatim
+    /// x x x 0 0 x
+    /// x x x 0 0 x
+    /// x x x 0 0 x
+    /// 0 0 0 0 0 0
+    /// 0 0 0 0 0 0
+    /// x x x 0 0 x
+    /// @endverbatim
+    /// The size of the matrix will become (N + gap) x (N + gap).
+    void add_gap(unsigned int istart, unsigned int gap);
 
     /// Create a non-symmetric sparsity pattern of this matrix where the
     /// lower triangle is filled in by mirroring the upper triangle.

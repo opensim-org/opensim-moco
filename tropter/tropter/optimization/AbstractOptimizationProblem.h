@@ -52,7 +52,11 @@ public:
     ///   - only one bound: value of the bound.
     Eigen::VectorXd make_initial_guess_from_bounds() const;
     /// Create a vector with random variable values within the variable
-    /// bounds, potentially for use as an initial guess.
+    /// bounds, potentially for use as an initial guess. Variables with
+    /// infinite bounds are handled as follows:
+    ///   - lower=-inf && upper=inf -> random within [-1, 1]
+    ///   - lower=-inf && upper=finite -> random within [upper-2, upper]
+    ///   - lower=finite && upper=inf -> random within [lower, lower+2]
     Eigen::VectorXd make_random_iterate_within_bounds() const;
 
     /// When using finite differences to compute derivatives, should we use
@@ -165,10 +169,21 @@ AbstractOptimizationProblem::make_initial_guess_from_bounds() const
 
 inline Eigen::VectorXd
 AbstractOptimizationProblem::make_random_iterate_within_bounds() const {
-    const auto lower = get_variable_lower_bounds().array();
-    const auto upper = get_variable_upper_bounds().array();
+    Eigen::ArrayXd lower = get_variable_lower_bounds().array();
+    Eigen::ArrayXd upper = get_variable_upper_bounds().array();
     // random's values are within [-1, 1]
     Eigen::ArrayXd random = Eigen::ArrayXd::Random(lower.size());
+
+    // If either bound is infinite, we give a range of size 2.
+    const auto inf = std::numeric_limits<double>::infinity();
+    for (Eigen::Index i = 0; i < lower.size(); ++i) {
+        if (lower[i] == -inf && upper[i] == inf) {
+            lower[i] = -1;
+            upper[i] =  1;
+        }
+        else if (lower[i] == -inf) lower[i] = upper[i] - 2;
+        else if (upper[i] ==  inf) upper[i] = lower[i] + 2;
+    }
     // Get values between [0, 1], then scale by width and shift by lower.
     return 0.5 * (random + 1.0) * (upper - lower) + lower;
 }

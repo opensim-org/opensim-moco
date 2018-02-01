@@ -83,13 +83,22 @@ TODO describe bounds (set automatically based on the model).
 
 ### Defining the cost functional
 
-See @ref mucocost for more information.
+See @ref mucocost for more infomation.
 
 %MucoSolver
 -----------
 
 A MucoSolver attempts to use an optimal control method to solve the MucoProblem,
 and exposes the settings that you can use to
+
+
+### Specifying an initial guess.
+
+The initial guess is specified as a MucoIterate, either programmatically or by
+providing the name of a MucoIterate file. MucoTropterSolver can also help you
+generate an initial guess, either a random guess or a deterministic guess based
+on the bounds of your problem; see MucoTropterSolver::createGuess().
+
 
 
 Tips for solving a custom problem

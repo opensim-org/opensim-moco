@@ -216,18 +216,8 @@ void Trapezoidal<T>::calc_constraints(const VectorX<T>& x,
     const T& final_time = x[1];
     const T duration = final_time - initial_time;
     const T step_size = duration / (m_num_mesh_points - 1);
-    // "array()" b/c Eigen matrix types do not support elementwise add.
-    // Writing the equation this way (rather than tau*(t_f - t_i) + t_i)
-    // avoids issues with roundoff where times.tail(1) != _finalTime.
-    // TODO const auto mesh_array = m_mesh_points.array();
-    // TODO mixing adouble and double:
-    //VectorX<T> times =
-    //        (1 - mesh_array) * initial_time + mesh_array * final_time;
-    VectorX<T> times(m_num_mesh_points);
-    for (int i_mesh = 0; i_mesh < m_num_mesh_points; ++i_mesh) {
-        const auto& point = m_mesh_points[i_mesh];
-        times[i_mesh] = (1 - point) * initial_time + point * final_time;
-    }
+    VectorX<T> times = make_time_from_mesh_points(m_mesh_points,
+            initial_time, final_time);
 
 
     auto states = make_states_trajectory_view(x);
@@ -287,6 +277,11 @@ void Trapezoidal<T>::calc_constraints(const VectorX<T>& x,
         //}
     }
 
+    // TODO it's a huge waste to have to recompute the entire calc_continuous()
+    // to perturb only the integral constraint; we do save perturbations of
+    // the objective, though. Ideally, we would have a separate function for
+    // computing the integrand, so we could evaluate ONLY the integrand.
+    // Better yet, we could use a user-supplied derivative of the integrand.
     if (m_num_integrals) {
         for (int i_integ = 0; i_integ < m_num_integrals; ++i_integ) {
             T integral_calc = 0;
@@ -454,6 +449,167 @@ void Trapezoidal<T>::calc_constraints(const VectorX<T>& x,
     // TODO most objectives do *NOT* depend on time; should time actually
     // affect hesobj for most problems?
 //}
+
+template<typename T>
+void Trapezoidal<T>::calc_sparsity_hessian_lagrangian(
+        const Eigen::VectorXd& x,
+        SymmetricSparsityPattern& hescon_sparsity,
+        SymmetricSparsityPattern& hesobj_sparsity) const {
+    const auto& num_variables = this->get_num_variables();
+
+    const auto& num_con_vars = m_num_continuous_variables;
+
+    // TODO provide option for assuming dense (conservative)! To avoid trying to
+    // get an aggressive sparsity pattern; this is necessary if contact has
+    // if-statements.
+
+    // Hessian of constraints.
+    // -----------------------
+    // The first two rows of the Hessian contain partial derivatives with
+    // respect to initial_time, final_time, parameters, integrals. We assume
+    // time is coupled to all other variables.
+    // TODO can be smarter about interaction of variables with time; implicit
+    // formulations (see test_double_pendulum) give additional sparsity here.
+    for (int irow = 0; irow < m_num_dense_variables; ++irow) {
+        for (int icol = irow; icol < (int)num_variables; ++icol) {
+            hescon_sparsity.set_nonzero(irow, icol);
+        }
+    }
+
+    // TODO TODO TODO
+    // the integral variables should NOT have nonzeros in the Hessian; the
+    // integral constraints are of the form
+    // [integrals - qudrature-of-integrands], so they appear linearly.
+    // That means the integrals are not quite "dense" variables.
+    // TODO TODO TODO
+
+    // TODO how does the reformulation with integrals affect the number of
+    // seeds for the Jacobian?
+
+    // The Hessian of sum_i lambda_i * constraint_i over constraints i has a
+    // certain structure as a result of the direct collocation formulation.
+    // The diagonal contains the same repeated square block of dimensions
+    // num_continuous_variables.
+    // We estimate the sparsity of this block by combining the sparsity from
+    // constraint_i for i covering the defects at mesh point 0 and the
+    // path constraints at mesh point 0.
+    // Note that defect constraint i actually depends on mesh points i and i
+    // + 1. However, since the sparsity pattern repeats for each mesh point,
+    // we can "ignore" the dependence on mesh point i + 1.
+
+    // TODO Even though calc_continuous provides the DAE at each mesh point,
+    // we only perturb the variables for the first mesh point.
+    // This function exploits the fact that computing the defects from the
+    // derivatives does not affect the sparsity pattern.
+    std::function<T(const VectorX<T>&, int)> calc_dae =
+            [this, &x](const VectorX<T>& vars, int idx) {
+                const T& t0 = x[0];
+                const T& tf = x[1];
+                VectorX<T> t =
+                        make_time_from_mesh_points(m_mesh_points, t0, tf);
+                // Use the states trajectory from x, but override the first
+                // mesh point to include the perturbation in vars.
+                VectorX<T> xT = x.cast<T>();
+                MatrixX<T> s = make_states_trajectory_view(xT);
+                s.col(0) = vars.head(m_num_states);
+                MatrixX<T> c = make_controls_trajectory_view(xT);
+                c.col(0) = vars.tail(m_num_controls);
+                VectorX<T> p = make_parameters_view(xT);
+                MatrixX<T> path(m_num_path_constraints, m_num_mesh_points);
+                m_ocproblem->calc_continuous(
+                        {t, s, c, p}, {m_derivs, path, m_integrands});
+                // Grab the result for the first
+                return idx < m_num_states ? m_derivs(idx, 0)
+                                          : path(idx - m_num_states, 0);
+            };
+    SymmetricSparsityPattern dae_sparsity(m_num_continuous_variables);
+    for (int i = 0; i < (m_num_states + m_num_path_constraints); ++i) {
+        // Create a function for a specific derivative or path constraint.
+        std::function<T(const VectorX<T>&)> calc_dae_i =
+                std::bind(calc_dae, std::placeholders::_1, i);
+        // Determine the sparsity for this specific derivative/path constraint.
+        auto block_sparsity = calc_hessian_sparsity_with_perturbation(
+                x.segment(m_num_dense_variables, m_num_continuous_variables),
+                calc_dae_i);
+        // Add in this sparsity to the block that we'll repeat.
+        dae_sparsity.add_in_nonzeros(block_sparsity);
+    }
+
+    // Repeat the block down the diagonal of the Hessian of constraints.
+    for (int imesh = 0; imesh < m_num_mesh_points; ++imesh) {
+        const auto istart = m_num_dense_variables + imesh * num_con_vars;
+        hescon_sparsity.set_nonzero_block(istart, dae_sparsity);
+    }
+
+
+    // Hessian of objective.
+    // ---------------------
+
+    // Assueme time and parameters are coupled to all other variables.
+    // TODO not necessarily; detect this sparsity.
+
+    // The objective only depends on the following variables:
+    //  initial_time  t0
+    //  final_time    tf
+    //  parameters    p
+    //  integrals     i
+    //  initial_state s0
+    //  final_state   sf
+    // We only need to perturb these variables.
+    // Take care to ensure vars_for_obj and the deconstructed vars in
+    // calc_obj have the same order.
+    std::function<T(const VectorX<T>&)> calc_obj =
+            [this](const VectorX<T>& vars) {
+                const T& t0 = vars[0];
+                const T& tf = vars[1];
+                int istart = m_num_time_variables;
+                VectorX<T> p = vars.segment(istart, m_num_parameters)
+                        .template cast<T>();
+                istart += m_num_parameters;
+                VectorX<T> i = vars.segment(istart, m_num_integrals)
+                        .template cast<T>();
+                istart += m_num_integrals;
+                VectorX<T> s0 = vars.segment(istart, m_num_states);
+                istart += m_num_states;
+                VectorX<T> sf = vars.segment(istart, m_num_states);
+
+                T obj_value;
+                m_ocproblem->calc_endpoint({t0, tf, s0, sf, p, i}, {obj_value});
+                return obj_value;
+            };
+    Eigen::VectorXd vars_for_obj(m_num_dense_variables + 2 * m_num_states);
+    // Time.
+    vars_for_obj[0] = x[0];
+    vars_for_obj[1] = x[1];
+    int istart = m_num_time_variables;
+    // Parameters.
+    vars_for_obj.segment(istart, m_num_parameters) = make_parameters_view(x);
+    istart += m_num_parameters;
+    // Integrals.
+    vars_for_obj.segment(istart, m_num_integrals) = make_integrals_view(x);
+    istart += m_num_integrals;
+    // Initial states.
+    auto states_traj = make_states_trajectory_view(x);
+    vars_for_obj.segment(istart, m_num_states) = states_traj.col(0);
+    istart += m_num_states;
+    // Final states.
+    vars_for_obj.segment(istart, m_num_states) = states_traj.rightCols(1);
+    SymmetricSparsityPattern obj_sparsity_condensed =
+            calc_hessian_sparsity_with_perturbation(vars_for_obj, calc_obj);
+
+    // Un-condense the sparsity pattern by shifting the sparsity related to
+    // final_state to be in the appropriate location in the Hessian.
+    // The variables are ordered as:
+    // t0 tf p  i  s0 c0 s1 c1 s2 c2 ... sf cf
+    // x  x  x  x  x  <--     gap    -->
+    // We have to add a gap from c0 to sf.
+    int gap = (m_num_mesh_points - 1)*m_num_continuous_variables - m_num_states;
+    obj_sparsity_condensed.add_gap(m_num_dense_variables + m_num_states, gap);
+    hesobj_sparsity.set_nonzero_block(0, obj_sparsity_condensed);
+
+
+    // TODO TODO TODO TODO add test cases.
+}
 
 template<typename T>
 Eigen::VectorXd Trapezoidal<T>::
@@ -895,6 +1051,26 @@ print_constraint_values(const OptimalControlIterate& ocp_vars,
 
     // Reset the IO format back to what it was before invoking this function.
     stream.copyfmt(orig_fmt);
+}
+
+
+template <typename T>
+VectorX<T> Trapezoidal<T>::make_time_from_mesh_points(
+        const Eigen::VectorXd& mesh_points,
+        const T& initial_time, const T& final_time) {
+    // "array()" b/c Eigen matrix types do not support elementwise add.
+    // Writing the equation this way (rather than tau*(t_f - t_i) + t_i)
+    // avoids issues with roundoff where times.tail(1) != _finalTime.
+    // TODO const auto mesh_array = m_mesh_points.array();
+    // TODO mixing adouble and double:
+    //VectorX<T> times =
+    //        (1 - mesh_array) * initial_time + mesh_array * final_time;
+    VectorX<T> times(mesh_points.size());
+    for (int i_mesh = 0; i_mesh < mesh_points.size(); ++i_mesh) {
+        const auto& point = mesh_points[i_mesh];
+        times[i_mesh] = (1 - point) * initial_time + point * final_time;
+    }
+    return times;
 }
 
 template<typename T>

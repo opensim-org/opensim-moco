@@ -131,18 +131,32 @@ void SymmetricSparsityPattern::set_nonzero(unsigned int row_index,
 }
 
 void SymmetricSparsityPattern::set_nonzero_block(
-        unsigned int irowstart, unsigned int icolstart,
-        SymmetricSparsityPattern& block) {
-    TROPTER_THROW_IF((int)irowstart + block.get_num_rows() > get_num_rows(),
-            "Block does not fit within this matrix.");
-    TROPTER_THROW_IF((int)icolstart + block.get_num_cols() > get_num_cols(),
-            "Block does not fit within this matrix.");
-    for (const auto& block_entries : block.m_sparsity) {
-        set_nonzero(irowstart + block_entries.first,
-                icolstart + block_entries.second);
+        unsigned int istart, SymmetricSparsityPattern& block) {
+    // We know that num_rows == num_cols, so we can check against only num_rows.
+    TROPTER_THROW_IF((int)istart + block.get_num_rows() > get_num_rows(),
+            "Block of size %i does not fit within this matrix of size %i.",
+            block.get_num_rows(), get_num_rows());
+    for (const auto& block_entry : block.m_sparsity) {
+        set_nonzero(istart + block_entry.first,
+                istart + block_entry.second);
     }
 }
 
+void SymmetricSparsityPattern::add_gap(unsigned int istart, unsigned int gap) {
+    // If istart == get_num_rows(), then the user is asking us to add
+    // nonzeros to the end of the matrix (we're not shifting any nonzeros).
+    TROPTER_THROW_IF((int)istart > get_num_rows(),
+            "Expected istart <= size, but istart=%i, size=%i",
+            istart, get_num_rows());
+    std::set<std::pair<unsigned int, unsigned int>> new_sparsity;
+    for (auto entry : m_sparsity) {
+        if (entry.first >= istart) entry.first += gap;
+        if (entry.second >= istart) entry.second += gap;
+        new_sparsity.insert(entry);
+    }
+    m_num_rows = m_num_cols = (get_num_rows() + gap);
+    m_sparsity = std::move(new_sparsity);
+}
 
 
 

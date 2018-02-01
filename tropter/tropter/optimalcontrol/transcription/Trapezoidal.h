@@ -26,6 +26,8 @@ namespace transcription {
 /// @verbatim
 /// ti
 /// tf
+/// parameters
+/// integrals
 /// states(t=0)
 /// controls(t=0)
 /// states(t=1)
@@ -37,6 +39,7 @@ namespace transcription {
 ///
 /// The constraints are ordered as follows:
 /// @verbatim
+/// [integral variables - trapezoidal quadrature of integrands]
 /// defects(interval 1)
 /// defects(interval 2)
 /// ...
@@ -76,9 +79,9 @@ public:
     /// to efficiently determine the sparsity pattern of the entire Hessian.
     /// We only need to perturb the optimal control functions at one mesh point,
     /// not the entire NLP objective and constraint functions.
-    //void calc_sparsity_hessian_lagrangian(const Eigen::VectorXd& x,
-    //        SymmetricSparsityPattern&,
-    //        SymmetricSparsityPattern&) const override;
+    void calc_sparsity_hessian_lagrangian(const Eigen::VectorXd& x,
+            SymmetricSparsityPattern&,
+            SymmetricSparsityPattern&) const override;
 
     /// This function checks the dimensions of the matrices in traj.
     Eigen::VectorXd
@@ -92,6 +95,12 @@ public:
             std::ostream& stream = std::cout) const override;
 
 protected:
+
+    /// Convert mesh points (in [0, 1]; normalized time) into a time vector.
+    static VectorX<T> make_time_from_mesh_points(
+            const Eigen::VectorXd& mesh_points,
+            const T& initial_time, const T& final_time);
+
     /// Eigen::Map is a view on other data, and allows "slicing" so that we can
     /// view part of the vector of unknowns as a matrix of (num_states x
     /// num_mesh_points).
