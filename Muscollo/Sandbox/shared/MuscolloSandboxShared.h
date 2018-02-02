@@ -346,6 +346,7 @@ private:
 };
 
 // TODO rename ContactForceTracking? ExternalForceTracking?
+// TODO add function that saves a file comparing the simulated and tracked GRF.
 class MucoForceTrackingCost : public MucoCost {
     OpenSim_DECLARE_CONCRETE_OBJECT(MucoForceTrackingCost, MucoCost);
 public:
