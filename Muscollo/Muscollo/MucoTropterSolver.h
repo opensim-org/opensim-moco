@@ -1,7 +1,7 @@
 #ifndef MUSCOLLO_MUCOTROPTERSOLVER_H
 #define MUSCOLLO_MUCOTROPTERSOLVER_H
 /* -------------------------------------------------------------------------- *
- * OpenSim Muscollo: MucoTropterSolver.h                                               *
+ * OpenSim Muscollo: MucoTropterSolver.h                                      *
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2017 Stanford University and the Authors                     *
  *                                                                            *

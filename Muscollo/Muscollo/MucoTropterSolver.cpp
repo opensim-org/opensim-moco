@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- *
- * OpenSim Muscollo: MucoTropterSolver.cpp                                               *
+ * OpenSim Muscollo: MucoTropterSolver.cpp                                    *
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2017 Stanford University and the Authors                     *
  *                                                                            *
@@ -122,6 +122,121 @@ tropter::FinalBounds convert(const MucoFinalBounds& mb) {
     return {mb.getLower(), mb.getUpper()};
 }
 
+// TODO really want to make copies of the MucoProblems.
+template <typename T>
+class TaskTODO2 : public SimTK::ParallelExecutor::Task {
+public:
+    TaskTODO2() = default;
+    TaskTODO2(const MucoProblem& mp) : m_mucoProbOrig(mp) { }
+    void setInOut(const tropter::ContinuousInput<T>& in,
+            tropter::ContinuousOutput<T>& out) {
+        m_in = &in;
+        m_out = &out;
+    }
+    struct StuffTODO {
+        StuffTODO() = default;
+        StuffTODO(MucoProblem mp) : mucoProb(std::move(mp)),
+                                    model(mucoProb.getPhase(0).getModel()),
+                                    state(model.initSystem()) {
+            mucoProb.initialize(model);
+        }
+        MucoProblem mucoProb;
+        Model model;
+        SimTK::State state;
+        long long elapsedTime;
+
+    };
+    void initialize() override {
+        const auto tid = std::this_thread::get_id();
+        if (m_stuff.count(tid) == 0) {
+            m_stuff.emplace(tid, m_mucoProbOrig);
+        }
+    }
+    void execute(int iTime) override {
+        const auto& in = *m_in;
+        const auto& statesTraj = in.states;
+        const auto& controlsTraj = in.controls;
+        auto& out = *m_out;
+        auto& stuff = m_stuff[std::this_thread::get_id()];
+        auto& mucoProb = stuff.mucoProb;
+        auto& model = stuff.model;
+        auto& state = stuff.state;
+        state.setTime(in.times[iTime]);
+        Stopwatch watch;
+
+        const auto& states = statesTraj.col(iTime);
+
+        std::copy(states.data(), states.data() + states.size(),
+                &state.updY()[0]);
+        //
+        // TODO do not copy? I think this will still make a copy:
+        // TODO use m_state.updY() = SimTK::Vector(states.size(), states.data(), true);
+        //m_state.setY(SimTK::Vector(states.size(), states.data(), true));
+
+        if (model.getNumControls()) {
+            const auto& controls = controlsTraj.col(iTime);
+            auto& osimControls = model.updControls(state);
+            std::copy(controls.data(), controls.data() + controls.size(),
+                    &osimControls[0]);
+
+            model.realizeVelocity(state);
+            model.setControls(state, osimControls);
+        }
+
+        // Dynamics.
+        // ---------
+
+        // TODO Antoine and Gil said realizing Dynamics is a lot costlier than
+        // realizing to Velocity and computing forces manually.
+        model.realizeAcceleration(state);
+        std::copy(&state.getYDot()[0],
+                &state.getYDot()[0] + states.size(),
+                out.dynamics.col(iTime).data());
+
+        // TODO path constraints.
+
+        // Integral cost.
+        // --------------
+        // There is only one integrand.
+        const auto& phase0 = mucoProb.getPhase(0);
+        out.integrands(0, iTime) = phase0.calcIntegralCost(state);
+
+        stuff.elapsedTime = watch.getElapsedTimeInNs();
+
+    }
+    void finish() override {
+        // std::cout << "DEBUG elapsed: " << m_stuff[std::this_thread::get_id()].elapsedTime << std::endl;
+        /*
+        m_stuff.clear();
+        // TODO
+        m_mucoProb = MucoProblem();
+        m_model = Model();
+        m_state = SimTK::State();
+         */
+    }
+private:
+    MucoProblem m_mucoProbOrig;
+    std::unordered_map<std::thread::id, StuffTODO> m_stuff;
+    // TODO use thread_id.
+    //static thread_local bool m_set;
+    //static thread_local MucoProblem m_mucoProb;
+    //static thread_local Model m_model;
+    //static thread_local SimTK::State m_state;
+    const tropter::ContinuousInput<T>* m_in;
+    tropter::ContinuousOutput<T>* m_out;
+};
+
+// TODO
+//template <>
+//thread_local bool TaskTODO2<double>::m_set = false;
+//template <>
+//thread_local MucoProblem TaskTODO2<double>::m_mucoProb = MucoProblem();
+//template <>
+//thread_local Model TaskTODO2<double>::m_model = Model();
+//template <>
+//thread_local SimTK::State TaskTODO2<double>::m_state = SimTK::State();
+
+
 template <typename T>
 class MucoTropterSolver::OCProblem : public tropter::OptimalControlProblem<T> {
 public:
@@ -130,7 +245,8 @@ public:
             : tropter::OptimalControlProblem<T>(solver.getProblem().getName()),
               m_mucoSolver(solver),
               m_mucoProb(solver.getProblem()),
-              m_phase0(m_mucoProb.getPhase(0)) {
+              m_phase0(m_mucoProb.getPhase(0)),
+              m_executor(4) {
         m_model = m_phase0.getModel();
         m_state = m_model.initSystem();
 
@@ -154,8 +270,12 @@ public:
         // TODO only if there are any costs (or, separate integral for each
         // integral cost).
         this->add_integral("integral_cost");
+
+        m_task = TaskTODO2<T>(m_mucoProb);
+
     }
     void initialize_on_mesh(const Eigen::VectorXd&) const override {
+        // TODO not handled right now by parallel tasks!
         m_mucoProb.initialize(m_model);
     }
     // TODO rename argument "states" to "state".
@@ -228,48 +348,62 @@ public:
             tropter::ContinuousOutput<T> out) const override {
         // TODO convert to implicit formulation.
 
-        const auto& statesTraj = in.states;
-        const auto& controlsTraj = in.controls;
+        // SimTK::ParallelExecutor executor; // TODO (1);
+        //TaskTODO2<T> task(m_mucoProb, in, out);
+        // std::cout << "DEBUG calc_continuous" << std::endl;
+        Stopwatch watch;
 
-        for (int iTime = 0; iTime < in.times.size(); ++iTime) {
-            m_state.setTime(in.times[iTime]);
+        if (true) {
+            m_task.setInOut(in, out);
+            m_executor.execute(m_task, (int)in.times.size());
+        } else {
+            const auto& statesTraj = in.states;
+            const auto& controlsTraj = in.controls;
+            for (int iTime = 0; iTime < in.times.size(); ++iTime) {
+                m_state.setTime(in.times[iTime]);
 
-            const auto& states = statesTraj.col(iTime);
+                const auto& states = statesTraj.col(iTime);
 
-            std::copy(states.data(), states.data() + states.size(),
-                    &m_state.updY()[0]);
-            //
-            // TODO do not copy? I think this will still make a copy:
-            // TODO use m_state.updY() = SimTK::Vector(states.size(), states.data(), true);
-            //m_state.setY(SimTK::Vector(states.size(), states.data(), true));
+                std::copy(states.data(), states.data() + states.size(),
+                        &m_state.updY()[0]);
+                //
+                // TODO do not copy? I think this will still make a copy:
+                // TODO use m_state.updY() = SimTK::Vector(states.size(), states.data(), true);
+                //m_state.setY(SimTK::Vector(states.size(), states.data(), true));
 
-            if (m_model.getNumControls()) {
-                const auto& controls = controlsTraj.col(iTime);
-                auto& osimControls = m_model.updControls(m_state);
-                std::copy(controls.data(), controls.data() + controls.size(),
-                        &osimControls[0]);
+                if (m_model.getNumControls()) {
+                    const auto& controls = controlsTraj.col(iTime);
+                    auto& osimControls = m_model.updControls(m_state);
+                    std::copy(controls.data(), controls.data() + controls.size(),
+                            &osimControls[0]);
 
-                m_model.realizeVelocity(m_state);
-                m_model.setControls(m_state, osimControls);
+                    m_model.realizeVelocity(m_state);
+                    m_model.setControls(m_state, osimControls);
+                }
+
+                // Dynamics.
+                // ---------
+
+                // TODO Antoine and Gil said realizing Dynamics is a lot costlier than
+                // realizing to Velocity and computing forces manually.
+                m_model.realizeAcceleration(m_state);
+                std::copy(&m_state.getYDot()[0],
+                        &m_state.getYDot()[0] + states.size(),
+                        out.dynamics.col(iTime).data());
+
+                // TODO path constraints.
+
+                // Integral cost.
+                // --------------
+                // There is only one integrand.
+                out.integrands(0, iTime) = m_phase0.calcIntegralCost(m_state);
             }
 
-            // Dynamics.
-            // ---------
-
-            // TODO Antoine and Gil said realizing Dynamics is a lot costlier than
-            // realizing to Velocity and computing forces manually.
-            m_model.realizeAcceleration(m_state);
-            std::copy(&m_state.getYDot()[0],
-                    &m_state.getYDot()[0] + states.size(),
-                    out.dynamics.col(iTime).data());
-
-            // TODO path constraints.
-
-            // Integral cost.
-            // --------------
-            // There is only one integrand.
-            out.integrands(0, iTime) = m_phase0.calcIntegralCost(m_state);
         }
+        elapsedTime += watch.getElapsedTimeInNs();
+        ++calcContinuousCount;
+        //std::cout << watch.formatNs(elapsedTime / calcContinuousCount)
+        //        << std::endl;
     }
     void calc_endpoint(
             const tropter::EndpointInput<T>& in,
@@ -288,11 +422,15 @@ public:
 
 
 private:
+    mutable TaskTODO2<T> m_task;
+    mutable long long elapsedTime = 0;
+    mutable int calcContinuousCount = 0;
     const MucoSolver& m_mucoSolver;
     const MucoProblem& m_mucoProb;
     const MucoPhase& m_phase0;
     Model m_model;
     mutable SimTK::State m_state;
+    mutable SimTK::ParallelExecutor m_executor;
 };
 
 MucoTropterSolver::MucoTropterSolver() {
