@@ -383,6 +383,8 @@ protected:
         double error = 0;
         if (get_tracked_grf_components() == "all") {
             error = (netForce - ref).normSqr();
+        } else if (get_tracked_grf_components() == "horizontal") {
+            error = abs(netForce[0] - ref[0]);
         } else if (get_tracked_grf_components() == "vertical") {
             error = abs(netForce[1] - ref[1]);
         }
