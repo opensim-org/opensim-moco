@@ -271,8 +271,9 @@ public:
             name.replace(leafpos, name.size(), "accel");
             // TODO how to choose bounds on udot?
             this->add_control(name, {-1000, 1000});
-            this->add_path_constraint(name.substr(0, leafpos) + "residual", 0);
+            // this->add_path_constraint(name.substr(0, leafpos) + "residual", 0);
         }
+        /*
         // Now add actuator controls.
         for (const auto& actu :
                 this->m_model.template getComponentList<Actuator>()) {
@@ -282,7 +283,7 @@ public:
             this->add_control(actuName, convert(info.getBounds()),
                     convert(info.getInitialBounds()),
                     convert(info.getFinalBounds()));
-        }
+        }*/
     }
     // TODO rename argument "states" to "state".
     void calc_differential_algebraic_equations(
@@ -317,6 +318,7 @@ public:
         // TODO use m_state.updY() = SimTK::Vector(states.size(), states.data(), true);
         //m_state.setY(SimTK::Vector(states.size(), states.data(), true));
 
+        /*
         if (this->m_model.getNumControls()) {
             auto& osimControls = this->m_model.updControls(this->m_state);
             std::copy(controls.data() + NQ,
@@ -326,13 +328,14 @@ public:
             this->m_model.realizeVelocity(this->m_state);
             this->m_model.setControls(this->m_state, osimControls);
         }
+        */
 
-        InverseDynamicsSolver id(this->m_model);
-        SimTK::Vector udot(NQ, controls.data() /*, controls.data()*/);
-        SimTK::Vector residual = id.solve(this->m_state, udot);
+        // InverseDynamicsSolver id(this->m_model);
+        // SimTK::Vector udot(NQ, controls.data() /*, controls.data()*/);
+        // SimTK::Vector residual = id.solve(this->m_state, udot);
 
-        std::copy(&residual[0], &residual[0] + residual.size(),
-                out.path.data());
+        // std::copy(&residual[0], &residual[0] + residual.size(),
+        //         out.path.data());
 
         // TODO Antoine and Gil said realizing Dynamics is a lot costlier than
         // realizing to Velocity and computing forces manually.
@@ -349,6 +352,8 @@ public:
         std::copy(states.data(), states.data() + states.size(),
                 &this->m_state.updY()[0]);
 
+
+        /*
         // TODO some controls are jerks!!! not actual control signals!
         if (this->m_model.getNumControls()) {
             auto& osimControls = this->m_model.updControls(this->m_state);
@@ -360,6 +365,9 @@ public:
         } else {
             this->m_model.realizePosition(this->m_state);
         }
+         */
+        this->m_model.realizePosition(this->m_state);
+
         integrand = this->m_phase0.calcIntegralCost(this->m_state);
     }
 };
@@ -548,7 +556,8 @@ MucoSolution MucoTropterSolver::solveImpl() const {
     //    optsolver.set_advanced_option(TODO);
     //}
     //optsolver.set_advanced_option_string("print_timing_statistics", "yes");
-    // TODO optsolver.set_advanced_option_string("derivative_test", "second-order");
+    optsolver.set_advanced_option_string("derivative_test", "second-order");
+    optsolver.set_advanced_option_real("derivative_test_perturbation", 1e-3);
     // TODO optsolver.set_findiff_hessian_step_size(1e-3);
 
     tropter::OptimalControlIterate tropIterate = convert(getGuess());
