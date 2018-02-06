@@ -60,6 +60,7 @@ public:
     /// bounds, potentially for use as an initial guess.
     Eigen::VectorXd make_random_iterate_within_bounds() const;
 
+    // TODO should this be with the Solver?
     /// When using finite differences to compute derivatives, should we use
     /// the user-supplied sparsity pattern of the Hessian (provided by
     /// implementing calc_sparsity_hessian_lagrangian())? If false, then we
