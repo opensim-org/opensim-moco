@@ -122,6 +122,97 @@ tropter::FinalBounds convert(const MucoFinalBounds& mb) {
     return {mb.getLower(), mb.getUpper()};
 }
 
+struct ThreadWorkspace {
+    ThreadWorkspace() = default;
+    ThreadWorkspace(MucoProblem mp) : mucoProb(std::move(mp)),
+                                model(mucoProb.getPhase(0).getModel()),
+                                state(model.initSystem()) {
+        mucoProb.initialize(model);
+    }
+    MucoProblem mucoProb;
+    Model model;
+    SimTK::State state;
+};
+
+using ThreadWorkspaceMap = std::unordered_map<std::thread::id, ThreadWorkspace>;
+
+template <typename T>
+class PWQTaskTODO : public SimTK::ParallelWorkQueue::Task {
+public:
+    PWQTaskTODO(const MucoProblem& mucoProbOrig,
+            ThreadWorkspaceMap& workspaces,
+            const tropter::ContinuousInput<T>& in,
+            tropter::ContinuousOutput<T>& out,
+            int iTime)
+            : m_mucoProbOrig(mucoProbOrig),
+              m_workspaces(workspaces),
+              m_in(&in),
+              m_out(&out),
+              m_iTime(iTime) { }
+    void execute() override {
+        const auto tid = std::this_thread::get_id();
+        if (m_workspaces.count(tid) == 0) {
+            m_workspaces.emplace(tid, m_mucoProbOrig);
+        }
+        const auto& in = *m_in;
+        const auto& statesTraj = in.states;
+        const auto& controlsTraj = in.controls;
+        auto& out = *m_out;
+        auto& stuff = m_workspaces[tid];
+        auto& mucoProb = stuff.mucoProb;
+        auto& model = stuff.model;
+        auto& state = stuff.state;
+        const auto& iTime = m_iTime;
+        state.setTime(in.times[iTime]);
+        Stopwatch watch;
+
+        const auto& states = statesTraj.col(iTime);
+
+        std::copy(states.data(), states.data() + states.size(),
+                &state.updY()[0]);
+        //
+        // TODO do not copy? I think this will still make a copy:
+        // TODO use m_state.updY() = SimTK::Vector(states.size(), states.data(), true);
+        //m_state.setY(SimTK::Vector(states.size(), states.data(), true));
+
+        if (model.getNumControls()) {
+            const auto& controls = controlsTraj.col(iTime);
+            auto& osimControls = model.updControls(state);
+            std::copy(controls.data(), controls.data() + controls.size(),
+                    &osimControls[0]);
+
+            model.realizeVelocity(state);
+            model.setControls(state, osimControls);
+        }
+
+        // Dynamics.
+        // ---------
+
+        // TODO Antoine and Gil said realizing Dynamics is a lot costlier than
+        // realizing to Velocity and computing forces manually.
+        model.realizeAcceleration(state);
+        std::copy(&state.getYDot()[0],
+                &state.getYDot()[0] + states.size(),
+                out.dynamics.col(iTime).data());
+
+        // TODO path constraints.
+
+        // Integral cost.
+        // --------------
+        // There is only one integrand.
+        const auto& phase0 = mucoProb.getPhase(0);
+        out.integrands(0, iTime) = phase0.calcIntegralCost(state);
+
+        // stuff.elapsedTime = watch.getElapsedTimeInNs();
+    }
+private:
+    const MucoProblem& m_mucoProbOrig;
+    ThreadWorkspaceMap& m_workspaces;
+    const tropter::ContinuousInput<T>* m_in;
+    tropter::ContinuousOutput<T>* m_out;
+    const int m_iTime;
+};
+
 // TODO really want to make copies of the MucoProblems.
 template <typename T>
 class TaskTODO2 : public SimTK::ParallelExecutor::Task {
@@ -236,6 +327,9 @@ private:
 //template <>
 //thread_local SimTK::State TaskTODO2<double>::m_state = SimTK::State();
 
+class DummyTask : public SimTK::ParallelWorkQueue::Task {
+    void execute() override {}
+};
 
 template <typename T>
 class MucoTropterSolver::OCProblem : public tropter::OptimalControlProblem<T> {
@@ -245,8 +339,10 @@ public:
             : tropter::OptimalControlProblem<T>(solver.getProblem().getName()),
               m_mucoSolver(solver),
               m_mucoProb(solver.getProblem()),
-              m_phase0(m_mucoProb.getPhase(0)),
-              m_executor(4) {
+              m_phase0(m_mucoProb.getPhase(0))
+            //, m_executor(4)
+            , m_parallelQueue(4, 4)
+    {
         m_model = m_phase0.getModel();
         m_state = m_model.initSystem();
 
@@ -354,8 +450,19 @@ public:
         Stopwatch watch;
 
         if (true) {
-            m_task.setInOut(in, out);
-            m_executor.execute(m_task, (int)in.times.size());
+            //m_task.setInOut(in, out);
+            //m_executor.execute(m_task, (int)in.times.size());
+            Stopwatch watchDummy;
+            for (int iTime = 0; iTime < in.times.size(); ++iTime) {
+                m_parallelQueue.addTask(new DummyTask());
+            }
+            m_parallelQueue.flush();
+            elapsedTimeDummyTask += watchDummy.getElapsedTimeInNs();
+            for (int iTime = 0; iTime < in.times.size(); ++iTime) {
+                m_parallelQueue.addTask(new PWQTaskTODO<T>(
+                        m_mucoProb, m_workspaces, in, out, iTime));
+            }
+            m_parallelQueue.flush();
         } else {
             const auto& statesTraj = in.states;
             const auto& controlsTraj = in.controls;
@@ -402,8 +509,8 @@ public:
         }
         elapsedTime += watch.getElapsedTimeInNs();
         ++calcContinuousCount;
-        //std::cout << watch.formatNs(elapsedTime / calcContinuousCount)
-        //        << std::endl;
+        std::cout << watch.formatNs(elapsedTime / calcContinuousCount)
+                << " " << Stopwatch::formatNs(elapsedTimeDummyTask / calcContinuousCount) << std::endl;
     }
     void calc_endpoint(
             const tropter::EndpointInput<T>& in,
@@ -424,6 +531,7 @@ public:
 private:
     mutable TaskTODO2<T> m_task;
     mutable long long elapsedTime = 0;
+    mutable long long elapsedTimeDummyTask = 0;
     mutable int calcContinuousCount = 0;
     const MucoSolver& m_mucoSolver;
     const MucoProblem& m_mucoProb;
@@ -431,6 +539,8 @@ private:
     Model m_model;
     mutable SimTK::State m_state;
     mutable SimTK::ParallelExecutor m_executor;
+    mutable SimTK::ParallelWorkQueue m_parallelQueue;
+    mutable ThreadWorkspaceMap m_workspaces;
 };
 
 MucoTropterSolver::MucoTropterSolver() {
