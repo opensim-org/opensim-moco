@@ -27,7 +27,7 @@ using Eigen::MatrixXd;
 using namespace tropter;
 
 template<typename T>
-class SlidingMassMinimumTime : public tropter::OptimalControlProblem<T> {
+class SlidingMassMinimumTime : public tropter::Problem<T> {
 public:
     const double mass = 10.0;
     const double Fmax = 10;
@@ -45,12 +45,13 @@ public:
     }
     // TODO alternate form that takes a matrix; state at every time.
     //virtual void continuous(const MatrixXd& x, MatrixXd& xdot) const = 0;
-    void calc_endpoint_cost(const T& final_time, const VectorX<T>&, T& cost)
+    void calc_endpoint_cost(const T& final_time, const VectorX<T>&, 
+            const VectorX<T>&, T& cost)
             const override {
         cost = final_time;
     }
-    OptimalControlSolution actual_solution(const VectorXd& time) const {
-        OptimalControlSolution sol;
+    Solution actual_solution(const VectorXd& time) const {
+        Solution sol;
         sol.time = time;
         sol.states.resize(2, time.size());
         sol.controls.resize(1, time.size());
@@ -83,10 +84,10 @@ public:
         //dircol.get_opt_solver().set_advanced_option_string
         //        ("derivative_test", "second-order");
         dircol.get_opt_solver().set_findiff_hessian_step_size(1e-3);
-        OptimalControlSolution solution = dircol.solve();
+        Solution solution = dircol.solve();
         solution.write("sliding_mass_minimum_time_solution.csv");
 
-        OptimalControlSolution expected = ocp->actual_solution(solution.time);
+        Solution expected = ocp->actual_solution(solution.time);
 
         TROPTER_REQUIRE_EIGEN(solution.states, expected.states, 0.001);
         TROPTER_REQUIRE_EIGEN(solution.controls, expected.controls, 0.001);

@@ -73,7 +73,7 @@ using namespace OpenSim;
 /// @endverbatim
 /// This class can also solve the problem without muscle dynamics.
 class DeGrooteFregly2016MuscleLiftMinTime
-        : public tropter::OptimalControlProblem<adouble> {
+        : public tropter::Problem<adouble> {
 public:
     using T = adouble;
     const double g = 9.81;
@@ -91,7 +91,7 @@ public:
     const double max_contraction_velocity = 10;
 
     DeGrooteFregly2016MuscleLiftMinTime(bool muscleDynamics) :
-            tropter::OptimalControlProblem<T>("hanging_muscle_min_time"),
+            tropter::Problem<T>("hanging_muscle_min_time"),
             m_muscleDynamics(muscleDynamics) {
         this->set_time(0, {0.01, 1.0});
         this->add_state("angle", {-SimTK::Pi/2, SimTK::Pi/2}, 0, SimTK::Pi/4);
@@ -174,6 +174,7 @@ public:
     }
     void calc_endpoint_cost(const T& final_time,
             const tropter::VectorX<T>& /*final_states*/,
+            const tropter::VectorX<T>& /*parameters*/,
             T& cost) const override {
         cost = final_time;
     }
@@ -193,7 +194,7 @@ solveForTrajectoryGSO() {
                                                   "ipopt", N);
     // Create an initial guess.
     using Eigen::RowVectorXd;
-    tropter::OptimalControlIterate guess;
+    tropter::Iterate guess;
     guess.time.setLinSpaced(N, 0, 0.26);
     ocp->set_state_guess(guess, "angle",
                          RowVectorXd::LinSpaced(N, 0, SimTK::Pi/4));
@@ -201,7 +202,7 @@ solveForTrajectoryGSO() {
     ocp->set_control_guess(guess, "activation",
                            RowVectorXd::LinSpaced(N, 1.0, 0));
 
-    tropter::OptimalControlSolution ocp_solution = dircol.solve(guess);
+    tropter::Solution ocp_solution = dircol.solve(guess);
     std::string trajectoryFile =
             "testSingleMuscleDeGrooteFregly2016MomentArms_GSO_trajectory.csv";
     ocp_solution.write(trajectoryFile);
@@ -213,8 +214,9 @@ solveForTrajectoryGSO() {
     std::string trajFileWithHeader = trajectoryFile;
     trajFileWithHeader.replace(trajectoryFile.rfind(".csv"), 4,
                                "_with_header.csv");
-    // Skip the "num_states=#" and "num_controls=#" lines.
+    // Skip the "num_states=#", "num_controls=#", and "num_parameters=#" lines.
     std::string line;
+    std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
     auto fWrite = std::ofstream(trajFileWithHeader);
@@ -279,7 +281,7 @@ solveForTrajectoryINDYGO() {
     dircol.get_opt_solver().set_hessian_approximation("limited-memory");
     // Create an initial guess.
     using Eigen::RowVectorXd;
-    tropter::OptimalControlIterate guess;
+    tropter::Iterate guess;
     guess.time.setLinSpaced(N, 0, 0.3);
     ocp->set_state_guess(guess, "angle",
                          RowVectorXd::LinSpaced(N, 0, SimTK::Pi/4));
@@ -293,7 +295,7 @@ solveForTrajectoryINDYGO() {
     ocp->set_control_guess(guess, "norm_fiber_velocity",
                            RowVectorXd::LinSpaced(N, -0.3, 0));
 
-    tropter::OptimalControlSolution ocp_solution = dircol.solve(guess);
+    tropter::Solution ocp_solution = dircol.solve(guess);
 
     std::string trajectoryFile =
             "testSingleMuscleDeGrooteFregly2016MomentArms_INDYGO_trajectory.csv";
@@ -306,8 +308,9 @@ solveForTrajectoryINDYGO() {
     std::string trajFileWithHeader = trajectoryFile;
     trajFileWithHeader.replace(trajectoryFile.rfind(".csv"), 4,
                                "_with_header.csv");
-    // Skip the "num_states=#" and "num_controls=#" lines.
+    // Skip the "num_states=#", "num_controls=#", and "num_parameters=#" lines.
     std::string line;
+    std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
     auto fWrite = std::ofstream(trajFileWithHeader);

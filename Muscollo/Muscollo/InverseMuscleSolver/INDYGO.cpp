@@ -56,13 +56,13 @@ void INDYGO::Solution::write(const std::string& prefix) const
 /// "Separate" denotes that the dynamics are not coming from OpenSim, but
 /// rather are coded separately.
 template<typename T>
-class INDYGOProblemSeparate : public tropter::OptimalControlProblem<T> {
+class INDYGOProblemSeparate : public tropter::Problem<T> {
 public:
     INDYGOProblemSeparate(const INDYGO& mrs,
                        const Model& model,
                        const InverseMuscleSolverMotionData& motionData,
                        const std::string& fiberDynamicsMode)
-            : tropter::OptimalControlProblem<T>("INDYGO"),
+            : tropter::Problem<T>("INDYGO"),
               _mrs(mrs), _model(model), _motionData(motionData),
               _useFiberLengthState(fiberDynamicsMode == "fiber_length") {
         SimTK::State state = _model.initSystem();
@@ -322,6 +322,7 @@ public:
     void calc_integral_cost(const T& /*time*/,
             const tropter::VectorX<T>& states,
             const tropter::VectorX<T>& controls,
+            const tropter::VectorX<T>& /*parameters*/,
             T& integrand) const override {
         // Use a map to skip over fiber velocities.
         using ExcitationsVector = Eigen::Map<const tropter::VectorX<T>,
@@ -347,13 +348,13 @@ public:
     /// mrsVars.activation or mrsVars.other_controls tables), then this returns
     /// an empty iterate.
     // TODO should take a "Iterate" instead.
-    tropter::OptimalControlIterate construct_iterate(
+    tropter::Iterate construct_iterate(
             const INDYGO::Solution& mrsVars) const {
         using Eigen::Map;
         using Eigen::VectorXd;
         using Eigen::MatrixXd;
 
-        tropter::OptimalControlIterate vars;
+        tropter::Iterate vars;
         // The mrsVars has time as the row dimension, but mrsVars has time as
         // the column dimension. As a result, some quantities must be
         // transposed.
@@ -369,7 +370,7 @@ public:
                     numTimes);
         } else {
             // mrsVars seems to be empty (no muscles or other controls);
-            // return an empty OptimalControlIterate.
+            // return an empty Iterate.
             return vars;
         }
 
@@ -484,7 +485,7 @@ public:
     /// lengths.
     // TODO rename to make_indygo_iterate and make_optimal_control_iterate
     INDYGO::Solution deconstruct_iterate(
-            const tropter::OptimalControlIterate& ocpVars) const {
+            const tropter::Iterate& ocpVars) const {
 
         INDYGO::Solution sol;
         if (_numCoordActuators) {
@@ -856,7 +857,7 @@ INDYGO::Solution INDYGO::solve() const {
                      get_initial_guess() != "static_optimization", Exception,
             "Invalid value (" + get_initial_guess() + ") for "
             "initial_guess; should be 'static_optimization' or 'bounds'.");
-    tropter::OptimalControlIterate guess;
+    tropter::Iterate guess;
     if (get_initial_guess() == "static_optimization") {
         std::cout << std::string(79, '=') << std::endl;
         std::cout << "Computing an initial guess with static optimization."
@@ -927,7 +928,7 @@ INDYGO::Solution INDYGO::solve() const {
     std::cout << std::string(79, '=') << std::endl;
     std::cout << "Running the Muscle Redundancy Solver." << std::endl;
     std::cout << std::string(79, '-') << std::endl;
-    tropter::OptimalControlSolution ocp_solution;
+    tropter::Solution ocp_solution;
     if (get_initial_guess() == "static_optimization") {
         ocp_solution = dircol.solve(guess);
     } else if (get_initial_guess() == "bounds") {

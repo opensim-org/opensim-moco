@@ -30,7 +30,7 @@ using namespace tropter;
 
 /// Kirk 1998, Example 5.1-1, page 198.
 template<typename T>
-class SecondOrderLinearMinEffort : public tropter::OptimalControlProblem<T> {
+class SecondOrderLinearMinEffort : public tropter::Problem<T> {
 public:
     SecondOrderLinearMinEffort() {
         this->set_time(0, 2);
@@ -50,6 +50,7 @@ public:
     void calc_integral_cost(const T& /*t*/,
             const VectorX<T>& /*x*/,
             const VectorX<T>& u,
+            const VectorX<T>& /*p*/,
             T& integrand) const override {
         integrand = 0.5 * u[0] * u[0];
     }
@@ -91,7 +92,7 @@ public:
         DirectCollocationSolver<T> dircol(ocp, "trapezoidal", solver, N);
         dircol.get_opt_solver().set_hessian_approximation
                 (hessian_approx);
-        OptimalControlSolution solution = dircol.solve();
+        Solution solution = dircol.solve();
         //solution.write("second_order_linear_min_effort_solution.csv");
 
         MatrixXd expected_states = ocp->states_solution(solution.time);

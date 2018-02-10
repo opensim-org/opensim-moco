@@ -50,12 +50,12 @@ void GlobalStaticOptimization::Solution::write(const std::string& prefix)
 /// "Separate" denotes that the dynamics are not coming from OpenSim, but
 /// rather are coded separately.
 template<typename T>
-class GSOProblemSeparate : public tropter::OptimalControlProblem<T> {
+class GSOProblemSeparate : public tropter::Problem<T> {
 public:
     GSOProblemSeparate(const GlobalStaticOptimization& mrs,
                        const Model& model,
                        const InverseMuscleSolverMotionData& motionData)
-            : tropter::OptimalControlProblem<T>("GSO"),
+            : tropter::Problem<T>("GSO"),
               _mrs(mrs), _model(model), _motionData(motionData) {
         SimTK::State state = _model.initSystem();
 
@@ -262,11 +262,12 @@ public:
     void calc_integral_cost(const T& /*time*/,
             const tropter::VectorX<T>& /*states*/,
             const tropter::VectorX<T>& controls,
+            const tropter::VectorX<T>& /*parameters*/,
             T& integrand) const override {
         integrand = controls.squaredNorm();
     }
     GlobalStaticOptimization::Solution deconstruct_iterate(
-            const tropter::OptimalControlIterate& ocpVars) const {
+            const tropter::Iterate& ocpVars) const {
 
         GlobalStaticOptimization::Solution vars;
         if (_numCoordActuators) {
@@ -526,7 +527,7 @@ GlobalStaticOptimization::solve() const {
     ocp->print_description();
     tropter::DirectCollocationSolver<adouble> dircol(ocp, "trapezoidal",
             "ipopt", numMeshPoints);
-    tropter::OptimalControlSolution ocp_solution = dircol.solve();
+    tropter::Solution ocp_solution = dircol.solve();
 
     // Return the solution.
     // --------------------
