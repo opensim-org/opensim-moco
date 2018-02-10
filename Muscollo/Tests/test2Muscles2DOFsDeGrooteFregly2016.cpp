@@ -70,7 +70,7 @@ const double ACCEL_GRAVITY = 9.81;
 ///              vy(0.5) = 0
 /// @endverbatim
 template <typename T>
-class OCPStatic : public tropter::OptimalControlProblem<T> {
+class OCPStatic : public tropter::Problem<T> {
 public:
     const double d = WIDTH;
     double mass = -1;
@@ -88,7 +88,7 @@ public:
     };
 
     OCPStatic(const Model& model) :
-            tropter::OptimalControlProblem<T>("2musc2dofstatic") {
+            tropter::Problem<T>("2musc2dofstatic") {
         this->set_time(0, 0.2);
         m_i_x = this->add_state("x", {-0.03, 0.03}, -0.03, 0.03);
         m_i_y = this->add_state("y", {-2 * d, 0}, -d, -d + 0.05);
@@ -166,6 +166,7 @@ public:
     void calc_integral_cost(const T& /*time*/,
             const tropter::VectorX<T>& /*states*/,
             const tropter::VectorX<T>& controls,
+            const tropter::VectorX<T>& /*parameters*/,
             T& integrand) const override {
         const auto& controlL = controls[m_i_activation_l];
         const auto& controlR = controls[m_i_activation_r];
@@ -212,7 +213,7 @@ public:
 ///              vy(0.5) = 0
 /// @endverbatim
 template <typename T>
-class OCPDynamic : public tropter::OptimalControlProblem<T> {
+class OCPDynamic : public tropter::Problem<T> {
 public:
     const double d = WIDTH;
     double mass = -1;
@@ -237,7 +238,7 @@ public:
         T y;
     };
     OCPDynamic(const Model& model) :
-            tropter::OptimalControlProblem<T>("2musc2dofdynamic") {
+            tropter::Problem<T>("2musc2dofdynamic") {
         this->set_time(0, 0.5);
         m_i_x = this->add_state("x", {-0.03, 0.03}, -0.03, 0.03);
         m_i_y = this->add_state("y", {-2 * d, 0}, -d, -d + 0.05);
@@ -366,6 +367,7 @@ public:
     void calc_integral_cost(const T& /*time*/,
             const tropter::VectorX<T>& /*states*/,
             const tropter::VectorX<T>& controls,
+            const tropter::VectorX<T>& /*parameters*/,
             T& integrand) const override {
         const auto& controlL = controls[m_i_excitation_l];
         const auto& controlR = controls[m_i_excitation_r];
@@ -466,7 +468,7 @@ solveForTrajectory_GSO(const Model& model) {
     const int N = 100;
     tropter::DirectCollocationSolver<adouble> dircol(ocp, "trapezoidal",
                                                   "ipopt", N);
-    tropter::OptimalControlSolution ocp_solution = dircol.solve();
+    tropter::Solution ocp_solution = dircol.solve();
     std::string trajectoryFile =
             "test2Muscles2DOFsDeGrooteFregly2016_GSO_trajectory.csv";
     ocp_solution.write(trajectoryFile);
@@ -478,8 +480,9 @@ solveForTrajectory_GSO(const Model& model) {
     std::string trajFileWithHeader = trajectoryFile;
     trajFileWithHeader.replace(trajectoryFile.rfind(".csv"), 4,
                                "_with_header.csv");
-    // Skip the "num_states=#" and "num_controls=#" lines.
+    // Skip the "num_states=#", "num_controls=#", and "num_parameters=#" lines.
     std::string line;
+    std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
     auto fWrite = std::ofstream(trajFileWithHeader);
@@ -540,10 +543,10 @@ solveForTrajectory_INDYGO(const Model& model) {
     // The quasi-Newton mode gives a big speedup for this problem.
     dircol.get_opt_solver().set_hessian_approximation("limited-memory");
 
-    tropter::OptimalControlIterate guess(
+    tropter::Iterate guess(
             "test2Muscles2DOFsDeGrooteFregly2016_INDYGO_initial_guess.csv");
-    tropter::OptimalControlSolution ocp_solution = dircol.solve(guess);
-    //tropter::OptimalControlSolution ocp_solution = dircol.solve();
+    tropter::Solution ocp_solution = dircol.solve(guess);
+    //tropter::Solution ocp_solution = dircol.solve();
     dircol.print_constraint_values(ocp_solution);
 
     std::string trajectoryFile =
@@ -557,8 +560,9 @@ solveForTrajectory_INDYGO(const Model& model) {
     std::string trajFileWithHeader = trajectoryFile;
     trajFileWithHeader.replace(trajectoryFile.rfind(".csv"), 4,
                                "_with_header.csv");
-    // Skip the "num_states=#" and "num_controls=#" lines.
+    // Skip the "num_states=#", "num_controls=#", and "num_parameters=#" lines.
     std::string line;
+    std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
     auto fWrite = std::ofstream(trajFileWithHeader);

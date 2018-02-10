@@ -26,7 +26,7 @@ using tropter::VectorX;
 
 
 class SimpleInverseTendonForceState
-        : public tropter::OptimalControlProblem<adouble> {
+        : public tropter::Problem<adouble> {
 public:
     using T = adouble;
     const double max_isometric_force = 30;
@@ -38,7 +38,7 @@ public:
     const double duration = 2.0;
 
     SimpleInverseTendonForceState() :
-            tropter::OptimalControlProblem<T>("simple_inverse") {
+            tropter::Problem<T>("simple_inverse") {
         this->set_time(0, duration);
         // TODO these functions should return indices for these variables.
         this->add_state("activation", {0, 1});
@@ -91,7 +91,8 @@ public:
     }
     void calc_integral_cost(const T& /*time*/,
             const VectorX<T>& /*states*/,
-            const VectorX<T>& controls, T& integrand) const override {
+            const VectorX<T>& controls, 
+            const VectorX<T>& /*parameters*/, T& integrand) const override {
         integrand = controls[0] * controls[0];
     }
 private:
@@ -99,7 +100,7 @@ private:
 };
 
 class SimpleInverseFiberLengthState
-        : public tropter::OptimalControlProblem<adouble> {
+        : public tropter::Problem<adouble> {
 public:
     using T = adouble;
     const double max_isometric_force = 30;
@@ -111,7 +112,7 @@ public:
     const double duration = 2.0;
 
     SimpleInverseFiberLengthState() :
-            tropter::OptimalControlProblem<T>("simple_inverse") {
+            tropter::Problem<T>("simple_inverse") {
         this->set_time(0, duration);
         // TODO these functions should return indices for these variables.
         this->add_state("activation", {0, 1});
@@ -159,7 +160,8 @@ public:
     }
     void calc_integral_cost(const T& /*time*/,
             const VectorX<T>& /*states*/,
-            const VectorX<T>& controls, T& integrand) const override {
+            const VectorX<T>& controls,
+            const VectorX<T>& /*parameters*/, T& integrand) const override {
         integrand = controls[0] * controls[0];
     }
 private:
@@ -167,7 +169,7 @@ private:
 };
 
 class SimpleInverseTendonForceStateImplicitActivation
-        : public tropter::OptimalControlProblem<adouble> {
+        : public tropter::Problem<adouble> {
 public:
     using T = adouble;
     const double max_isometric_force = 30;
@@ -181,7 +183,7 @@ public:
     const double deactivation_time_constant = 0.060;
 
     SimpleInverseTendonForceStateImplicitActivation() :
-            tropter::OptimalControlProblem<T>("simple_inverse") {
+            tropter::Problem<T>("simple_inverse") {
         this->set_time(0, duration);
         // TODO these functions should return indices for these variables.
         this->add_state("activation", {0, 1});
@@ -244,7 +246,8 @@ public:
     }
     void calc_integral_cost(const T& /*time*/,
             const VectorX<T>& states,
-            const VectorX<T>& controls, T& integrand) const override {
+            const VectorX<T>& controls, 
+            const VectorX<T>& /*parameters*/, T& integrand) const override {
         integrand = states[0] * states[0] + 0.01 * controls[0] * controls[0];
     }
 private:
@@ -252,7 +255,7 @@ private:
 };
 
 class SimpleInverseFiberLengthStateImplicitActivation
-        : public tropter::OptimalControlProblem<adouble> {
+        : public tropter::Problem<adouble> {
 public:
     using T = adouble;
     const double max_isometric_force = 30;
@@ -266,7 +269,7 @@ public:
     const double duration = 2.0;
 
     SimpleInverseFiberLengthStateImplicitActivation() :
-            tropter::OptimalControlProblem<T>("simple_inverse") {
+            tropter::Problem<T>("simple_inverse") {
         this->set_time(0, duration);
         // TODO these functions should return indices for these variables.
         this->add_state("activation", {0, 1});
@@ -320,7 +323,8 @@ public:
     }
     void calc_integral_cost(const T& /*time*/,
             const VectorX<T>& states,
-            const VectorX<T>& controls, T& integrand) const override {
+            const VectorX<T>& controls, 
+            const VectorX<T>& /*parameters*/, T& integrand) const override {
         integrand = states[0] * states[0] + 0.01 * controls[0] * controls[0];
     }
 private:
@@ -328,7 +332,7 @@ private:
 };
 
 int main() {
-    tropter::OptimalControlSolution tendonForceStateSolution;
+    tropter::Solution tendonForceStateSolution;
     {
         auto ocp = std::make_shared<SimpleInverseTendonForceState>();
         int N = 200;
@@ -337,7 +341,7 @@ int main() {
         tendonForceStateSolution = dircol.solve();
         tendonForceStateSolution.write("DEBUG_sandboxImplicitActivation.csv");
     }
-    tropter::OptimalControlSolution tendonForceStateImpActivSol;
+    tropter::Solution tendonForceStateImpActivSol;
     {
         auto ocp = std::make_shared<
                 SimpleInverseTendonForceStateImplicitActivation>();
@@ -352,7 +356,7 @@ int main() {
             tendonForceStateImpActivSol.states.row(0), 0.01));
 
 
-    tropter::OptimalControlSolution fiberLengthStateSolution;
+    tropter::Solution fiberLengthStateSolution;
     {
         auto ocp = std::make_shared<SimpleInverseFiberLengthState>();
         int N = 200;
@@ -362,7 +366,7 @@ int main() {
         fiberLengthStateSolution.write(
                 "DEBUG_sandboxImplicitActivation_fiberLengthState.csv");
     }
-    tropter::OptimalControlSolution fiberLengthStateImpActivSol;
+    tropter::Solution fiberLengthStateImpActivSol;
     {
         auto ocp = std::make_shared<
                 SimpleInverseFiberLengthStateImplicitActivation>();

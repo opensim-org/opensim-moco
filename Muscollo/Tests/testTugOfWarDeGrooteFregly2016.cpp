@@ -61,7 +61,7 @@ const double DISTANCE = 0.25;
 /// @endverbatim
 template <typename T>
 class DeGrooteFregly2016MuscleTugOfWarMinEffortStatic
-        : public tropter::OptimalControlProblem<T> {
+        : public tropter::Problem<T> {
 public:
     const double d = DISTANCE;
     double mass = -1;
@@ -73,7 +73,7 @@ public:
     DeGrooteFregly2016Muscle<T> m_muscleR;
 
     DeGrooteFregly2016MuscleTugOfWarMinEffortStatic(const Model& model) :
-            tropter::OptimalControlProblem<T>("tug_of_war_min_effort") {
+            tropter::Problem<T>("tug_of_war_min_effort") {
         this->set_time(0, 0.5);
         m_i_position =
                 this->add_state("position", {-0.02, 0.02}, -0.015, 0.015);
@@ -136,6 +136,7 @@ public:
     void calc_integral_cost(const T& /*time*/,
             const tropter::VectorX<T>& /*states*/,
             const tropter::VectorX<T>& controls,
+            const tropter::VectorX<T>& /*parameters*/,
             T& integrand) const override {
         const auto& controlL = controls[m_i_activation_l];
         const auto& controlR = controls[m_i_activation_r];
@@ -176,7 +177,7 @@ public:
 // Activation dynamics do *not* substantially slow down the solution process.
 template <typename T>
 class DeGrooteFregly2016MuscleTugOfWarMinEffortDynamic
-        : public tropter::OptimalControlProblem<T> {
+        : public tropter::Problem<T> {
 public:
     const double d = DISTANCE;
     double mass = -1;
@@ -197,7 +198,7 @@ public:
     DeGrooteFregly2016Muscle<T> m_muscleR;
 
     DeGrooteFregly2016MuscleTugOfWarMinEffortDynamic(const Model& model) :
-            tropter::OptimalControlProblem<T>("tug_of_war_min_effort") {
+            tropter::Problem<T>("tug_of_war_min_effort") {
         this->set_time(0, 0.5);
         m_i_position =
                 this->add_state("position", {-0.02, 0.02}, -0.015, 0.015);
@@ -315,6 +316,7 @@ public:
     void calc_integral_cost(const T& /*time*/,
             const tropter::VectorX<T>& /*states*/,
             const tropter::VectorX<T>& controls,
+            const tropter::VectorX<T>& /*parameters*/,
             T& integrand) const override {
         const auto& controlL = controls[m_i_excitation_l];
         const auto& controlR = controls[m_i_excitation_r];
@@ -396,7 +398,7 @@ solveForTrajectory_GSO(const Model& model) {
     const int N = 100;
     tropter::DirectCollocationSolver<adouble> dircol(ocp, "trapezoidal",
                                                   "ipopt", N);
-    tropter::OptimalControlSolution ocp_solution = dircol.solve();
+    tropter::Solution ocp_solution = dircol.solve();
     std::string trajectoryFile =
             "testTugOfWarDeGrooteFregly2016_GSO_trajectory.csv";
     ocp_solution.write(trajectoryFile);
@@ -408,8 +410,9 @@ solveForTrajectory_GSO(const Model& model) {
     std::string trajFileWithHeader = trajectoryFile;
     trajFileWithHeader.replace(trajectoryFile.rfind(".csv"), 4,
                                "_with_header.csv");
-    // Skip the "num_states=#" and "num_controls=#" lines.
+    // Skip the "num_states=#", "num_controls=#", and "num_parameters=#" lines.
     std::string line;
+    std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
     auto fWrite = std::ofstream(trajFileWithHeader);
@@ -466,7 +469,7 @@ solveForTrajectory_INDYGO(const Model& model) {
     // Create an initial guess.
     // This initial guess reduces the number of iterations from 52 to 32.
     // using Eigen::RowVectorXd;
-    // tropter::OptimalControlIterate guess;
+    // tropter::Iterate guess;
     // guess.time.setLinSpaced(N, 0, 0.5);
     // ocp->set_state_guess(guess, "position",
     //                      RowVectorXd::LinSpaced(N, -0.015, 0.015));
@@ -489,10 +492,10 @@ solveForTrajectory_INDYGO(const Model& model) {
     //                        RowVectorXd::Constant(N, -0.03));
     // Initializing with a previous solution reduces the number of iterations
     // from 32 to 20.
-    tropter::OptimalControlIterate guess(
+    tropter::Iterate guess(
             "testTugOfWarDeGrooteFregly2016_INDYGO_initial_guess.csv");
-    tropter::OptimalControlSolution ocp_solution = dircol.solve(guess);
-    //tropter::OptimalControlSolution ocp_solution = dircol.solve();
+    tropter::Solution ocp_solution = dircol.solve(guess);
+    //tropter::Solution ocp_solution = dircol.solve();
     dircol.print_constraint_values(ocp_solution);
 
     std::string trajectoryFile =
@@ -506,8 +509,9 @@ solveForTrajectory_INDYGO(const Model& model) {
     std::string trajFileWithHeader = trajectoryFile;
     trajFileWithHeader.replace(trajectoryFile.rfind(".csv"), 4,
                                "_with_header.csv");
-    // Skip the "num_states=#" and "num_controls=#" lines.
+    // Skip the "num_states=#", "num_controls=#", and "num_parameters=#" lines.
     std::string line;
+    std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
     auto fWrite = std::ofstream(trajFileWithHeader);
