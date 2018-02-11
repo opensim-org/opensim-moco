@@ -25,6 +25,8 @@
 
 #include "MuscolloSandboxShared.h"
 
+const double FRICTION_COEFFICIENT = 0.7;
+
 using namespace OpenSim;
 using SimTK::Vec3;
 
@@ -71,7 +73,7 @@ Model create2DPointMassModel(CreateContactFunction createContact) {
 // system. This is the same type of test done in OpenSim's testForces for
 // HuntCrossleyForce. The test is performed with both time stepping and direct
 // collocation.
-void testWeight(CreateContactFunction createContact) {
+SimTK::Real testNormalForce(CreateContactFunction createContact) {
     Model model(create2DPointMassModel(createContact));
     SimTK::Real weight;
     {
@@ -79,7 +81,7 @@ void testWeight(CreateContactFunction createContact) {
         weight = model.getTotalMass(state) * (-model.getGravity()[1]);
     }
 
-    const SimTK::Real ty0 = 0.5;
+    const SimTK::Real y0 = 0.5;
     const SimTK::Real finalTime = 2.0;
 
     // Time stepping.
@@ -87,19 +89,20 @@ void testWeight(CreateContactFunction createContact) {
     SimTK::Real finalHeightTimeStepping;
     {
         SimTK::State state = model.initSystem();
-        model.setStateVariableValue(state, "ty/ty/value", ty0);
-        model.realizeDynamics(state);
-        Manager manager(model, state);
+        model.setStateVariableValue(state, "ty/ty/value", y0);
+        SimTK::RungeKuttaMersonIntegrator integ(model.getMultibodySystem());
+        integ.setAccuracy(1e-6);
+        Manager manager(model, state, integ);
         state = manager.integrate(finalTime);
-        model.realizeVelocity(state);
 
         // visualize(model, manager.getStateStorage());
 
         auto& contact = model.getComponent<StationPlaneContactForce>("contact");
+        model.realizeVelocity(state);
         const Vec3 contactForce = contact.calcContactForceOnStation(state);
-        // The horizontal force is a few Newtons, maybe from a buildup of
-        // numerical error. TODO ideally the horizontal force would be zero.
-        SimTK_TEST(std::abs(contactForce[0] / weight) < 0.02);
+        // The horizontal force is not quite zero, maybe from a buildup of
+        // numerical error (tightening the accuracy reduces this force).
+        SimTK_TEST_EQ_TOL(contactForce[0], 0, 0.01);
         SimTK_TEST_EQ_TOL(contactForce[1], weight, 0.01);
         // The system is planar, so there is no force in the z direction.
         SimTK_TEST_EQ(contactForce[2], 0);
@@ -107,7 +110,6 @@ void testWeight(CreateContactFunction createContact) {
         finalHeightTimeStepping =
                 model.getStateVariableValue(state, "ty/ty/value");
     }
-
 
     // Direct collocation.
     // -------------------
@@ -120,7 +122,7 @@ void testWeight(CreateContactFunction createContact) {
         mp.setModel(model);
         mp.setTimeBounds(0, finalTime);
         mp.setStateInfo("tx/tx/value", {-5, 5}, 0);
-        mp.setStateInfo("ty/ty/value", {-0.5, 1}, ty0);
+        mp.setStateInfo("ty/ty/value", {-0.5, 1}, y0);
         mp.setStateInfo("tx/tx/speed", {-10, 10}, 0);
         mp.setStateInfo("ty/ty/speed", {-10, 10}, 0);
 
@@ -147,13 +149,108 @@ void testWeight(CreateContactFunction createContact) {
 
     SimTK_TEST_EQ_TOL(finalHeightTimeStepping, finalHeightDircol, 1e-5);
 
-
+    return finalHeightTimeStepping;
 }
+
+// Test the friction component of the contact force by ensuring that the point
+// mass travels the expected horizontal distance if it starts in the ground.
+// To make the friction force roughly constant, we want the equilibruim height
+// of the mass (from testNormalForce()).
+void testFrictionForce(CreateContactFunction createContact,
+        const SimTK::Real& equilibriumHeight) {
+    Model model(create2DPointMassModel(createContact));
+    SimTK::Real weight;
+    {
+        SimTK::State state = model.initSystem();
+        weight = model.getTotalMass(state) * (-model.getGravity()[1]);
+    }
+
+    const SimTK::Real y0 = equilibriumHeight;
+    const SimTK::Real finalTime = 0.5;
+    const SimTK::Real vx0 = 2.5;
+
+    const SimTK::Real g = -model.getGravity()[1];
+
+    // Expected final x position.
+    // --------------------------
+    // m * vxdot = F = - mu * m * g
+    // vx(t) = -mu * g * t + vx0
+    // x(t) = -0.5 * mu * g * t^2 + vx0 * t
+    // The time at which the point reaches rest:
+    // t_rest = vx0 / (mu * g)
+    // Final position: x(t_rest)
+    const double& mu = FRICTION_COEFFICIENT;
+    const SimTK::Real restTime = vx0 / (mu * g);
+    assert(restTime < finalTime);
+    const SimTK::Real expectedFinalX =
+            -0.5 * mu * g * pow(restTime, 2) + vx0 * restTime;
+
+    // Time stepping.
+    // --------------
+    {
+        SimTK::State state = model.initSystem();
+        model.setStateVariableValue(state, "ty/ty/value", y0);
+        model.setStateVariableValue(state, "tx/tx/speed", vx0);
+        Manager manager(model, state);
+        state = manager.integrate(finalTime);
+
+        // visualize(model, manager.getStateStorage());
+
+        const SimTK::Real finalTX =
+                model.getStateVariableValue(state, "tx/tx/value");
+        SimTK_TEST_EQ_TOL(finalTX, expectedFinalX, 0.005);
+
+        // The system should be at rest.
+        SimTK_TEST_EQ_TOL(state.getU(),
+                SimTK::Vector(state.getNU(), 0.0), 1e-3);
+
+    }
+
+    // Direct collocation.
+    // -------------------
+    // This is a simulation (initial value problem), not a trajectory
+    // optimization.
+    SimTK::Real finalHeightDircol;
+    {
+        MucoTool muco;
+        MucoProblem& mp = muco.updProblem();
+        mp.setModel(model);
+        mp.setTimeBounds(0, finalTime);
+        mp.setStateInfo("tx/tx/value", {-5, 5}, 0);
+        mp.setStateInfo("ty/ty/value", {-0.5, 1}, y0);
+        mp.setStateInfo("tx/tx/speed", {-10, 10}, vx0);
+        mp.setStateInfo("ty/ty/speed", {-10, 10}, 0);
+
+        MucoTropterSolver& ms = muco.initSolver();
+        ms.set_num_mesh_points(25);
+
+        MucoSolution solution = muco.solve();
+        // muco.visualize(solution);
+
+        auto statesTraj = solution.exportToStatesTrajectory(mp);
+        const auto& finalState = statesTraj.back();
+        const SimTK::Real finalTX =
+                model.getStateVariableValue(finalState, "tx/tx/value");
+
+        SimTK_TEST_EQ_TOL(finalTX, expectedFinalX, 0.005);
+
+        // The system should be at rest.
+        SimTK_TEST_EQ_TOL(finalState.getU(),
+                SimTK::Vector(finalState.getNU(), 0.0), 1e-3);
+    }
+}
+
+void testStationPlaneContactForce(CreateContactFunction createContact) {
+    const SimTK::Real equilibriumHeight = testNormalForce(createContact);
+    testFrictionForce(createContact, equilibriumHeight);
+}
+
 
 AckermannVanDenBogert2010Force* createAVDB() {
     auto* contact = new AckermannVanDenBogert2010Force();
     contact->set_stiffness(1e5);
     contact->set_dissipation(1.0);
+    contact->set_friction_coefficient(FRICTION_COEFFICIENT);
     return contact;
 }
 
@@ -161,6 +258,7 @@ EspositoMiller2018Force* createEspositoMiller() {
     auto* contact = new EspositoMiller2018Force();
     contact->set_stiffness(1e5);
     contact->set_dissipation(1.0);
+    contact->set_friction_coefficient(FRICTION_COEFFICIENT);
     return contact;
 }
 
@@ -168,14 +266,15 @@ MeyerFregly2016Force* createMeyerFregly() {
     auto* contact = new MeyerFregly2016Force();
     contact->set_stiffness(1e5);
     contact->set_dissipation(1.0);
+    // TODO set friction coefficient.
     return contact;
 }
 
 int main() {
     SimTK_START_TEST("testContact");
-        SimTK_SUBTEST1(testWeight, createAVDB);
-        SimTK_SUBTEST1(testWeight, createEspositoMiller);
+        SimTK_SUBTEST1(testStationPlaneContactForce, createAVDB);
+        SimTK_SUBTEST1(testStationPlaneContactForce, createEspositoMiller);
         // TODO does not pass:
-        // SimTK_SUBTEST1(testWeight, createMeyerFregly);
+        // SimTK_SUBTEST1(testStationPlaneContactForce, createMeyerFregly);
     SimTK_END_TEST();
 }
