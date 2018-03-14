@@ -66,7 +66,7 @@ void DeGrooteFregly2016Muscle::extendFinalizeFromProperties() {
         "%s: default_activation must be greater than zero, "
         "but it is %g.", getName().c_str(), get_default_activation());
 
-    SimTK_ERRCHK2_ALWAYS(get_fiber_damping() > 0,
+    SimTK_ERRCHK2_ALWAYS(get_fiber_damping() >= 0,
         "Thelen2003Muscle::extendFinalizeFromProperties",
         "%s: fiber_damping must be greater than or equal to zero, "
         "but it is %g.", getName().c_str(), get_fiber_damping());
@@ -174,6 +174,9 @@ computeStateVariableDerivatives(const SimTK::State& s) const {
         const SimTK::Real constant =
                 passiveForceMult * cosPenn - normTendonForce;
 
+        // TODO the equilibrium tendon force can be negative if damping is
+        // non-zero, because the tendon force-length curve goes negative.
+
         auto calcResidual = [this,
                 &activationActiveForceLengthMultiplierCosPenn,
                 &constant](
@@ -231,6 +234,19 @@ double DeGrooteFregly2016Muscle::computeActuation(const SimTK::State& s) const {
 
     const SimTK::Real normFiberForce = calcNormFiberForceAlongTendon(
             activation, normFiberLength, normFiberVelocity);
+
+    if (normFiberForce < 0) {
+        std::cout << format("DEBUG computeActuation: force is negative"
+                        "\n\ttime: %g"
+                        "\n\tactivation: %g"
+                        "\n\tnormFiberLength: %g"
+                        "\n\tnormFiberVelocity: %g"
+                        "\n\tnormFiberForce: %g"
+                ,
+                s.getTime(),
+                activation, normFiberLength, normFiberVelocity, normFiberForce)
+                << std::endl;
+    }
 
     return get_max_isometric_force() * normFiberForce;
 }

@@ -529,6 +529,9 @@ Model create2DOFs2MusclesModel(const double& width, bool ignoreTendonCompliance)
         auto* actuL = new DeGrooteFregly2016Muscle();
         actuL->setName("left");
         actuL->set_ignore_tendon_compliance(ignoreTendonCompliance);
+        // If we don't disable fiber damping, intermediate iterations generate
+        // negative forces.
+        if (ignoreTendonCompliance) actuL->set_fiber_damping(0);
         actuL->set_max_isometric_force(40);
         actuL->set_optimal_fiber_length(.20);
         actuL->set_tendon_slack_length(0.10);
@@ -542,6 +545,7 @@ Model create2DOFs2MusclesModel(const double& width, bool ignoreTendonCompliance)
         auto* actuR = new DeGrooteFregly2016Muscle();
         actuR->setName("right");
         actuR->set_ignore_tendon_compliance(ignoreTendonCompliance);
+        if (ignoreTendonCompliance) actuR->set_fiber_damping(0);
         actuR->set_max_isometric_force(40);
         actuR->set_optimal_fiber_length(.21);
         actuR->set_tendon_slack_length(0.09);
@@ -563,8 +567,6 @@ Model create2DOFs2MusclesModel(const double& width, bool ignoreTendonCompliance)
     // std::cin.get();
     // Manager manager(model, s);
     // manager.integrate(1.0);
-
-    // TODO muscle is generating negative forces!
 
     return model;
 }
@@ -641,7 +643,6 @@ void test2DOFs2Muscles(bool ignoreTendonCompliance) {
         // (test2Muscles2DOFsDeGrooteFregly2016.cpp).
     }
 
-    // TODO look into negative muscle forces!
 
 }
 
