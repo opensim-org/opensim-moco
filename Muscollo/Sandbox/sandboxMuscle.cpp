@@ -156,6 +156,40 @@ void testDeGrooteFregly2016Muscle() {
                 Exception);
     }
 
+    // solveNewton().
+    // --------------
+    {
+        auto calcResidual = [](const SimTK::Real& x) {
+            return SimTK::cube(x - 1.38) + (x - 1.38);
+        };
+        auto calcResidualDeriv = [](const SimTK::Real& x) {
+            return 3 * SimTK::square(x - 1.38) + 1.0;
+        };
+        {
+            const auto root =
+                    muscle.solveNewton(calcResidual, calcResidualDeriv, 1.05);
+            SimTK_TEST_EQ_TOL(root, 1.38, 1e-6);
+        }
+        // TODO add more tests.
+
+        /*
+        // TODO
+        Warning: Newton solve reached max iterations at x = nan (DeGrooteFregly2016Muscle actuator).
+        Warning: Newton solve reached max iterations at x = nan (DeGrooteFregly2016Muscle actuator).
+        Warning: Newton solve reached max iterations at x = nan (DeGrooteFregly2016Muscle actuator).
+        Time stepping forward sim joint/height/value history 0.140011
+        Tracking the trajectory optimization coordinate solution.
+                DEBUG computeActuation: force is negative
+        time: 0.0648006
+        activation: 0.0699271
+        normFiberLength: 0.299424
+        normFiberVelocity: -0.0979962
+        normFiberForce: -0.00015167
+        DeGrooteFregly2016Muscle::computeForce, muscle actuator force < 0 at time = 0.064801
+        Warning: Newton solve reached max iterations at x = nan (DeGrooteFregly2016Muscle actuator).
+        */
+    }
+
     SimTK::State state = model.initSystem();
 
     // getActivation(), setActivation()
@@ -165,8 +199,6 @@ void testDeGrooteFregly2016Muscle() {
     SimTK_TEST_EQ(muscle.getActivation(state), 0.451);
     // This model only has the muscle states, so activation is index 0.
     SimTK_TEST_EQ(state.getY()[0], 0.451);
-
-
 
 }
 
@@ -531,7 +563,10 @@ Model create2DOFs2MusclesModel(const double& width, bool ignoreTendonCompliance)
         actuL->set_ignore_tendon_compliance(ignoreTendonCompliance);
         // If we don't disable fiber damping, intermediate iterations generate
         // negative forces.
-        if (ignoreTendonCompliance) actuL->set_fiber_damping(0);
+        if (ignoreTendonCompliance)
+            actuL->set_fiber_damping(0);
+        else
+            actuL->set_fiber_damping(0.05);
         actuL->set_max_isometric_force(40);
         actuL->set_optimal_fiber_length(.20);
         actuL->set_tendon_slack_length(0.10);
@@ -545,7 +580,10 @@ Model create2DOFs2MusclesModel(const double& width, bool ignoreTendonCompliance)
         auto* actuR = new DeGrooteFregly2016Muscle();
         actuR->setName("right");
         actuR->set_ignore_tendon_compliance(ignoreTendonCompliance);
-        if (ignoreTendonCompliance) actuR->set_fiber_damping(0);
+        if (ignoreTendonCompliance)
+            actuR->set_fiber_damping(0);
+        else
+            actuR->set_fiber_damping(0.05);
         actuR->set_max_isometric_force(40);
         actuR->set_optimal_fiber_length(.21);
         actuR->set_tendon_slack_length(0.09);
@@ -602,7 +640,11 @@ void test2DOFs2Muscles(bool ignoreTendonCompliance) {
         MucoTool muco;
         MucoProblem& problem = muco.updProblem();
         problem.setModel(model);
-        problem.setTimeBounds(0, 0.5);
+        if (ignoreTendonCompliance) {
+            problem.setTimeBounds(0, 0.2);
+        } else {
+            problem.setTimeBounds(0, 0.5);
+        }
         problem.setStateInfo("jtx/tx/value", {-0.03, 0.03}, initTX, 0.03);
         problem.setStateInfo("jty/ty/value", {-2 * width, 0},
                 initTY, -width + 0.05);

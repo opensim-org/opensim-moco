@@ -186,15 +186,26 @@ computeStateVariableDerivatives(const SimTK::State& s) const {
                     + get_fiber_damping() * normFiberVelocity
                     + constant;
         };
+        auto calcResidualDeriv = [this,
+                &activationActiveForceLengthMultiplierCosPenn,
+                &constant](
+                const SimTK::Real& normFiberVelocity) {
+            return activationActiveForceLengthMultiplierCosPenn
+                    * calcForceVelocityMultiplierDerivative(normFiberVelocity)
+                    + get_fiber_damping();
+        };
         // In explicit dynamics mode and during trial integration steps,
         // the equilibrium solution for normFiberVelocity is not within
         // [-1, 1].
-        const double velocityBound = 200000;
+        // TODO const double velocityBound = 500000;
 
         SimTK::Real equilNormFiberVelocity;
         try {
             equilNormFiberVelocity =
-                    solveBisection(calcResidual, -velocityBound, velocityBound);
+            // TODO        solveBisection(calcResidual, -velocityBound, velocityBound);
+            // TODO better initial guess.
+            // This seems to require about 2-5 iterations.
+            solveNewton(calcResidual, calcResidualDeriv, 0.0);
         } catch (const Exception& e) {
             std::cout << format("DEBUG computeStateVariableDerivatives"
                             "\n\ttime: %g"
@@ -306,10 +317,10 @@ SimTK::Real DeGrooteFregly2016Muscle::solveBisection(
     SimTK::Real residualMidpoint;
     SimTK::Real residualLeft = calcResidual(left);
     int iterCount = 0;
-    while (iterCount < maxIterations && (right - left) >= xTolerance) {
+    while (iterCount < maxIterations && (right - left) > xTolerance) {
         midpoint = 0.5 * (left + right);
         residualMidpoint = calcResidual(midpoint);
-        if (std::abs(residualMidpoint) < yTolerance) {
+        if (std::abs(residualMidpoint) <= yTolerance) {
             break;
         } else if (residualMidpoint * residualLeft < 0) {
             // The solution is to the left of the current midpoint.
@@ -325,6 +336,33 @@ SimTK::Real DeGrooteFregly2016Muscle::solveBisection(
                         "at x = %g (%s %s).\n", midpoint,
                 getConcreteClassName(), getName());
     return midpoint;
+}
+
+SimTK::Real DeGrooteFregly2016Muscle::solveNewton(
+        std::function<SimTK::Real(const SimTK::Real&)> calcResidual,
+        std::function<SimTK::Real(const SimTK::Real&)> calcResidualDeriv,
+        const SimTK::Real& initGuess,
+        const SimTK::Real& yTolerance,
+        int maxIterations) const {
+    SimTK::Real x = initGuess;
+    SimTK::Real residual = calcResidual(x);
+    SimTK::Real delta;
+    for (int iterCount = 0; iterCount < maxIterations; ++iterCount) {
+        delta = residual / calcResidualDeriv(x);
+        x -= delta;
+        residual = calcResidual(x);
+        if (abs(residual) <= yTolerance) {
+            if (getDebugLevel() >= 1) {
+                printMessage("solveNewton iterCount: %i (%s %s).\n",
+                        iterCount, getConcreteClassName(), getName());
+            }
+            return x;
+        }
+    }
+    printMessage("Warning: Newton solve reached max iterations "
+            "at x = %g (%s %s).\n", x,
+            getConcreteClassName(), getName());
+    return x;
 }
 
 SimTK::Real DeGrooteFregly2016Muscle::calcFiberEquilibriumResidual(

@@ -77,7 +77,8 @@ public:
     "Value of activation in the default state returned by initSystem().");
 
     OpenSim_DECLARE_PROPERTY(fiber_damping, double,
-    "The linear damping of the fiber (default: 0.01).");
+    "The linear damping of the fiber (default: 0.01); "
+    "set to 0 to disable damping.");
     OpenSim_DECLARE_PROPERTY(tendon_strain_at_one_norm_force, double,
     "Tendon strain at a tension of 1 normalized force.");
 
@@ -151,6 +152,13 @@ public:
             std::function<SimTK::Real(const SimTK::Real&)> calcResidual,
             SimTK::Real left, SimTK::Real right,
             const SimTK::Real& xTolerance = 1e-7,
+            const SimTK::Real& yTolerance = 1e-7,
+            int maxIterations = 100) const;
+
+    SimTK::Real solveNewton(
+            std::function<SimTK::Real(const SimTK::Real&)> calcResidual,
+            std::function<SimTK::Real(const SimTK::Real&)> calcResidualDeriv,
+            const SimTK::Real& initGuess,
             const SimTK::Real& yTolerance = 1e-7,
             int maxIterations = 100) const;
 
@@ -271,6 +279,14 @@ public:
         const SimTK::Real tempV = d2 * normFiberVelocity + d3;
         const SimTK::Real tempLogArg = tempV + sqrt(square(tempV) + 1.0);
         return d1 * log(tempLogArg) + d4;
+    }
+
+    /// This is the derivative of the force-velocity multiplier curve with
+    /// respect to normalized fiber velocity.
+    static SimTK::Real calcForceVelocityMultiplierDerivative(
+            const SimTK::Real& normFiberVelocity) {
+        using SimTK::square;
+        return d1 * d2 / sqrt(square(d2 * normFiberVelocity + d3) + 1.0);
     }
 
     /// This is the inverse of the force-velocity multiplier function, and
