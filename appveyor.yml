@@ -32,7 +32,7 @@ cache:
 install:
   - cmake --version
 
-  - choco install doxygen.portable
+  - choco install doxygen.portable --version=1.8.11
   
   # Install dependencies.
   # We are using superbuild for opensim-core, as that allows us to specify
