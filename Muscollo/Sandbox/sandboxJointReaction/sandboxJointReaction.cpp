@@ -60,25 +60,9 @@ Model createInvertedPendulumModel() {
     return model;
 }
 
-class JointReactionCost : public MucoCost {
-    OpenSim_DECLARE_CONCRETE_OBJECT(JointReactionCost, MucoCost);
-protected:
-    void calcIntegralCostImpl(const SimTK::State& state, 
-            double& integrand) const override {
-
-        getModel().realizeAcceleration(state);
-        const auto& j0 = getModel().getJointSet().get("j0");
-
-        SimTK::SpatialVec reaction =
-            j0.calcReactionOnChildExpressedInGround(state);
-
-        integrand = reaction.norm();
-    }
-};
-
-void minimizePendulumReactionLoads() {
+void minimizeInvertedPendulumReactionLoads() {
     MucoTool muco;
-    muco.setName("minimize_pendulum_reaction_loads");
+    muco.setName("minimize_inverted_pendulum_reaction_loads");
     MucoProblem& mp = muco.updProblem();
     mp.setModel(createInvertedPendulumModel());
 
@@ -105,9 +89,9 @@ void minimizePendulumReactionLoads() {
     muco.visualize(solution);
 }
 
-void minimizeControlEffort() {
+void minimizeInvertedPendulumControlEffort() {
     MucoTool muco;
-    muco.setName("minimize_pendulum_reaction_loads");
+    muco.setName("minimize_inverted_pendulum_control_effort");
     MucoProblem& mp = muco.updProblem();
     mp.setModel(createInvertedPendulumModel());
 
@@ -133,8 +117,86 @@ void minimizeControlEffort() {
     muco.visualize(solution);
 }
 
-void main() {
+void mainInvertedPendulum() {
+    minimizeInvertedPendulumReactionLoads();
+    minimizeInvertedPendulumControlEffort();
+}
 
-    minimizePendulumReactionLoads();
-    minimizeControlEffort();
+/// This model is torque-actuated.
+Model createPendulumPathActuatorModel() {
+    Model model;
+    model.setName("pendulum_path_actuator");
+
+    using SimTK::Vec3;
+    using SimTK::Inertia;
+
+    // Create one link with a mass of 1 kg, center of mass at the body's
+    // origin, and moments and products of inertia of zero.
+    auto* b0 = new OpenSim::Body("b0", 1, Vec3(0), Inertia(1));
+    model.addBody(b0);
+
+    // Connect the body to ground with a pin joint. Assume each body is 1 m 
+    // long.
+    auto* j0 = new PinJoint("j0", model.getGround(), Vec3(0, 1, 0), Vec3(0),
+        *b0, Vec3(-1, 0, 0), Vec3(0));
+    auto& q0 = j0->updCoordinate();
+    q0.setName("q0");
+    model.addJoint(j0);
+
+    auto* actu = new PathActuator();
+    actu->setName("actuator");
+    actu->setOptimalForce(1);
+    actu->addNewPathPoint("point_on_ground", model.getGround(), Vec3(0, 1, 1));
+    actu->addNewPathPoint("point_on_actuator", *b0, Vec3(1, 0, 0));
+    model.addComponent(actu);
+
+    // Add display geometry.
+    Ellipsoid bodyGeometry(0.5, 0.1, 0.1);
+    SimTK::Transform transform(SimTK::Vec3(-0.5, 0, 0));
+    auto* b0Center = new PhysicalOffsetFrame("b0_center", "b0", transform);
+    b0->addComponent(b0Center);
+    b0Center->attachGeometry(bodyGeometry.clone());
+    model.print("pendulum_path_actuator.osim");
+
+    return model;
+}
+
+
+void minimizePendulumPathActuatorControlEffort() {
+    MucoTool muco;
+    muco.setName("minimize_pendulum_path_actuator_control_effort");
+    MucoProblem& mp = muco.updProblem();
+    mp.setModel(createPendulumPathActuatorModel());
+
+    mp.setTimeBounds(0, 1);
+    mp.setStateInfo("j0/q0/value", {-10, 10}, -SimTK::Pi / 2.0, 
+        -SimTK::Pi / 4.0);
+    mp.setStateInfo("j0/q0/speed", {-50, 50}, 0, 0);
+    mp.setControlInfo("actuator", {-1000, 1000});
+
+    MucoControlCost effort;
+    mp.addCost(effort);
+
+    MucoTropterSolver& ms = muco.initSolver();
+    ms.set_num_mesh_points(50);
+    ms.set_verbosity(2);
+    ms.set_optim_solver("ipopt");
+    ms.set_optim_convergence_tolerance(1e-3);
+    //ms.set_optim_ipopt_print_level(5);
+    ms.set_optim_hessian_approximation("exact");
+    ms.setGuess("bounds");
+
+    MucoSolution solution = muco.solve().unseal();
+    solution.write("sandboxJointReaction_minimizeControlEffort.sto");
+    muco.visualize(solution);
+}
+
+void mainPendulumPathActuator() {
+    minimizePendulumPathActuatorControlEffort();
+}
+
+void main() {
+    //mainInvertedPendulum();
+    mainPendulumPathActuator();
+
 }
