@@ -186,17 +186,48 @@ void minimizePendulumPathActuatorControlEffort() {
     ms.set_optim_hessian_approximation("exact");
     ms.setGuess("bounds");
 
-    MucoSolution solution = muco.solve().unseal();
-    solution.write("sandboxJointReaction_minimizeControlEffort.sto");
+    MucoSolution solution = muco.solve();
+    //solution.write("sandboxJointReaction_minimizeControlEffort.sto");
+    muco.visualize(solution);
+}
+
+void minimizePendulumPathActuatorJointReaction() {
+    MucoTool muco;
+    muco.setName("minimize_pendulum_path_actuator_joint_reaction");
+    MucoProblem& mp = muco.updProblem();
+    mp.setModel(createPendulumPathActuatorModel());
+
+    mp.setTimeBounds(0, 1);
+    mp.setStateInfo("j0/q0/value", {-10, 10}, -SimTK::Pi / 2.0,
+        -SimTK::Pi / 4.0);
+    mp.setStateInfo("j0/q0/speed", {-50, 50}, 0, 0);
+    mp.setControlInfo("actuator", {-1000, 1000});
+
+    MucoJointReactionNormCost reaction;
+    reaction.setJointPath("j0");
+    mp.addCost(reaction);
+
+    MucoTropterSolver& ms = muco.initSolver();
+    ms.set_num_mesh_points(50);
+    ms.set_verbosity(2);
+    ms.set_optim_solver("ipopt");
+    ms.set_optim_convergence_tolerance(1e-3);
+    //ms.set_optim_ipopt_print_level(5);
+    ms.set_optim_hessian_approximation("exact");
+    ms.setGuess("bounds");
+
+    MucoSolution solution = muco.solve();
+    //solution.write("sandboxJointReaction_minimizeJointReaction.sto");
     muco.visualize(solution);
 }
 
 void mainPendulumPathActuator() {
     minimizePendulumPathActuatorControlEffort();
+    //minimizePendulumPathActuatorJointReaction();
 }
 
 void main() {
-    //mainInvertedPendulum();
-    mainPendulumPathActuator();
 
+    mainInvertedPendulum();
+    mainPendulumPathActuator();
 }

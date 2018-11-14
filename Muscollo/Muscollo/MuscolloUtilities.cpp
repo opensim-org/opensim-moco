@@ -285,6 +285,30 @@ void OpenSim::prescribeControlsToModel(const MucoIterate& iterate,
     model.addController(controller);
 }
 
+void OpenSim::replaceMusclesWithPathActuators(Model& model) {
+
+    std::vector<Muscle*> musclesToDelete;
+    for (auto& musc : model.updComponentList<Muscle>()) {
+        auto* actu = new PathActuator();
+        actu->updGeometryPath() = musc.getGeometryPath();
+        actu->setOptimalForce(musc.getOptimalForce());
+        actu->setMaxControl(musc.getMinControl());
+        actu->setMaxControl(musc.getMaxControl());
+
+
+        model.addComponent(actu);
+        musclesToDelete.push_back(&musc);
+    }
+
+    for (const auto* musc : musclesToDelete) {
+        int index = model.getForceSet().getIndex(musc, 0);
+        OPENSIM_THROW_IF(index == -1, Exception, "Muscle with name " +
+            musc->getName() + " not found in ForceSet.");
+        model.updForceSet().remove(index);
+    }
+
+}
+
 std::unordered_map<std::string, int>
 OpenSim::createSystemYIndexMap(const Model& model) {
     std::unordered_map<std::string, int> sysYIndices;
