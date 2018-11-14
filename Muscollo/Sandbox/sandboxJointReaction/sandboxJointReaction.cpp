@@ -146,8 +146,8 @@ Model createPendulumPathActuatorModel() {
     auto* actu = new PathActuator();
     actu->setName("actuator");
     actu->setOptimalForce(1);
-    actu->addNewPathPoint("point_on_ground", model.getGround(), Vec3(0, 1, 1));
-    actu->addNewPathPoint("point_on_actuator", *b0, Vec3(1, 0, 0));
+    actu->addNewPathPoint("point_on_ground", model.getGround(), Vec3(0.9, 1, 0));
+    actu->addNewPathPoint("point_on_actuator", *b0, Vec3(0));
     model.addComponent(actu);
 
     // Add display geometry.
