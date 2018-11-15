@@ -77,7 +77,8 @@ OSIMMUSCOLLO_API void visualize(Model, TimeSeriesTable);
 OSIMMUSCOLLO_API void prescribeControlsToModel(const MucoIterate& iterate, 
     Model& model);
 
-/// Replace all muscles in a model with a PathActuator of the same Geometry
+/// Replace all muscles in a model with a PathActuator of the same GeometryPath,
+/// optimal force, and min/max control defaults.
 OSIMMUSCOLLO_API void replaceMusclesWithPathActuators(Model& model); 
 
 #ifndef SWIG

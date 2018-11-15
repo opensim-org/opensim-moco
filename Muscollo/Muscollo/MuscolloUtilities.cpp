@@ -287,6 +287,8 @@ void OpenSim::prescribeControlsToModel(const MucoIterate& iterate,
 
 void OpenSim::replaceMusclesWithPathActuators(Model& model) {
 
+    // Create path actuators from muscle properties and add to the model. Save
+    // a list of pointers of the muscles to delete.
     std::vector<Muscle*> musclesToDelete;
     for (auto& musc : model.updComponentList<Muscle>()) {
         auto* actu = new PathActuator();
@@ -295,18 +297,17 @@ void OpenSim::replaceMusclesWithPathActuators(Model& model) {
         actu->setMaxControl(musc.getMinControl());
         actu->setMaxControl(musc.getMaxControl());
 
-
         model.addComponent(actu);
         musclesToDelete.push_back(&musc);
     }
 
+    // Delete the muscles.
     for (const auto* musc : musclesToDelete) {
         int index = model.getForceSet().getIndex(musc, 0);
         OPENSIM_THROW_IF(index == -1, Exception, "Muscle with name " +
             musc->getName() + " not found in ForceSet.");
         model.updForceSet().remove(index);
     }
-
 }
 
 std::unordered_map<std::string, int>
