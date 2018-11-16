@@ -56,6 +56,7 @@ void MucoStateTrackingCost::initializeImpl() const {
     if (tableToUse.hasTableMetaDataKey("inDegrees") &&
         tableToUse.getTableMetaDataAsString("inDegrees") == "yes") {
         getModel().getSimbodyEngine().convertDegreesToRadians(tableToUse);
+
     }
     auto allSplines = GCVSplineSet(tableToUse);
 

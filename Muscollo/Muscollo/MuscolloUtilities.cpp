@@ -292,12 +292,32 @@ void OpenSim::replaceMusclesWithPathActuators(Model& model) {
     std::vector<Muscle*> musclesToDelete;
     for (auto& musc : model.updComponentList<Muscle>()) {
         auto* actu = new PathActuator();
+        actu->setName(musc.getName());
+        musc.setName(musc.getName() + "_delete");
         actu->updGeometryPath() = musc.getGeometryPath();
         actu->setOptimalForce(musc.getOptimalForce());
-        actu->setMaxControl(musc.getMinControl());
+        actu->setMinControl(musc.getMinControl());
         actu->setMaxControl(musc.getMaxControl());
 
         model.addComponent(actu);
+        musclesToDelete.push_back(&musc);
+    }
+
+    // Delete the muscles.
+    for (const auto* musc : musclesToDelete) {
+        int index = model.getForceSet().getIndex(musc, 0);
+        OPENSIM_THROW_IF(index == -1, Exception, "Muscle with name " +
+            musc->getName() + " not found in ForceSet.");
+        model.updForceSet().remove(index);
+    }
+}
+
+void OpenSim::removeMuscles(Model& model) {
+
+    // Create path actuators from muscle properties and add to the model. Save
+    // a list of pointers of the muscles to delete.
+    std::vector<Muscle*> musclesToDelete;
+    for (auto& musc : model.updComponentList<Muscle>()) {
         musclesToDelete.push_back(&musc);
     }
 

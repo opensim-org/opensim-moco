@@ -81,6 +81,8 @@ OSIMMUSCOLLO_API void prescribeControlsToModel(const MucoIterate& iterate,
 /// optimal force, and min/max control defaults.
 OSIMMUSCOLLO_API void replaceMusclesWithPathActuators(Model& model); 
 
+OSIMMUSCOLLO_API void removeMuscles(Model& model);
+
 #ifndef SWIG
 /// The map provides the index of each state variable in
 /// SimTK::State::getY() from its state variable path string.

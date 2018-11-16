@@ -23,6 +23,7 @@
 
 #include <OpenSim/Common/TimeSeriesTable.h>
 #include <OpenSim/Common/GCVSplineSet.h>
+#include <OpenSim/Common/GCVSpline.h>
 
 namespace OpenSim {
 
