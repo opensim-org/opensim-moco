@@ -36,7 +36,7 @@ Model createInvertedPendulumModel() {
     // Create one link with a mass of 1 kg, center of mass at the body's
     // origin, and moments and products of inertia of zero.
     auto* b0 = new OpenSim::Body("b0", 1, Vec3(0), Inertia(1));
-    model.addBody(b0);
+    model.addComponent(b0);
 
     // Connect the body to ground with a pin joint. Assume each body is 1 m 
     // long.
@@ -44,7 +44,7 @@ Model createInvertedPendulumModel() {
         *b0, Vec3(-1, 0, 0), Vec3(0));
     auto& q0 = j0->updCoordinate();
     q0.setName("q0");
-    model.addJoint(j0);
+    model.addComponent(j0);
 
     auto* tau0 = new CoordinateActuator();
     tau0->setCoordinate(&j0->updCoordinate());
@@ -55,9 +55,12 @@ Model createInvertedPendulumModel() {
     // Add display geometry.
     Ellipsoid bodyGeometry(0.5, 0.1, 0.1);
     SimTK::Transform transform(SimTK::Vec3(-0.5, 0, 0));
-    auto* b0Center = new PhysicalOffsetFrame("b0_center", "b0", transform);
+    auto* b0Center = new PhysicalOffsetFrame("b0_center", "/b0", transform);
     b0->addComponent(b0Center);
     b0Center->attachGeometry(bodyGeometry.clone());
+
+    model.finalizeConnections();
+    model.printSubcomponentInfo();
 
     return model;
 }
@@ -98,9 +101,9 @@ void minimizeControlEffortInvertedPendulum() {
     mp.setModel(createInvertedPendulumModel());
 
     mp.setTimeBounds(0, 1);
-    mp.setStateInfo("j0/q0/value", {-10, 10}, 0, SimTK::Pi);
-    mp.setStateInfo("j0/q0/speed", {-50, 50}, 0, 0);
-    mp.setControlInfo("tau0", {-100, 100});
+    mp.setStateInfo("/j0/q0/value", {-10, 10}, 0, SimTK::Pi);
+    mp.setStateInfo("/j0/q0/speed", {-50, 50}, 0, 0);
+    mp.setControlInfo("/tau0", {-100, 100});
 
     MucoControlCost effort;
     mp.addCost(effort);
@@ -218,8 +221,8 @@ void minimizeJointReactionPendulumPathActuator() {
 void main() {
 
     minimizeControlEffortInvertedPendulum();
-    minimizeReactionLoadsInvertedPendulum();
-    minimizeControlEffortPendulumPathActuator();
-    minimizeJointReactionPendulumPathActuator();
+    //minimizeReactionLoadsInvertedPendulum();
+    //minimizeControlEffortPendulumPathActuator();
+    //minimizeJointReactionPendulumPathActuator();
 
 }

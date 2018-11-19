@@ -118,6 +118,9 @@ void stateTrackingLeg39Welded() {
     model.updJointSet().remove(&subtalar_r);
     const auto& talus_r = model.getBodySet().get("talus_r");
     const auto& calcn_r = model.getBodySet().get("calcn_r");
+    //const auto& talus_r_offset = subtalar_r.getConnectee("talus_r_offset");
+
+
     auto* subtalar_r_weld = new WeldJoint("subtalar_r", talus_r, calcn_r);
     model.addJoint(subtalar_r_weld);
 
@@ -129,14 +132,14 @@ void stateTrackingLeg39Welded() {
     model.addJoint(mtp_r_weld);
 
     // Remove muscles and add coordinate actuators
-    addCoordinateActuator(model, "hip_angle_r", 1000);
-    addCoordinateActuator(model, "knee_angle_r", 1000);
-    addCoordinateActuator(model, "ankle_angle_r", 1000);
-    addCoordinateActuator(model, "tib_tx_r", 10000);
-    addCoordinateActuator(model, "tib_ty_r", 10000);
-    addCoordinateActuator(model, "pat_angle_r", 1000);
-    addCoordinateActuator(model, "pat_tx_r", 10000);
-    addCoordinateActuator(model, "pat_ty_r", 10000);
+    addCoordinateActuator(model, "hip_angle_r", 50);
+    addCoordinateActuator(model, "knee_angle_r", 50);
+    addCoordinateActuator(model, "ankle_angle_r", 10);
+    addCoordinateActuator(model, "tib_tx_r", 50);
+    addCoordinateActuator(model, "tib_ty_r", 250);
+    addCoordinateActuator(model, "pat_angle_r", 10);
+    addCoordinateActuator(model, "pat_tx_r", 50);
+    addCoordinateActuator(model, "pat_ty_r", 50);
     removeMuscles(model);
 
     // Finalize model and print.
@@ -161,10 +164,10 @@ void stateTrackingLeg39Welded() {
     stateTracking.setAllowUnusedReferences(true);
     mp.addCost(stateTracking);
 
-    MucoControlCost controlEffort;
-    controlEffort.setName("control_effort");
-    controlEffort.set_weight(0.1);
-    mp.addCost(controlEffort);
+    //MucoControlCost controlEffort;
+    //controlEffort.setName("control_effort");
+    //controlEffort.set_weight(0.1);
+    //mp.addCost(controlEffort);
 
     MucoTropterSolver& ms = muco.initSolver();
     ms.set_num_mesh_points(50);
