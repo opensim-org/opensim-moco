@@ -25,14 +25,13 @@
 
 
 using namespace OpenSim;
+using SimTK::Vec3;
+using SimTK::Inertia;
 
 /// This model is torque-actuated.
 Model createInvertedPendulumModel() {
     Model model;
     model.setName("inverted_pendulum");
-
-    using SimTK::Vec3;
-    using SimTK::Inertia;
 
     // Create one link with a mass of 1 kg, center of mass at the body's
     // origin, and moments and products of inertia of zero.
@@ -125,9 +124,6 @@ Model createPendulumPathActuatorModel() {
     Model model;
     model.setName("pendulum_path_actuator");
 
-    using SimTK::Vec3;
-    using SimTK::Inertia;
-
     // Create one link with a mass of 1 kg, center of mass at the body's
     // origin, and moments and products of inertia of zero.
     auto* b0 = new OpenSim::Body("b0", 1, Vec3(0), Inertia(1));
@@ -219,105 +215,11 @@ void minimizeJointReactionPendulumPathActuator() {
     muco.visualize(solution);
 }
 
-/// Convenience function to apply an CoordinateActuator to the model.
-void addCoordinateActuator(Model& model, std::string coordName,
-    double optimalForce) {
-
-    auto& coordSet = model.updCoordinateSet();
-
-    auto* actu = new CoordinateActuator();
-    actu->setName("tau_" + coordName);
-    actu->setCoordinate(&coordSet.get(coordName));
-    actu->setOptimalForce(optimalForce);
-    actu->setMinControl(-1);
-    actu->setMaxControl(1);
-    model.addComponent(actu);
-}
-
-void minimizeControlEffortLeg39() {
-    MucoTool muco;
-    muco.setName("minimize_control_effort_leg39");
-    MucoProblem& mp = muco.updProblem();
-    Model model("Leg39.osim");
-    addCoordinateActuator(model, "pelvis_tilt", 100);
-    addCoordinateActuator(model, "pelvis_tx", 1000);
-    addCoordinateActuator(model, "pelvis_ty", 1000);
-    addCoordinateActuator(model, "pelvis_tz", 1000);
-    addCoordinateActuator(model, "hip_angle_r", 100);
-    addCoordinateActuator(model, "knee_angle_r", 100);
-    addCoordinateActuator(model, "ankle_angle_r", 100);
-    addCoordinateActuator(model, "mtp_angle_r", 50);
-    addCoordinateActuator(model, "subtalar_angle_r", 50);
-
-    removeMuscles(model);
-    
-    model.finalizeFromProperties();
-    model.print("Leg39_pathact.osim");
-    mp.setModel(model);
-
-    auto markersRef = TRCFileAdapter::read("leg39_swing.trc");
-    auto time = markersRef.getIndependentColumn();
-    mp.setTimeBounds(0, time.back());
-
-    //MucoControlCost effort;
-    //effort.setName("control_effort");
-    //effort.set_weight(0.1);
-    //mp.addCost(effort);
-
-    MucoStateTrackingCost stateTracking;
-    auto statesRef = STOFileAdapter::read("Leg39_swing_IK_results.sto");
-    stateTracking.setReference(statesRef);
-    //stateTracking.set_weight(10);
-    stateTracking.setWeight("knee_r/knee_angle_r/value", 10);
-    stateTracking.setWeight("knee_r/tib_tx_r/value", 0);
-    stateTracking.setWeight("knee_r/tib_ty_r/value", 0);
-    stateTracking.setWeight("tib_pat_r/pat_angle_r/value", 0);
-    stateTracking.setWeight("tib_pat_r/pat_tx_r/value", 0);
-    stateTracking.setWeight("tib_pat_r/pat_ty_r/value", 0);
-
-    mp.addCost(stateTracking);
-
-    //MucoMarkerTrackingCost markerTracking;
-    //markerTracking.setName("marker_tracking");
-    //InverseKinematicsTool iktool("leg39_swing_IK_Setup.xml");
-    //IKTaskSet& tasks = iktool.getIKTaskSet();
-    //Set<MarkerWeight> markerWeights;
-    //tasks.createMarkerWeightSet(markerWeights);
-    //markerTracking.setMarkersReference(MarkersReference(markersRef, 
-    //    &markerWeights));
-    //markerTracking.setAllowUnusedReferences(true);
-    //mp.addCost(markerTracking);
-
-    MucoTropterSolver& ms = muco.initSolver();
-    ms.set_num_mesh_points(10);
-    ms.set_verbosity(2);
-    ms.set_optim_solver("ipopt");
-    ms.set_optim_convergence_tolerance(1e-3);
-    //ms.set_optim_ipopt_print_level(5);
-    ms.set_optim_hessian_approximation("exact");
-    //ms.set_multiplier_weight(1.0);
-
-    MucoIterate guess = ms.createGuess();
-    model.initSystem();
-    model.getSimbodyEngine().convertDegreesToRadians(statesRef);
-    STOFileAdapter::write(statesRef, "Leg39_swing_IK_results_radians.sto");
-    guess.setStatesTrajectory(statesRef, true, true);
-    ms.setGuess(guess);
-
-
-
-    MucoSolution solution = muco.solve();
-    
-    //solution.write("sandboxJointReaction_minimizeJointReaction.sto");
-    muco.visualize(solution);
-}
-
 void main() {
 
-    //minimizeControlEffortInvertedPendulum();
-    //minimizeReactionLoadsInvertedPendulum();
-    //minimizeControlEffortPendulumPathActuator();
-    //minimizeJointReactionPendulumPathActuator();
-    minimizeControlEffortLeg39();
+    minimizeControlEffortInvertedPendulum();
+    minimizeReactionLoadsInvertedPendulum();
+    minimizeControlEffortPendulumPathActuator();
+    minimizeJointReactionPendulumPathActuator();
 
 }
