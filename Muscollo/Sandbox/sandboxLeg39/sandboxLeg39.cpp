@@ -42,36 +42,145 @@ void addCoordinateActuator(Model& model, std::string coordName,
     model.addComponent(actu);
 }
 
-void minimizeControlEffortLeg39Welded() {
-    MucoTool muco;
-    muco.setName("minimize_control_effort_leg39welded");
-    MucoProblem& mp = muco.updProblem();
+Model createWeldedLeg39Model(const std::string& actuatorType) {
     Model model("Leg39.osim");
+    model.finalizeConnections(); // need this here to access offset frames
 
     // Remove ground_pelvis joint and replace with weld
     auto& ground_pelvis = model.updJointSet().get("ground_pelvis");
     model.updJointSet().remove(&ground_pelvis);
     const auto& pelvis = model.getBodySet().get("pelvis");
-    auto* gpWeld = new WeldJoint("ground_pelvis", model.getGround(),
+    auto* ground_pelvis_weld = new WeldJoint("ground_pelvis", model.getGround(),
         Vec3(0, 1.2, 0), Vec3(0), pelvis, Vec3(0), Vec3(0));
-    model.addJoint(gpWeld);
+    model.addJoint(ground_pelvis_weld);
 
-    // Remove muscles and add coordinate actuators
-    addCoordinateActuator(model, "hip_angle_r", 100);
-    addCoordinateActuator(model, "knee_angle_r", 100);
-    addCoordinateActuator(model, "ankle_angle_r", 100);
-    addCoordinateActuator(model, "tib_tx_r", 100);
-    addCoordinateActuator(model, "tib_ty_r", 100);
-    addCoordinateActuator(model, "pat_angle_r", 100);
-    addCoordinateActuator(model, "pat_tx_r", 100);
-    addCoordinateActuator(model, "pat_ty_r", 100);
-    removeMuscles(model);
+    // Remove subtalar joint and replace with weld
+    auto& subtalar_r = model.updJointSet().get("subtalar_r");
+    PhysicalOffsetFrame* talus_r_offset_subtalar_r
+        = PhysicalOffsetFrame().safeDownCast(subtalar_r.getParentFrame().clone());
+    PhysicalOffsetFrame* calcn_r_offset_subtalar_r
+        = PhysicalOffsetFrame().safeDownCast(subtalar_r.getChildFrame().clone());
+    model.updJointSet().remove(&subtalar_r);
+    auto* subtalar_r_weld = new WeldJoint("subtalar_r",
+        model.getBodySet().get("talus_r"),
+        talus_r_offset_subtalar_r->get_translation(),
+        talus_r_offset_subtalar_r->get_orientation(),
+        model.getBodySet().get("calcn_r"),
+        calcn_r_offset_subtalar_r->get_translation(),
+        calcn_r_offset_subtalar_r->get_orientation());
+    model.addJoint(subtalar_r_weld);
+
+    // Remove mtp joint and replace with weld
+    auto& mtp_r = model.updJointSet().get("mtp_r");
+    PhysicalOffsetFrame* calcn_r_offset_mtp_r
+        = PhysicalOffsetFrame().safeDownCast(mtp_r.getParentFrame().clone());
+    PhysicalOffsetFrame* toes_r_offset_mtp_r
+        = PhysicalOffsetFrame().safeDownCast(mtp_r.getChildFrame().clone());
+    model.updJointSet().remove(&mtp_r);
+    auto* mtp_r_weld = new WeldJoint("mtp_r",
+        model.getBodySet().get("calcn_r"),
+        calcn_r_offset_mtp_r->get_translation(),
+        calcn_r_offset_mtp_r->get_orientation(),
+        model.getBodySet().get("toes_r"),
+        toes_r_offset_mtp_r->get_translation(),
+        toes_r_offset_mtp_r->get_orientation());
+    model.addJoint(mtp_r_weld);
+
+
+    if (actuatorType == "torques") { 
+        // Remove muscles and add coordinate actuators
+        addCoordinateActuator(model, "hip_angle_r", 20);
+        addCoordinateActuator(model, "knee_angle_r", 20);
+        addCoordinateActuator(model, "ankle_angle_r", 5);
+        addCoordinateActuator(model, "tib_tx_r", 35);
+        addCoordinateActuator(model, "tib_ty_r", 150);
+        addCoordinateActuator(model, "pat_angle_r", 5);
+        addCoordinateActuator(model, "pat_tx_r", 5);
+        addCoordinateActuator(model, "pat_ty_r", 5);
+        removeMuscles(model);
+    } else {
+        OPENSIM_THROW(Exception, "Invalid actuator type");
+    }
 
     // Finalize model and print.
+    model.finalizeFromProperties();
     model.finalizeConnections();
-    model.print("Leg39_welded.osim");
-    model.printSubcomponentInfo();
-    mp.setModel(model);
+    model.print("WeldedLeg39_" + actuatorType + ".osim");
+
+    return model;
+}
+
+Model createLeg39Model(const std::string& actuatorType) {
+    Model model("Leg39.osim");
+    model.finalizeConnections(); // need this here to access offset frames
+
+    // Remove subtalar joint and replace with weld
+    auto& subtalar_r = model.updJointSet().get("subtalar_r");
+    PhysicalOffsetFrame* talus_r_offset_subtalar_r
+        = PhysicalOffsetFrame().safeDownCast(subtalar_r.getParentFrame().clone());
+    PhysicalOffsetFrame* calcn_r_offset_subtalar_r
+        = PhysicalOffsetFrame().safeDownCast(subtalar_r.getChildFrame().clone());
+    model.updJointSet().remove(&subtalar_r);
+    auto* subtalar_r_weld = new WeldJoint("subtalar_r",
+        model.getBodySet().get("talus_r"),
+        talus_r_offset_subtalar_r->get_translation(),
+        talus_r_offset_subtalar_r->get_orientation(),
+        model.getBodySet().get("calcn_r"),
+        calcn_r_offset_subtalar_r->get_translation(),
+        calcn_r_offset_subtalar_r->get_orientation());
+    model.addJoint(subtalar_r_weld);
+
+    // Remove mtp joint and replace with weld
+    auto& mtp_r = model.updJointSet().get("mtp_r");
+    PhysicalOffsetFrame* calcn_r_offset_mtp_r
+        = PhysicalOffsetFrame().safeDownCast(mtp_r.getParentFrame().clone());
+    PhysicalOffsetFrame* toes_r_offset_mtp_r
+        = PhysicalOffsetFrame().safeDownCast(mtp_r.getChildFrame().clone());
+    model.updJointSet().remove(&mtp_r);
+    auto* mtp_r_weld = new WeldJoint("mtp_r",
+        model.getBodySet().get("calcn_r"),
+        calcn_r_offset_mtp_r->get_translation(),
+        calcn_r_offset_mtp_r->get_orientation(),
+        model.getBodySet().get("toes_r"),
+        toes_r_offset_mtp_r->get_translation(),
+        toes_r_offset_mtp_r->get_orientation());
+    model.addJoint(mtp_r_weld);
+
+
+    if (actuatorType == "torques") {
+        // Remove muscles and add coordinate actuators
+        addCoordinateActuator(model, "pelvis_tx", 500);
+        addCoordinateActuator(model, "pelvis_ty", 500);
+        addCoordinateActuator(model, "pelvis_tz", 500);
+        addCoordinateActuator(model, "pelvis_tilt", 25);
+        addCoordinateActuator(model, "hip_angle_r", 20);
+        addCoordinateActuator(model, "knee_angle_r", 20);
+        addCoordinateActuator(model, "ankle_angle_r", 5);
+        addCoordinateActuator(model, "tib_tx_r", 35);
+        addCoordinateActuator(model, "tib_ty_r", 150);
+        addCoordinateActuator(model, "pat_angle_r", 5);
+        addCoordinateActuator(model, "pat_tx_r", 5);
+        addCoordinateActuator(model, "pat_ty_r", 5);
+        removeMuscles(model);
+    }
+    else {
+        OPENSIM_THROW(Exception, "Invalid actuator type");
+    }
+
+    // Finalize model and print.
+    model.finalizeFromProperties();
+    model.finalizeConnections();
+    model.print("Leg39_" + actuatorType + ".osim");
+
+    return model;
+}
+
+void minimizeControlEffortWeldedLeg39(const std::string& actuatorType) {
+    MucoTool muco;
+    muco.setName("sandboxLeg39_welded_" + actuatorType + 
+        "_minimize_control_effort");
+    MucoProblem& mp = muco.updProblem();
+    mp.setModel(createWeldedLeg39Model(actuatorType));
 
     // Set bounds.
     mp.setTimeBounds(0, 1);
@@ -92,60 +201,18 @@ void minimizeControlEffortLeg39Welded() {
     ms.set_optim_convergence_tolerance(1e-6);
     ms.set_optim_hessian_approximation("exact");
     ms.set_multiplier_weight(1.0);
-    ms.setGuessFile("minimize_control_effort_leg39welded_solution.sto");
+    ms.setGuess("bounds");
 
     MucoSolution solution = muco.solve();
-    //solution.write("sandboxJointReaction_minimizeJointReaction.sto");
     muco.visualize(solution);
 }
 
-void stateTrackingLeg39Welded() {
+void stateTrackingWeldedLeg39(const std::string& actuatorType) {
     MucoTool muco;
-    muco.setName("state_tracking_leg39welded");
+    muco.setName("sandboxLeg39_welded_" + actuatorType +
+        "_state_tracking");
     MucoProblem& mp = muco.updProblem();
-    Model model("Leg39.osim");
-
-    // Remove ground_pelvis joint and replace with weld
-    auto& ground_pelvis = model.updJointSet().get("ground_pelvis");
-    model.updJointSet().remove(&ground_pelvis);
-    const auto& pelvis = model.getBodySet().get("pelvis");
-    auto* ground_pelvis_weld = new WeldJoint("ground_pelvis", model.getGround(),
-        Vec3(0, 1.2, 0), Vec3(0), pelvis, Vec3(0), Vec3(0));
-    model.addJoint(ground_pelvis_weld);
-
-    // Remove subtalar joint and replace with weld
-    auto& subtalar_r = model.getJointSet().get("subtalar_r");
-    model.updJointSet().remove(&subtalar_r);
-    const auto& talus_r = model.getBodySet().get("talus_r");
-    const auto& calcn_r = model.getBodySet().get("calcn_r");
-    //const auto& talus_r_offset = subtalar_r.getConnectee("talus_r_offset");
-
-
-    auto* subtalar_r_weld = new WeldJoint("subtalar_r", talus_r, calcn_r);
-    model.addJoint(subtalar_r_weld);
-
-    // Remove mtp joint and replace with weld
-    auto& mtp_r = model.updJointSet().get("mtp_r");
-    model.updJointSet().remove(&mtp_r);
-    const auto& toes_r = model.getBodySet().get("toes_r");
-    auto* mtp_r_weld = new WeldJoint("mtp_r", calcn_r, toes_r);
-    model.addJoint(mtp_r_weld);
-
-    // Remove muscles and add coordinate actuators
-    addCoordinateActuator(model, "hip_angle_r", 50);
-    addCoordinateActuator(model, "knee_angle_r", 50);
-    addCoordinateActuator(model, "ankle_angle_r", 10);
-    addCoordinateActuator(model, "tib_tx_r", 50);
-    addCoordinateActuator(model, "tib_ty_r", 250);
-    addCoordinateActuator(model, "pat_angle_r", 10);
-    addCoordinateActuator(model, "pat_tx_r", 50);
-    addCoordinateActuator(model, "pat_ty_r", 50);
-    removeMuscles(model);
-
-    // Finalize model and print.
-    model.finalizeConnections();
-    model.print("Leg39_welded.osim");
-    model.printSubcomponentInfo();
+    Model model = createWeldedLeg39Model(actuatorType);
     mp.setModel(model);
 
     auto markersRef = TRCFileAdapter::read("leg39_swing.trc");
@@ -164,16 +231,11 @@ void stateTrackingLeg39Welded() {
     stateTracking.setAllowUnusedReferences(true);
     mp.addCost(stateTracking);
 
-    //MucoControlCost controlEffort;
-    //controlEffort.setName("control_effort");
-    //controlEffort.set_weight(0.1);
-    //mp.addCost(controlEffort);
-
     MucoTropterSolver& ms = muco.initSolver();
     ms.set_num_mesh_points(50);
     ms.set_verbosity(2);
     ms.set_optim_solver("ipopt");
-    ms.set_optim_convergence_tolerance(1e-4);
+    ms.set_optim_convergence_tolerance(1e-6);
     ms.set_optim_hessian_approximation("exact");
 
     MucoIterate guess = ms.createGuess();
@@ -187,89 +249,48 @@ void stateTrackingLeg39Welded() {
     muco.visualize(solution);
 }
 
-//void markerTrackingLeg39Welded() {
-//    MucoTool muco;
-//    muco.setName("minimize_control_effort_leg39welded");
-//    MucoProblem& mp = muco.updProblem();
-//    Model model("Leg39.osim");
-//
-//    // Remove ground_pelvis joint and replace with weld
-//    auto& ground_pelvis = model.updJointSet().get("ground_pelvis");
-//    model.updJointSet().remove(&ground_pelvis);
-//    const auto& pelvis = model.getBodySet().get("pelvis");
-//    auto* gpWeld = new WeldJoint("ground_pelvis", model.getGround(),
-//        Vec3(0, 1.2, 0), Vec3(0), pelvis, Vec3(0), Vec3(0));
-//    model.addJoint(gpWeld);
-//
-//    // Remove muscles and add coordinate actuators
-//    addCoordinateActuator(model, "hip_angle_r", 100);
-//    addCoordinateActuator(model, "knee_angle_r", 100);
-//    addCoordinateActuator(model, "ankle_angle_r", 100);
-//    addCoordinateActuator(model, "tib_tx_r", 100);
-//    addCoordinateActuator(model, "tib_ty_r", 100);
-//    addCoordinateActuator(model, "pat_angle_r", 100);
-//    addCoordinateActuator(model, "pat_tx_r", 100);
-//    addCoordinateActuator(model, "pat_ty_r", 100);
-//    removeMuscles(model);
-//
-//    // Finalize model and print.
-//    model.finalizeConnections();
-//    model.print("Leg39_welded.osim");
-//    model.printSubcomponentInfo();
-//    mp.setModel(model);
-//
-//    auto markersRef = TRCFileAdapter::read("leg39_swing.trc");
-//    auto time = markersRef.getIndependentColumn();
-//    mp.setTimeBounds(0, time.back());
-//    //mp.setStateInfo("/jointset/ground_pelvis/pelvis_ty/value", {-1.15, -1.10});
-//    //mp.setStateInfo("/jointset/ground_pelvis/pelvis_tx/value", {-0.05, 0});
-//
-//    MucoStateTrackingCost stateTracking;
-//    auto statesRef = STOFileAdapter::read("Leg39_swing_IK_results.sto");
-//    stateTracking.setReference(statesRef);
-//    stateTracking.setWeight("/jointset/knee_r/tib_tx_r/value", 0);
-//    stateTracking.setWeight("/jointset/knee_r/tib_ty_r/value", 0);
-//    stateTracking.setWeight("/jointset/tib_pat_r/pat_angle_r/value", 0);
-//    stateTracking.setWeight("/jointset/tib_pat_r/pat_tx_r/value", 0);
-//    stateTracking.setWeight("/jointset/tib_pat_r/pat_ty_r/value", 0);
-//    stateTracking.setWeight("/jointset/mtp_r/mtp_angle_r/value", 0);
-//    stateTracking.setWeight("/jointset/subtalar_r/subtalar_angle_r/value", 0);
-//    stateTracking.setAllowUnusedReferences(true);
-//
-//    mp.addCost(stateTracking);
-//
-//    //MucoMarkerTrackingCost markerTracking;
-//    //markerTracking.setName("marker_tracking");
-//    //InverseKinematicsTool iktool("leg39_swing_IK_Setup.xml");
-//    //IKTaskSet& tasks = iktool.getIKTaskSet();
-//    //Set<MarkerWeight> markerWeights;
-//    //tasks.createMarkerWeightSet(markerWeights);
-//    //markerTracking.setMarkersReference(MarkersReference(markersRef, 
-//    //    &markerWeights));
-//    //markerTracking.setAllowUnusedReferences(true);
-//    //mp.addCost(markerTracking);
-//
-//    MucoTropterSolver& ms = muco.initSolver();
-//    ms.set_num_mesh_points(25);
-//    ms.set_verbosity(2);
-//    ms.set_optim_solver("ipopt");
-//    ms.set_optim_convergence_tolerance(1e-4);
-//    ms.set_optim_hessian_approximation("exact");
-//
-//    MucoIterate guess = ms.createGuess();
-//    model.initSystem();
-//    model.getSimbodyEngine().convertDegreesToRadians(statesRef);
-//    STOFileAdapter::write(statesRef, "Leg39_swing_IK_results_radians.sto");
-//    guess.setStatesTrajectory(statesRef, true, true);
-//    ms.setGuess(guess);
-//
-//    MucoSolution solution = muco.solve();
-//    //solution.write("sandboxJointReaction_minimizeJointReaction.sto");
-//    muco.visualize(solution);
-//}
+void markerTrackingLeg39(const std::string& actuatorType) {
+    MucoTool muco;
+    muco.setName("sandboxLeg39_" + actuatorType +
+        "_marker_tracking");
+    MucoProblem& mp = muco.updProblem();
+    Model model = createLeg39Model(actuatorType);
+    mp.setModel(model);
+
+    auto markersRef = TRCFileAdapter::read("leg39_swing.trc");
+    auto time = markersRef.getIndependentColumn();
+    mp.setTimeBounds(0, time.back());
+
+    MucoMarkerTrackingCost markerTracking;
+    markerTracking.setName("marker_tracking");
+    InverseKinematicsTool iktool("leg39_swing_IK_Setup.xml");
+    IKTaskSet& tasks = iktool.getIKTaskSet();
+    Set<MarkerWeight> markerWeights;
+    tasks.createMarkerWeightSet(markerWeights);
+    markerTracking.setMarkersReference(MarkersReference(markersRef, 
+        &markerWeights));
+    markerTracking.setAllowUnusedReferences(true);
+    mp.addCost(markerTracking);
+
+    MucoTropterSolver& ms = muco.initSolver();
+    ms.set_num_mesh_points(10);
+    ms.set_verbosity(2);
+    ms.set_optim_solver("ipopt");
+    ms.set_optim_convergence_tolerance(1e-2);
+    ms.set_optim_hessian_approximation("exact");
+
+    MucoIterate guess = ms.createGuess();
+    guess.setStatesTrajectory(
+        STOFileAdapter::read("Leg39_swing_IK_results_radians.sto"), true, true);
+    ms.setGuess(guess);
+
+    MucoSolution solution = muco.solve();
+    muco.visualize(solution);
+}
 
 void main() {
 
-    //minimizeControlEffortLeg39Welded();
-    stateTrackingLeg39Welded();
+    //minimizeControlEffortWeldedLeg39("torques");
+    //stateTrackingWeldedLeg39("torques");
+    markerTrackingLeg39("torques");
 }
