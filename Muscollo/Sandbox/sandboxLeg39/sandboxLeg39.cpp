@@ -86,18 +86,19 @@ Model createWeldedLeg39Model(const std::string& actuatorType) {
         toes_r_offset_mtp_r->get_orientation());
     model.addJoint(mtp_r_weld);
 
-
     if (actuatorType == "torques") { 
         // Remove muscles and add coordinate actuators
         addCoordinateActuator(model, "hip_angle_r", 20);
         addCoordinateActuator(model, "knee_angle_r", 20);
         addCoordinateActuator(model, "ankle_angle_r", 5);
-        addCoordinateActuator(model, "tib_tx_r", 35);
-        addCoordinateActuator(model, "tib_ty_r", 150);
-        addCoordinateActuator(model, "pat_angle_r", 5);
-        addCoordinateActuator(model, "pat_tx_r", 5);
-        addCoordinateActuator(model, "pat_ty_r", 5);
+        //addCoordinateActuator(model, "tib_tx_r", 35);
+        //addCoordinateActuator(model, "tib_ty_r", 150);
+        //addCoordinateActuator(model, "pat_angle_r", 5);
+        //addCoordinateActuator(model, "pat_tx_r", 5);
+        //addCoordinateActuator(model, "pat_ty_r", 5);
         removeMuscles(model);
+    } else if (actuatorType == "path_actuators") {
+        replaceMusclesWithPathActuators(model);
     } else {
         OPENSIM_THROW(Exception, "Invalid actuator type");
     }
@@ -146,13 +147,12 @@ Model createLeg39Model(const std::string& actuatorType) {
         toes_r_offset_mtp_r->get_orientation());
     model.addJoint(mtp_r_weld);
 
-
+    addCoordinateActuator(model, "pelvis_tx", 1000);
+    addCoordinateActuator(model, "pelvis_ty", 1000);
+    addCoordinateActuator(model, "pelvis_tz", 1000);
+    addCoordinateActuator(model, "pelvis_tilt", 50);
     if (actuatorType == "torques") {
         // Remove muscles and add coordinate actuators
-        addCoordinateActuator(model, "pelvis_tx", 1000);
-        addCoordinateActuator(model, "pelvis_ty", 1000);
-        addCoordinateActuator(model, "pelvis_tz", 1000);
-        addCoordinateActuator(model, "pelvis_tilt", 50);
         addCoordinateActuator(model, "hip_angle_r", 20);
         addCoordinateActuator(model, "knee_angle_r", 20);
         addCoordinateActuator(model, "ankle_angle_r", 5);
@@ -162,8 +162,9 @@ Model createLeg39Model(const std::string& actuatorType) {
         addCoordinateActuator(model, "pat_tx_r", 5);
         addCoordinateActuator(model, "pat_ty_r", 5);
         removeMuscles(model);
-    }
-    else {
+    } else if (actuatorType == "path_actuators") {
+        replaceMusclesWithPathActuators(model);
+    } else {
         OPENSIM_THROW(Exception, "Invalid actuator type");
     }
 
@@ -195,12 +196,12 @@ void minimizeControlEffortWeldedLeg39(const std::string& actuatorType) {
     mp.addCost(effort);
 
     MucoTropterSolver& ms = muco.initSolver();
-    ms.set_num_mesh_points(50);
+    ms.set_num_mesh_points(25);
     ms.set_verbosity(2);
     ms.set_optim_solver("ipopt");
-    ms.set_optim_convergence_tolerance(1e-6);
+    ms.set_optim_convergence_tolerance(1e-1);
     ms.set_optim_hessian_approximation("exact");
-    ms.set_multiplier_weight(1.0);
+    //ms.set_multiplier_weight(0);
     ms.setGuess("bounds");
 
     MucoSolution solution = muco.solve();
@@ -273,7 +274,7 @@ void markerTrackingLeg39(const std::string& actuatorType) {
     mp.addCost(markerTracking);
 
     MucoTropterSolver& ms = muco.initSolver();
-    ms.set_num_mesh_points(50);
+    ms.set_num_mesh_points(75);
     ms.set_verbosity(2);
     ms.set_optim_solver("ipopt");
     ms.set_optim_convergence_tolerance(1e-3);
@@ -290,7 +291,9 @@ void markerTrackingLeg39(const std::string& actuatorType) {
 
 void main() {
 
-    //minimizeControlEffortWeldedLeg39("torques");
+    minimizeControlEffortWeldedLeg39("torques");
     //stateTrackingWeldedLeg39("torques");
-    markerTrackingLeg39("torques");
+    //markerTrackingLeg39("torques");
+    //minimizeControlEffortWeldedLeg39("path_actuators");
+
 }

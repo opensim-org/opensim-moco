@@ -293,11 +293,21 @@ void OpenSim::replaceMusclesWithPathActuators(Model& model) {
         auto* actu = new PathActuator();
         actu->setName(musc.getName());
         musc.setName(musc.getName() + "_delete");
-        actu->updGeometryPath() = musc.getGeometryPath();
         actu->setOptimalForce(musc.getOptimalForce());
         actu->setMinControl(musc.getMinControl());
         actu->setMaxControl(musc.getMaxControl());
 
+        const auto& pathPointSet = musc.getGeometryPath().getPathPointSet();
+        auto& geomPath = actu->updGeometryPath();
+        for (int i = 0; i < pathPointSet.getSize(); ++i) {
+            auto* pathPoint = pathPointSet.get(i).clone();
+            const auto& socketNames = pathPoint->getSocketNames();
+            for (const auto& socketName : socketNames) {
+                pathPoint->updSocket(socketName).connect(
+                    pathPointSet.get(i).getSocket(socketName).getConnecteeAsObject());
+            }
+            geomPath.updPathPointSet().adoptAndAppend(pathPoint);
+        }
         model.addComponent(actu);
         musclesToDelete.push_back(&musc);
     }
@@ -307,8 +317,11 @@ void OpenSim::replaceMusclesWithPathActuators(Model& model) {
         int index = model.getForceSet().getIndex(musc, 0);
         OPENSIM_THROW_IF(index == -1, Exception, "Muscle with name " +
             musc->getName() + " not found in ForceSet.");
-        model.updForceSet().remove(index);
+        bool success = model.updForceSet().remove(index);
+        OPENSIM_THROW_IF(!success, Exception, "Attempt to remove muscle with "
+            "name " + musc->getName() + " was unsuccessful.");
     }
+
 }
 
 void OpenSim::removeMuscles(Model& model) {

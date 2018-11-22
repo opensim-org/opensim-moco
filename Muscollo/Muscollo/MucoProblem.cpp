@@ -470,17 +470,17 @@ void MucoPhase::initialize(Model& model) const {
             // TODO how to name multiplier variables?
             std::vector<MucoVariableInfo> multInfos;
             for (int i = 0; i < mp; ++i) {
-                multInfos.push_back(MucoVariableInfo("lambda_cid" + 
+                multInfos.push_back(MucoVariableInfo("lambda_bar_cid" + 
                     std::to_string(cid) + "_p" + std::to_string(i), multBounds,
                     multInitBounds, multFinalBounds));
             }
             for (int i = 0; i < mv; ++i) {
-                multInfos.push_back(MucoVariableInfo("lambda_cid" +
+                multInfos.push_back(MucoVariableInfo("lambda_bar_cid" +
                     std::to_string(cid) + "_v" + std::to_string(i), multBounds,
                     multInitBounds, multFinalBounds));
             }
             for (int i = 0; i < ma; ++i) {
-                multInfos.push_back(MucoVariableInfo("lambda_cid" +
+                multInfos.push_back(MucoVariableInfo("lambda_bar_cid" +
                     std::to_string(cid) + "_a" + std::to_string(i), multBounds,
                     multInitBounds, multFinalBounds));
             }
