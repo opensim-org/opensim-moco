@@ -17,7 +17,7 @@
  * -------------------------------------------------------------------------- */
 #include <Muscollo/InverseMuscleSolver/INDYGO.h>
 #include <Muscollo/InverseMuscleSolver/GlobalStaticOptimization.h>
-#include <Muscollo/InverseMuscleSolver/DeGrooteFregly2016Muscle.h>
+#include <Muscollo/InverseMuscleSolver/DeGrooteFregly2016MuscleStandalone.h>
 #include <tropter/tropter.h>
 #include <OpenSim/Simulation/Model/Model.h>
 #include <OpenSim/Simulation/SimbodyEngine/PinJoint.h>
@@ -105,13 +105,13 @@ public:
         } else {
             this->add_control("activation", {0, 1});
         }
-        m_muscle = DeGrooteFregly2016Muscle<T>(
+        m_muscle = DeGrooteFregly2016MuscleStandalone<T>(
                 max_isometric_force, optimal_fiber_length, tendon_slack_length,
                 pennation_angle_at_optimal, max_contraction_velocity);
     }
     void calc_differential_algebraic_equations(
-            const tropter::DAEInput<T>& in,
-            tropter::DAEOutput<T> out) const override {
+            const tropter::Input<T>& in,
+            tropter::Output<T> out) const override {
         // Unpack variables.
         // -----------------
         const T& angle = in.states[0];
@@ -179,7 +179,7 @@ public:
         cost = final_time;
     }
 private:
-    DeGrooteFregly2016Muscle<T> m_muscle;
+    DeGrooteFregly2016MuscleStandalone<T> m_muscle;
     bool m_muscleDynamics;
 };
 
@@ -214,8 +214,10 @@ solveForTrajectoryGSO() {
     std::string trajFileWithHeader = trajectoryFile;
     trajFileWithHeader.replace(trajectoryFile.rfind(".csv"), 4,
                                "_with_header.csv");
-    // Skip the "num_states=#", "num_controls=#", and "num_parameters=#" lines.
+    // Skip the "num_states=#", "num_controls=#", "num_adjuncts=#",
+    // and "num_parameters=#" lines.
     std::string line;
+    std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
@@ -228,8 +230,8 @@ solveForTrajectoryGSO() {
     // Create a table containing only the angle and speed of the pendulum.
     TimeSeriesTable ocpSolution = CSVFileAdapter::read(trajFileWithHeader);
     TimeSeriesTable kinematics;
-    kinematics.setColumnLabels({"joint/flexion/value",
-                                "joint/flexion/speed"});
+    kinematics.setColumnLabels({"/joint/flexion/value",
+                                "/joint/flexion/speed"});
     const auto& position = ocpSolution.getDependentColumn("angle");
     const auto& speed = ocpSolution.getDependentColumn("speed");
     for (int iRow = 0; iRow < (int)ocpSolution.getNumRows(); ++iRow) {
@@ -243,7 +245,7 @@ solveForTrajectoryGSO() {
     // ------------------------------------------------------
     // TimeSeriesTable actualInvDyn;
     // actualInvDyn.setColumnLabels({"inverse_dynamics"});
-    // DeGrooteFregly2016Muscle<double> muscle(ocp->max_isometric_force,
+    // DeGrooteFregly2016MuscleStandalone<double> muscle(ocp->max_isometric_force,
     //                                   ocp->optimal_fiber_length,
     //                                   ocp->tendon_slack_length,
     //                                   ocp->pennation_angle_at_optimal,
@@ -308,8 +310,10 @@ solveForTrajectoryINDYGO() {
     std::string trajFileWithHeader = trajectoryFile;
     trajFileWithHeader.replace(trajectoryFile.rfind(".csv"), 4,
                                "_with_header.csv");
-    // Skip the "num_states=#", "num_controls=#", and "num_parameters=#" lines.
+    // Skip the "num_states=#", "num_controls=#", "num_adjuncts=#",
+    // and "num_parameters=#" lines.
     std::string line;
+    std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
@@ -322,8 +326,8 @@ solveForTrajectoryINDYGO() {
     // Create a table containing only the angle and speed of the pendulum.
     TimeSeriesTable ocpSolution = CSVFileAdapter::read(trajFileWithHeader);
     TimeSeriesTable kinematics;
-    kinematics.setColumnLabels({"joint/flexion/value",
-                                "joint/flexion/speed"});
+    kinematics.setColumnLabels({"/joint/flexion/value",
+                                "/joint/flexion/speed"});
     const auto& position = ocpSolution.getDependentColumn("angle");
     const auto& speed = ocpSolution.getDependentColumn("speed");
     for (int iRow = 0; iRow < (int)ocpSolution.getNumRows(); ++iRow) {
@@ -337,7 +341,7 @@ solveForTrajectoryINDYGO() {
     // ------------------------------------------------------
     // TimeSeriesTable actualInvDyn;
     // actualInvDyn.setColumnLabels({"inverse_dynamics"});
-    // DeGrooteFregly2016Muscle<double> muscle(ocp->max_isometric_force,
+    // DeGrooteFregly2016MuscleStandalone<double> muscle(ocp->max_isometric_force,
     //                                   ocp->optimal_fiber_length,
     //                                   ocp->tendon_slack_length,
     //                                   ocp->pennation_angle_at_optimal,
@@ -406,6 +410,8 @@ OpenSim::Model buildLiftingMassModel() {
     //std::cin.get();
     //Manager manager(model);
     //manager.integrate(s, 1.0);
+
+    model.finalizeConnections();
     return model;
 }
 
@@ -419,7 +425,6 @@ void testLiftingMassGSO(
     // Build a similar OpenSim model.
     // ------------------------------
     Model model = buildLiftingMassModel();
-    model.finalizeFromProperties();
 
     // Create the GlobalStaticOptimization.
     // ------------------------------------------
@@ -434,7 +439,7 @@ void testLiftingMassGSO(
 
     // Compare the solution to the initial trajectory optimization solution.
     // ---------------------------------------------------------------------
-    rootMeanSquare(solution.activation, "/hanging_muscle/actuator",
+    rootMeanSquare(solution.activation, "/actuator",
                    ocpSolution,         "activation",
                    0.03);
     auto reserveForceRMS = reserveOptimalForce *
@@ -452,7 +457,6 @@ void testLiftingMassINDYGO(
     // Build a similar OpenSim model.
     // ------------------------------
     Model model = buildLiftingMassModel();
-    model.finalizeFromProperties();
 
     // Create the INDYGO.
     // ----------------------------------
@@ -469,18 +473,18 @@ void testLiftingMassINDYGO(
 
     // Compare the solution to the initial trajectory optimization solution.
     // ---------------------------------------------------------------------
-    compare(solution.activation, "/hanging_muscle/actuator",
+    compare(solution.activation, "/actuator",
             ocpSolution,         "activation",
             0.06);
-    compare(solution.norm_fiber_length, "/hanging_muscle/actuator",
+    compare(solution.norm_fiber_length, "/actuator",
             ocpSolution,                "norm_fiber_length",
             0.005);
 
     // We use a weaker check for the controls; they don't match as well.
-    rootMeanSquare(solution.excitation, "/hanging_muscle/actuator",
+    rootMeanSquare(solution.excitation, "/actuator",
                    ocpSolution,         "excitation",
                    0.06);
-    rootMeanSquare(solution.norm_fiber_velocity, "/hanging_muscle/actuator",
+    rootMeanSquare(solution.norm_fiber_velocity, "/actuator",
                    ocpSolution,                  "norm_fiber_velocity",
                    0.02);
 }

@@ -17,15 +17,20 @@
  * -------------------------------------------------------------------------- */
 
 #include "MuscolloUtilities.h"
+#include "MucoIterate.h"
 
 #include <OpenSim/Common/TimeSeriesTable.h>
 #include <OpenSim/Common/PiecewiseLinearFunction.h>
 #include <OpenSim/Simulation/Model/Model.h>
 #include <OpenSim/Simulation/StatesTrajectory.h>
 #include <simbody/internal/Visualizer_InputListener.h>
+#include <OpenSim/Simulation/Control/PrescribedController.h>
+#include <OpenSim/Common/GCVSpline.h>
+
+#include <cstdarg>
+#include <cstdio>
 
 using namespace OpenSim;
-
 
 SimTK::Vector OpenSim::createVectorLinspace(
         int length, double start, double end) {
@@ -70,8 +75,8 @@ Storage OpenSim::convertTableToStorage(const TimeSeriesTable& table) {
     return sto;
 }
 
-/// TODO: doc
-OSIMMUSCOLLO_API TimeSeriesTable OpenSim::filterLowpass(const TimeSeriesTable & table, double cutoffFreq, bool padData) {
+TimeSeriesTable OpenSim::filterLowpass(const TimeSeriesTable & table, 
+        double cutoffFreq, bool padData) {
     auto storage = convertTableToStorage(table);
     if (padData) {
         storage.pad(storage.getSize() / 2);
@@ -100,7 +105,7 @@ void OpenSim::visualize(Model model, Storage statesSto) {
     statesSto.resample(1.0 / dataRate, 4 /* degree */);
     auto statesTraj =
             StatesTrajectory::createFromStatesStorage(model, statesSto,
-                    true, true);
+                    true, true, false);
     const int numStates = (int)statesTraj.getSize();
 
     // Must setUseVisualizer() *after* createFromStatesStorage(), otherwise
@@ -249,6 +254,36 @@ void OpenSim::visualize(Model model, Storage statesSto) {
     }
 }
 
+void OpenSim::visualize(Model model, TimeSeriesTable table) {
+    visualize(std::move(model), convertTableToStorage(table));
+}
+
+void OpenSim::prescribeControlsToModel(const MucoIterate& iterate, 
+        Model& model) {
+    // Get actuator names.
+    model.initSystem();
+    OpenSim::Array<std::string> actuNames;
+    const auto modelPath = model.getAbsolutePath();
+    for (const auto& actu : model.getComponentList<Actuator>()) {
+        actuNames.append(actu.getAbsolutePathString());
+    }
+
+    // Add prescribed controllers to actuators in the model, where the control
+    // functions are splined versions of the actuator controls from the OCP 
+    // solution.
+    const SimTK::Vector& time = iterate.getTime();
+    auto* controller = new PrescribedController();
+    controller->setName("prescribed_controller");
+    for (int i = 0; i < actuNames.size(); ++i) {
+        const auto control = iterate.getControl(actuNames[i]);
+        auto* function = new GCVSpline(5, time.nrow(), &time[0], &control[0]);
+        const auto& actu = model.getComponent<Actuator>(actuNames[i]);
+        controller->addActuator(actu);
+        controller->prescribeControlForActuator(actu.getName(), function);
+    }
+    model.addController(controller);
+}
+
 std::unordered_map<std::string, int>
 OpenSim::createSystemYIndexMap(const Model& model) {
     std::unordered_map<std::string, int> sysYIndices;
@@ -270,4 +305,19 @@ OpenSim::createSystemYIndexMap(const Model& model) {
             "Expected to find %i state indices but found %i.", svNames.size(),
             sysYIndices.size());
     return sysYIndices;
+}
+
+std::string OpenSim::format_c(const char* format, ...) {
+    // Get buffer size.
+    va_list args;
+    va_start(args, format);
+    int bufsize = vsnprintf(nullptr, 0, format, args) + 1; // +1 for '\0'
+    va_end(args);
+
+    // Create formatted string.
+    std::unique_ptr<char[]> buf(new char[bufsize]);
+    va_start(args, format);
+    vsnprintf(buf.get(), bufsize, format, args);
+    va_end(args);
+    return std::string(buf.get());
 }

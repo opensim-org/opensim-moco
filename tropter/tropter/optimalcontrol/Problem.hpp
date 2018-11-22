@@ -34,8 +34,7 @@ Bounds::Bounds(double lower_bound, double upper_bound) {
 template<typename T>
 Problem<T>::ContinuousVariableInfo::
 ContinuousVariableInfo(std::string n, Bounds b,
-        InitialBounds ib, FinalBounds fb)
-        : name(n), bounds(b), initial_bounds(ib), final_bounds(fb) {
+        InitialBounds ib, FinalBounds fb) {
     TROPTER_THROW_IF(ib.is_set() && ib.lower < b.lower,
             "For variable %s, expected "
             "[initial value lower bound] >= [lower bound], but "
@@ -56,6 +55,23 @@ ContinuousVariableInfo(std::string n, Bounds b,
             "[final value upper bound] >= [upper bound], but "
             "final value upper bound=%g, upper bound=%g.",
             n, fb.upper, b.upper);
+    name = std::move(n);
+    bounds = std::move(b);
+    initial_bounds = std::move(ib);
+    final_bounds = std::move(fb);
+}
+
+template<typename T>
+void Problem<T>::set_time(const InitialBounds& initial_time,
+        const FinalBounds& final_time) {
+    // TODO should we force users to set time bounds? or should we
+    // default to -inf, +inf?
+    // TROPTER_THROW_IF(!initial_time.is_set(),
+    //         "Expected initial time bounds to be specified.");
+    // TROPTER_THROW_IF(!final_time.is_set(),
+    //         "Expected final time bounds to be specified.");
+    m_initial_time_bounds = initial_time;
+    m_final_time_bounds = final_time;
 }
 
 template<typename T>
@@ -93,6 +109,7 @@ void Problem<T>::print_description() const {
 
     print_continuous_var_info("States", m_state_infos);
     print_continuous_var_info("Controls", m_control_infos);
+    print_continuous_var_info("Adjuncts", m_adjunct_infos);
 
     cout << "Path constraints: (total number: "
             << this->get_num_path_constraints() << ")" << endl;
@@ -109,9 +126,14 @@ void Problem<T>::
 initialize_on_mesh(const Eigen::VectorXd&) const
 {}
 
+template<typename T>
+void Problem<T>::
+initialize_on_iterate(const VectorX<T>&) const
+{}
+
 template<typename T>    
 void Problem<T>::
-calc_differential_algebraic_equations(const DAEInput<T>&, DAEOutput<T>) const
+calc_differential_algebraic_equations(const Input<T>&, Output<T>) const
 {}
 
 template<typename T>
@@ -121,8 +143,7 @@ calc_endpoint_cost(const T&, const VectorX<T>&, const VectorX<T>&, T&) const
 
 template<typename T>
 void Problem<T>::
-calc_integral_cost(const T&, const VectorX<T>&, const VectorX<T>&, 
-        const VectorX<T>&, T&) const
+calc_integral_cost(const Input<T>&, T&) const
 {}
 
 template<typename T>
@@ -196,6 +217,41 @@ set_control_guess(Iterate& guess,
 
 template<typename T>
 void Problem<T>::
+set_adjunct_guess(Iterate& guess,
+    const std::string& name,
+    const Eigen::VectorXd& value)
+{
+    // Check for errors.
+    TROPTER_THROW_IF(guess.time.size() == 0, "guess.time is empty.");
+    TROPTER_THROW_IF(value.size() != guess.time.size(),
+        "Expected value to have %i elements, but it has %i elements.",
+        guess.time.size(), value.size());
+    if (guess.adjuncts.rows() == 0) {
+        guess.adjuncts.resize(m_adjunct_infos.size(), guess.time.size());
+    }
+    else if (size_t(guess.adjuncts.rows()) != m_adjunct_infos.size() ||
+        guess.adjuncts.cols() != guess.time.size()) {
+        TROPTER_THROW("Expected guess.adjuncts to have dimensions %i x %i "
+            "but dimensions are %i x %i.",
+            m_adjunct_infos.size(), guess.time.size(),
+            guess.adjuncts.rows(), guess.adjuncts.cols());
+    }
+    // Find the adjunct index.
+    size_t adjunct_index = 0;
+    // TODO store adjunct infos in a map.
+    for (const auto& info : m_adjunct_infos) {
+        if (info.name == name) break;
+        adjunct_index++;
+    }
+    TROPTER_THROW_IF(adjunct_index == m_adjunct_infos.size(),
+        "Adjunct '%s' does not exist.", name);
+
+    // Set the guess.
+    guess.adjuncts.row(adjunct_index) = value;
+}
+
+template<typename T>
+void Problem<T>::
 set_parameter_guess(Iterate& guess,
         const std::string& name,
         const double& value)
@@ -218,8 +274,6 @@ set_parameter_guess(Iterate& guess,
     }
     TROPTER_THROW_IF(parameter_index == m_parameter_infos.size(),
         "Parameter '%s' does not exist.", name);
-    std::cout << "debug: " << parameter_index << std::endl;
-    std::cout << "debug2: " << value << std::endl;
     // Set the guess.
     guess.parameters(parameter_index) = value;
 }
@@ -240,6 +294,12 @@ void Problem<T>::get_all_bounds(
         Eigen::Ref<Eigen::VectorXd> initial_controls_upper,
         Eigen::Ref<Eigen::VectorXd> final_controls_lower,
         Eigen::Ref<Eigen::VectorXd> final_controls_upper,
+        Eigen::Ref<Eigen::VectorXd> adjuncts_lower,
+        Eigen::Ref<Eigen::VectorXd> adjuncts_upper,
+        Eigen::Ref<Eigen::VectorXd> initial_adjuncts_lower,
+        Eigen::Ref<Eigen::VectorXd> initial_adjuncts_upper,
+        Eigen::Ref<Eigen::VectorXd> final_adjuncts_lower,
+        Eigen::Ref<Eigen::VectorXd> final_adjuncts_upper,
         Eigen::Ref<Eigen::VectorXd> parameters_lower,
         Eigen::Ref<Eigen::VectorXd> parameters_upper,
         Eigen::Ref<Eigen::VectorXd> path_constraints_lower,
@@ -252,8 +312,6 @@ void Problem<T>::get_all_bounds(
         const auto& info = m_state_infos[is];
         states_lower[is]         = info.bounds.lower;
         states_upper[is]         = info.bounds.upper;
-        // TODO do not create initial/final bounds constraints if they
-        // are not necessary.
         if (info.initial_bounds.is_set()) {
             initial_states_lower[is] = info.initial_bounds.lower;
             initial_states_upper[is] = info.initial_bounds.upper;
@@ -287,6 +345,28 @@ void Problem<T>::get_all_bounds(
         } else {
             final_controls_lower[ic]   = info.bounds.lower;
             final_controls_upper[ic]   = info.bounds.upper;
+        }
+    }
+    for (unsigned ia = 0; ia < m_adjunct_infos.size(); ++ia) {
+        const auto& info = m_adjunct_infos[ia];
+        // TODO if (!info.bounds.is_set()), give error.
+        adjuncts_lower[ia] = info.bounds.lower;
+        adjuncts_upper[ia] = info.bounds.upper;
+        if (info.initial_bounds.is_set()) {
+            initial_adjuncts_lower[ia] = info.initial_bounds.lower;
+            initial_adjuncts_upper[ia] = info.initial_bounds.upper;
+        }
+        else {
+            initial_adjuncts_lower[ia] = info.bounds.lower;
+            initial_adjuncts_upper[ia] = info.bounds.upper;
+        }
+        if (info.final_bounds.is_set()) {
+            final_adjuncts_lower[ia] = info.final_bounds.lower;
+            final_adjuncts_upper[ia] = info.final_bounds.upper;
+        }
+        else {
+            final_adjuncts_lower[ia] = info.bounds.lower;
+            final_adjuncts_upper[ia] = info.bounds.upper;
         }
     }
     for (unsigned ip = 0; ip < m_parameter_infos.size(); ++ip) {

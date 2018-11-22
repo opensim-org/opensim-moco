@@ -9,10 +9,17 @@ add_library(osimMuscollo SHARED
         MucoTool.h
         MucoTool.cpp
         MucoBounds.h
+        MucoBounds.cpp
+        MucoVariableInfo.h
+        MucoVariableInfo.cpp
         MucoProblem.h
         MucoProblem.cpp
+        MucoProblemRep.h
+        MucoProblemRep.cpp
         MucoCost.h
         MucoCost.cpp
+        MucoMarkerEndpointCost.h
+        MucoMarkerEndpointCost.cpp
         MucoMarkerTrackingCost.h
         MucoMarkerTrackingCost.cpp
         MucoWeightSet.h
@@ -20,6 +27,8 @@ add_library(osimMuscollo SHARED
         MucoStateTrackingCost.cpp
         MucoControlCost.h
         MucoControlCost.cpp
+        MucoJointReactionNormCost.h
+        MucoJointReactionNormCost.cpp
         MucoSolver.h
         MucoSolver.cpp
         MucoIterate.h
@@ -28,18 +37,21 @@ add_library(osimMuscollo SHARED
         MucoTropterSolver.cpp
         MucoParameter.h
         MucoParameter.cpp
+        MucoConstraint.h
+        MucoConstraint.cpp
+        ActivationCoordinateActuator.h
         InverseMuscleSolver/InverseMuscleSolver.h
         InverseMuscleSolver/InverseMuscleSolver.cpp
         InverseMuscleSolver/GlobalStaticOptimization.h
         InverseMuscleSolver/GlobalStaticOptimization.cpp
         InverseMuscleSolver/INDYGO.h
         InverseMuscleSolver/INDYGO.cpp
-        InverseMuscleSolver/DeGrooteFregly2016Muscle.h
+        InverseMuscleSolver/DeGrooteFregly2016MuscleStandalone.h
         InverseMuscleSolver/InverseMuscleSolverMotionData.h
         InverseMuscleSolver/InverseMuscleSolverMotionData.cpp
         )
 target_link_libraries(osimMuscollo PUBLIC osimActuators
-                                   PRIVATE tropter)								
+                                   PRIVATE tropter)
 
 target_include_directories(osimMuscollo INTERFACE
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/Muscollo>
@@ -48,7 +60,8 @@ target_include_directories(osimMuscollo INTERFACE
 set_target_properties(osimMuscollo PROPERTIES
         DEFINE_SYMBOL OSIMMUSCOLLO_EXPORTS
         PROJECT_LABEL "Library - osimMuscollo"
-        FOLDER "Muscollo")
+        FOLDER "Muscollo"
+        )
 
 if(MUSCOLLO_COPY_DEPENDENCIES)
     if(APPLE)

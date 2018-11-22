@@ -40,26 +40,28 @@
 
 using namespace OpenSim;
 
-Model createSlidingMassModel() {
-    Model model;
-    model.setName("sliding_mass");
-    model.set_gravity(SimTK::Vec3(0, 0, 0));
+std::unique_ptr<Model> createSlidingMassModel() {
+    auto model = make_unique<Model>();
+    model->setName("sliding_mass");
+    model->set_gravity(SimTK::Vec3(0, 0, 0));
     auto* body = new Body("body", 2.0, SimTK::Vec3(0), SimTK::Inertia(0));
-    model.addComponent(body);
+    model->addComponent(body);
 
     // Allows translation along x.
-    auto* joint = new SliderJoint("slider", model.getGround(), *body);
+    auto* joint = new SliderJoint("slider", model->getGround(), *body);
     auto& coord = joint->updCoordinate(SliderJoint::Coord::TranslationX);
     coord.setName("position");
-    model.addComponent(joint);
+    model->addComponent(joint);
 
     auto* actu = new CoordinateActuator();
     actu->setCoordinate(&coord);
     actu->setName("actuator");
     actu->setOptimalForce(1);
-    model.addComponent(actu);
+    model->addComponent(actu);
 
     body->attachGeometry(new Sphere(0.05));
+
+    model->finalizeConnections();
 
     return model;
 }
@@ -71,39 +73,38 @@ int main() {
 
     // Define the optimal control problem.
     // ===================================
-    MucoProblem& mp = muco.updProblem();
+    MucoProblem& problem = muco.updProblem();
 
     // Model (dynamics).
     // -----------------
-    mp.setModel(createSlidingMassModel());
+    problem.setModel(createSlidingMassModel());
 
     // Bounds.
     // -------
     // Initial time must be 0, final time can be within [0, 5].
-    mp.setTimeBounds(MucoInitialBounds(0), MucoFinalBounds(0, 5));
+    problem.setTimeBounds(MucoInitialBounds(0), MucoFinalBounds(0, 5));
 
     // Initial position must be 0, final position must be 1.
-    mp.setStateInfo("slider/position/value", MucoBounds(-5, 5),
+    problem.setStateInfo("/slider/position/value", MucoBounds(-5, 5),
             MucoInitialBounds(0), MucoFinalBounds(1));
     // Initial and final speed must be 0. Use compact syntax.
-    mp.setStateInfo("slider/position/speed", {-50, 50}, 0, 0);
+    problem.setStateInfo("/slider/position/speed", {-50, 50}, 0, 0);
 
     // Applied force must be between -50 and 50.
-    mp.setControlInfo("actuator", MucoBounds(-50, 50));
+    problem.setControlInfo("/actuator", MucoBounds(-50, 50));
 
     // Cost.
     // -----
-    MucoFinalTimeCost ftCost;
-    mp.addCost(ftCost);
+    problem.addCost<MucoFinalTimeCost>();
 
     // Configure the solver.
     // =====================
-    MucoTropterSolver& ms = muco.initSolver();
-    ms.set_num_mesh_points(50);
+    MucoTropterSolver& solver = muco.initSolver();
+    solver.set_num_mesh_points(50);
 
     // TODO interface for setting these options:
-    // TODO ms.setOption("optim.hessian-approximation", "limited-memory");
-    // TODO ms.set_optimizer_algorithm("ipopt");
+    // TODO solver.setOption("optim.hessian-approximation", "limited-memory");
+    // TODO solver.set_optimizer_algorithm("ipopt");
 
 
     // Now that we've finished setting up the tool, print it to a file.

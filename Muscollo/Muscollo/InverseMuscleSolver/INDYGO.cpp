@@ -17,7 +17,7 @@
  * -------------------------------------------------------------------------- */
 
 #include "INDYGO.h"
-#include "DeGrooteFregly2016Muscle.h"
+#include "DeGrooteFregly2016MuscleStandalone.h"
 #include "InverseMuscleSolverMotionData.h"
 #include "GlobalStaticOptimization.h"
 
@@ -102,8 +102,7 @@ public:
             _optimalForce[i_act] = actuator.getOptimalForce();
             // Figure out which DOF each coordinate actuator is actuating.
             const auto* coord = actuator.getCoordinate();
-            const auto coordPath = coord->getAbsolutePath()
-                            .formRelativePath(modelPath).toString();
+            const auto coordPath = coord->getAbsolutePathString();
             size_t i_coord = 0;
             while (i_coord < coordPathsToActuate.size() &&
                     coordPathsToActuate[i_coord] != coordPath) {
@@ -175,7 +174,7 @@ public:
         for (const auto& osimMus : _model.getComponentList<Muscle>()) {
             if (!osimMus.get_appliesForce()) continue;
 
-            _muscles[i_mus] = DeGrooteFregly2016Muscle<T>(
+            _muscles[i_mus] = DeGrooteFregly2016MuscleStandalone<T>(
                     osimMus.get_max_isometric_force(),
                     osimMus.get_optimal_fiber_length(),
                     osimMus.get_tendon_slack_length(),
@@ -219,8 +218,8 @@ public:
     }
 
     void calc_differential_algebraic_equations(
-            const tropter::DAEInput<T>& in,
-            tropter::DAEOutput<T> out) const override {
+            const tropter::Input<T>& in,
+            tropter::Output<T> out) const override {
 
         const auto& i_mesh = in.mesh_index;
         const auto& states = in.states;
@@ -319,11 +318,11 @@ public:
                 = _desiredMoments.col(i_mesh).template cast<T>()
                 - genForce;
     }
-    void calc_integral_cost(const T& /*time*/,
-            const tropter::VectorX<T>& states,
-            const tropter::VectorX<T>& controls,
-            const tropter::VectorX<T>& /*parameters*/,
+    void calc_integral_cost(const tropter::Input<T>& in,
             T& integrand) const override {
+        // Unpack variables.
+        const auto& states = in.states;
+        const auto& controls = in.controls;
         // Use a map to skip over fiber velocities.
         using ExcitationsVector = Eigen::Map<const tropter::VectorX<T>,
                 /* pointer alignment: Unaligned */   0,
@@ -645,7 +644,7 @@ private:
     Eigen::VectorXd _optimalForce;
 
     // De Groote muscles.
-    std::vector<DeGrooteFregly2016Muscle<T>> _muscles;
+    std::vector<DeGrooteFregly2016MuscleStandalone<T>> _muscles;
 };
 
 INDYGO::INDYGO() {
@@ -696,8 +695,7 @@ INDYGO::Solution INDYGO::solve() const {
         // Go through coordinates in order.
         for (auto& coord : coordsInOrder) {
             // Remove the model name from the coordinate path.
-            const auto coordPath = coord->getAbsolutePath()
-                    .formRelativePath(modelPath).toString();
+            const auto coordPath = coord->getAbsolutePathString();
             // Should this coordinate be included?
             const auto foundCoordPath = coordsToInclude.find(coordPath);
             if (foundCoordPath != coordsToInclude.end()) {
@@ -772,8 +770,7 @@ INDYGO::Solution INDYGO::solve() const {
             auto path = coord->getAbsolutePathString();
             coordPaths.push_back(path);
             // Get rid of model name.
-            path = coord->getAbsolutePath().formRelativePath(
-                    model.getAbsolutePath()).toString();
+            path = coord->getAbsolutePathString();
             // Get rid of slashes in the path; slashes not allowed in names.
             std::replace(path.begin(), path.end(), '/', '_');
             actu->setName("reserve_" + path);

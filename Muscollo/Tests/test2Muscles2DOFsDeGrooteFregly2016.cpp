@@ -17,7 +17,7 @@
  * -------------------------------------------------------------------------- */
 #include <Muscollo/InverseMuscleSolver/GlobalStaticOptimization.h>
 #include <Muscollo/InverseMuscleSolver/INDYGO.h>
-#include <Muscollo/InverseMuscleSolver/DeGrooteFregly2016Muscle.h>
+#include <Muscollo/InverseMuscleSolver/DeGrooteFregly2016MuscleStandalone.h>
 #include <Muscollo/InverseMuscleSolver/InverseMuscleSolverMotionData.h>
 #include <tropter/tropter.h>
 #include <OpenSim/Simulation/Model/Model.h>
@@ -80,8 +80,8 @@ public:
     int m_i_vy = -1;
     int m_i_activation_l = -1;
     int m_i_activation_r = -1;
-    DeGrooteFregly2016Muscle<T> m_muscleL;
-    DeGrooteFregly2016Muscle<T> m_muscleR;
+    DeGrooteFregly2016MuscleStandalone<T> m_muscleL;
+    DeGrooteFregly2016MuscleStandalone<T> m_muscleR;
     struct NetForce {
         T x;
         T y;
@@ -100,7 +100,7 @@ public:
         {
             const auto& osimMuscleL =
                     dynamic_cast<const Muscle&>(model.getComponent("left"));
-            m_muscleL = DeGrooteFregly2016Muscle<T>(
+            m_muscleL = DeGrooteFregly2016MuscleStandalone<T>(
                     osimMuscleL.get_max_isometric_force(),
                     osimMuscleL.get_optimal_fiber_length(),
                     osimMuscleL.get_tendon_slack_length(),
@@ -110,7 +110,7 @@ public:
         {
             const auto& osimMuscleR =
                     dynamic_cast<const Muscle&>(model.getComponent("right"));
-            m_muscleR = DeGrooteFregly2016Muscle<T>(
+            m_muscleR = DeGrooteFregly2016MuscleStandalone<T>(
                     osimMuscleR.get_max_isometric_force(),
                     osimMuscleR.get_optimal_fiber_length(),
                     osimMuscleR.get_tendon_slack_length(),
@@ -119,8 +119,8 @@ public:
         }
     }
     void calc_differential_algebraic_equations(
-            const tropter::DAEInput<T>& in,
-            tropter::DAEOutput<T> out) const override {
+            const tropter::Input<T>& in,
+            tropter::Output<T> out) const override {
         // Unpack variables.
         // -----------------
         const T& vx = in.states[m_i_vx];
@@ -163,11 +163,10 @@ public:
                             +tensionR * (-y) / musTenLenR;
         return {netForceX,  netForceY};
     }
-    void calc_integral_cost(const T& /*time*/,
-            const tropter::VectorX<T>& /*states*/,
-            const tropter::VectorX<T>& controls,
-            const tropter::VectorX<T>& /*parameters*/,
+    void calc_integral_cost(const tropter::Input<T>& in,
             T& integrand) const override {
+
+        const auto& controls = in.controls;
         const auto& controlL = controls[m_i_activation_l];
         const auto& controlR = controls[m_i_activation_r];
         integrand = controlL * controlL + controlR * controlR;
@@ -231,8 +230,8 @@ public:
     int m_i_fiber_equilibrium_l = -1;
     int m_i_norm_fiber_velocity_r = -1;
     int m_i_fiber_equilibrium_r = -1;
-    DeGrooteFregly2016Muscle<T> m_muscleL;
-    DeGrooteFregly2016Muscle<T> m_muscleR;
+    DeGrooteFregly2016MuscleStandalone<T> m_muscleL;
+    DeGrooteFregly2016MuscleStandalone<T> m_muscleR;
     struct NetForce {
         T x;
         T y;
@@ -264,7 +263,7 @@ public:
         {
             const auto& osimMuscleL =
                     dynamic_cast<const Muscle&>(model.getComponent("left"));
-            m_muscleL = DeGrooteFregly2016Muscle<T>(
+            m_muscleL = DeGrooteFregly2016MuscleStandalone<T>(
                     osimMuscleL.get_max_isometric_force(),
                     osimMuscleL.get_optimal_fiber_length(),
                     osimMuscleL.get_tendon_slack_length(),
@@ -274,7 +273,7 @@ public:
         {
             const auto& osimMuscleR =
                     dynamic_cast<const Muscle&>(model.getComponent("right"));
-            m_muscleR = DeGrooteFregly2016Muscle<T>(
+            m_muscleR = DeGrooteFregly2016MuscleStandalone<T>(
                     osimMuscleR.get_max_isometric_force(),
                     osimMuscleR.get_optimal_fiber_length(),
                     osimMuscleR.get_tendon_slack_length(),
@@ -283,8 +282,8 @@ public:
         }
     }
     void calc_differential_algebraic_equations(
-            const tropter::DAEInput<T>& in,
-            tropter::DAEOutput<T> out) const override {
+            const tropter::Input<T>& in,
+            tropter::Output<T> out) const override {
         // Unpack variables.
         // -----------------
         const T& vx = in.states[m_i_vx];
@@ -364,11 +363,10 @@ public:
                             +tensionR * (-y) / musTenLenR;
         return {netForceX,  netForceY};
     }
-    void calc_integral_cost(const T& /*time*/,
-            const tropter::VectorX<T>& /*states*/,
-            const tropter::VectorX<T>& controls,
-            const tropter::VectorX<T>& /*parameters*/,
+    void calc_integral_cost(const tropter::Input<T>& in,
             T& integrand) const override {
+
+        const auto& controls = in.controls;
         const auto& controlL = controls[m_i_excitation_l];
         const auto& controlR = controls[m_i_excitation_r];
         integrand = controlL * controlL + controlR * controlR;
@@ -444,6 +442,8 @@ OpenSim::Model buildModel() {
         model.addComponent(actuR);
     }
 
+    model.finalizeConnections();
+
     // For use in "filebased" tests.
     model.print("test2Muscles2DOFsDeGrooteFregly2016.osim");
     // SimTK::State s = model.initSystem();
@@ -480,8 +480,10 @@ solveForTrajectory_GSO(const Model& model) {
     std::string trajFileWithHeader = trajectoryFile;
     trajFileWithHeader.replace(trajectoryFile.rfind(".csv"), 4,
                                "_with_header.csv");
-    // Skip the "num_states=#", "num_controls=#", and "num_parameters=#" lines.
+    // Skip the "num_states=#", "num_controls=#", "num_adjuncts=#",
+    // and "num_parameters=#" lines.
     std::string line;
+    std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
@@ -495,7 +497,7 @@ solveForTrajectory_GSO(const Model& model) {
     TimeSeriesTable ocpSolution = CSVFileAdapter::read(trajFileWithHeader);
     TimeSeriesTable kinematics;
     kinematics.setColumnLabels(
-            {"tx/tx/value", "tx/tx/speed", "ty/ty/value", "ty/ty/speed"});
+            {"/tx/tx/value", "/tx/tx/speed", "/ty/ty/value", "/ty/ty/speed"});
     const auto& x = ocpSolution.getDependentColumn("x");
     const auto& vx = ocpSolution.getDependentColumn("vx");
     const auto& y = ocpSolution.getDependentColumn("y");
@@ -560,8 +562,10 @@ solveForTrajectory_INDYGO(const Model& model) {
     std::string trajFileWithHeader = trajectoryFile;
     trajFileWithHeader.replace(trajectoryFile.rfind(".csv"), 4,
                                "_with_header.csv");
-    // Skip the "num_states=#", "num_controls=#", and "num_parameters=#" lines.
+    // Skip the "num_states=#", "num_controls=#", "num_adjuncts=#",
+    // and "num_parameters=#" lines.
     std::string line;
+    std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
@@ -575,7 +579,7 @@ solveForTrajectory_INDYGO(const Model& model) {
     TimeSeriesTable ocpSolution = CSVFileAdapter::read(trajFileWithHeader);
     TimeSeriesTable kinematics;
     kinematics.setColumnLabels(
-            {"tx/tx/value", "tx/tx/speed", "ty/ty/value", "ty/ty/speed"});
+            {"/tx/tx/value", "/tx/tx/speed", "/ty/ty/value", "/ty/ty/speed"});
     const auto& x = ocpSolution.getDependentColumn("x");
     const auto& vx = ocpSolution.getDependentColumn("vx");
     const auto& y = ocpSolution.getDependentColumn("y");
@@ -612,10 +616,10 @@ solveForTrajectory_INDYGO(const Model& model) {
 void compareSolution_GSO(const GlobalStaticOptimization::Solution& actual,
                          const TimeSeriesTable& expected,
                          const double& reserveOptimalForce) {
-    compare(actual.activation, "/block2musc2dof/left",
+    compare(actual.activation, "/left",
             expected,          "activation_l",
             0.02);
-    compare(actual.activation, "/block2musc2dof/right",
+    compare(actual.activation, "/right",
             expected,          "activation_r",
             0.05);
     auto reserveForceXRMS = reserveOptimalForce *
@@ -688,7 +692,7 @@ void test2Muscles2DOFs_GSO_GenForces(
             (int)netGenForcesEigen.cols(), (int)netGenForcesEigen.rows(),
             netGenForcesEigen.data());
     TimeSeriesTable netGenForces;
-    netGenForces.setColumnLabels({"tx/tx", "ty/ty"});
+    netGenForces.setColumnLabels({"/tx/tx", "/ty/ty"});
     for (int iRow = 0; iRow < netGenForcesMatrix.nrow(); ++iRow) {
         netGenForces.appendRow(times[iRow], netGenForcesMatrix.row(iRow));
     }
@@ -709,34 +713,34 @@ void test2Muscles2DOFs_GSO_GenForces(
 void compareSolution_INDYGO(const INDYGO::Solution& actual,
                          const TimeSeriesTable& expected,
                          const double& reserveOptimalForce) {
-    compare(actual.activation, "/block2musc2dof/left",
+    compare(actual.activation, "/left",
             expected,          "activation_l",
             0.05);
-    compare(actual.activation, "/block2musc2dof/right",
+    compare(actual.activation, "/right",
             expected,          "activation_r",
             0.05);
 
-    compare(actual.norm_fiber_length, "/block2musc2dof/left",
+    compare(actual.norm_fiber_length, "/left",
             expected,                 "norm_fiber_length_l",
             0.01);
-    compare(actual.norm_fiber_length, "/block2musc2dof/right",
+    compare(actual.norm_fiber_length, "/right",
             expected,                 "norm_fiber_length_r",
             0.01);
 
     // We use a weaker check for the controls; they don't match as well.
     // The excitations are fairly noisy across time, and the fiber velocity
     // does not match well at the beginning of the trajectory.
-    rootMeanSquare(actual.excitation, "/block2musc2dof/left",
+    rootMeanSquare(actual.excitation, "/left",
             expected,                 "excitation_l",
             0.03);
-    rootMeanSquare(actual.excitation, "/block2musc2dof/right",
+    rootMeanSquare(actual.excitation, "/right",
             expected,                 "excitation_r",
             0.03);
 
-    rootMeanSquare(actual.norm_fiber_velocity, "/block2musc2dof/left",
+    rootMeanSquare(actual.norm_fiber_velocity, "/left",
             expected,                          "norm_fiber_velocity_l",
             0.02);
-    rootMeanSquare(actual.norm_fiber_velocity, "/block2musc2dof/right",
+    rootMeanSquare(actual.norm_fiber_velocity, "/right",
             expected,                          "norm_fiber_velocity_r",
             0.02);
 
@@ -820,7 +824,7 @@ void test2Muscles2DOFs_INDYGO_GenForces(
             (int)netGenForcesEigen.cols(), (int)netGenForcesEigen.rows(),
             netGenForcesEigen.data());
     TimeSeriesTable netGenForces;
-    netGenForces.setColumnLabels({"tx/tx", "ty/ty"});
+    netGenForces.setColumnLabels({"/tx/tx", "/ty/ty"});
     for (int iRow = 0; iRow < netGenForcesMatrix.nrow(); ++iRow) {
         netGenForces.appendRow(times[iRow], netGenForcesMatrix.row(iRow));
     }

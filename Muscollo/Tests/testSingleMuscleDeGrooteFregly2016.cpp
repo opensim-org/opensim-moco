@@ -17,7 +17,7 @@
  * -------------------------------------------------------------------------- */
 #include <Muscollo/InverseMuscleSolver/INDYGO.h>
 #include <Muscollo/InverseMuscleSolver/GlobalStaticOptimization.h>
-#include <Muscollo/InverseMuscleSolver/DeGrooteFregly2016Muscle.h>
+#include <Muscollo/InverseMuscleSolver/DeGrooteFregly2016MuscleStandalone.h>
 #include <tropter/tropter.h>
 #include <OpenSim/Simulation/Model/Model.h>
 #include <OpenSim/Simulation/SimbodyEngine/SliderJoint.h>
@@ -75,13 +75,13 @@ public:
         this->add_state("speed", {-10, 10}, 0, 0);
         this->add_control("activation", {0, 1});
         // TODO move this to a constructor parameter.
-        m_muscle = DeGrooteFregly2016Muscle<T>(
+        m_muscle = DeGrooteFregly2016MuscleStandalone<T>(
                 max_isometric_force, optimal_fiber_length, tendon_slack_length,
                 pennation_angle_at_optimal, max_contraction_velocity);
     }
     void calc_differential_algebraic_equations(
-            const tropter::DAEInput<T>& in,
-            tropter::DAEOutput<T> out) const override {
+            const tropter::Input<T>& in,
+            tropter::Output<T> out) const override {
         // Unpack variables.
         const T& position = in.states[0];
         const T& speed = in.states[1];
@@ -103,7 +103,7 @@ public:
         cost = final_time;
     }
 private:
-    DeGrooteFregly2016Muscle<T> m_muscle;
+    DeGrooteFregly2016MuscleStandalone<T> m_muscle;
 };
 
 std::pair<TimeSeriesTable, TimeSeriesTable>
@@ -126,8 +126,10 @@ solveForTrajectoryGSO() {
     std::string trajFileWithHeader = trajectoryFile;
     trajFileWithHeader.replace(trajectoryFile.rfind(".csv"), 4,
                                "_with_header.csv");
-    // Skip the "num_states=#", "num_controls=#", and "num_parameters=#" lines.
+    // Skip the "num_states=#", "num_controls=#", "num_adjuncts=#",
+    // and "num_parameters=#" lines.
     std::string line;
+    std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
@@ -140,8 +142,8 @@ solveForTrajectoryGSO() {
     // Create a table containing only the position and speed of the mass.
     TimeSeriesTable ocpSolution = CSVFileAdapter::read(trajFileWithHeader);
     TimeSeriesTable kinematics;
-    kinematics.setColumnLabels({"joint/height/value",
-                                "joint/height/speed"});
+    kinematics.setColumnLabels({"/joint/height/value",
+                                "/joint/height/speed"});
     const auto& position = ocpSolution.getDependentColumn("position");
     const auto& speed = ocpSolution.getDependentColumn("speed");
     for (int iRow = 0; iRow < (int)ocpSolution.getNumRows(); ++iRow) {
@@ -155,7 +157,7 @@ solveForTrajectoryGSO() {
     // ------------------------------------------------------
     // TimeSeriesTable actualInvDyn;
     // actualInvDyn.setColumnLabels({"inverse_dynamics"});
-    // DeGrooteFregly2016Muscle<double> muscle(ocp->max_isometric_force,
+    // DeGrooteFregly2016MuscleStandalone<double> muscle(ocp->max_isometric_force,
     //                                   ocp->optimal_fiber_length,
     //                                   ocp->tendon_slack_length,
     //                                   ocp->pennation_angle_at_optimal,
@@ -224,13 +226,13 @@ public:
         this->add_control("excitation", {0, 1});
         this->add_control("norm_fiber_velocity", {-1, 1}, 0);
         this->add_path_constraint("fiber_equilibrium", 0);
-        m_muscle = DeGrooteFregly2016Muscle<T>(
+        m_muscle = DeGrooteFregly2016MuscleStandalone<T>(
                 max_isometric_force, optimal_fiber_length, tendon_slack_length,
                 pennation_angle_at_optimal, max_contraction_velocity);
     }
     void calc_differential_algebraic_equations(
-            const tropter::DAEInput<T>& in,
-            tropter::DAEOutput<T> out) const override {
+            const tropter::Input<T>& in,
+            tropter::Output<T> out) const override {
         // Unpack variables.
         const T& position = in.states[0];
         const T& speed = in.states[1];
@@ -267,7 +269,7 @@ public:
         cost = final_time;
     }
 private:
-    DeGrooteFregly2016Muscle<T> m_muscle;
+    DeGrooteFregly2016MuscleStandalone<T> m_muscle;
 };
 
 std::pair<TimeSeriesTable, TimeSeriesTable>
@@ -292,8 +294,10 @@ solveForTrajectoryINDYGO() {
     std::string trajFileWithHeader = trajectoryFile;
     trajFileWithHeader.replace(trajectoryFile.rfind(".csv"), 4,
                                "_with_header.csv");
-    // Skip the "num_states=#", "num_controls=#", and "num_parameters=#" lines.
+    // Skip the "num_states=#", "num_controls=#", "num_adjuncts=#",
+    // and "num_parameters=#" lines.
     std::string line;
+    std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
@@ -306,8 +310,8 @@ solveForTrajectoryINDYGO() {
     // Create a table containing only the position and speed of the mass.
     TimeSeriesTable ocpSolution = CSVFileAdapter::read(trajFileWithHeader);
     TimeSeriesTable kinematics;
-    kinematics.setColumnLabels({"joint/height/value",
-                                "joint/height/speed"});
+    kinematics.setColumnLabels({"/joint/height/value",
+                                "/joint/height/speed"});
     const auto& position = ocpSolution.getDependentColumn("position");
     const auto& speed = ocpSolution.getDependentColumn("speed");
     for (int iRow = 0; iRow < (int)ocpSolution.getNumRows(); ++iRow) {
@@ -321,7 +325,7 @@ solveForTrajectoryINDYGO() {
     // ------------------------------------------------------
     // TimeSeriesTable actualInvDyn;
     // actualInvDyn.setColumnLabels({"inverse_dynamics"});
-    // DeGrooteFregly2016Muscle<double> muscle(ocp->max_isometric_force,
+    // DeGrooteFregly2016MuscleStandalone<double> muscle(ocp->max_isometric_force,
     //                                   ocp->optimal_fiber_length,
     //                                   ocp->tendon_slack_length,
     //                                   ocp->pennation_angle_at_optimal,
@@ -371,6 +375,8 @@ OpenSim::Model buildLiftingMassModel() {
     actu->addNewPathPoint("origin", model.updGround(), SimTK::Vec3(0));
     actu->addNewPathPoint("insertion", *body, SimTK::Vec3(0));
     model.addComponent(actu);
+
+    model.finalizeConnections();
     return model;
 }
 
@@ -411,7 +417,7 @@ void testLiftingMassGSO(
 
     // The rationale for the tolerances: as tight as they could be for the
     // test to pass.
-    rootMeanSquare(solution.activation, "/hanging_muscle/actuator",
+    rootMeanSquare(solution.activation, "/actuator",
                    ocpSolution,         "activation",
                    0.06);
 }
@@ -463,18 +469,18 @@ void testLiftingMassINDYGO(
     // leads to an incorrect net joint moment at the end of the motion,
     // causing the muscle to be active when it shouldn't be. When this issue
     // is fixed, we can tighten the activation comparison.
-    rootMeanSquare(solution.activation, "/hanging_muscle/actuator",
+    rootMeanSquare(solution.activation, "/actuator",
                    ocpSolution,         "activation",
                    0.03);
-    compare(solution.norm_fiber_length, "/hanging_muscle/actuator",
+    compare(solution.norm_fiber_length, "/actuator",
             ocpSolution,                "norm_fiber_length",
             0.005);
 
     // We use a weaker check for the controls; they don't match as well.
-    rootMeanSquare(solution.excitation, "/hanging_muscle/actuator",
+    rootMeanSquare(solution.excitation, "/actuator",
                    ocpSolution,         "excitation",
                    0.20);
-    rootMeanSquare(solution.norm_fiber_velocity, "/hanging_muscle/actuator",
+    rootMeanSquare(solution.norm_fiber_velocity, "/actuator",
                    ocpSolution,                  "norm_fiber_velocity",
                    0.04);
 }
@@ -676,10 +682,10 @@ int main() {
 //                       T& cost) const override {
 //        cost = final_time;
 //    }
-//    //void calc_integral_cost(const T& /*time*/,
-//    //                   const tropter::VectorX<T>& /*states*/,
-//    //                   const tropter::VectorX<T>& controls,
+//    //void calc_integral_cost(const tropter::Input<T>& in,
 //    //                   T& integrand) const override {
+//    //
+//    //    const auto& controls = in.controls;
 //    //    integrand = controls[0] * controls[0];
 //    //}
 //};

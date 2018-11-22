@@ -78,19 +78,25 @@ public:
     /// Load a MucoTool setup file.
     MucoTool(const std::string& omucoFile);
 
-    /// Throws an exception if you try calling this after initSolver() and
-    /// before solve().
+    const MucoProblem& getProblem() const;
+
     /// If using this method in C++, make sure to include the "&" in the
-    /// return type; otherwise, you'll make a copy of the problem, which will
-    /// have no effect on this MucoTool.
+    /// return type; otherwise, you'll make a copy of the problem, and the copy
+    /// will have no effect on this MucoTool.
     MucoProblem& updProblem();
 
     /// Call this method once you have finished setting up your MucoProblem.
     /// This returns a reference to the MucoSolver, which you can then edit.
     /// If using this method in C++, make sure to include the "&" in the
-    /// return type; otherwise, you'll make a copy of the solver, which will
-    /// have no effect on this MucoTool.
+    /// return type; otherwise, you'll make a copy of the solver, and the copy
+    /// will have no effect on this MucoTool.
     MucoTropterSolver& initSolver();
+
+    /// Access the solver. Make sure to call `initSolver()` beforehand.
+    /// If using this method in C++, make sure to include the "&" in the
+    /// return type; otherwise, you'll make a copy of the solver, and the copy
+    /// will have no effect on this MucoTool.
+    MucoTropterSolver& updSolver();
 
     /// Solve the provided MucoProblem using the provided MucoSolver, and
     /// obtain the solution to the problem. If the write_solution property
@@ -123,6 +129,11 @@ public:
     SolverType& initCustomSolver() {
         return dynamic_cast<SolverType&>(initSolverInternal());
     }
+
+    template <typename SolverType>
+    SolverType& updCustomSolver() {
+        return dynamic_cast<SolverType&>(upd_solver());
+    }
     /// @}
 
 protected:
@@ -136,8 +147,6 @@ private:
     void ensureInitSolver();
     MucoSolver& initSolverInternal();
     void constructProperties();
-
-    SimTK::ResetOnCopy<bool> m_solverInitialized = false;
 };
 
 } // namespace OpenSim

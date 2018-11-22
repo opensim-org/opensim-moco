@@ -51,7 +51,7 @@ class Model;
 /// @code
 /// MucoParameter p0;
 /// p0.setName("torso_mass");
-/// p0.setComponentPath("torso");
+/// p0.appendComponentPath("torso");
 /// p0.setParameterName("mass");
 /// MucoBounds massBounds(60, 80);
 /// p0.setBounds(massBounds);
@@ -71,6 +71,12 @@ class Model;
 /// MucoParameter y_com("y_com", componentPaths, "mass_center", 
 ///         MucoBounds(-0.05, 0.05), propertyElt);
 /// @endcode
+/// @par For developers
+/// Every time the problem is solved, a copy of this parameter is used.
+/// An individual instance of a parameter is only ever used in a single problem.
+/// Therefore, there is no need to clear cache variables that you create in
+/// initializeImpl(). Also, information stored in this parameter does not
+/// persist across multiple solves.
 class OSIMMUSCOLLO_API MucoParameter : public Object {
     OpenSim_DECLARE_CONCRETE_OBJECT(MucoParameter, Object);
 public:
@@ -98,7 +104,7 @@ public:
     /// @details Note: the return value is constructed fresh on every call from
     /// the internal property. Avoid repeated calls to this function.
     MucoBounds getBounds() const
-    {   return MucoBounds(getProperty_bounds()); }
+    {   return get_MucoBounds(); }
     std::string getPropertyName() const
     {   return get_property_name(); }
     std::vector<std::string> getComponentPaths() const
@@ -111,7 +117,7 @@ public:
        return componentPaths;
     }
     void setBounds(const MucoBounds& bounds)
-    {   set_bounds(bounds.getAsArray()); }
+    {   set_MucoBounds(bounds); }
     void setPropertyName(const std::string& propertyName)
     {   set_property_name(propertyName); }
     void appendComponentPath(const std::string& componentPath)
@@ -121,14 +127,17 @@ public:
     /// about the model that is useful during the optimization.
     /// This method takes a non-const reference to the model because parameters
     /// need to be able to alter the model.
-    void initialize(Model& model) const;
+    void initializeOnModel(Model& model) const;
     /// Set the value of the model property to the passed-in parameter value.
     void applyParameterToModel(const double& value) const;
 
+    /// Print the name, property name, component paths, property element (if it
+    /// exists), and bounds for this parameter.
+    void printDescription(std::ostream& stream = std::cout) const;
+
 private:
-    OpenSim_DECLARE_LIST_PROPERTY_ATMOST(bounds, double, 2,
-        "1 value: required value over all time. "
-        "2 values: lower, upper bounds on value.");
+    OpenSim_DECLARE_UNNAMED_PROPERTY(MucoBounds,
+        "Bounds over all time.");
     OpenSim_DECLARE_LIST_PROPERTY(component_paths, std::string, "The path to "
         "the model component that owns the property associated with the "
         "MucoParameter.");

@@ -137,13 +137,42 @@ using namespace SimTK;
     void setControl(const std::string& name, const std::vector<double>& traj) {
         $self->setControl(name, SimTK::Vector((int)traj.size(), traj.data()));
     }
+    void setMultiplier(const std::string& name, const std::vector<double>& traj)
+    {
+        $self->setMultiplier(name,
+                SimTK::Vector((int)traj.size(), traj.data()));
+    }
 }
+
+// Memory management
+// =================
+
+%pythonappend OpenSim::MucoPhase::setModel %{
+    model._markAdopted()
+%}
+%pythonappend OpenSim::MucoPhase::addParameter %{
+    ptr._markAdopted()
+%}
+%pythonappend OpenSim::MucoPhase::addCost %{
+    ptr._markAdopted()
+%}
+%pythonappend OpenSim::MucoPhase::addPathConstraint %{
+    ptr._markAdopted()
+%}
+%pythonappend OpenSim::MucoProblem::setModel %{
+    model._markAdopted()
+%}
+%pythonappend OpenSim::MucoProblem::addParameter %{
+    ptr._markAdopted()
+%}
+%pythonappend OpenSim::MucoProblem::addCost %{
+    ptr._markAdopted()
+%}
+%pythonappend OpenSim::MucoProblem::addPathConstraint %{
+    ptr._markAdopted()
+%}
 
 // Include all the OpenSim code.
 // =============================
 %include <Bindings/preliminaries.i>
 %include <Bindings/muscollo.i>
-
-// Memory management
-// =================
-// None.

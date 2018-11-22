@@ -1,5 +1,6 @@
 # WINDOWS_EXPORT_ALL_SYMBOLS requires 3.4.
-cmake_minimum_required(VERSION 3.4)
+# PkgConfig import targets requires 3.6.
+cmake_minimum_required(VERSION 3.6)
 project(tropter)
 
 # Include CMake macros that we wrote to reduce duplication in this project.
@@ -16,7 +17,7 @@ set(CMAKE_CXX_STANDARD 11)
 # Using c++11 is not optional.
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Copy dependencies' libraries into Tropter's installation?
+# Copy dependencies' libraries into tropter's installation?
 set(TROPTER_COPY_DEPENDENCIES ON)
 
 # Configurable settings.
@@ -82,19 +83,18 @@ set_package_properties(ADOLC PROPERTIES
 tropter_copy_dlls(ADOLC "${ADOLC_DIR}/bin")
 
 if(UNIX)
-    pkg_check_modules(IPOPT REQUIRED ipopt)
-    link_directories(${IPOPT_LIBRARY_DIRS})
+    pkg_check_modules(IPOPT REQUIRED ipopt IMPORTED_TARGET)
 else()
-    find_package(IPOPT REQUIRED)
+    find_package(Ipopt REQUIRED CONFIG)
     set_package_properties(IPOPT PROPERTIES
             URL https://projects.coin-or.org/Ipopt
             TYPE REQUIRED
             PURPOSE "Nonlinear optimization")
     # Flags to use when building a shared library.
     # TODO move these flags to a specific target.
-    set(CMAKE_SHARED_LINKER_FLAGS
-            "${CMAKE_SHARED_LINKER_FLAGS} ${IPOPT_LINK_FLAGS}")
-    tropter_copy_dlls(IPOPT "${IPOPT_DIR}/bin")
+    # TODO set(CMAKE_SHARED_LINKER_FLAGS
+    # TODO        "${CMAKE_SHARED_LINKER_FLAGS} ${IPOPT_LINK_FLAGS}")
+    tropter_copy_dlls(IPOPT "${Ipopt_ROOT_DIR}/bin")
 endif()
 
 # OpenMP allows parallelization (of evaluating dynamics and path constraints
@@ -132,7 +132,9 @@ add_subdirectory(external)
 
 add_subdirectory(tropter)
 
-add_subdirectory(tests)
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
 
 add_subdirectory(sandbox)
 

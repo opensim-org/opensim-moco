@@ -18,10 +18,6 @@ if (${SNOPT_LIBRARY} STREQUAL "SNOPT_LIBRARY-NOTFOUND")
 else()
     message(STATUS "SNOPT library located at ${SNOPT_LIBRARY}")
 
-    # Avoid excessive compiler warnings.
-    # We set these COMPILE_OPTIONS in the root CMakeLists.txt.
-    set_directory_properties(PROPERTIES COMPILE_OPTIONS "")
-
     add_library(snopt7_cpp SHARED
         include/snopt.h
         include/snopt_cwrap.h src/snopt_cwrap.c

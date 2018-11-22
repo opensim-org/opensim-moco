@@ -26,53 +26,73 @@
 namespace OpenSim {
 
 class MucoProblem;
+class MucoProblemRep;
 
-/// The values of the variables in an optimal control problem.
-/// This can be used for specifying an initial guess, or holding the solution
-/// returned by a solver. 
-///
-/// The file format for reading and writing a MucoIterate is comprised of a 
-/// file header followed by a row of column names and the stored data. The file
-/// header contains the number of states, controls, and parameters (order does
-/// not matter). Order does matter for the column names and corresponding data 
-/// columns. The columns *must* follow this order: time, states, controls, 
-/// parameters. For parameter columns, the value of the parameter is stored in 
-/// the first row of the column, while the rest of the rows are filled with 
-/// NaNs.
-/// @samplefile
-/// num_controls=<number-of-control-variables>
-/// num_parameters=<number-of-parameter-variables>
-/// num_states=<number-of-state-variables>
-/// time,<state-0-name>,...,<control-0-name>,...,<parameter-0-name>,...
-/// <#>,<#>,...,<#>,...,<#>,...
-/// <#>,<#>,...,<#>,...,<NaN>,...
-///  : , : ,..., : ,...,  :  ,...
-/// <#>,<#>,...,<#>,...,<NaN>,...
-/// @endsamplefile
-/// (If stored in a STO file, the delimiters are tabs, not commas.)
+/// This exception is thrown if you try to invoke most methods on MucoIterate
+/// while the iterate is sealed.
+class OSIMMUSCOLLO_API MucoIterateIsSealed : public Exception {
+public:
+    MucoIterateIsSealed(const std::string& file, size_t line,
+            const std::string& func) : Exception(file, line, func) {
+        addMessage("This iterate is sealed, to force you to acknowledge the "
+                "solver failed; call unseal() to gain access.");
+    }
+};
+
+/** The values of the variables in an optimal control problem.
+This can be used for specifying an initial guess, or holding the solution
+returned by a solver.
+
+The file format for reading and writing a MucoIterate is comprised of a
+file header followed by a row of column names and the stored data. The file
+header contains the number of states, controls, and parameters (order does
+not matter). Order does matter for the column names and corresponding data
+columns. The columns *must* follow this order: time, states, controls,
+parameters. For parameter columns, the value of the parameter is stored in
+the first row of the column, while the rest of the rows are filled with
+NaNs.
+@samplefile
+num_controls=<number-of-control-variables>
+num_parameters=<number-of-parameter-variables>
+num_states=<number-of-state-variables>
+time,<state-0-name>,...,<control-0-name>,...,<multiplier-0-name>,...,
+                                                         <parameter-0-name>,...
+<#>,<#>,...,<#>,...,<#>,...,<#>,...
+<#>,<#>,...,<#>,...,<#>,...,<NaN>,...
+ : , : ,..., : ,..., : ,...,  :  ,...
+<#>,<#>,...,<#>,...,<#>,...,<NaN>,...
+@endsamplefile
+(If stored in a STO file, the delimiters are tabs, not commas.) */
+// Not using three-slash doxygen comments because that messes up verbatim.
 class OSIMMUSCOLLO_API MucoIterate {
 public:
     MucoIterate() = default;
     MucoIterate(const SimTK::Vector& time,
             std::vector<std::string> state_names,
             std::vector<std::string> control_names,
+            std::vector<std::string> multiplier_names,
             std::vector<std::string> parameter_names,
             const SimTK::Matrix& statesTrajectory,
             const SimTK::Matrix& controlsTrajectory,
+            const SimTK::Matrix& multipliersTrajectory,
             const SimTK::RowVector& parameters);
     /// Read a MucoIterate from a data file (e.g., STO, CSV). See output of
     /// write() for the correct format.
-    // TODO describe format.
     explicit MucoIterate(const std::string& filepath);
+
+    virtual ~MucoIterate() = default;
+
     /// Returns a dynamically-allocated copy of this iterate. You must manage
     /// the memory for return value.
-    MucoIterate* clone() const { return new MucoIterate(*this); }
+    /// @note This works even if the iterate is sealed.
+    virtual MucoIterate* clone() const { return new MucoIterate(*this); }
 
     bool empty() const {
         ensureUnsealed();
         return !(m_time.size() || m_states.nelt() || m_controls.nelt() ||
-                m_parameters.nelt() || m_state_names.size() || 
-                m_control_names.size() || m_parameter_names.size());
+                m_multipliers.nelt() || m_parameters.nelt() || 
+                m_state_names.size() || m_control_names.size() || 
+                m_multiplier_names.size() || m_parameter_names.size());
     }
 
     /// @name Change the length of the trajectory
@@ -82,6 +102,7 @@ public:
 
     /// Resize the time vector and the time dimension of the states and controls
     /// trajectories, and set all times, states, and controls to NaN.
+    /// @note Parameters are NOT set to NaN.
     // TODO rename to setNumPoints() or setNumTimePoints().
     void setNumTimes(int numTimes)
     {
@@ -92,6 +113,8 @@ public:
         m_states.setToNaN();
         m_controls.resize(numTimes, m_controls.ncol());
         m_controls.setToNaN();
+        m_multipliers.resize(numTimes, m_multipliers.ncol());
+        m_multipliers.setToNaN();
     }
     /// Uniformly resample (interpolate) the iterate so that it retains the
     /// same initial and final times but now has the provided number of time
@@ -145,6 +168,13 @@ public:
     /// overload below; it does *not* construct a 5-element vector with the
     /// value 10.
     void setControl(const std::string& name, const SimTK::Vector& trajectory);
+    /// Set the value of a single Lagrange multiplier variable across time. The
+    /// provided vector must have length getNumTimes().
+    /// @note Using `setMultiplier(name, {5, 10})` uses the initializer list
+    /// overload below; it does *not* construct a 5-element vector with the 
+    /// value 10.
+    void setMultiplier(const std::string& name, 
+                       const SimTK::Vector& trajectory);
     /// Set the value of a single parameter variable. This value is invariant
     /// across time.
     void setParameter(const std::string& name, const SimTK::Real& value);
@@ -194,6 +224,21 @@ public:
             v[i] = *it;
         setControl(name, v);
     }
+    /// Set the value of a single Lagrange multiplier variable across time. The
+    /// provided vector must have length getNumTimes().
+    /// This variant supports use of an initializer list:
+    /// @code{.cpp}
+    /// iterate.setMultiplier("lambda_cid0_p0", {0, 0.5, 1.0});
+    /// @endcode
+    void setMultiplier(const std::string& name,
+            std::initializer_list<double> trajectory) {
+        ensureUnsealed();
+        SimTK::Vector v((int)trajectory.size());
+        int i = 0;
+        for (auto it = trajectory.begin(); it != trajectory.end(); ++it, ++i)
+            v[i] = *it;
+        setMultiplier(name, v);
+    }
 
     /// Set the states trajectory. The provided data is interpolated at the
     /// times contained within this iterate. The controls trajectory is not
@@ -217,6 +262,7 @@ public:
     /// @param allowExtraColumns
     ///     If false, an exception is thrown if there are states in the
     ///     table that are not in the iterate.
+    /// @see createFromStatesControlsTables.
     // TODO add tests in testMuscolloInterface.
     // TODO add setStatesTrajectory(const StatesTrajectory&)
     // TODO handle rotational coordinates specified in degrees.
@@ -231,23 +277,75 @@ public:
     {   ensureUnsealed(); return m_time.size(); }
     const SimTK::Vector& getTime() const
     {   ensureUnsealed(); return m_time; }
+    /// The first time in the time vector.
+    /// @throws Exception If numTimes is 0.
+    double getInitialTime() const;
+    /// The last time in the time vector.
+    /// @throws Exception If numTimes is 0.
+    double getFinalTime() const;
     // TODO inconsistent plural "state names" vs "states trajectory"
     const std::vector<std::string>& getStateNames() const
     {   ensureUnsealed(); return m_state_names; }
     const std::vector<std::string>& getControlNames() const
     {   ensureUnsealed(); return m_control_names; }
+    const std::vector<std::string>& getMultiplierNames() const
+    {   ensureUnsealed(); return m_multiplier_names; }
     const std::vector<std::string>& getParameterNames() const
     {   ensureUnsealed(); return m_parameter_names; }
     SimTK::VectorView_<double> getState(const std::string& name) const;
     SimTK::VectorView_<double> getControl(const std::string& name) const;
+    SimTK::VectorView_<double> getMultiplier(const std::string& name) const;
     const SimTK::Real& getParameter(const std::string& name) const;
     const SimTK::Matrix& getStatesTrajectory() const
     {   ensureUnsealed(); return m_states; }
     const SimTK::Matrix& getControlsTrajectory() const
     {   ensureUnsealed(); return m_controls; }
+    const SimTK::Matrix& getMultipliersTrajectory() const
+    {   ensureUnsealed(); return m_multipliers; }
     const SimTK::RowVector& getParameters() const
     {   ensureUnsealed(); return m_parameters; }
 
+    /// @}
+
+    /// @name Comparisons
+    /// @{
+
+    /// Do the state and control names in this iterate match those in the
+    /// problem? This may not catch all possible incompatibilities.
+    bool isCompatible(const MucoProblemRep&, bool throwOnError = false) const;
+    /// Check if this iterate is numerically equal to another iterate.
+    /// This uses SimTK::Test::numericallyEqual() internally.
+    /// Accordingly, the tolerance is both a relative and absolute tolerance
+    /// (depending on the magnitude of quantities being compared).
+    bool isNumericallyEqual(const MucoIterate& other,
+            double tol = SimTK::NTraits<SimTK::Real>::getDefaultTolerance())
+            const;
+    /// Compute the root-mean-square error between the continuous variables of
+    /// this iterate and another. The RMS is computed by numerically integrating 
+    /// the sum of squared error across states, controls, and Lagrange 
+    /// multipliers and dividing by the larger of the two time ranges. When one 
+    /// iterate does not cover the same time range as the other, we assume 
+    /// values of 0 for the iterate with "missing" time. Numerical integration 
+    /// is performed using the trapezoidal rule. By default, all states, 
+    /// controls, and multipliers are compared, and it is expected that both 
+    /// iterates have the same states, controls, and multipliers. Alternatively,
+    /// you can specify the specific states, controls, and multipliers to 
+    /// compare. To skip over all states, specify a single element of "none" for 
+    /// stateNames; likewise for controlNames and multiplierNames. Both iterates 
+    /// must have at least 6 time nodes.
+    double compareContinuousVariablesRMS(const MucoIterate& other,
+            std::vector<std::string> stateNames = {},
+            std::vector<std::string> controlNames = {},
+            std::vector<std::string> multiplierNames = {}) const;
+    /// Compute the root-mean-square error between the parameters in this
+    /// iterate and another. The RMS is computed by dividing the the sum of the
+    /// squared errors between corresponding parameters and then dividing by the
+    /// number of parameters compared.
+    /// By default, all parameters are compared, and it is expected that both
+    /// iterates have the same parameters. Alternatively, you can specify the
+    /// specific parameters to compare.
+    double compareParametersRMS(const MucoIterate& other,
+        std::vector<std::string> parameterNames = {}) const;
     /// @}
 
     /// @name Convert to other formats
@@ -260,67 +358,49 @@ public:
     /// as input to OpenSim's conventional tools (e.g., AnalyzeTool).
     ///
     /// Controls are not carried over to the states storage.
-    // TODO use TimeSeriesTable instead?
     Storage exportToStatesStorage() const;
+    /// Same as exportToStatesStorage() except using TimeSeriesTable.
+    TimeSeriesTable exportToStatesTable() const;
     /// Controls are not carried over to the StatesTrajectory.
     /// The MucoProblem is necessary because we need the underlying Model to
     /// order the state variables correctly.
     StatesTrajectory exportToStatesTrajectory(const MucoProblem&) const;
     /// @}
 
-    /// Do the state and control names in this iterate match those in the
-    /// problem? This may not catch all possible incompatibilities.
-    bool isCompatible(const MucoProblem&, bool throwOnError = false) const;
-    /// Check if this iterate is numerically equal to another iterate.
-    /// This uses SimTK::Test::numericallyEqual() internally.
-    /// Accordingly, the tolerance is both a relative and absolute tolerance
-    /// (depending on the magnitude of quantities being compared).
-    bool isNumericallyEqual(const MucoIterate& other,
-            double tol = SimTK::NTraits<SimTK::Real>::getDefaultTolerance())
-            const;
-    /// Compute the root-mean-square error between this iterate and another.
-    /// The RMS is computed by numerically integrating the sum of squared
-    /// error across states and controls and dividing by the larger of the
-    /// two time ranges. If the time ranges do not match between this and the
-    /// other iterate, then we assume values of 0 for the iterate with the
-    /// shorter time range.
-    /// When one iterate does not cover the same time range as the other, we
-    /// assume values of 0 for the iterate with "missing" time.
-    /// Numerical integration is performed using the trapezoidal rule.
-    /// By default, all states and controls are compared, and it is expected
-    /// that both iterates have the same states and controls. Alternatively,
-    /// you can specify the specific states and controls to compare. To skip
-    /// over all states, specify a single element of "none" for stateNames;
-    /// likewise for controlNames.
-    /// Both iterates must have at least 6 time nodes.
-    double compareStatesControlsRMS(const MucoIterate& other,
-            std::vector<std::string> stateNames = {},
-            std::vector<std::string> controlNames = {}) const;
-    /// Compute the root-mean-square error between the parameters in this
-    /// iterate and another. The RMS is computed by dividing the the sum of the
-    /// squared errors between corresponding parameters and then dividing by the
-    /// number of parameters compared.
-    /// By default, all parameters are compared, and it is expected that both
-    /// iterates have the same parameters. Alternatively, you can specify the
-    /// specific parameters to compare.
-    double compareParametersRMS(const MucoIterate& other,
-        std::vector<std::string> parameterNames = {}) const;
+    /// @name Convert from other formats
+    /// @{
+
+    /// (Experimental) Create an iterate from a states trajectory and controls
+    /// trajectory (i.e, from Manager::getStatesTable() and
+    /// Model::getControlsTable()). The time columns from the two tables must
+    /// match exactly. The times in the iterate will be those from the tables.
+    /// This does not (yet) handle parameters.
+    static MucoIterate createFromStatesControlsTables(
+            const MucoProblemRep&,
+            const TimeSeriesTable& statesTrajectory,
+            const TimeSeriesTable& controlsTrajectory);
+    /// @}
 
 protected:
     void setSealed(bool sealed) { m_sealed = sealed; }
     bool isSealed() const { return m_sealed; }
+    /// @throws MucoIterateIsSealed if the iterate is sealed.
     void ensureUnsealed() const;
 
 private:
     TimeSeriesTable convertToTable() const;
+    // TODO std::string m_name;
     SimTK::Vector m_time;
     std::vector<std::string> m_state_names;
     std::vector<std::string> m_control_names;
+    std::vector<std::string> m_multiplier_names;
     std::vector<std::string> m_parameter_names;
     // Dimensions: time x states
     SimTK::Matrix m_states;
     // Dimensions: time x controls
     SimTK::Matrix m_controls;
+    // Dimensions: time x multipliers
+    SimTK::Matrix m_multipliers;
     // Dimensions: 1 x parameters
     SimTK::RowVector m_parameters;
 
@@ -344,6 +424,10 @@ private:
 /// prevents you from silently proceeding with a failed solution.
 class OSIMMUSCOLLO_API MucoSolution : public MucoIterate {
 public:
+    /// Returns a dynamically-allocated copy of this solution. You must manage
+    /// the memory for return value.
+    /// @note This works even if the iterate is sealed.
+    virtual MucoSolution* clone() const { return new MucoSolution(*this); }
     /// Was the problem solved successfully? If not, then you cannot access
     /// the solution until you call unlock().
     bool success() const { return m_success; }

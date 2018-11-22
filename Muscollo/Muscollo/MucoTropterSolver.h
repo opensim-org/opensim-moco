@@ -49,11 +49,6 @@ public:
     OpenSim_DECLARE_PROPERTY(verbosity, int,
     "0 for silent. 1 for only Muscollo's own output. "
     "2 for output from tropter and the underlying solver (default: 2).");
-    // TODO make a private property with a custom setter so we can detect
-    // when the user has changed this and we can invalidate relevant caches.
-    OpenSim_DECLARE_PROPERTY(dynamics_mode, std::string,
-    "Dynamics are expressed as 'explicit' (default) or 'implicit' "
-    "differential equations.");
     OpenSim_DECLARE_PROPERTY(optim_solver, std::string,
     "The optimization solver for tropter to use; ipopt (default), or snopt.");
     OpenSim_DECLARE_PROPERTY(optim_max_iterations, int,
@@ -67,14 +62,22 @@ public:
     "(-1 for solver's default)");
     OpenSim_DECLARE_PROPERTY(optim_hessian_approximation, std::string,
     "'limited-memory' (default) for quasi-Newton, or 'exact' for full Newton.");
+    OpenSim_DECLARE_PROPERTY(optim_sparsity_detection, std::string,
+    "Iterate used to detect sparsity pattern of Jacobian/Hessian; "
+    "'random' (default) or 'initial-guess'");
     OpenSim_DECLARE_PROPERTY(optim_ipopt_print_level, int,
     "IPOPT's verbosity (see IPOPT documentation).");
+    OpenSim_DECLARE_PROPERTY(multiplier_weight, double,
+    "The weight of the squared multiplier cost term included in the optimal "
+    "control problem when only enforcing holonomic constraints in the model. A "
+    "relatively high weight of 100 is set by default (so model actuators are  "
+    "preferred).")
+    // TODO OpenSim_DECLARE_LIST_PROPERTY(enforce_constraint_kinematic_levels, 
+    //   std::string, "");
     // TODO must make more general for multiple phases, mesh refinement.
     // TODO mesh_point_frequency if time is fixed.
 
     MucoTropterSolver();
-
-    explicit MucoTropterSolver(const MucoProblem& problem);
 
     /// @name Specifying an initial guess
     /// @{
@@ -87,12 +90,36 @@ public:
     ///   bounds (the value for variables with ony one bound is the specified
     ///   bound). This is the default type.
     /// - **random**: values are randomly generated within the bounds.
+    /// - **time-stepping**: see createGuessTimeStepping().
     /// @note Calling this method does *not* set an initial guess to be used
     /// in the solver; you must call setGuess() or setGuessFile() for that.
     /// @precondition You must have called setProblem().
     // TODO problem must be upToDate()?
-    // TODO add "forward_simulation" as way of creating a guess.
     MucoIterate createGuess(const std::string& type = "bounds") const;
+
+    /// (Experimental) Run a forward simulation (using the OpenSim Manager,
+    /// which uses a SimTK::Integrator), using the default controls for
+    /// actuators and the default states as the initial states, to create a
+    /// guess that is dynamically consistent (constraint errors should be
+    /// small). The time range for the simulation is the upper bound on the
+    /// initial time and the lower bound on the final time. The initial state
+    /// values are the default state values unless:
+    ///  - initial bounds are an equality constraint: use the bound value
+    ///  - default value is not within the initial bounds: use midpoint of
+    ///    initial bounds.
+    ///
+    /// The number of times in the iterate is the number of successful
+    /// integration steps.
+    ///
+    /// @note This function does not yet support problems with parameters.
+    ///
+    /// @throws Exception If the lower bound on the final time is less than or
+    /// equal to the upper bound on the initial time. This situation is okay in
+    /// general; it's just that this function doesn't support it.
+    ///
+    /// @precondition You must have called setProblem().
+    // TODO problem must be upToDate()?
+    MucoIterate createGuessTimeStepping() const;
 
     // TODO document; any validation?
     /// The number of time points in the iterate does *not* need to match
@@ -126,16 +153,11 @@ protected:
     /// Internal tropter optimal control problem.
     template <typename T>
     class OCProblem;
-    template <typename T>
-    class OCPExplicit;
-    template <typename T>
-    class OCPImplicit;
 
     std::shared_ptr<const tropter::Problem<double>>
     getTropterProblem() const;
 
-    void clearProblemImpl() override;
-    void setProblemImpl(const MucoProblem& problem) override;
+    void resetProblemImpl(const MucoProblemRep&) const override;
     // TODO ensure that user-provided guess is within bounds.
     MucoSolution solveImpl() const override;
 
@@ -146,9 +168,8 @@ private:
 
     void constructProperties();
 
-    // TODO
-    //mutable SimTK::ResetOnCopy<std::shared_ptr<OCProblem<double>>>
-    //        m_tropProblem;
+    mutable SimTK::ResetOnCopy<std::shared_ptr<OCProblem<double>>>
+            m_tropProblem;
 
     // When a copy of the solver is made, we want to keep any guess specified
     // by the API, but want to discard anything we've cached by loading a file.

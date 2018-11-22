@@ -36,6 +36,7 @@ public:
     AbstractProblem(unsigned num_variables, unsigned num_constraints)
             :m_num_variables(num_variables),
              m_num_constraints(num_constraints) { }
+    virtual ~AbstractProblem() = default;
     unsigned get_num_variables() const { return m_num_variables; }
     unsigned get_num_constraints() const { return m_num_constraints; }
     const Eigen::VectorXd&
@@ -46,6 +47,17 @@ public:
     get_constraint_lower_bounds() const { return m_constraint_lower_bounds; }
     const Eigen::VectorXd&
     get_constraint_upper_bounds() const { return m_constraint_upper_bounds; }
+
+    /// Get a vector of names of all variables in the optimization problem,
+    /// in the correct order.
+    /// If unimplemented, this returns an empty vector.
+    virtual std::vector<std::string> get_variable_names() const { return {}; }
+
+    /// Get a vector of names of the constraints in the optimization problem, in
+    /// the correct order.
+    /// If unimplemented, this returns an empty vector.
+    virtual std::vector<std::string> get_constraint_names() const { return {}; }
+
     /// This method throws an exception if the following are not true:
     /// - the number of variable bounds matches the number of variables,
     /// - the number of constraint bounds matches the number of constraints.
@@ -58,6 +70,7 @@ public:
     Eigen::VectorXd make_initial_guess_from_bounds() const;
     /// Create a vector with random variable values within the variable
     /// bounds, potentially for use as an initial guess.
+    // TODO rename to random_variables
     Eigen::VectorXd make_random_iterate_within_bounds() const;
     /// When using finite differences to compute derivatives, should we use
     /// the user-supplied sparsity pattern of the Hessian (provided by
@@ -107,9 +120,6 @@ protected:
     void set_num_constraints(unsigned num_constraints) {
         m_num_constraints = num_constraints;
     }
-    // TODO eigen wants these to be more generic to avoid temporaries.
-    // TODO allow specifying these as std::vector<std::pair<double>>;
-    // this is a more logical way to specify bounds for users.
     void set_variable_bounds(const Eigen::VectorXd& lower,
             const Eigen::VectorXd& upper) {
         // TODO make sure num_variables has been set.

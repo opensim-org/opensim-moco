@@ -61,6 +61,8 @@ Model createDoublePendulumModel() {
     tau1->setOptimalForce(1);
     model.addComponent(tau1);
 
+    auto* marker = new Marker("marker", *b1, Vec3(0));
+    model.addMarker(marker);
 
     // Add display geometry.
     Ellipsoid bodyGeometry(0.5, 0.1, 0.1);
@@ -92,38 +94,11 @@ Model createDoublePendulumModel() {
     return model;
 }
 
-class MucoMarkerEndpointCost : public MucoCost {
-OpenSim_DECLARE_CONCRETE_OBJECT(MucoMarkerEndpointCost, MucoCost);
-public:
-    OpenSim_DECLARE_PROPERTY(frame_name, std::string, "TODO");
-    OpenSim_DECLARE_PROPERTY(point_on_frame, SimTK::Vec3, "TODO");
-    OpenSim_DECLARE_PROPERTY(point_to_track, SimTK::Vec3,
-            "TODO Expressed in ground.");
-    MucoMarkerEndpointCost() {
-        constructProperties();
-    }
-protected:
-    void calcEndpointCostImpl(const SimTK::State& finalState,
-            double& cost) const override {
-        getModel().realizePosition(finalState);
-        const auto& frame = getModel().getComponent<Frame>(get_frame_name());
-        auto actualLocation =
-                frame.findStationLocationInGround(finalState,
-                        get_point_on_frame());
-        cost = (actualLocation - get_point_to_track()).normSqr();
-    }
-private:
-    void constructProperties() {
-        constructProperty_frame_name("");
-        constructProperty_point_on_frame(SimTK::Vec3(0));
-        constructProperty_point_to_track(SimTK::Vec3(0));
-    }
-};
 
 int main() {
 
     MucoTool muco;
-    muco.setName("double_pendulum_swingup");
+    muco.setName("double_pendulum_tracking");
 
     // Define the optimal control problem.
     // ===================================
@@ -151,17 +126,16 @@ int main() {
 
     MucoMarkerEndpointCost endpointCost;
     endpointCost.setName("endpoint");
-    endpointCost.set_frame_name("b1");
     endpointCost.set_weight(1000.0);
-    endpointCost.set_point_on_frame(SimTK::Vec3(0));
-    endpointCost.set_point_to_track(SimTK::Vec3(0, 2, 0));
+    endpointCost.setPointName("marker");
+    endpointCost.setReferenceLocation(SimTK::Vec3(0, 2, 0));
+
     mp.addCost(endpointCost);
 
     // Configure the solver.
     // =====================
     MucoTropterSolver& ms = muco.initSolver();
-    int N = 50;
-    ms.set_num_mesh_points(N);
+    ms.set_num_mesh_points(50);
     ms.set_optim_max_iterations(5);
     //ms.set_verbosity(2);
     //ms.set_optim_hessian_approximation("exact");
@@ -178,47 +152,20 @@ int main() {
     guess.resampleWithNumTimes(10);
     ms.setGuess(guess);
 
-    //muco.visualize(guess);
+    muco.visualize(guess);
 
     muco.print("double_pendulum_swingup.omuco");
 
     // Solve the problem.
     // ==================
-    //MucoSolution solution = muco.solve().unseal();
-    //solution.write("double_pendulum_swingup_solution.sto");
-    //muco.visualize(solution);
+    MucoSolution solution = muco.solve().unseal();
+    solution.write("double_pendulum_swingup_solution.sto");
+
+    muco.visualize(solution);
 
     ms.set_optim_max_iterations(-1);
     MucoSolution solution2 = muco.solve().unseal();
     muco.visualize(solution2);
-
-    // Use implicit differential equations.
-    // ====================================
-    ms.set_dynamics_mode("implicit");
-    MucoIterate guessImp = ms.createGuess();
-    guessImp.setNumTimes(2);
-    guessImp.setTime({0, 1});
-    guessImp.setState("j0/q0/value", {0, -SimTK::Pi});
-    guessImp.setState("j1/q1/value", {0, 2*SimTK::Pi});
-    guessImp.setState("j0/q0/speed", {0, 0});
-    guessImp.setState("j1/q1/speed", {0, 0});
-    guessImp.setControl("j0/q0/accel", {0, 0});
-    guessImp.setControl("j1/q1/accel", {0, 0});
-    guessImp.setControl("tau0", {0, 0});
-    guessImp.setControl("tau1", {0, 0});
-    guessImp.resampleWithNumTimes(10);
-    ms.setGuess(guessImp);
-    ms.set_optim_max_iterations(-1);
-    // ms.clearGuess();
-
-    MucoSolution solutionImplicit = muco.solve();
-    solutionImplicit.write("double_pendulum_swingup_solution_implicit.sto");
-    muco.visualize(solutionImplicit);
-
-    std::cout << solution2.getTime()[N-1] << " "
-            << solutionImplicit.getTime()[N-1] << std::endl;
-    //TODO std::cout << "Comparison with implicit: " <<
-    //        solutionImplicit.compareRMS(solution2) << std::endl;
 
     return EXIT_SUCCESS;
 }

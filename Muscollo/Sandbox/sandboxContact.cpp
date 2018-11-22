@@ -30,8 +30,6 @@
 #include <OpenSim/Common/Constant.h>
 #include <OpenSim/Simulation/Control/PrescribedController.h>
 
-#include <MuscolloSandboxShared.h>
-
 // TODO achieve sliding friction (apply constant tangential force,
 // maybe from gravity?).
 
@@ -71,6 +69,156 @@ public:
         // TODO equal and opposite force on ground.
     }
 };
+
+// TODO add OSIMMUSCOLLO_API
+class /*TODO OSIMMUSCOLLO_API*/AckermannVanDenBogert2010Contact : public Force {
+OpenSim_DECLARE_CONCRETE_OBJECT(AckermannVanDenBogert2010Contact, Force);
+public:
+    OpenSim_DECLARE_PROPERTY(friction_coefficient, double, "TODO");
+    OpenSim_DECLARE_PROPERTY(stiffness, double, "TODO N/m^3");
+    OpenSim_DECLARE_PROPERTY(dissipation, double, "TODO s/m");
+    OpenSim_DECLARE_PROPERTY(tangent_velocity_scaling_factor, double, "TODO");
+
+    OpenSim_DECLARE_OUTPUT(force_on_station, SimTK::Vec3, calcContactForce,
+            SimTK::Stage::Velocity);
+
+    OpenSim_DECLARE_SOCKET(station, Station, "TODO");
+
+    AckermannVanDenBogert2010Contact() {
+        constructProperties();
+    }
+
+    /// Compute the force applied to body to which the station is attached, at
+    /// the station, expressed in ground.
+    SimTK::Vec3 calcContactForce(const SimTK::State& s) const {
+        SimTK::Vec3 force(0);
+        const auto& pt = getConnectee<Station>("station");
+        const auto& pos = pt.getLocationInGround(s);
+        const auto& vel = pt.getVelocityInGround(s);
+        const SimTK::Real y = pos[1];
+        const SimTK::Real velNormal = vel[1];
+        // TODO should project vel into ground.
+        const SimTK::Real velSliding = vel[0];
+        const SimTK::Real depth = 0 - y;
+        const SimTK::Real depthRate = 0 - velNormal;
+        const SimTK::Real a = get_stiffness();
+        const SimTK::Real b = get_dissipation();
+        if (depth > 0) {
+            force[1] = fmax(0, a * pow(depth, 3) * (1 + b * depthRate));
+        }
+        const SimTK::Real voidStiffness = 1.0; // N/m
+        force[1] += voidStiffness * depth;
+
+        const SimTK::Real velSlidingScaling =
+                get_tangent_velocity_scaling_factor();
+        const SimTK::Real z0 = exp(-velSliding / velSlidingScaling);
+        // TODO decide direction!!!
+
+        const SimTK::Real frictionForce =
+                -(1 - z0) / (1 + z0) * get_friction_coefficient() * force[1];
+
+        force[0] = frictionForce;
+        return force;
+    }
+    void computeForce(const SimTK::State& s,
+            SimTK::Vector_<SimTK::SpatialVec>& bodyForces,
+            SimTK::Vector& /*generalizedForces*/) const override {
+        const SimTK::Vec3 force = calcContactForce(s);
+        const auto& pt = getConnectee<Station>("station");
+        const auto& pos = pt.getLocationInGround(s);
+        const auto& frame = pt.getParentFrame();
+        applyForceToPoint(s, frame, pt.get_location(), force, bodyForces);
+        applyForceToPoint(s, getModel().getGround(), pos, -force, bodyForces);
+    }
+
+    OpenSim::Array<std::string> getRecordLabels() const override {
+        OpenSim::Array<std::string> labels;
+        const auto stationName = getConnectee("station").getName();
+        labels.append(getName() + "." + stationName + ".force.X");
+        labels.append(getName() + "." + stationName + ".force.Y");
+        labels.append(getName() + "." + stationName + ".force.Z");
+        return labels;
+    }
+    OpenSim::Array<double> getRecordValues(const SimTK::State& s)
+            const override {
+        OpenSim::Array<double> values;
+        // TODO cache.
+        const SimTK::Vec3 force = calcContactForce(s);
+        values.append(force[0]);
+        values.append(force[1]);
+        values.append(force[2]);
+        return values;
+    }
+
+    // TODO potential energy.
+private:
+    void constructProperties() {
+        constructProperty_friction_coefficient(1.0);
+        constructProperty_stiffness(5e7);
+        constructProperty_dissipation(1.0);
+        constructProperty_tangent_velocity_scaling_factor(0.05);
+    }
+};
+
+/// Similar to CoordinateActuator (simply produces a generalized force) but
+/// with first-order linear activation dynamics. This actuator has one state
+/// variable, `activation`, with \f$ \dot{a} = (u - a) / \tau \f$, where
+/// \f$ a \f$ is activation, \f$ u $\f is excitation, and \f$ \tau \f$ is the
+/// activation time constant (there is no separate deactivation time constant).
+/// <b>Default %Property Values</b>
+/// @verbatim
+/// activation_time_constant: 0.01
+/// default_activation: 0.5
+/// @dverbatim
+class /*OSIMMUSCOLLO_API*/
+ActivationCoordinateActuator : public CoordinateActuator {
+OpenSim_DECLARE_CONCRETE_OBJECT(ActivationCoordinateActuator,
+        CoordinateActuator);
+public:
+    OpenSim_DECLARE_PROPERTY(activation_time_constant, double,
+    "Larger value means activation can change more rapidly (units: seconds).");
+
+    OpenSim_DECLARE_PROPERTY(default_activation, double,
+    "Value of activation in the default state returned by initSystem().");
+
+    ActivationCoordinateActuator() {
+        constructProperties();
+    }
+
+    void extendAddToSystem(SimTK::MultibodySystem& system) const override {
+        Super::extendAddToSystem(system);
+        addStateVariable("activation", SimTK::Stage::Dynamics);
+    }
+
+    void extendInitStateFromProperties(SimTK::State& s) const override {
+        Super::extendInitStateFromProperties(s);
+        setStateVariableValue(s, "activation", get_default_activation());
+    }
+
+    void extendSetPropertiesFromState(const SimTK::State& s) override {
+        Super::extendSetPropertiesFromState(s);
+        set_default_activation(getStateVariableValue(s, "activation"));
+    }
+
+    // TODO no need to do clamping, etc; CoordinateActuator is bidirectional.
+    void computeStateVariableDerivatives(const SimTK::State& s) const override {
+        const auto& tau = get_activation_time_constant();
+        const auto& u = getControl(s);
+        const auto& a = getStateVariableValue(s, "activation");
+        const SimTK::Real adot = (u - a) / tau;
+        setStateVariableDerivativeValue(s, "activation", adot);
+    }
+
+    double computeActuation(const SimTK::State& s) const override {
+        return getStateVariableValue(s, "activation") * getOptimalForce();
+    }
+private:
+    void constructProperties() {
+        constructProperty_activation_time_constant(0.010);
+        constructProperty_default_activation(0.5);
+    }
+};
+
 
 Model createModel() {
     Model model;
@@ -131,7 +279,7 @@ Model createModel2D() {
     model.addComponent(station);
 
     //auto* force = new CustomContactForce();
-    auto* force = new AckermannVanDenBogert2010Force();
+    auto* force = new AckermannVanDenBogert2010Contact();
     force->setName("contact");
     model.addComponent(force);
     force->connectSocket_station(*station);
@@ -210,8 +358,7 @@ void ball2d() {
 
     solution.write("ball2d_solution.sto");
 
-    std::cout << "RMS: " << solution.compareStatesControlsRMS(guess)
-            << std::endl;
+    std::cout << "RMS: " << solution.compareRMS(guess) << std::endl;
 
     // Visualize.
     // ==========
@@ -238,7 +385,7 @@ Model createModelPendulum(double linkLength, double jointHeight,
     station->connectSocket_parent_frame(*body);
     model.addComponent(station);
 
-    auto* force = new AckermannVanDenBogert2010Force();
+    auto* force = new AckermannVanDenBogert2010Contact();
     force->set_dissipation(dissipation);
     force->set_friction_coefficient(frictionCoeff);
     force->setName("contact");
@@ -291,8 +438,7 @@ void pendulum() {
 
     solution.write("pendulum_solution.sto");
 
-    std::cout << "RMS: " << solution.compareStatesControlsRMS(guess)
-            << std::endl;
+    std::cout << "RMS: " << solution.compareRMS(guess) << std::endl;
 
     // Visualize.
     // ==========
@@ -320,7 +466,7 @@ Model createModelPendulumActivationCoordinateActuator() {
     station->connectSocket_parent_frame(*body);
     model.addComponent(station);
 
-    auto* force = new AckermannVanDenBogert2010Force();
+    auto* force = new AckermannVanDenBogert2010Contact();
     force->set_dissipation(1.0);
     force->set_friction_coefficient(1.0);
     force->setName("contact");
@@ -381,61 +527,12 @@ void pendulumActivationCoordinateActuator() {
 
     solution.write("pendulumaca_solution.sto");
 
-    std::cout << "RMS: " << solution.compareStatesControlsRMS(guess)
-     << std::endl;
+    std::cout << "RMS: " << solution.compareRMS(guess) << std::endl;
 
     // Visualize.
     // ==========
     muco.visualize(solution);
      */
-}
-
-void addResidualActivationCoordinateActuators(Model& model) {
-
-    auto& coordSet = model.updCoordinateSet();
-    
-    auto* res_rz = new ActivationCoordinateActuator();
-    res_rz->setCoordinate(&coordSet.get("rz"));
-    res_rz->setName("res_rz");
-    res_rz->setOptimalForce(100);
-    model.addComponent(res_rz);
-
-    auto* res_tx = new ActivationCoordinateActuator();
-    res_tx->setCoordinate(&coordSet.get("tx"));
-    res_tx->setName("res_tx");
-    res_tx->setOptimalForce(2500);
-    model.addComponent(res_tx);
-
-    auto* res_ty = new ActivationCoordinateActuator();
-    res_ty->setCoordinate(&coordSet.get("ty"));
-    res_ty->setName("res_ty");
-    res_ty->setOptimalForce(2500);
-    model.addComponent(res_ty);
-
-}
-
-void addResidualCoordinateActuators(Model& model) {
-
-    auto& coordSet = model.updCoordinateSet();
-
-    auto* res_rz = new CoordinateActuator();
-    res_rz->setCoordinate(&coordSet.get("rz"));
-    res_rz->setName("res_rz");
-    res_rz->setOptimalForce(100);
-    model.addComponent(res_rz);
-
-    auto* res_tx = new CoordinateActuator();
-    res_tx->setCoordinate(&coordSet.get("tx"));
-    res_tx->setName("res_tx");
-    res_tx->setOptimalForce(2500);
-    model.addComponent(res_tx);
-
-    auto* res_ty = new CoordinateActuator();
-    res_ty->setCoordinate(&coordSet.get("ty"));
-    res_ty->setName("res_ty");
-    res_ty->setOptimalForce(2500);
-    model.addComponent(res_ty);
-
 }
 
 Model createModelSLIP() {
@@ -474,26 +571,13 @@ Model createModelSLIP() {
     station->connectSocket_parent_frame(*foot);
     model.addComponent(station);
 
-    auto* force = new AckermannVanDenBogert2010Force();
+    auto* force = new AckermannVanDenBogert2010Contact();
     force->set_dissipation(1.0);
-    force->set_stiffness(5e5);
+    //force->set_stiffness(5e3);
     force->set_friction_coefficient(1.0);
     force->setName("contact");
     model.addComponent(force);
     force->connectSocket_station(*station);
-
-    // auto* force = new MeyerFregly2016Force();
-    // // force->set_dissipation(1.0);
-    // // force->set_stiffness(1e4);
-    // force->setName("contact");
-    // model.addComponent(force);
-    // force->connectSocket_station(*station);
-
-    // auto* force = new EspositoMiller2018Force();
-    // force->set_stiffness(1e5);
-    // force->setName("contact");
-    // model.addComponent(force);
-    // force->connectSocket_station(*station);
 
 
     // Leg muscles.
@@ -505,11 +589,6 @@ Model createModelSLIP() {
     spring->set_rest_length(1.0);
     spring->connectSocket_body1(*foot);
     spring->connectSocket_body2(*pelvis);
-
-    auto* foot_marker = new Marker("foot_COM", *foot, Vec3(0));
-    model.addComponent(foot_marker);
-    auto* pelvis_marker = new Marker("pelvis_COM", *pelvis, Vec3(0));
-    model.addComponent(pelvis_marker);
 
     return model;
 }
@@ -550,41 +629,22 @@ Model createModelSLIPActuated() {
     station->connectSocket_parent_frame(*foot);
     model.addComponent(station);
 
-    auto* force = new AckermannVanDenBogert2010Force();
+    auto* force = new AckermannVanDenBogert2010Contact();
     force->set_dissipation(1.0);
-    force->set_stiffness(5e5);
+    //force->set_stiffness(5e3);
     force->set_friction_coefficient(1.0);
     force->setName("contact");
     model.addComponent(force);
     force->connectSocket_station(*station);
 
-    // auto* force = new MeyerFregly2016Force();
-    // force->set_dissipation(1.0);
-    // force->set_stiffness(1e4);
-    // force->setName("contact");
-    // model.addComponent(force);
-    // force->connectSocket_station(*station);
 
-    // auto* force = new EspositoMiller2018Force();
-    // force->set_stiffness(1e5);
-    // force->setName("contact");
-    // model.addComponent(force);
-    // force->connectSocket_station(*station);
 
-    auto* actuator = new CoordinateActuator();
+    auto* actuator = new ActivationCoordinateActuator();
     actuator->setCoordinate(&length);
     actuator->setName("actuator");
     actuator->setOptimalForce(2500);
-    //actuator->set_activation_time_constant(0.025);
+    actuator->set_activation_time_constant(0.025);
     model.addComponent(actuator);
-
-    //addResidualActivationCoordinateActuators(model);
-    addResidualCoordinateActuators(model);
-
-    auto* foot_marker = new Marker("foot_COM", *foot, Vec3(0));
-    model.addComponent(foot_marker);
-    auto* pelvis_marker = new Marker("pelvis_COM", *pelvis, Vec3(0));
-    model.addComponent(pelvis_marker);
 
     return model;
 }
@@ -594,7 +654,7 @@ void slip(double rzvalue0 = 0, double rzspeed0 = 0) {
     auto model = createModelSLIP();
     auto state = model.initSystem();
     model.setStateVariableValue(state, "planar/rz/value", rzvalue0);
-    model.setStateVariableValue(state, "planar/rz/speed", rzspeed0);
+    model.setStateVariableValue(state, "palanr/rz/speed", rzspeed0);
     SimTK::RungeKuttaMersonIntegrator integrator(model.getMultibodySystem());
     integrator.setAccuracy(1e-5);
     integrator.setMaximumStepSize(0.05);
@@ -634,8 +694,7 @@ void slip(double rzvalue0 = 0, double rzspeed0 = 0) {
 
     MucoSolution solution = muco.solve().unseal();
     solution.write("slip_solution.sto");
-    std::cout << "RMS: " << solution.compareStatesControlsRMS(guess)
-            << std::endl;
+    std::cout << "RMS: " << solution.compareRMS(guess) << std::endl;
     muco.visualize(solution);
 }
 
@@ -643,24 +702,13 @@ void slipSolveForForce(double rzvalue0 = 0, double rzspeed0 = 0) {
     const SimTK::Real finalTime = 0.68;
     auto modelTS = createModelSLIP();
     auto reporter = new TableReporterVec3();
-    reporter->setName("contact_rep");
     reporter->set_report_time_interval(0.01);
     reporter->addToReport(
             modelTS.getComponent("contact").getOutput("force_on_station"));
     modelTS.addComponent(reporter);
-    auto markersReporter = new TableReporterVec3();
-    markersReporter->setName("marker_rep");
-    markersReporter->set_report_time_interval(0.01);
-    markersReporter->addToReport(
-            modelTS.getComponent("foot_COM").getOutput("location"), 
-            "foot_COM");
-    markersReporter->addToReport(
-            modelTS.getComponent("pelvis_COM").getOutput("location"), 
-            "pelvis_COM");
-    modelTS.addComponent(markersReporter);
     auto state = modelTS.initSystem();
     modelTS.setStateVariableValue(state, "planar/rz/value", rzvalue0);
-    modelTS.setStateVariableValue(state, "planar/rz/speed", rzspeed0);
+    modelTS.setStateVariableValue(state, "palanr/rz/speed", rzspeed0);
     SimTK::RungeKuttaMersonIntegrator integrator(modelTS.getMultibodySystem());
     integrator.setAccuracy(1e-5);
     integrator.setMaximumStepSize(0.05);
@@ -669,55 +717,13 @@ void slipSolveForForce(double rzvalue0 = 0, double rzspeed0 = 0) {
     Manager manager(modelTS, state, integrator);
     state = manager.integrate(finalTime);
     const auto& statesTimeStepping = manager.getStateStorage();
-
-
-    // Calculate the signed magnitude of the spring force.
-    // forceRep->getForceStorage().print("DEBUG_slipSolveForForce_forces.sto");
-    SimTK::Vector springForceActual;
-    SimTK::Vector springForceActualTime;
-    {
-        auto forceRepTable = forceRep->getForcesTable();
-        std::string prefix = "pointtopointspring.";
-        auto X = forceRepTable.getDependentColumn(prefix + "foot.force.X");
-        auto Y = forceRepTable.getDependentColumn(prefix + "foot.force.Y");
-        auto Z = forceRepTable.getDependentColumn(prefix + "foot.force.Z");
-        auto pX = forceRepTable.getDependentColumn(prefix + "pelvis.point.X") -
-                forceRepTable.getDependentColumn(prefix + "foot.point.X");
-        auto pY = forceRepTable.getDependentColumn(prefix + "pelvis.point.Y") -
-                forceRepTable.getDependentColumn(prefix + "foot.point.Y");
-        auto pZ = forceRepTable.getDependentColumn(prefix + "pelvis.point.Z") -
-                forceRepTable.getDependentColumn(prefix + "foot.point.Z");
-        const auto& stdTime = forceRepTable.getIndependentColumn();
-        springForceActualTime =
-                SimTK::Vector((int)stdTime.size(), stdTime.data());
-        springForceActual.resize(X.size());
-        assert(X.size() > 0);
-        for (int i = 0; i < X.size(); ++i) {
-            SimTK::Vec3 forceVec(X[i], Y[i], Z[i]);
-            SimTK::Vec3 lineOfAction(pX[i], pY[i], pZ[i]);
-            springForceActual[i] = forceVec.norm();
-            if (~lineOfAction * forceVec < 0) {
-                springForceActual[i] *= -1;
-            }
-        }
-        forceRepTable.appendColumn("spring_force_mag", springForceActual);
-        STOFileAdapter::write(forceRepTable,
-                "DEBUG_slipSolveForForce_springforce.sto");
-    }
-
-    auto forcesFlattened = reporter->getTable().flatten({"x", "y", "z"});
-    //TimeSeriesTable forcesFilt = filterLowpass(forcesFlattened, 18.0, true);
-    STOFileAdapter::write(forcesFlattened,
-        "slipSolveForForce_contact_force.sto");
+    forceRep->getForceStorage().print("DEBUG_slipSolveForForce_forces.sto");
+    STOFileAdapter::write(reporter->getTable().flatten({"x", "y", "z"}),
+            "slipSolveForForce_contact_force.sto");
     auto statesTimeSteppingTable = statesTimeStepping.exportToTable();
     STOFileAdapter::write(statesTimeSteppingTable,
             "slipSolveForForce_timestepping.sto");
-    auto markers = markersReporter->getTable();
-    TimeSeriesTable markersFilt = filterLowpass(markers.flatten(), 6.0, true);
-    auto markersPacked = markersFilt.pack<double>();
-    TimeSeriesTableVec3 markersToUse(markersPacked);
-    markersToUse.setColumnLabels({"foot_COM", "pelvis_COM"});
-    visualize(modelTS, statesTimeStepping);
+    // visualize(modelTS, statesTimeStepping);
 
 
     MucoTool muco;
@@ -735,14 +741,8 @@ void slipSolveForForce(double rzvalue0 = 0, double rzspeed0 = 0) {
     mp.setStateInfo("planar/ty/speed", {-10, 10}, 0);
     mp.setStateInfo("planar/rz/speed", {-10, 10}, rzspeed0);
     mp.setStateInfo("leg/length/speed", {-10, 10}, 0);
-    //mp.setStateInfo("actuator/activation", {-2, 2});
-    //mp.setStateInfo("res_rz/activation", { -2, 2 });
-    //mp.setStateInfo("res_tx/activation", { -2, 2 });
-    //mp.setStateInfo("res_ty/activation", { -2, 2 });
+    mp.setStateInfo("actuator/activation", {-2, 2});
     mp.setControlInfo("actuator", {-1, 1});
-    mp.setControlInfo("res_rz", { -1, 1 });
-    mp.setControlInfo("res_tx", { -1, 1 });
-    mp.setControlInfo("res_ty", { -1, 1 });
 
     Storage statesFilt = statesTimeStepping;
     statesFilt.pad(statesFilt.getSize() / 2);
@@ -755,82 +755,42 @@ void slipSolveForForce(double rzvalue0 = 0, double rzspeed0 = 0) {
     // TODO filter statesTimeSteppingTable!
     // TODO only track coordinate values, not speeds.
 
-    MucoStateTrackingCost stateTracking;
-    stateTracking.setName("state_tracking");
-    stateTracking.setReference(statesToTrack);
-    mp.addCost(stateTracking);
+    MucoStateTrackingCost tracking;
+    tracking.setName("tracking");
+    tracking.setReference(statesToTrack);
+    mp.addCost(tracking);
 
-    //MucoControlCost effort;
-    //effort.setName("effort");
-    //mp.addCost(effort);
-
-    //MucoMarkerTrackingCost markerTracking;
-    //markerTracking.setName("marker_tracking");
-    //MarkersReference markersRef(markersToUse);
-    //markerTracking.setMarkersReference(markersRef);
-    ////markerTracking.setFreeRadius(0.01);
-    //markerTracking.set_weight(1);
-    //mp.addCost(markerTracking);
-
-    MucoForceTrackingCost grfTracking;
-    grfTracking.setName("grf_tracking");
-    GCVSplineSet grfSplines(forcesFlattened);
-    grfTracking.m_refspline_x = *grfSplines.getGCVSpline(0);
-    grfTracking.m_refspline_y = *grfSplines.getGCVSpline(1);
-    double normGRFs = 0.001;
-    double weight = 1;
-    grfTracking.set_weight(normGRFs * weight);
-    grfTracking.append_forces("contact");
-    mp.addCost(grfTracking);
-    // Solves in 3-4 minutes without contact tracking, 9 minutes with contact
-    // tracking.
+    MucoControlCost effort;
+    effort.setName("effort");
+    mp.addCost(effort);
 
 
     MucoTropterSolver& ms = muco.initSolver();
-    ms.set_dynamics_mode("implicit");
-    ms.set_num_mesh_points(100);
-    //ms.set_num_mesh_points(50);
+    //ms.set_num_mesh_points(100);
+    ms.set_num_mesh_points(50);
     //ms.set_optim_max_iterations(2);
     ms.set_optim_hessian_approximation("exact");
-    // I tried setting convergence and constraint tolerances to 1e-3, and the
-    // time to solve increased from 11 to 16 minutes (using EspositoMiller2018
-    // for contact). Setting the tolerance to 1e-2 decreases the solve time from
-    // 11 to 6 minutes. The error in the actuator force is definitely larger (up
-    // to 50 N), but the match is still very good. This was all without contact
-    // tracking. With contact tracking and AckermannVanDenBogert2010, the solve
-    // time is about 5 minutes whether or not the convergence tolerance is set.
-    // ms.set_optim_convergence_tolerance(1e-2);
-    // ms.set_optim_constraint_tolerance(1e-2);
     MucoIterate guess = ms.createGuess();
     guess.setStatesTrajectory(statesToTrack, true);
     ms.setGuess(guess);
 
     MucoSolution solution = muco.solve().unseal();
     solution.write("slipSolveForForce_solution.sto");
-    std::cout << "RMS: " << solution.compareStatesControlsRMS(guess)
-            << std::endl;
-
-    SimTK::Vector springForceRecovered =
-            interpolate(solution.getTime(),
-                    -2500.0 * solution.getControl("actuator"),
-                    springForceActualTime);
-    std::cout << "Spring force error: " <<
-            springForceRecovered - springForceActual << std::endl;
+    std::cout << "RMS: " << solution.compareRMS(guess) << std::endl;
 
     // Compute the contact force for the direct collocation solution.
     const auto statesTraj = solution.exportToStatesTrajectory(mp);
     Model model = mp.getPhase().getModel();
     model.initSystem();
     const auto& contact =
-            model.getComponent<StationPlaneContactForce>("contact");
+            model.getComponent<AckermannVanDenBogert2010Contact>("contact");
     TimeSeriesTableVec3 contactForceHistory;
-    contactForceHistory.setColumnLabels(
-            {"SLIPcontactforce_on_station"});
+    contactForceHistory.setColumnLabels({"contact"});
 
     for (const auto& s : statesTraj) {
         model.realizeVelocity(s);
         contactForceHistory.appendRow(s.getTime(),
-                {contact.calcContactForceOnStation(s)});
+                {contact.calcContactForce(s)});
     }
 
     STOFileAdapter::write(contactForceHistory.flatten({"x", "y", "z"}),
@@ -856,12 +816,6 @@ void slipSolveForForce(double rzvalue0 = 0, double rzspeed0 = 0) {
     //MucoSolution solution100 = muco.solve().unseal();
     //solution100.write("slipSolveForForce_solution100.sto");
 
-    // State and GRF tracking solution:
-    // + Residual actuators at pelvis (rz, tx, ty)
-    // + Implicit skeletal dynamics (no activation dynamics at coordinates)
-    // + 100 mesh points
-    // + AckermannVanDenBogert2010Force contact (defaults w/ stiffness = 5e5)
-
     muco.visualize(solution);
 }
 
@@ -886,7 +840,7 @@ int main() {
 
     //slip();
 
-    // slip(0.05 * SimTK::Pi, -0.5);
+    // slip(0.1 * SimTK::Pi, -0.5);
 
     // TODO need to add an actuator that can rotate the leg.
 
@@ -905,7 +859,7 @@ int main() {
     slipSolveForForce(0.05 * SimTK::Pi, -0.5);
 
 
-    //    pendulumActivationCoordinateActuator();
+//    pendulumActivationCoordinateActuator();
 
 
 }

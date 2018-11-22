@@ -14,6 +14,11 @@ set(MUSCOLLO_PYTHON_VERSION 2 CACHE STRING
 # To create a drop-down in the CMake GUI:
 set_property(CACHE MUSCOLLO_PYTHON_VERSION PROPERTY STRINGS "2" "3")
 
+option(MUSCOLLO_BUILD_EXECUTABLE
+    "Build the opensim-muscollo executable." ON)
+option(MUSCOLLO_BUILD_EXAMPLES
+    "Build, test, and install Muscollo C++ examples." ON)
+
 
 # CMake settings.
 # ---------------
@@ -58,7 +63,7 @@ if(NOT CMAKE_PREFIX_PATH
     message(STATUS
             "Attempting to use dependencies from ${MUSCOLLO_DEPENDENCIES_DIR}")
     set(dep_install_dirs)
-    foreach(dep opensim-core colpack ipopt)
+    foreach(dep opensim-core colpack ipopt eigen)
         list(APPEND dep_install_dirs "${MUSCOLLO_DEPENDENCIES_DIR}/${dep}")
     endforeach()
     set(CMAKE_PREFIX_PATH "${dep_install_dirs}" CACHE PATH
@@ -108,7 +113,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # TODO treat Ipopt and such as system headers to ignore their warnings.
 if(CMAKE_CXX_COMPILER_ID MATCHES Clang # includes AppleClang
         OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
-    add_compile_options(-Wall -Wextra)
+    add_compile_options(-Wall -Wextra -Werror)
     # -Wshorten-64-to-32 helps us catch default warnings from Visual C++.
     if(CMAKE_CXX_COMPILER_ID MATCHES Clang)
         add_compile_options(-Wshorten-64-to-32)

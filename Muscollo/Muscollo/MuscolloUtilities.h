@@ -24,12 +24,18 @@
 
 #include "osimMuscolloDLL.h"
 
-#include <set>
-
 namespace OpenSim {
+
+/// Since Muscollo does not require C++14 (which contains std::make_unique()),
+/// here is an implementation of make_unique().
+template<typename T, typename... Args>
+std::unique_ptr<T> make_unique(Args&&... args) {
+    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
 
 class StatesTrajectory;
 class Model;
+class MucoIterate;
 
 /// Create a SimTK::Vector with the provided length whose elements are
 /// linearly spaced between start and end.
@@ -51,7 +57,9 @@ SimTK::Vector interpolate(const SimTK::Vector& x,
 // TODO move to the Storage class.
 OSIMMUSCOLLO_API Storage convertTableToStorage(const TimeSeriesTable&);
 
-/// TODO: doc
+/// Lowpass filter the data in a TimeSeriesTable at a provided cutoff frequency.
+/// The table is converted to a Storage object to use the lowpassIIR() method
+/// to filter, and then converted back to TimeSeriesTable.
 OSIMMUSCOLLO_API TimeSeriesTable filterLowpass(const TimeSeriesTable& table, 
     double cutoffFreq, bool padData = false);
 
@@ -61,6 +69,18 @@ OSIMMUSCOLLO_API TimeSeriesTable filterLowpass(const TimeSeriesTable& table,
 /// This function blocks until the user exits the simbody-visualizer window.
 // TODO handle degrees.
 OSIMMUSCOLLO_API void visualize(Model, Storage);
+
+/// This function is the same as visualize(Model, Storage), except that
+/// the states are provided in a TimeSeriesTable.
+OSIMMUSCOLLO_API void visualize(Model, TimeSeriesTable);
+
+/// Given a valid MucoSolution obtained from solving a MucoProblem and the 
+/// associated OpenSim model, return the model with a prescribed controller
+/// appended that will compute the control values from the MucoSolution. This 
+/// can be useful when computing state-dependent model quantities that require
+/// realization to the Dynamics stage or later.
+OSIMMUSCOLLO_API void prescribeControlsToModel(const MucoIterate& iterate, 
+    Model& model);
 
 #ifndef SWIG
 /// The map provides the index of each state variable in
@@ -134,6 +154,49 @@ void checkPropertyInRangeOrSet(const Object& obj, const Property<T>& p,
         OPENSIM_THROW(Exception, msg.str());
     }
 }
+
+/// @name Filling in a string with variables.
+/// @{
+
+#ifndef SWIG
+/// Return type for make_printable()
+template<typename T> struct make_printable_return { typedef T type; };
+/// Convert to types that can be printed with sprintf() (vsnprintf()).
+/// The generic template does not alter the type.
+template<typename T>
+inline typename make_printable_return<T>::type make_printable(const T& x)
+{ return x; }
+
+/// Specialization for std::string.
+template<> struct make_printable_return<std::string>
+{ typedef const char* type; };
+/// Specialization for std::string.
+template<> inline
+typename make_printable_return<std::string>::type
+make_printable(const std::string& x) { return x.c_str(); }
+
+/// Format a char array using (C interface; mainly for internal use).
+std::string format_c(const char*, ...);
+
+/// Format a string in the style of sprintf. For example, the code
+/// `format("%s %d and %d yields %d", "adding", 2, 2, 4)` will produce
+/// "adding 2 and 2 yields 4".
+template <typename ...Types>
+std::string format(const std::string& formatString, Types... args) {
+    return format_c(formatString.c_str(), make_printable(args)...);
+}
+
+/// Print a formatted string to std::cout. A newline is not included, but the
+/// stream is flushed.
+template <typename ...Types>
+void printMessage(const std::string& formatString, Types... args) {
+    std::cout << format(formatString, args...);
+    std::cout.flush();
+}
+
+#endif // SWIG
+
+/// @}
 
 /// Record and report elapsed real time ("clock" or "wall" time) in seconds.
 class Stopwatch {

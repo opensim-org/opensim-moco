@@ -21,7 +21,9 @@
 #include "MucoWeightSet.h"
 #include "MucoStateTrackingCost.h"
 #include "MucoMarkerTrackingCost.h"
+#include "MucoMarkerEndpointCost.h"
 #include "MucoControlCost.h"
+#include "MucoJointReactionNormCost.h"
 #include "MucoIterate.h"
 #include "MucoBounds.h"
 #include "MucoProblem.h"
@@ -30,6 +32,8 @@
 #include "MucoTropterSolver.h"
 #include "MuscolloUtilities.h"
 #include "MucoParameter.h"
+#include "MucoConstraint.h"
+#include "ActivationCoordinateActuator.h"
 
 #include "RegisterTypes_osimMuscollo.h"
 

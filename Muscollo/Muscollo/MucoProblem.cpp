@@ -18,51 +18,9 @@
 
 #include "MucoProblem.h"
 
+#include <simbody/internal/Constraint.h>
+
 using namespace OpenSim;
-
-
-// ============================================================================
-// MucoVariableInfo
-// ============================================================================
-
-MucoVariableInfo::MucoVariableInfo() {
-    constructProperties();
-}
-
-MucoVariableInfo::MucoVariableInfo(const std::string& name,
-        const MucoBounds& bounds, const MucoInitialBounds& initial,
-        const MucoFinalBounds& final) : MucoVariableInfo() {
-    setName(name);
-    set_bounds(bounds.getAsArray());
-    set_initial_bounds(initial.getAsArray());
-    set_final_bounds(final.getAsArray());
-}
-
-void MucoVariableInfo::printDescription(std::ostream& stream) const {
-    const auto bounds = getBounds();
-    stream << getName() << ". bounds: ["
-            << bounds.getLower() << ", "
-            << bounds.getUpper() << "] ";
-    const auto initial = getInitialBounds();
-    if (initial.isSet()) {
-        stream << " initial: ["
-                << initial.getLower() << ", "
-                << initial.getUpper() << "] ";
-    }
-    const auto final = getFinalBounds();
-    if (final.isSet()) {
-        stream << " final: ["
-                << final.getLower() << ", "
-                << final.getUpper() << "] ";
-    }
-    stream << std::endl;
-}
-
-void MucoVariableInfo::constructProperties() {
-    constructProperty_bounds();
-    constructProperty_initial_bounds();
-    constructProperty_final_bounds();
-}
 
 
 // ============================================================================
@@ -73,20 +31,32 @@ MucoPhase::MucoPhase() {
 }
 void MucoPhase::constructProperties() {
     constructProperty_model(Model());
-    constructProperty_time_initial_bounds();
-    constructProperty_time_final_bounds();
+    constructProperty_time_initial_bounds(MucoInitialBounds());
+    constructProperty_time_final_bounds(MucoFinalBounds());
+    constructProperty_default_speed_bounds(MucoBounds(-50, 50));
     constructProperty_state_infos();
     constructProperty_control_infos();
     constructProperty_parameters();
     constructProperty_costs();
+    constructProperty_path_constraints();
+    constructProperty_multibody_constraint_bounds(MucoBounds(0));
+    constructProperty_multiplier_bounds(MucoBounds(-1000.0, 1000.0));
 }
-void MucoPhase::setModel(const Model& model) {
-    set_model(model);
+Model* MucoPhase::setModel(std::unique_ptr<Model> model) {
+    // Write the connectee paths to properties.
+    model->finalizeConnections();
+    updProperty_model().clear();
+    updProperty_model().adoptAndAppendValue(model.release());
+    return &upd_model();
+}
+Model* MucoPhase::setModelCopy(Model model) {
+    set_model(std::move(model));
+    return &upd_model();
 }
 void MucoPhase::setTimeBounds(const MucoInitialBounds& initial,
         const MucoFinalBounds& final) {
-    set_time_initial_bounds(initial.getAsArray());
-    set_time_final_bounds(final.getAsArray());
+    set_time_initial_bounds(initial);
+    set_time_final_bounds(final);
 }
 void MucoPhase::setStateInfo(const std::string& name, const MucoBounds& bounds,
         const MucoInitialBounds& initial, const MucoFinalBounds& final) {
@@ -105,51 +75,15 @@ void MucoPhase::setControlInfo(const std::string& name,
     if (idx == -1) append_control_infos(info);
     else           upd_control_infos(idx) = info;
 }
-void MucoPhase::addParameter(const MucoParameter& parameter) {
-    OPENSIM_THROW_IF_FRMOBJ(parameter.getName().empty(), Exception,
-        "Cannot add a parameter if it does not have a name (use setName()).");
-    int idx = getProperty_parameters().findIndexForName(parameter.getName());
-    OPENSIM_THROW_IF_FRMOBJ(idx != -1, Exception,
-        "A parameter with name '" + parameter.getName() + "' already exists.");
-    append_parameters(parameter);
-}
-void MucoPhase::addCost(const MucoCost& cost) {
-    OPENSIM_THROW_IF_FRMOBJ(cost.getName().empty(), Exception,
-        "Cannot add a cost if it does not have a name (use setName()).");
-    int idx = getProperty_costs().findIndexForName(cost.getName());
-    OPENSIM_THROW_IF_FRMOBJ(idx != -1, Exception,
-        "A cost with name '" + cost.getName() + "' already exists.");
-    append_costs(cost);
-}
 MucoInitialBounds MucoPhase::getTimeInitialBounds() const {
-    return MucoInitialBounds(getProperty_time_initial_bounds());
+    return get_time_initial_bounds();
 }
 MucoFinalBounds MucoPhase::getTimeFinalBounds() const {
-    return MucoFinalBounds(getProperty_time_final_bounds());
-}
-std::vector<std::string> MucoPhase::createStateInfoNames() const {
-    std::vector<std::string> names(getProperty_state_infos().size());
-    for (int i = 0; i < getProperty_state_infos().size(); ++i) {
-        names[i] = get_state_infos(i).getName();
-    }
-    return names;
-}
-std::vector<std::string> MucoPhase::createControlInfoNames() const {
-    std::vector<std::string> names(getProperty_control_infos().size());
-    for (int i = 0; i < getProperty_control_infos().size(); ++i) {
-        names[i] = get_control_infos(i).getName();
-    }
-    return names;
-}
-std::vector<std::string> MucoPhase::createParameterNames() const {
-    std::vector<std::string> names(getProperty_parameters().size());
-    for (int i = 0; i < getProperty_parameters().size(); ++i) {
-        names[i] = get_parameters(i).getName();
-    }
-    return names;
+    return get_time_final_bounds();
 }
 const MucoVariableInfo& MucoPhase::getStateInfo(
         const std::string& name) const {
+
     int idx = getProperty_state_infos().findIndexForName(name);
     OPENSIM_THROW_IF_FRMOBJ(idx == -1, Exception,
             "No info available for state '" + name + "'.");
@@ -160,10 +94,9 @@ const MucoVariableInfo& MucoPhase::getControlInfo(
 
     int idx = getProperty_control_infos().findIndexForName(name);
     OPENSIM_THROW_IF_FRMOBJ(idx == -1, Exception,
-            "No info provided for control for '" + name + "'.");
+            "No info available for control '" + name + "'.");
     return get_control_infos(idx);
 }
-
 const MucoParameter& MucoPhase::getParameter(
         const std::string& name) const {
 
@@ -180,86 +113,37 @@ MucoParameter& MucoPhase::updParameter(
         "No parameter with name '" + name + "' found.");
     return upd_parameters(idx);
 }
+const MucoCost& MucoPhase::getCost(const std::string& name) const {
 
-void MucoPhase::printDescription(std::ostream& stream) const {
-    stream << "Costs:";
-    if (getProperty_costs().empty())
-        stream << " none";
-    else
-        stream << " (total: " << getProperty_costs().size() << ")";
-    stream << "\n";
-    for (int i = 0; i < getProperty_costs().size(); ++i) {
-        stream << "  ";
-        get_costs(i).printDescription(stream);
-    }
-
-    stream << "States:";
-    if (getProperty_state_infos().empty())
-        stream << " none";
-    else
-        stream << " (total: " << getProperty_state_infos().size() << ")";
-    stream << "\n";
-    // TODO want to loop through the model's state variables and controls, not
-    // just the infos.
-    for (int i = 0; i < getProperty_state_infos().size(); ++i) {
-        stream << "  ";
-        get_state_infos(i).printDescription(stream);
-    }
-
-    stream << "Controls:";
-    if (getProperty_control_infos().empty())
-        stream << " none";
-    else
-        stream << " (total: " << getProperty_control_infos().size() << "):";
-    stream << "\n";
-    for (int i = 0; i < getProperty_control_infos().size(); ++i) {
-        stream << "  ";
-        get_control_infos(i).printDescription(stream);
-    }
-    stream.flush();
+    int idx = getProperty_costs().findIndexForName(name);
+    OPENSIM_THROW_IF_FRMOBJ(idx == -1, Exception,
+            "No cost with name '" + name + "' found.");
+    return get_costs(idx);
 }
-void MucoPhase::initialize(Model& model) const {
-    /// Must use the model provided in this function, *not* the one stored as
-    /// a property in this class.
-    const auto stateNames = model.getStateVariableNames();
-    for (int i = 0; i < getProperty_state_infos().size(); ++i) {
-        const auto& name = get_state_infos(i).getName();
-        OPENSIM_THROW_IF(stateNames.findIndex(name) == -1, Exception,
-                "State info provided for nonexistant state '" + name + "'.");
-    }
-    OpenSim::Array<std::string> actuNames;
-    const auto modelPath = model.getAbsolutePath();
-    for (const auto& actu : model.getComponentList<Actuator>()) {
-        actuNames.append(
-                actu.getAbsolutePath().formRelativePath(modelPath).toString());
-    }
-    // TODO can only handle ScalarActuators?
-    for (int i = 0; i < getProperty_control_infos().size(); ++i) {
-        const auto& name = get_control_infos(i).getName();
-        OPENSIM_THROW_IF(actuNames.findIndex(name) == -1, Exception,
-                "Control info provided for nonexistant actuator '"
-                        + name + "'.");
-    }
+MucoCost& MucoPhase::updCost(const std::string& name) {
 
-    for (int i = 0; i < getProperty_parameters().size(); ++i) {
-        const_cast<MucoParameter&>(get_parameters(i)).initialize(model);
-    }
+    int idx = updProperty_costs().findIndexForName(name);
+    OPENSIM_THROW_IF_FRMOBJ(idx == -1, Exception,
+            "No cost with name '" + name + "' found.");
+    return upd_costs(idx);
+}
+const MucoPathConstraint& MucoPhase::getPathConstraint(
+        const std::string& name) const {
 
-    for (int i = 0; i < getProperty_costs().size(); ++i) {
-        const_cast<MucoCost&>(get_costs(i)).initialize(model);
-    }
+    int idx = getProperty_path_constraints().findIndexForName(name);
+    OPENSIM_THROW_IF_FRMOBJ(idx == -1, Exception,
+            "No path constraint with name '" + name + "' found.");
+    return get_path_constraints(idx);
 }
-void MucoPhase::applyParametersToModel(
-        const SimTK::Vector& parameterValues) const {
-    OPENSIM_THROW_IF(parameterValues.size() != getProperty_parameters().size(), 
-        Exception, "There are " + 
-        std::to_string(getProperty_parameters().size()) + " parameters in "
-        "this MucoProblem, but " + std::to_string(parameterValues.size()) + 
-        " values were provided.");
-    for (int i = 0; i < getProperty_parameters().size(); ++i) {
-        get_parameters(i).applyParameterToModel(parameterValues(i));
-    }
+MucoPathConstraint& MucoPhase::updPathConstraint(
+        const std::string& name) {
+
+    int idx = updProperty_path_constraints().findIndexForName(name);
+    OPENSIM_THROW_IF_FRMOBJ(idx == -1, Exception,
+            "No path constraint with name '" + name + "' found.");
+    return upd_path_constraints(idx);
 }
+
 
 // ============================================================================
 // MucoProblem
@@ -268,8 +152,11 @@ MucoProblem::MucoProblem() {
     constructProperties();
 }
 
-void MucoProblem::setModel(const Model& model) {
-    upd_phases(0).setModel(model);
+Model* MucoProblem::setModel(std::unique_ptr<Model> model) {
+    return upd_phases(0).setModel(std::move(model));
+}
+Model* MucoProblem::setModelCopy(Model model) {
+    return upd_phases(0).setModelCopy(std::move(model));
 }
 void MucoProblem::setTimeBounds(const MucoInitialBounds& initial,
         const MucoFinalBounds& final) {
@@ -285,24 +172,11 @@ void MucoProblem::setControlInfo(const std::string& name,
         const MucoInitialBounds& initial, const MucoFinalBounds& final) {
     upd_phases(0).setControlInfo(name, bounds, initial, final);
 }
-void MucoProblem::addParameter(const MucoParameter& parameter) {
-    upd_phases(0).addParameter(parameter);
+void MucoProblem::setMultibodyConstraintBounds(const MucoBounds& bounds) {
+    upd_phases(0).setMultibodyConstraintBounds(bounds);
 }
-void MucoProblem::addCost(const MucoCost& cost) {
-    upd_phases(0).addCost(cost);
-}
-void MucoProblem::printDescription(std::ostream& stream) const {
-    std::stringstream ss;
-    const int& numPhases = getProperty_phases().size();
-    if (numPhases > 1) stream << "Number of phases: " << numPhases << "\n";
-    for (int i = 0; i < numPhases; ++i) {
-        get_phases(i).printDescription(ss);
-    }
-    stream << ss.str() << std::endl;
-}
-void MucoProblem::initialize(Model& model) const {
-    for (int i = 0; i < getProperty_phases().size(); ++i)
-        get_phases(i).initialize(model);
+void MucoProblem::setMultiplierBounds(const MucoBounds& bounds) {
+    upd_phases(0).setMultiplierBounds(bounds);
 }
 void MucoProblem::constructProperties() {
     constructProperty_phases(Array<MucoPhase>(MucoPhase(), 1));

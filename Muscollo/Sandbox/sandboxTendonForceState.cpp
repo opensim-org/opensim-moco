@@ -19,7 +19,7 @@
 #include <OpenSim/Simulation/osimSimulation.h>
 #include <tropter/tropter.h>
 #include <Muscollo/InverseMuscleSolver/INDYGO.h>
-#include <Muscollo/InverseMuscleSolver/DeGrooteFregly2016Muscle.h>
+#include <Muscollo/InverseMuscleSolver/DeGrooteFregly2016MuscleStandalone.h>
 
 using namespace OpenSim;
 using tropter::VectorX;
@@ -51,13 +51,13 @@ public:
         this->add_control("excitation", {0, 1});
         this->add_control("tendon_force_control", {-50, 50}/*, 0*/);
         this->add_path_constraint("fiber_equilibrium", 0);
-        m_muscle = DeGrooteFregly2016Muscle<T>(
+        m_muscle = DeGrooteFregly2016MuscleStandalone<T>(
                 max_isometric_force, optimal_fiber_length, tendon_slack_length,
                 pennation_angle_at_optimal, max_contraction_velocity);
     }
     void calc_differential_algebraic_equations(
-            const tropter::DAEInput<T>& in,
-            tropter::DAEOutput<T> out) const override {
+            const tropter::Input<T>& in,
+            tropter::Output<T> out) const override {
         // Unpack variables.
         const T& position = in.states[0];
         const T& speed = in.states[1];
@@ -97,7 +97,7 @@ public:
         cost = final_time;
     }
 private:
-    DeGrooteFregly2016Muscle<T> m_muscle;
+    DeGrooteFregly2016MuscleStandalone<T> m_muscle;
 };
 
 std::pair<TimeSeriesTable, TimeSeriesTable>
@@ -151,7 +151,7 @@ solveForTrajectoryINDYGO() {
     // ------------------------------------------------------
     // TimeSeriesTable actualInvDyn;
     // actualInvDyn.setColumnLabels({"inverse_dynamics"});
-    // DeGrooteFregly2016Muscle<double> muscle(ocp->max_isometric_force,
+    // DeGrooteFregly2016MuscleStandalone<double> muscle(ocp->max_isometric_force,
     //                                   ocp->optimal_fiber_length,
     //                                   ocp->tendon_slack_length,
     //                                   ocp->pennation_angle_at_optimal,
@@ -192,13 +192,13 @@ public:
         this->add_control("tendon_force_control", {-50, 50}/*, 0*/);
         this->add_path_constraint("net_generalized_force", 0);
         this->add_path_constraint("fiber_equilibrium", 0);
-        m_muscle = DeGrooteFregly2016Muscle<T>(
+        m_muscle = DeGrooteFregly2016MuscleStandalone<T>(
                 max_isometric_force, optimal_fiber_length, tendon_slack_length,
                 pennation_angle_at_optimal, max_contraction_velocity);
     }
     void calc_differential_algebraic_equations(
-            const tropter::DAEInput<T>& in,
-            tropter::DAEOutput<T> out) const override {
+            const tropter::Input<T>& in,
+            tropter::Output<T> out) const override {
         // TODO compare directly with fiber length state.
         // Unpack variables.
         const T& activation = in.states[0];
@@ -234,14 +234,14 @@ public:
         // Fiber dynamics.
         out.dynamics[1] = normTenForceRate;
     }
-    void calc_integral_cost(const T& /*time*/,
-            const VectorX<T>& /*states*/,
-            const VectorX<T>& controls, 
-            const VectorX<T>& /*parameters*/, T& integrand) const override {
+    void calc_integral_cost(const tropter::Input<T>& in, 
+            T& integrand) const override {
+
+        const auto& controls = in.controls;
         integrand = controls[0] * controls[0];
     }
 private:
-    DeGrooteFregly2016Muscle<T> m_muscle;
+    DeGrooteFregly2016MuscleStandalone<T> m_muscle;
 };
 
 class SimpleInverseFiberLengthState
@@ -266,13 +266,13 @@ public:
         this->add_control("norm_fiber_velocity", {-1, 1}/*, 0*/);
         this->add_path_constraint("net_generalized_force", 0);
         this->add_path_constraint("fiber_equilibrium", 0);
-        m_muscle = DeGrooteFregly2016Muscle<T>(
+        m_muscle = DeGrooteFregly2016MuscleStandalone<T>(
                 max_isometric_force, optimal_fiber_length, tendon_slack_length,
                 pennation_angle_at_optimal, max_contraction_velocity);
     }
     void calc_differential_algebraic_equations(
-            const tropter::DAEInput<T>& in,
-            tropter::DAEOutput<T> out) const override {
+            const tropter::Input<T>& in,
+            tropter::Output<T> out) const override {
         // TODO compare directly with fiber length state.
         // Unpack variables.
         const T& activation = in.states[0];
@@ -303,14 +303,14 @@ public:
         // Fiber dynamics.
         out.dynamics[1] = max_contraction_velocity * normFibVel;
     }
-    void calc_integral_cost(const T& /*time*/,
-            const VectorX<T>& /*states*/,
-            const VectorX<T>& controls, 
-            const VectorX<T>& /*parameters*/, T& integrand) const override {
+    void calc_integral_cost(const tropter::Input<T>& in, 
+            T& integrand) const override {
+
+        const auto& controls = in.controls;
         integrand = controls[0] * controls[0];
     }
 private:
-    DeGrooteFregly2016Muscle<T> m_muscle;
+    DeGrooteFregly2016MuscleStandalone<T> m_muscle;
 };
 
 int main() {

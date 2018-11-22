@@ -34,6 +34,7 @@ actu = CoordinateActuator();
 actu.setCoordinate(coord);
 actu.setName('actuator');
 model.addComponent(actu);
+model.finalizeConnections();
 
 muco = MucoTool();
 muco.setName('sliding_mass');
@@ -65,38 +66,38 @@ assert(almostEqual(ph0.getTimeFinalBounds().getLower(), 4.5));
 assert(almostEqual(ph0.getTimeFinalBounds().getUpper(), 4.5));
 
 
-mp.setStateInfo('slider/position/value', MucoBounds(-5, 5), ...
+mp.setStateInfo('/slider/position/value', MucoBounds(-5, 5), ...
     MucoInitialBounds(0));
-assert(-5 == ph0.getStateInfo('slider/position/value').getBounds().getLower());
-assert( 5 == ph0.getStateInfo('slider/position/value').getBounds().getUpper());
-assert(isnan(ph0.getStateInfo('slider/position/value').getFinalBounds().getLower()));
-assert(isnan(ph0.getStateInfo('slider/position/value').getFinalBounds().getUpper()));
-mp.setStateInfo('slider/position/speed', [-50, 50], [-3], 1.5);
-assert(-50 == ph0.getStateInfo('slider/position/speed').getBounds().getLower());
-assert( 50 == ph0.getStateInfo('slider/position/speed').getBounds().getUpper());
-assert(-3 == ph0.getStateInfo('slider/position/speed').getInitialBounds().getLower());
-assert(-3 == ph0.getStateInfo('slider/position/speed').getInitialBounds().getUpper());
+assert(-5 == ph0.getStateInfo('/slider/position/value').getBounds().getLower());
+assert( 5 == ph0.getStateInfo('/slider/position/value').getBounds().getUpper());
+assert(isnan(ph0.getStateInfo('/slider/position/value').getFinalBounds().getLower()));
+assert(isnan(ph0.getStateInfo('/slider/position/value').getFinalBounds().getUpper()));
+mp.setStateInfo('/slider/position/speed', [-50, 50], [-3], 1.5);
+assert(-50 == ph0.getStateInfo('/slider/position/speed').getBounds().getLower());
+assert( 50 == ph0.getStateInfo('/slider/position/speed').getBounds().getUpper());
+assert(-3 == ph0.getStateInfo('/slider/position/speed').getInitialBounds().getLower());
+assert(-3 == ph0.getStateInfo('/slider/position/speed').getInitialBounds().getUpper());
 assert(almostEqual(1.5, ...
-    ph0.getStateInfo('slider/position/speed').getFinalBounds().getLower()));
+    ph0.getStateInfo('/slider/position/speed').getFinalBounds().getLower()));
 assert(almostEqual(1.5, ...
-    ph0.getStateInfo('slider/position/speed').getFinalBounds().getUpper()));
+    ph0.getStateInfo('/slider/position/speed').getFinalBounds().getUpper()));
 
 % Use setter on MucoPhase.
-ph0.setStateInfo('slider/position/speed', [-6, 10], [-4, 3], [0]);
-assert(-6 == ph0.getStateInfo('slider/position/speed').getBounds().getLower());
-assert(10 == ph0.getStateInfo('slider/position/speed').getBounds().getUpper());
-assert(-4 == ph0.getStateInfo('slider/position/speed').getInitialBounds().getLower());
-assert( 3 == ph0.getStateInfo('slider/position/speed').getInitialBounds().getUpper());
-assert(0 == ph0.getStateInfo('slider/position/speed').getFinalBounds().getLower());
-assert(0 == ph0.getStateInfo('slider/position/speed').getFinalBounds().getUpper());
+ph0.setStateInfo('/slider/position/speed', [-6, 10], [-4, 3], [0]);
+assert(-6 == ph0.getStateInfo('/slider/position/speed').getBounds().getLower());
+assert(10 == ph0.getStateInfo('/slider/position/speed').getBounds().getUpper());
+assert(-4 == ph0.getStateInfo('/slider/position/speed').getInitialBounds().getLower());
+assert( 3 == ph0.getStateInfo('/slider/position/speed').getInitialBounds().getUpper());
+assert(0 == ph0.getStateInfo('/slider/position/speed').getFinalBounds().getLower());
+assert(0 == ph0.getStateInfo('/slider/position/speed').getFinalBounds().getUpper());
 
 % Controls.
-mp.setControlInfo('actuator', MucoBounds(-50, 50));
-assert(-50 == ph0.getControlInfo('actuator').getBounds().getLower());
-assert( 50 == ph0.getControlInfo('actuator').getBounds().getUpper());
-mp.setControlInfo('actuator', [18]);
-assert(18 == ph0.getControlInfo('actuator').getBounds().getLower());
-assert(18 == ph0.getControlInfo('actuator').getBounds().getUpper());
+mp.setControlInfo('/actuator', MucoBounds(-50, 50));
+assert(-50 == ph0.getControlInfo('/actuator').getBounds().getLower());
+assert( 50 == ph0.getControlInfo('/actuator').getBounds().getUpper());
+mp.setControlInfo('/actuator', [18]);
+assert(18 == ph0.getControlInfo('/actuator').getBounds().getLower());
+assert(18 == ph0.getControlInfo('/actuator').getBounds().getUpper());
 
 
 %% MucoIterate
@@ -111,14 +112,25 @@ cn = StdVectorString();
 cn.add('c0');
 cn.add('c1');
 cn.add('c2');
+mn = StdVectorString();
+mn.add('m0');
+pn = StdVectorString();
+pn.add('p0');
+pn.add('p1');
 st = Matrix(3, 2);
 ct = Matrix(3, 3);
-it = MucoIterate(time, sn, cn, st, ct);
+mt = Matrix(3, 1);
+p = RowVector(2, 0.0);
+it = MucoIterate(time, sn, cn, mn, pn, st, ct, mt, p);
 
 it.setTime([15, 25, 35]);
 assert(it.getTime().get(0) == 15);
 assert(it.getTime().get(1) == 25);
 assert(it.getTime().get(2) == 35);
+timeMat = it.getTimeMat();
+assert(timeMat(1) == 15);
+assert(timeMat(2) == 25);
+assert(timeMat(3) == 35);
 
 it.setState('s0', [5, 3, 10]);
 s0traj = it.getState('s0');
@@ -130,6 +142,10 @@ s1traj = it.getState('s1');
 assert(s1traj.get(0) == 2);
 assert(s1traj.get(1) == 6);
 assert(s1traj.get(2) == 1);
+s1trajMat = it.getStateMat('s1');
+assert(s1trajMat(1) == 2);
+assert(s1trajMat(2) == 6);
+assert(s1trajMat(3) == 1);
 
 it.setControl('c0', [10, 46, -5]);
 c0traj = it.getControl('c0');
@@ -141,3 +157,38 @@ c2traj = it.getControl('c2');
 assert(c2traj.get(0) == 5);
 assert(c2traj.get(1) == 12);
 assert(c2traj.get(2) == -1);
+c2trajMat = it.getControlMat('c2');
+assert(c2trajMat(1) == 5);
+assert(c2trajMat(2) == 12);
+assert(c2trajMat(3) == -1);
+
+it.setMultiplier('m0', [326, 1, 42]);
+m0traj = it.getMultiplier('m0');
+assert(m0traj.get(0) == 326);
+assert(m0traj.get(1) == 1);
+assert(m0traj.get(2) == 42);
+m0trajMat = it.getMultiplierMat('m0');
+assert(m0trajMat(1) == 326);
+assert(m0trajMat(2) == 1);
+assert(m0trajMat(3) == 42);
+
+it.setParameter('p0', 25);
+it.setParameter('p1', 30);
+p = it.getParameters();
+assert(p.get(0) == 25);
+assert(p.get(1) == 30);
+pMat = it.getParametersMat();
+assert(pMat(1) == 25);
+assert(pMat(2) == 30);
+p0 = it.getParameter('p0');
+assert(p0 == 25);
+
+st = it.getStatesTrajectoryMat();
+assert(st(1, 1) == 5);
+assert(st(3, 2) == 1);
+ct = it.getControlsTrajectoryMat();
+assert(ct(1, 1) == 10);
+assert(ct(3, 3) == -1);
+
+pr = mp.createRep();
+assert(pr.createStateInfoNames().size() == 2);

@@ -17,7 +17,7 @@
  * -------------------------------------------------------------------------- */
 #include <Muscollo/InverseMuscleSolver/GlobalStaticOptimization.h>
 #include <Muscollo/InverseMuscleSolver/INDYGO.h>
-#include <Muscollo/InverseMuscleSolver/DeGrooteFregly2016Muscle.h>
+#include <Muscollo/InverseMuscleSolver/DeGrooteFregly2016MuscleStandalone.h>
 #include <tropter/tropter.h>
 #include <OpenSim/Simulation/Model/Model.h>
 #include <OpenSim/Simulation/SimbodyEngine/SliderJoint.h>
@@ -69,8 +69,8 @@ public:
     int m_i_speed = -1;
     int m_i_activation_l = -1;
     int m_i_activation_r = -1;
-    DeGrooteFregly2016Muscle<T> m_muscleL;
-    DeGrooteFregly2016Muscle<T> m_muscleR;
+    DeGrooteFregly2016MuscleStandalone<T> m_muscleL;
+    DeGrooteFregly2016MuscleStandalone<T> m_muscleR;
 
     DeGrooteFregly2016MuscleTugOfWarMinEffortStatic(const Model& model) :
             tropter::Problem<T>("tug_of_war_min_effort") {
@@ -84,7 +84,7 @@ public:
         {
             const auto& osimMuscleL =
                     dynamic_cast<const Muscle&>(model.getComponent("left"));
-            m_muscleL = DeGrooteFregly2016Muscle<T>(
+            m_muscleL = DeGrooteFregly2016MuscleStandalone<T>(
                     osimMuscleL.get_max_isometric_force(),
                     osimMuscleL.get_optimal_fiber_length(),
                     osimMuscleL.get_tendon_slack_length(),
@@ -94,7 +94,7 @@ public:
         {
             const auto& osimMuscleR =
                     dynamic_cast<const Muscle&>(model.getComponent("right"));
-            m_muscleR = DeGrooteFregly2016Muscle<T>(
+            m_muscleR = DeGrooteFregly2016MuscleStandalone<T>(
                     osimMuscleR.get_max_isometric_force(),
                     osimMuscleR.get_optimal_fiber_length(),
                     osimMuscleR.get_tendon_slack_length(),
@@ -103,8 +103,8 @@ public:
         }
     }
     void calc_differential_algebraic_equations(
-            const tropter::DAEInput<T>& in,
-            tropter::DAEOutput<T> out) const override {
+            const tropter::Input<T>& in,
+            tropter::Output<T> out) const override {
         // Unpack variables.
         // -----------------
         const T& speed = in.states[m_i_speed];
@@ -133,11 +133,10 @@ public:
 
         return -forceL + forceR;
     }
-    void calc_integral_cost(const T& /*time*/,
-            const tropter::VectorX<T>& /*states*/,
-            const tropter::VectorX<T>& controls,
-            const tropter::VectorX<T>& /*parameters*/,
+    void calc_integral_cost(const tropter::Input<T>& in,
             T& integrand) const override {
+
+        const auto& controls = in.controls;
         const auto& controlL = controls[m_i_activation_l];
         const auto& controlR = controls[m_i_activation_r];
         integrand = controlL * controlL + controlR * controlR;
@@ -194,8 +193,8 @@ public:
     int m_i_norm_fiber_velocity_r = -1;
     int m_i_fiber_equilibrium_r = -1;
 
-    DeGrooteFregly2016Muscle<T> m_muscleL;
-    DeGrooteFregly2016Muscle<T> m_muscleR;
+    DeGrooteFregly2016MuscleStandalone<T> m_muscleL;
+    DeGrooteFregly2016MuscleStandalone<T> m_muscleR;
 
     DeGrooteFregly2016MuscleTugOfWarMinEffortDynamic(const Model& model) :
             tropter::Problem<T>("tug_of_war_min_effort") {
@@ -224,7 +223,7 @@ public:
         {
             const auto& osimMuscleL =
                     dynamic_cast<const Muscle&>(model.getComponent("left"));
-            m_muscleL = DeGrooteFregly2016Muscle<T>(
+            m_muscleL = DeGrooteFregly2016MuscleStandalone<T>(
                     osimMuscleL.get_max_isometric_force(),
                     osimMuscleL.get_optimal_fiber_length(),
                     osimMuscleL.get_tendon_slack_length(),
@@ -234,7 +233,7 @@ public:
         {
             const auto& osimMuscleR =
                     dynamic_cast<const Muscle&>(model.getComponent("right"));
-            m_muscleR = DeGrooteFregly2016Muscle<T>(
+            m_muscleR = DeGrooteFregly2016MuscleStandalone<T>(
                     osimMuscleR.get_max_isometric_force(),
                     osimMuscleR.get_optimal_fiber_length(),
                     osimMuscleR.get_tendon_slack_length(),
@@ -243,8 +242,8 @@ public:
         }
     }
     void calc_differential_algebraic_equations(
-            const tropter::DAEInput<T>& in,
-            tropter::DAEOutput<T> out) const override {
+            const tropter::Input<T>& in,
+            tropter::Output<T> out) const override {
         const auto& states = in.states;
         const auto& controls = in.controls;
         // Unpack variables.
@@ -313,11 +312,10 @@ public:
 
         return -forceL + forceR;
     }
-    void calc_integral_cost(const T& /*time*/,
-            const tropter::VectorX<T>& /*states*/,
-            const tropter::VectorX<T>& controls,
-            const tropter::VectorX<T>& /*parameters*/,
-            T& integrand) const override {
+    void calc_integral_cost(const tropter::Input<T>& in, 
+        T& integrand) const override {
+
+        const auto& controls = in.controls;
         const auto& controlL = controls[m_i_excitation_l];
         const auto& controlR = controls[m_i_excitation_r];
         integrand = controlL * controlL + controlR * controlR;
@@ -381,6 +379,8 @@ OpenSim::Model buildTugOfWarModel() {
     // std::cin.get();
     // Manager manager(model);
     // manager.integrate(s, 1.0);
+
+    model.finalizeConnections();
     return model;
 }
 
@@ -410,8 +410,10 @@ solveForTrajectory_GSO(const Model& model) {
     std::string trajFileWithHeader = trajectoryFile;
     trajFileWithHeader.replace(trajectoryFile.rfind(".csv"), 4,
                                "_with_header.csv");
-    // Skip the "num_states=#", "num_controls=#", and "num_parameters=#" lines.
+    // Skip the "num_states=#", "num_controls=#", "num_adjuncts=#",
+    // and "num_parameters=#" lines.
     std::string line;
+    std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
@@ -424,8 +426,8 @@ solveForTrajectory_GSO(const Model& model) {
     // Create a table containing only the angle and speed of the pendulum.
     TimeSeriesTable ocpSolution = CSVFileAdapter::read(trajFileWithHeader);
     TimeSeriesTable kinematics;
-    kinematics.setColumnLabels({"joint/position/value",
-                                "joint/position/speed"});
+    kinematics.setColumnLabels({"/joint/position/value",
+                                "/joint/position/speed"});
     const auto& position = ocpSolution.getDependentColumn("position");
     const auto& speed = ocpSolution.getDependentColumn("speed");
     for (int iRow = 0; iRow < (int)ocpSolution.getNumRows(); ++iRow) {
@@ -509,8 +511,10 @@ solveForTrajectory_INDYGO(const Model& model) {
     std::string trajFileWithHeader = trajectoryFile;
     trajFileWithHeader.replace(trajectoryFile.rfind(".csv"), 4,
                                "_with_header.csv");
-    // Skip the "num_states=#", "num_controls=#", and "num_parameters=#" lines.
+    // Skip the "num_states=#", "num_controls=#", "num_adjuncts=#",
+    // and "num_parameters=#" lines.
     std::string line;
+    std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
@@ -523,8 +527,8 @@ solveForTrajectory_INDYGO(const Model& model) {
     // Create a table containing only the angle and speed of the pendulum.
     TimeSeriesTable ocpSolution = CSVFileAdapter::read(trajFileWithHeader);
     TimeSeriesTable kinematics;
-    kinematics.setColumnLabels({"joint/position/value",
-                                "joint/position/speed"});
+    kinematics.setColumnLabels({"/joint/position/value",
+                                "/joint/position/speed"});
     const auto& position = ocpSolution.getDependentColumn("position");
     const auto& speed = ocpSolution.getDependentColumn("speed");
     for (int iRow = 0; iRow < (int)ocpSolution.getNumRows(); ++iRow) {
@@ -570,10 +574,10 @@ void test2Muscles1DOFGSO(
 
     // Compare the solution to the initial trajectory optimization solution.
     // ---------------------------------------------------------------------
-    rootMeanSquare(solution.activation, "/tug_of_war/left",
+    rootMeanSquare(solution.activation, "/left",
                    ocpSolution,         "activation_l",
                    0.005);
-    rootMeanSquare(solution.activation, "/tug_of_war/right",
+    rootMeanSquare(solution.activation, "/right",
                    ocpSolution,         "activation_r",
                    0.01);
     auto reserveForceRMS = reserveOptimalForce *
@@ -616,17 +620,17 @@ void test2Muscles1DOFINDYGO(
     // Compare the solution to the initial trajectory optimization solution.
     // ---------------------------------------------------------------------
 
-    compare(solution.activation, "/tug_of_war/left",
+    compare(solution.activation, "/left",
             ocpSolution,         "activation_l",
             0.05);
-    compare(solution.activation, "/tug_of_war/right",
+    compare(solution.activation, "/right",
             ocpSolution,         "activation_r",
             0.05);
 
-    compare(solution.norm_fiber_length, "/tug_of_war/left",
+    compare(solution.norm_fiber_length, "/left",
             ocpSolution,                "norm_fiber_length_l",
             0.01);
-    compare(solution.norm_fiber_length, "/tug_of_war/right",
+    compare(solution.norm_fiber_length, "/right",
             ocpSolution,                "norm_fiber_length_r",
             0.01);
 
@@ -634,17 +638,17 @@ void test2Muscles1DOFINDYGO(
     // excitation_l does not match well at the end of the motion; should
     // go to 0 but ends at 0.15 (b/c of error in inverse dynamics generalized
     // forces introduced by filtering, etc.)
-    rootMeanSquare(solution.excitation, "/tug_of_war/left",
+    rootMeanSquare(solution.excitation, "/left",
                    ocpSolution,         "excitation_l",
                    0.02);
-    rootMeanSquare(solution.excitation, "/tug_of_war/right",
+    rootMeanSquare(solution.excitation, "/right",
                    ocpSolution,         "excitation_r",
                    0.01);
 
-    rootMeanSquare(solution.norm_fiber_velocity, "/tug_of_war/left",
+    rootMeanSquare(solution.norm_fiber_velocity, "/left",
                    ocpSolution,                  "norm_fiber_velocity_l",
                    0.005);
-    rootMeanSquare(solution.norm_fiber_velocity, "/tug_of_war/right",
+    rootMeanSquare(solution.norm_fiber_velocity, "/right",
                    ocpSolution,                  "norm_fiber_velocity_r",
                    0.03);
 

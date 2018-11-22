@@ -17,7 +17,7 @@
 * -------------------------------------------------------------------------- */
 #include <Muscollo/InverseMuscleSolver/GlobalStaticOptimization.h>
 #include <Muscollo/InverseMuscleSolver/INDYGO.h>
-#include <Muscollo/InverseMuscleSolver/DeGrooteFregly2016Muscle.h>
+#include <Muscollo/InverseMuscleSolver/DeGrooteFregly2016MuscleStandalone.h>
 #include <Muscollo/InverseMuscleSolver/InverseMuscleSolverMotionData.h>
 #include <tropter/tropter.h>
 #include <OpenSim/Simulation/Model/Model.h>
@@ -68,18 +68,18 @@ public:
         this->add_state("speed", {-10, 10}, 0, 0);
         this->add_control("activation_1", {0, 1});
         this->add_control("activation_2", {0, 1});
-        m_muscle_1 = DeGrooteFregly2016Muscle<T>(
+        m_muscle_1 = DeGrooteFregly2016MuscleStandalone<T>(
                 max_isometric_force_1, optimal_fiber_length_1, 
                 tendon_slack_length, pennation_angle_at_optimal,
                 max_contraction_velocity);
-        m_muscle_2 = DeGrooteFregly2016Muscle<T>(
+        m_muscle_2 = DeGrooteFregly2016MuscleStandalone<T>(
                 max_isometric_force_2, optimal_fiber_length_2,
                 tendon_slack_length, pennation_angle_at_optimal,
                 max_contraction_velocity);
     }
     void calc_differential_algebraic_equations(
-            const tropter::DAEInput<T>& in,
-            tropter::DAEOutput<T> out) const override {
+            const tropter::Input<T>& in,
+            tropter::Output<T> out) const override {
         // Unpack variables.
         const T& position = in.states[0];
         const T& speed = in.states[1];
@@ -107,8 +107,8 @@ public:
         cost = final_time;
     }
 private:
-    DeGrooteFregly2016Muscle<T> m_muscle_1;
-    DeGrooteFregly2016Muscle<T> m_muscle_2;
+    DeGrooteFregly2016MuscleStandalone<T> m_muscle_1;
+    DeGrooteFregly2016MuscleStandalone<T> m_muscle_2;
 };
 
 std::pair<TimeSeriesTable, TimeSeriesTable>
@@ -131,8 +131,10 @@ solveForTrajectoryGSO() {
     std::string trajFileWithHeader = trajectoryFile;
     trajFileWithHeader.replace(trajectoryFile.rfind(".csv"), 4,
                                "_with_header.csv");
-    // Skip the "num_states=#", "num_controls=#", and "num_parameters=#" lines.
+    // Skip the "num_states=#", "num_controls=#", "num_adjuncts=#",
+    // and "num_parameters=#" lines.
     std::string line;
+    std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
@@ -145,8 +147,8 @@ solveForTrajectoryGSO() {
     // Create a table containing only the position and speed of the mass.
     TimeSeriesTable ocpSolution = CSVFileAdapter::read(trajFileWithHeader);
     TimeSeriesTable kinematics;
-    kinematics.setColumnLabels({"joint/height/value",
-                                "joint/height/speed"});
+    kinematics.setColumnLabels({"/joint/height/value",
+                                "/joint/height/speed"});
     const auto& position = ocpSolution.getDependentColumn("position");
     const auto& speed = ocpSolution.getDependentColumn("speed");
     for (int iRow = 0; iRow < (int)ocpSolution.getNumRows(); ++iRow) {
@@ -210,18 +212,18 @@ public:
         this->add_control("norm_fiber_velocity_2", {-1, 1}, 0);
         this->add_path_constraint("fiber_equilibrium_1", 0);
         this->add_path_constraint("fiber_equilibrium_2", 0);
-        m_muscle_1 = DeGrooteFregly2016Muscle<T>(
+        m_muscle_1 = DeGrooteFregly2016MuscleStandalone<T>(
             max_isometric_force_1, optimal_fiber_length_1,
             tendon_slack_length, pennation_angle_at_optimal,
             max_contraction_velocity);
-        m_muscle_2 = DeGrooteFregly2016Muscle<T>(
+        m_muscle_2 = DeGrooteFregly2016MuscleStandalone<T>(
             max_isometric_force_2, optimal_fiber_length_2,
             tendon_slack_length, pennation_angle_at_optimal,
             max_contraction_velocity);
     }
     void calc_differential_algebraic_equations(
-        const tropter::DAEInput<T>& in,
-        tropter::DAEOutput<T> out) const override {
+        const tropter::Input<T>& in,
+        tropter::Output<T> out) const override {
         // Unpack variables.
         const T& position = in.states[0];
         const T& speed = in.states[1];
@@ -267,8 +269,8 @@ public:
         cost = final_time;
     }
 private:
-    DeGrooteFregly2016Muscle<T> m_muscle_1;
-    DeGrooteFregly2016Muscle<T> m_muscle_2;
+    DeGrooteFregly2016MuscleStandalone<T> m_muscle_1;
+    DeGrooteFregly2016MuscleStandalone<T> m_muscle_2;
 };
 
 std::pair<TimeSeriesTable, TimeSeriesTable>
@@ -293,8 +295,10 @@ solveForTrajectoryINDYGO() {
     std::string trajFileWithHeader = trajectoryFile;
     trajFileWithHeader.replace(trajectoryFile.rfind(".csv"), 4,
         "_with_header.csv");
-    // Skip the "num_states=#", "num_controls=#", and "num_parameters=#" lines.
+    // Skip the "num_states=#", "num_controls=#", "num_adjuncts=#",
+    // and "num_parameters=#" lines.
     std::string line;
+    std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
     std::getline(fRead, line);
@@ -307,8 +311,8 @@ solveForTrajectoryINDYGO() {
     // Create a table containing only the position and speed of the mass.
     TimeSeriesTable ocpSolution = CSVFileAdapter::read(trajFileWithHeader);
     TimeSeriesTable kinematics;
-    kinematics.setColumnLabels({ "joint/height/value",
-        "joint/height/speed" });
+    kinematics.setColumnLabels({ "/joint/height/value",
+        "/joint/height/speed" });
     const auto& position = ocpSolution.getDependentColumn("position");
     const auto& speed = ocpSolution.getDependentColumn("speed");
     for (int iRow = 0; iRow < (int)ocpSolution.getNumRows(); ++iRow) {
@@ -361,6 +365,7 @@ OpenSim::Model buildLiftingMassModel() {
     actu_2->addNewPathPoint("insertion", *body, SimTK::Vec3(0));
     model.addComponent(actu_2);
 
+    model.finalizeConnections();
     return model;
 }
 
@@ -390,10 +395,10 @@ void testLiftingMassGSO(
 
     // The rationale for the tolerances: as tight as they could be for the
     // test to pass.
-    rootMeanSquare(solution.activation, "/hanging_muscles/muscle_1",
+    rootMeanSquare(solution.activation, "/muscle_1",
         ocpSolution, "activation_1", 
         0.05);
-    rootMeanSquare(solution.activation, "/hanging_muscles/muscle_2",
+    rootMeanSquare(solution.activation, "/muscle_2",
         ocpSolution, "activation_2", 
         0.05);
 }
@@ -432,30 +437,30 @@ void testLiftingMassINDYGO(
     // Compare the solution to the initial trajectory optimization solution.
     // ---------------------------------------------------------------------
 
-    rootMeanSquare(solution.activation, "/hanging_muscles/muscle_1",
+    rootMeanSquare(solution.activation, "/muscle_1",
         ocpSolution, "activation_1",
         0.04);
-    rootMeanSquare(solution.activation, "/hanging_muscles/muscle_2",
+    rootMeanSquare(solution.activation, "/muscle_2",
         ocpSolution, "activation_2",
         0.04);
-    compare(solution.norm_fiber_length, "/hanging_muscles/muscle_1",
+    compare(solution.norm_fiber_length, "/muscle_1",
         ocpSolution, "norm_fiber_length_1",
         0.005);
-    compare(solution.norm_fiber_length, "/hanging_muscles/muscle_2",
+    compare(solution.norm_fiber_length, "/muscle_2",
         ocpSolution, "norm_fiber_length_2",
         0.005);
 
     // We use a weaker check for the controls; they don't match as well.
-    rootMeanSquare(solution.excitation, "/hanging_muscles/muscle_1",
+    rootMeanSquare(solution.excitation, "/muscle_1",
         ocpSolution, "excitation_1",
         0.25);
-    rootMeanSquare(solution.excitation, "/hanging_muscles/muscle_2",
+    rootMeanSquare(solution.excitation, "/muscle_2",
         ocpSolution, "excitation_2",
         0.25);
-    rootMeanSquare(solution.norm_fiber_velocity, "/hanging_muscles/muscle_1",
+    rootMeanSquare(solution.norm_fiber_velocity, "/muscle_1",
         ocpSolution, "norm_fiber_velocity_1",
         0.03);
-    rootMeanSquare(solution.norm_fiber_velocity, "/hanging_muscles/muscle_2",
+    rootMeanSquare(solution.norm_fiber_velocity, "/muscle_2",
         ocpSolution, "norm_fiber_velocity_2",
         0.03);
 }

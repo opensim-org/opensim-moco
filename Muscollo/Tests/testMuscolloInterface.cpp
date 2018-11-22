@@ -17,9 +17,11 @@
  * -------------------------------------------------------------------------- */
 
 #include <Muscollo/osimMuscollo.h>
-#include <OpenSim/Simulation/SimbodyEngine/SliderJoint.h>
-#include <OpenSim/Actuators/CoordinateActuator.h>
 #include <OpenSim/Common/STOFileAdapter.h>
+#include <OpenSim/Simulation/SimbodyEngine/SliderJoint.h>
+#include <OpenSim/Simulation/SimbodyEngine/PinJoint.h>
+#include <OpenSim/Simulation/Manager/Manager.h>
+#include <OpenSim/Actuators/CoordinateActuator.h>
 
 using namespace OpenSim;
 
@@ -31,24 +33,26 @@ using namespace OpenSim;
 // - test problems without controls (including with setting guesses).
 // - test that names for setStateInfo() are actual existing states in the model.
 
-Model createSlidingMassModel() {
-    Model model;
-    model.setName("sliding_mass");
-    model.set_gravity(SimTK::Vec3(0, 0, 0));
+std::unique_ptr<Model> createSlidingMassModel() {
+    auto model = make_unique<Model>();
+    model->setName("sliding_mass");
+    model->set_gravity(SimTK::Vec3(0, 0, 0));
     auto* body = new Body("body", 10.0, SimTK::Vec3(0), SimTK::Inertia(0));
-    model.addComponent(body);
+    model->addComponent(body);
 
     // Allows translation along x.
-    auto* joint = new SliderJoint("slider", model.getGround(), *body);
+    auto* joint = new SliderJoint("slider", model->getGround(), *body);
     auto& coord = joint->updCoordinate(SliderJoint::Coord::TranslationX);
     coord.setName("position");
-    model.addComponent(joint);
+    model->addComponent(joint);
 
     auto* actu = new CoordinateActuator();
     actu->setCoordinate(&coord);
     actu->setName("actuator");
     actu->setOptimalForce(1);
-    model.addComponent(actu);
+    actu->setMinControl(-10);
+    actu->setMaxControl(10);
+    model->addComponent(actu);
 
     return model;
 }
@@ -60,16 +64,48 @@ MucoTool createSlidingMassMucoTool() {
     MucoProblem& mp = muco.updProblem();
     mp.setModel(createSlidingMassModel());
     mp.setTimeBounds(MucoInitialBounds(0), MucoFinalBounds(0, 10));
-    mp.setStateInfo("slider/position/value", MucoBounds(0, 1),
+    mp.setStateInfo("/slider/position/value", MucoBounds(0, 1),
             MucoInitialBounds(0), MucoFinalBounds(1));
-    mp.setStateInfo("slider/position/speed", {-100, 100}, 0, 0);
-    mp.setControlInfo("actuator", MucoBounds(-10, 10));
-    MucoFinalTimeCost ftCost;
-    mp.addCost(ftCost);
+    mp.setStateInfo("/slider/position/speed", {-100, 100}, 0, 0);
+    mp.addCost<MucoFinalTimeCost>();
 
     MucoTropterSolver& ms = muco.initSolver();
     ms.set_num_mesh_points(20);
     return muco;
+}
+
+/// This model is torque-actuated.
+std::unique_ptr<Model> createPendulumModel() {
+    auto model = make_unique<Model>();
+    model->setName("pendulum");
+
+    using SimTK::Vec3;
+    using SimTK::Inertia;
+
+    auto* b0 = new Body("b0", 1, Vec3(0), Inertia(1));
+    model->addBody(b0);
+
+    // Default pose: COM of pendulum is 1 meter down from the pin.
+    auto* j0 = new PinJoint("j0", model->getGround(), Vec3(0), Vec3(0),
+            *b0, Vec3(0, 1.0, 0), Vec3(0));
+    auto& q0 = j0->updCoordinate();
+    q0.setName("q0");
+    model->addJoint(j0);
+
+    auto* tau0 = new CoordinateActuator();
+    tau0->setCoordinate(&j0->updCoordinate());
+    tau0->setName("tau0");
+    tau0->setOptimalForce(1);
+    model->addForce(tau0);
+
+    // Add display geometry.
+    Ellipsoid bodyGeometry(0.1, 0.5, 0.1);
+    SimTK::Transform transform(SimTK::Vec3(0, 0.5, 0));
+    auto* b0Center = new PhysicalOffsetFrame("b0_center", *b0, transform);
+    b0->addComponent(b0Center);
+    b0Center->attachGeometry(bodyGeometry.clone());
+
+    return model;
 }
 
 void testSlidingMass() {
@@ -81,10 +117,10 @@ void testSlidingMass() {
 
     // Check dimensions and metadata of the solution.
     SimTK_TEST((solution.getStateNames() == std::vector<std::string>{
-            "slider/position/value",
-            "slider/position/speed"}));
+            "/slider/position/value",
+            "/slider/position/speed"}));
     SimTK_TEST((solution.getControlNames() ==
-            std::vector<std::string>{"actuator"}));
+            std::vector<std::string>{"/actuator"}));
     SimTK_TEST(solution.getTime().size() == numTimes);
     const auto& states = solution.getStatesTrajectory();
     SimTK_TEST(states.nrow() == numTimes);
@@ -123,11 +159,11 @@ void testSolverOptions() {
     SimTK_TEST_MUST_THROW_EXC(muco.solve(), Exception);
     ms.set_verbosity(2);
 
-    ms.set_optim_solver("nonexistant");
+    ms.set_optim_solver("nonexistent");
     SimTK_TEST_MUST_THROW_EXC(muco.solve(), Exception);
     ms.set_optim_solver("ipopt");
 
-    ms.set_optim_hessian_approximation("nonexistant");
+    ms.set_optim_hessian_approximation("nonexistent");
     SimTK_TEST_MUST_THROW(muco.solve());
     ms.set_optim_hessian_approximation("limited-memory");
 
@@ -248,6 +284,19 @@ void testCopy() {
  */
 
 void testBounds() {
+    {
+        SimTK_TEST(!MucoBounds().isSet());
+        SimTK_TEST(MucoBounds(5.3).isSet());
+        SimTK_TEST(MucoBounds(5.3).isEquality());
+        SimTK_TEST(MucoBounds(5.3, 5.3).isSet());
+        SimTK_TEST(MucoBounds(5.3, 5.3).isEquality());
+        SimTK_TEST(!MucoBounds(5.3, 5.3 + SimTK::SignificantReal).isEquality());
+
+        SimTK_TEST(MucoBounds(5.3).isWithinBounds(5.3));
+        SimTK_TEST(
+                !MucoBounds(5.3).isWithinBounds(5.3 + SimTK::SignificantReal));
+        SimTK_TEST(MucoBounds(5.2, 5.4).isWithinBounds(5.3));
+    }
     // TODO what to do about clamped coordinates? Use the range in the
     // coordinate, or ignore that? I think that if the coordinate is clamped,
     // then
@@ -275,20 +324,20 @@ void testBounds() {
 
     {
         auto model = createSlidingMassModel();
-        model.initSystem();
+        model->initSystem();
         {
             MucoTool muco;
             MucoProblem& mp = muco.updProblem();
-            mp.setModel(model);
-            mp.setStateInfo("nonexistant", {0, 1});
-            SimTK_TEST_MUST_THROW_EXC(mp.initialize(model), Exception);
+            mp.setModel(std::unique_ptr<Model>(model->clone()));
+            mp.setStateInfo("nonexistent", {0, 1});
+            SimTK_TEST_MUST_THROW_EXC(mp.createRep(), Exception);
         }
         {
             MucoTool muco;
             MucoProblem& mp = muco.updProblem();
-            mp.setModel(model);
-            mp.setControlInfo("nonexistant", {0, 1});
-            SimTK_TEST_MUST_THROW_EXC(mp.initialize(model), Exception);
+            mp.setModel(std::unique_ptr<Model>(model->clone()));
+            mp.setControlInfo("nonexistent", {0, 1});
+            SimTK_TEST_MUST_THROW_EXC(mp.createRep(), Exception);
         }
     }
     // TODO what if bounds are missing for some states?
@@ -302,40 +351,222 @@ void testBuildingProblem() {
 
         // Costs have the name "cost" by default.
         {
-            MucoFinalTimeCost c0;
-            SimTK_TEST(c0.getName() == "cost");
-            mp.addCost(c0);
+            auto c0 = make_unique<MucoFinalTimeCost>();
+            SimTK_TEST(c0->getName() == "cost");
+            mp.addCost(std::move(c0));
         }
         // Names of costs must be unique.
         {
-            MucoFinalTimeCost c1;
-            SimTK_TEST_MUST_THROW_EXC(mp.addCost(c1), Exception);
+            auto* c1 = mp.addCost<MucoFinalTimeCost>();
+            SimTK_TEST_MUST_THROW_EXC(mp.createRep(), Exception);
+            c1->setName("c1");
         }
         // Costs must have a name.
         {
-            MucoFinalTimeCost cEmptyName;
-            cEmptyName.setName("");
-            SimTK_TEST_MUST_THROW_EXC(mp.addCost(cEmptyName), Exception);
+            auto* cEmptyName = mp.addCost<MucoFinalTimeCost>("");
+            SimTK_TEST_MUST_THROW_EXC(mp.createRep(), Exception);
+            cEmptyName->setName("cost1");
         }
         // Parameters have the name "parameter" by default.
         {
-            MucoParameter p0;
-            SimTK_TEST(p0.getName() == "parameter");
-            mp.addParameter(p0);
+            auto p0 = make_unique<MucoParameter>();
+            SimTK_TEST(p0->getName() == "parameter");
+            p0->appendComponentPath("/body");
+            p0->setPropertyName("mass");
+            mp.addParameter(std::move(p0));
+            // Can successfully create a rep.
+            mp.createRep();
         }
         // Names of parameters must be unique.
         {
-            MucoParameter p1;
-            SimTK_TEST_MUST_THROW_EXC(mp.addParameter(p1), Exception);
+            auto* param = mp.addParameter(
+                    "parameter", "/body", "mass", MucoBounds(0, 0));
+            SimTK_TEST_MUST_THROW_EXC(mp.createRep(), Exception);
+            param->setName("parameter1");
+            // Can now create rep.
+            mp.createRep();
         }
         // Parameters must have a name.
         {
-            MucoParameter pEmptyName;
-            pEmptyName.setName("");
-            SimTK_TEST_MUST_THROW_EXC(mp.addParameter(pEmptyName), Exception);
+            auto pEmptyName = make_unique<MucoParameter>();
+            pEmptyName->setName("");
+            mp.addParameter(std::move(pEmptyName));
+            SimTK_TEST_MUST_THROW_EXC(mp.createRep(), Exception);
         }
 
     }
+}
+
+void testWorkflow() {
+
+    // Default bounds.
+    {
+        MucoTool muco;
+        MucoProblem& problem = muco.updProblem();
+        auto model = createSlidingMassModel();
+        model->finalizeFromProperties();
+        auto& coord = model->updComponent<Coordinate>("slider/position");
+        coord.setRangeMin(-10); coord.setRangeMax(15);
+        auto& actu = model->updComponent<ScalarActuator>("actuator");
+        actu.setMinControl(35);
+        actu.setMaxControl(56);
+        problem.setModel(std::move(model));
+        const auto& phase0 = problem.getPhase(0);
+        // User did not specify state info explicitly.
+        SimTK_TEST_MUST_THROW_EXC(
+                phase0.getStateInfo("/slider/position/value"),
+                Exception);
+        {
+            MucoProblemRep rep = problem.createRep();
+            {
+                const auto& info = rep.getStateInfo("/slider/position/value");
+                SimTK_TEST_EQ(info.getBounds().getLower(), -10);
+                SimTK_TEST_EQ(info.getBounds().getUpper(),  15);
+            }
+            {
+                // Default speed bounds.
+                const auto& info = rep.getStateInfo("/slider/position/speed");
+                SimTK_TEST_EQ(info.getBounds().getLower(), -50);
+                SimTK_TEST_EQ(info.getBounds().getUpper(),  50);
+            }
+            // No control info stored in the Problem.
+            SimTK_TEST_MUST_THROW_EXC(phase0.getControlInfo("/actuator"),
+                    Exception);
+            {
+                // Obtained from controls.
+                const auto& info = rep.getControlInfo("/actuator");
+                SimTK_TEST_EQ(info.getBounds().getLower(), 35);
+                SimTK_TEST_EQ(info.getBounds().getUpper(), 56);
+            }
+        }
+
+        problem.setControlInfo("/actuator", {12, 15});
+        {
+            {
+                const auto& probinfo = phase0.getControlInfo("/actuator");
+                SimTK_TEST_EQ(probinfo.getBounds().getLower(), 12);
+                SimTK_TEST_EQ(probinfo.getBounds().getUpper(), 15);
+            }
+            MucoProblemRep rep = problem.createRep();
+            {
+                const auto& info = rep.getControlInfo("/actuator");
+                SimTK_TEST_EQ(info.getBounds().getLower(), 12);
+                SimTK_TEST_EQ(info.getBounds().getUpper(), 15);
+            }
+        }
+    }
+
+    // Ensure that changes to time bounds are obeyed.
+    {
+        MucoTool muco;
+        MucoProblem& problem = muco.updProblem();
+        problem.setModel(createSlidingMassModel());
+
+        problem.setTimeBounds(0, {0, 10});
+        problem.setStateInfo("/slider/position/value", {0, 1}, 0, 1);
+        problem.setStateInfo("/slider/position/speed", {-100, 100}, 0, 0);
+        problem.setControlInfo("/actuator", {-10, 10});
+        problem.addCost<MucoFinalTimeCost>();
+
+        MucoTropterSolver& solver = muco.initSolver();
+        solver.set_num_mesh_points(20);
+        MucoIterate guess = solver.createGuess("random");
+        guess.setTime(createVectorLinspace(20, 0.0, 3.0));
+        solver.setGuess(guess);
+        MucoSolution solution0 = muco.solve();
+
+        problem.setTimeBounds(0, {5.8, 10});
+        // Editing the problem does not affect information in the Solver; the
+        // guess still exists.
+        SimTK_TEST(!solver.getGuess().empty());
+
+        guess.setTime(createVectorLinspace(20, 0.0, 7.0));
+        MucoSolution solution = muco.solve();
+        SimTK_TEST_EQ(solution.getFinalTime(), 5.8);
+    }
+
+    {
+        double finalTime0;
+        {
+            // Ensure that changes to the model are obeyed.
+            MucoTool muco;
+            MucoProblem& problem = muco.updProblem();
+            auto model = problem.setModel(createSlidingMassModel());
+            problem.setTimeBounds(0, {0, 10});
+            problem.setStateInfo("/slider/position/value", {0, 1}, 0, 1);
+            problem.setStateInfo("/slider/position/speed", {-100, 100}, 0, 0);
+            problem.addCost<MucoFinalTimeCost>();
+            MucoTropterSolver& solver = muco.initSolver();
+            solver.set_num_mesh_points(20);
+            finalTime0 = muco.solve().getFinalTime();
+
+            auto& body = model->updComponent<Body>("body");
+            body.setMass(2 * body.getMass());
+            const double finalTime1 = muco.solve().getFinalTime();
+            SimTK_TEST(finalTime1 > 1.1 * finalTime0);
+        }
+
+        // Can set the cost and model in any order.
+        {
+            MucoTool muco;
+            MucoProblem& problem = muco.updProblem();
+            problem.setTimeBounds(0, {0, 10});
+            problem.addCost<MucoFinalTimeCost>();
+            problem.setStateInfo("/slider/position/value", {0, 1}, 0, 1);
+            problem.setStateInfo("/slider/position/speed", {-100, 100}, 0, 0);
+            problem.setModel(createSlidingMassModel());
+            MucoTropterSolver& solver = muco.initSolver();
+            solver.set_num_mesh_points(20);
+            const double finalTime =  muco.solve().getFinalTime();
+            SimTK_TEST_EQ_TOL(finalTime, finalTime0, 1e-6);
+        }
+    }
+
+    // Changes to the costs are obeyed.
+    {
+        MucoTool muco;
+        MucoProblem& problem = muco.updProblem();
+        problem.setModel(createSlidingMassModel());
+        problem.setTimeBounds(0, {0, 10});
+        problem.setStateInfo("/slider/position/value", {0, 1}, 0, 1);
+        problem.setStateInfo("/slider/position/speed", {-100, 100}, 0, 0);
+        problem.updPhase().addCost<MucoFinalTimeCost>();
+        auto effort = problem.updPhase().addCost<MucoControlCost>("effort");
+        const double finalTime0 = muco.solve().getFinalTime();
+
+        // Change the weights of the costs.
+        effort->set_weight(0.1);
+        const double finalTime1 = muco.solve().getFinalTime();
+        SimTK_TEST(finalTime1 < 0.8 * finalTime0);
+    }
+
+    // Invoking functions without initializing.
+    {
+        // TODO
+
+    }
+
+    // TODO MucoCost and MucoParameter cache pointers into some model.
+    // TODO {
+    // TODO     MucoFinalTimeCost cost;
+    // TODO     // TODO must be initialized first.
+    // TODO     // TODO MucoPhase shouldn't even have a public calcEndpointCost function.
+    // TODO     SimTK_TEST_MUST_THROW_EXC(cost.calcEndpointCost(state), Exception);
+    // TODO }
+
+    // Allow removing costs.
+    // TODO
+    // {
+    //     MucoTool muco;
+    //     MucoProblem& problem = muco.updProblem();
+    //     {
+    //         // Remove by name.
+    //         auto& cost = problem.addCost<MucoFinalTimeCost>();
+    //         cost.setName("cost0");
+    //         problem.removeCost(cost);
+    //         SimTK_TEST_MUST_THROW_EXC(problem.getCost("cost0"), Exception);
+    //     }
+    // }
 }
 
 void testStateTracking() {
@@ -347,9 +578,9 @@ void testStateTracking() {
         MucoProblem& mp = muco.updProblem();
         mp.setModel(createSlidingMassModel());
         mp.setTimeBounds(0, 1);
-        mp.setStateInfo("slider/position/value", {-1, 1});
-        mp.setStateInfo("slider/position/speed", {-100, 100});
-        mp.setControlInfo("actuator", {-50, 50});
+        mp.setStateInfo("/slider/position/value", {-1, 1});
+        mp.setStateInfo("/slider/position/speed", {-100, 100});
+        mp.setControlInfo("/actuator", {-50, 50});
         return muco;
     };
 
@@ -357,7 +588,7 @@ void testStateTracking() {
     std::string fname = "testMuscolloInterface_testStateTracking_ref.sto";
     {
         TimeSeriesTable ref;
-        ref.setColumnLabels({"slider/position/value"});
+        ref.setColumnLabels({"/slider/position/value"});
         using SimTK::Pi;
         for (double time = -0.01; time < 1.02; time += 0.01) {
             // Move at constant speed from x=0 to x=1. Really basic stuff.
@@ -371,9 +602,8 @@ void testStateTracking() {
     {
         auto muco = makeTool();
         MucoProblem& mp = muco.updProblem();
-        MucoStateTrackingCost tracking;
-        tracking.setReference(STOFileAdapter::read(fname));
-        mp.addCost(tracking);
+        auto tracking = mp.addCost<MucoStateTrackingCost>();
+        tracking->setReference(STOFileAdapter::read(fname));
         MucoTropterSolver& ms = muco.initSolver();
         ms.set_num_mesh_points(5);
         ms.set_optim_hessian_approximation("exact");
@@ -388,9 +618,8 @@ void testStateTracking() {
 
         auto muco = makeTool();
         MucoProblem& mp = muco.updProblem();
-        MucoStateTrackingCost tracking;
-        tracking.setReferenceFile(fname);
-        mp.addCost(tracking);
+        auto tracking = mp.addCost<MucoStateTrackingCost>();
+        tracking->setReferenceFile(fname);
         MucoTropterSolver& ms = muco.initSolver();
         ms.set_num_mesh_points(5);
         ms.set_optim_hessian_approximation("exact");
@@ -413,7 +642,7 @@ void testStateTracking() {
         auto muco = makeTool();
         MucoProblem& mp = muco.updProblem();
         MucoStateTrackingCost tracking;
-        mp.addCost(tracking);
+        mp.addCost<MucoStateTrackingCost>();
         SimTK_TEST_MUST_THROW_EXC(muco.solve(), Exception);
     }
 
@@ -428,9 +657,9 @@ void testGuess() {
     ms.set_num_mesh_points(N);
 
     std::vector<std::string> expectedStateNames{
-            "slider/position/value", "slider/position/speed"
+            "/slider/position/value", "/slider/position/speed"
     };
-    std::vector<std::string> expectedControlNames{"actuator"};
+    std::vector<std::string> expectedControlNames{"/actuator"};
 
     SimTK::Matrix expectedStatesTraj(N, 2);
     expectedStatesTraj.col(0) = 0.5; // bounds are [0, 1].
@@ -529,7 +758,7 @@ void testGuess() {
     {
         MucoIterate guess = ms.createGuess("bounds");
         // Use weird number to ensure the solver actually loads the file:
-        guess.setControl("actuator", SimTK::Vector(N, 13.28));
+        guess.setControl("/actuator", SimTK::Vector(N, 13.28));
         const std::string fname = "testMuscolloInterface_testGuess_file.sto";
         guess.write(fname);
         ms.setGuessFile(fname);
@@ -567,32 +796,32 @@ void testGuess() {
 
         // TODO look at how TimeSeriesTable handles this.
         // Make sure this uses the initializer list variant.
-        guess.setState("slider/position/value", {2, 0.3});
+        guess.setState("/slider/position/value", {2, 0.3});
         SimTK::Vector expectedv(2);
         expectedv[0] = 2;
         expectedv[1] = 0.3;
-        SimTK_TEST_EQ(guess.getState("slider/position/value"), expectedv);
+        SimTK_TEST_EQ(guess.getState("/slider/position/value"), expectedv);
 
         // Can use SimTK::Vector.
         expectedv[1] = 9.4;
-        guess.setState("slider/position/value", expectedv);
-        SimTK_TEST_EQ(guess.getState("slider/position/value"), expectedv);
+        guess.setState("/slider/position/value", expectedv);
+        SimTK_TEST_EQ(guess.getState("/slider/position/value"), expectedv);
 
         // Controls
-        guess.setControl("actuator", {1, 0.6});
+        guess.setControl("/actuator", {1, 0.6});
         SimTK::Vector expecteda(2);
         expecteda[0] = 1.0;
         expecteda[1] = 0.6;
-        SimTK_TEST_EQ(guess.getControl("actuator"), expecteda);
+        SimTK_TEST_EQ(guess.getControl("/actuator"), expecteda);
 
         expecteda[0] = 0.7;
-        guess.setControl("actuator", expecteda);
-        SimTK_TEST_EQ(guess.getControl("actuator"), expecteda);
+        guess.setControl("/actuator", expecteda);
+        SimTK_TEST_EQ(guess.getControl("/actuator"), expecteda);
 
 
         // Errors.
 
-        // Nonexistant state/control.
+        // Nonexistent state/control.
         SimTK_TEST_MUST_THROW_EXC(guess.setState("none", SimTK::Vector(2)),
                 Exception);
         SimTK_TEST_MUST_THROW_EXC(guess.setControl("none", SimTK::Vector(2)),
@@ -602,10 +831,11 @@ void testGuess() {
 
         // Incorrect length.
         SimTK_TEST_MUST_THROW_EXC(
-                guess.setState("slider/position/value", SimTK::Vector(1)),
+                guess.setState("/slider/position/value", SimTK::Vector(1)),
                 Exception);
         SimTK_TEST_MUST_THROW_EXC(
-                guess.setControl("actuator", SimTK::Vector(3)), Exception);
+                guess.setControl("/actuator", SimTK::Vector(3)),
+                Exception);
 
     }
 
@@ -613,7 +843,8 @@ void testGuess() {
     {
         ms.set_num_mesh_points(5);
         MucoIterate guess0 = ms.createGuess();
-        guess0.setControl("actuator", createVectorLinspace(5, 2.8, 7.3));
+        guess0.setControl("/actuator",
+                createVectorLinspace(5, 2.8, 7.3));
         SimTK_TEST(guess0.getTime().size() == 5); // midpoint of [0, 10]
         SimTK_TEST_EQ(guess0.getTime()[4], 5);
 
@@ -625,7 +856,7 @@ void testGuess() {
             SimTK_TEST_EQ(guess.getTime()[9], 5);
             SimTK_TEST(guess.getStatesTrajectory().nrow() == 10);
             SimTK_TEST(guess.getControlsTrajectory().nrow() == 10);
-            SimTK_TEST_EQ(guess.getControl("actuator"),
+            SimTK_TEST_EQ(guess.getControl("/actuator"),
                     createVectorLinspace(10, 2.8, 7.3));
         }
 
@@ -644,7 +875,7 @@ void testGuess() {
             SimTK_TEST(guess.getStatesTrajectory().nrow() == expectedNumTimes);
             SimTK_TEST(
                     guess.getControlsTrajectory().nrow() == expectedNumTimes);
-            SimTK_TEST_EQ(guess.getControl("actuator"),
+            SimTK_TEST_EQ(guess.getControl("/actuator"),
                     createVectorLinspace(expectedNumTimes, 2.8, 7.3));
         }
 
@@ -662,7 +893,7 @@ void testGuess() {
             SimTK_TEST(guess.getStatesTrajectory().nrow() == expectedNumTimes);
             SimTK_TEST(
                     guess.getControlsTrajectory().nrow() == expectedNumTimes);
-            SimTK_TEST_EQ(guess.getControl("actuator"),
+            SimTK_TEST_EQ(guess.getControl("/actuator"),
                     createVectorLinspace(expectedNumTimes, 2.8, 7.3));
         }
 
@@ -694,13 +925,75 @@ void testGuess() {
     // after they get the mutable reference.
 }
 
+void testGuessTimeStepping() {
+    // This problem is just a simulation (there are no costs), and so the
+    // forward simulation guess should reduce the number of iterations to
+    // converge, and the guess and solution should also match our own forward
+    // simulation.
+    MucoTool muco;
+    muco.setName("pendulum");
+    muco.set_write_solution("false");
+    auto& problem = muco.updProblem();
+    problem.setModel(createPendulumModel());
+    const SimTK::Real initialAngle = 0.25 * SimTK::Pi;
+    // Make the simulation interesting.
+    problem.setTimeBounds(0, 1);
+    problem.setStateInfo("/jointset/j0/q0/value", {-10, 10}, initialAngle);
+    problem.setStateInfo("/jointset/j0/q0/speed", {-50, 50}, 0);
+    problem.setControlInfo("/forceset/tau0", 0);
+    MucoTropterSolver& solver = muco.initSolver();
+    solver.set_num_mesh_points(20);
+    solver.setGuess("random");
+    // With MUMPS: 4 iterations.
+    MucoSolution solutionRandom = muco.solve();
+
+    solver.setGuess("time-stepping");
+    // With MUMPS: 2 iterations.
+    MucoSolution solutionSim = muco.solve();
+
+    SimTK_TEST(solutionSim.getNumIterations() <
+            solutionRandom.getNumIterations());
+
+    {
+        MucoIterate guess = solver.createGuess("time-stepping");
+        SimTK_TEST(solutionSim.compareContinuousVariablesRMS(guess) < 1e-2);
+
+        Model modelCopy(muco.updProblem().getPhase().getModel());
+        SimTK::State state = modelCopy.initSystem();
+        modelCopy.setStateVariableValue(state, "/jointset/j0/q0/value", initialAngle);
+        Manager manager(modelCopy, state);
+        manager.integrate(1.0);
+
+        auto controlsTable = modelCopy.getControlsTable();
+        auto labels = controlsTable.getColumnLabels();
+        for (auto& label : labels) { label = "/forceset/" + label; }
+        controlsTable.setColumnLabels(labels);
+        const auto iterateFromManager =
+                MucoIterate::createFromStatesControlsTables(
+                muco.getProblem().createRep(), manager.getStatesTable(),
+                controlsTable);
+        SimTK_TEST(solutionSim.compareContinuousVariablesRMS(iterateFromManager) <
+                        1e-2);
+    }
+
+    // Ensure the forward simulation guess uses the correct time bounds.
+    {
+        muco.updProblem().setTimeBounds({-10, -5}, {6, 15});
+        MucoTropterSolver& solver = muco.initSolver();
+        MucoIterate guess = solver.createGuess("time-stepping");
+        SimTK_TEST(guess.getTime()[0] == -5);
+        SimTK_TEST(guess.getTime()[guess.getNumTimes()-1] == 6);
+    }
+}
+
 void testMucoIterate() {
     // Reading and writing.
     {
         const std::string fname = "testMuscolloInterface_testMucoIterate.sto";
         SimTK::Vector time(3); time[0] = 0; time[1] = 0.1; time[2] = 0.25;
-        MucoIterate orig(time, {"a", "b"}, {"g", "h", "i", "j"}, {"m", "n"},
-                SimTK::Test::randMatrix(3, 2), SimTK::Test::randMatrix(3, 4),
+        MucoIterate orig(time, {"a", "b"}, {"g", "h", "i", "j"}, {"m"},
+                {"n", "o"}, SimTK::Test::randMatrix(3, 2), 
+                SimTK::Test::randMatrix(3, 4), SimTK::Test::randMatrix(3, 1),
                 SimTK::Test::randVector(2).transpose());
         orig.write(fname);
 
@@ -708,19 +1001,87 @@ void testMucoIterate() {
         SimTK_TEST(deserialized.isNumericallyEqual(orig));
     }
 
-    // TODO ensure that we can't access methods until we unseal.
+    // Test sealing/unsealing.
+    {
+        // Create a class that gives access to the sealed functions, which are
+        // otherwise protected.
+        class MucoIterateDerived : public MucoIterate {
+        public:
+            using MucoIterate::MucoIterate;
+            MucoIterateDerived* clone() const override
+            {   return new MucoIterateDerived(*this); }
+            void setSealedD(bool sealed) { MucoIterate::setSealed(sealed); }
+            bool isSealedD() const { return MucoIterate::isSealed(); }
+        };
+        MucoIterateDerived iterate;
+        SimTK_TEST(!iterate.isSealedD());
+        iterate.setSealedD(true);
+        SimTK_TEST(iterate.isSealedD());
+        SimTK_TEST_MUST_THROW_EXC(iterate.getNumTimes(), MucoIterateIsSealed);
+        SimTK_TEST_MUST_THROW_EXC(iterate.getTime(), MucoIterateIsSealed);
+        SimTK_TEST_MUST_THROW_EXC(iterate.getStateNames(), MucoIterateIsSealed);
+        SimTK_TEST_MUST_THROW_EXC(iterate.getControlNames(),
+                MucoIterateIsSealed);
+        SimTK_TEST_MUST_THROW_EXC(iterate.getControlNames(),
+                MucoIterateIsSealed);
+
+        // The clone() function doesn't call ensureSealed(), but the clone should
+        // preserve the value of m_sealed.
+        std::unique_ptr<MucoIterateDerived> ptr(iterate.clone());
+        SimTK_TEST(ptr->isSealedD());
+        SimTK_TEST_MUST_THROW_EXC(iterate.getNumTimes(), MucoIterateIsSealed);
+    }
+
+    // getInitialTime(), getFinalTime()
+    {
+        {
+            // With 0 times, these functions throw an exception.
+            MucoIterate it;
+            SimTK_TEST_MUST_THROW_EXC(it.getInitialTime(), Exception);
+            SimTK_TEST_MUST_THROW_EXC(it.getFinalTime(), Exception);
+        }
+
+        {
+            SimTK::Vector time = createVectorLinspace(5, -3.1, 8.9);
+            std::vector<std::string> snames{"s0", "s1"};
+            std::vector<std::string> cnames{"c0"};
+            SimTK::Matrix states = SimTK::Test::randMatrix(5, 2);
+            SimTK::Matrix controls = SimTK::Test::randMatrix(5, 1);
+            MucoIterate it(time, snames, cnames, {}, {}, states, controls,
+                    SimTK::Matrix(), SimTK::RowVector());
+
+            SimTK_TEST_EQ(it.getInitialTime(), -3.1);
+            SimTK_TEST_EQ(it.getFinalTime(), 8.9);
+        }
+
+        {
+            SimTK::Vector time(1, 7.2);
+            std::vector<std::string> snames{"s0", "s1"};
+            std::vector<std::string> cnames{"c0"};
+            SimTK::Matrix states = SimTK::Test::randMatrix(1, 2);
+            SimTK::Matrix controls = SimTK::Test::randMatrix(1, 1);
+            MucoIterate it(time, snames, cnames, {}, {}, states, controls,
+                    SimTK::Matrix(), SimTK::RowVector());
+
+            SimTK_TEST_EQ(it.getInitialTime(), 7.2);
+            SimTK_TEST_EQ(it.getFinalTime(), 7.2);
+        }
+    }
 
 
-    // compareStatesControlsRMS
-    auto testCompareStatesControlsRMS = [](int NT, int NS, int NC,
+    // compareContinuousVariablesRMS
+    auto testCompareContinuousVariablesRMS = [](int NT, int NS, int NC, int NM,
             double duration, double error,
             std::vector<std::string> statesToCompare = {},
-            std::vector<std::string> controlsToCompare = {}) {
+            std::vector<std::string> controlsToCompare = {},
+            std::vector<std::string> multipliersToCompare = {}) {
         const double t0 = 0.2;
         std::vector<std::string> snames;
         for (int i = 0; i < NS; ++i) snames.push_back("s" + std::to_string(i));
         std::vector<std::string> cnames;
         for (int i = 0; i < NC; ++i) cnames.push_back("c" + std::to_string(i));
+        std::vector<std::string> mnames;
+        for (int i = 0; i < NM; ++i) mnames.push_back("m" + std::to_string(i));
         SimTK::Matrix states(NT, NS);
         for (int i = 0; i < NS; ++i) {
             states.updCol(i) = createVectorLinspace(NT,
@@ -731,17 +1092,23 @@ void testMucoIterate() {
             controls.updCol(i) = createVectorLinspace(NT,
                     SimTK::Test::randDouble(), SimTK::Test::randDouble());
         }
+        SimTK::Matrix multipliers(NT, NM);
+        for (int i = 0; i < NM; ++i) {
+            multipliers.updCol(i) = createVectorLinspace(NT,
+                SimTK::Test::randDouble(), SimTK::Test::randDouble());
+        }
         SimTK::Vector time = createVectorLinspace(NT, t0, t0 + duration);
-        MucoIterate a(time, snames, cnames, {}, states, controls, 
-                SimTK::RowVector());
-        MucoIterate b(time, snames, cnames, {},
+        MucoIterate a(time, snames, cnames, mnames, {}, states, controls, 
+                multipliers, SimTK::RowVector());
+        MucoIterate b(time, snames, cnames, mnames, {},
                 states.elementwiseAddScalar(error),
                 controls.elementwiseAddScalar(error),
+                multipliers.elementwiseAddScalar(error),
                 SimTK::RowVector());
         // If error is constant:
         // sqrt(1/T * integral_t (sum_i^N (err_{i,t}^2))) = sqrt(N)*err
-        auto rmsBA = b.compareStatesControlsRMS(a, statesToCompare, 
-            controlsToCompare);
+        auto rmsBA = b.compareContinuousVariablesRMS(a, statesToCompare, 
+            controlsToCompare, multipliersToCompare);
         int N = 0;
         if (statesToCompare.empty()) N += NS;
         else if (statesToCompare[0] == "none") N += 0;
@@ -749,29 +1116,33 @@ void testMucoIterate() {
         if (controlsToCompare.empty()) N += NC;
         else if (controlsToCompare[0] == "none") N += 0;
         else N += (int)controlsToCompare.size();
+        if (multipliersToCompare.empty()) N += NM;
+        else if (multipliersToCompare[0] == "none") N += 0;
+        else N += (int)multipliersToCompare.size();
         auto rmsExpected = sqrt(N) * error;
         SimTK_TEST_EQ(rmsBA, rmsExpected);
-        auto rmsAB = a.compareStatesControlsRMS(b, statesToCompare, 
-            controlsToCompare);
+        auto rmsAB = a.compareContinuousVariablesRMS(b, statesToCompare, 
+            controlsToCompare, multipliersToCompare);
         SimTK_TEST_EQ(rmsAB, rmsExpected);
     };
 
-    testCompareStatesControlsRMS(10, 2, 1, 0.6, 0.05);
-    testCompareStatesControlsRMS(21, 2, 0, 15.0, 0.01);
+    testCompareContinuousVariablesRMS(10, 2, 1, 1, 0.6, 0.05);
+    testCompareContinuousVariablesRMS(21, 2, 0, 2, 15.0, 0.01);
     // 6 is the minimum required number of times; ensure that it works.
-    testCompareStatesControlsRMS(6, 0, 3, 0.1, 0.9);
+    testCompareContinuousVariablesRMS(6, 0, 3, 0, 0.1, 0.9);
 
     // Providing a subset of states/columns to compare.
-    testCompareStatesControlsRMS(10, 2, 3, 0.6, 0.05, {"s1"});
-    testCompareStatesControlsRMS(10, 2, 3, 0.6, 0.05, {}, {"c1"});
-    testCompareStatesControlsRMS(10, 2, 3, 0.6, 0.05, {"none"}, {"none"});
+    testCompareContinuousVariablesRMS(10, 2, 3, 1, 0.6, 0.05, {"s1"});
+    testCompareContinuousVariablesRMS(10, 2, 3, 1, 0.6, 0.05, {}, {"c1"});
+    testCompareContinuousVariablesRMS(10, 2, 3, 1, 0.6, 0.05, {"none"}, 
+        {"none"}, {"none"});
     // Can't provide "none" along with other state names.
     SimTK_TEST_MUST_THROW_EXC(
-        testCompareStatesControlsRMS(10, 2, 3, 0.6, 0.05, {"none", "s1"}),
-        Exception);
+        testCompareContinuousVariablesRMS(10, 2, 3, 1, 0.6, 0.05, 
+            {"none", "s1"}), Exception);
     SimTK_TEST_MUST_THROW_EXC(
-        testCompareStatesControlsRMS(10, 2, 3, 0.6, 0.05, {}, {"none, c0"}),
-        Exception);
+        testCompareContinuousVariablesRMS(10, 2, 3, 1, 0.6, 0.05, {}, 
+            {"none, c0"}), Exception);
 
     // compareParametersRMS
     auto testCompareParametersRMS = [](int NP, double error, 
@@ -779,10 +1150,10 @@ void testMucoIterate() {
         std::vector<std::string> pnames;
         for (int i = 0; i < NP; ++i) pnames.push_back("p" + std::to_string(i));
         SimTK::RowVector parameters = SimTK::Test::randVector(NP).transpose();
-        MucoIterate a(SimTK::Vector(), {}, {}, pnames, SimTK::Matrix(),
-            SimTK::Matrix(), parameters);
-        MucoIterate b(SimTK::Vector(), {}, {}, pnames, SimTK::Matrix(),
-            SimTK::Matrix(),
+        MucoIterate a(SimTK::Vector(), {}, {}, {}, pnames, SimTK::Matrix(),
+            SimTK::Matrix(), SimTK::Matrix(), parameters);
+        MucoIterate b(SimTK::Vector(), {}, {}, {}, pnames, SimTK::Matrix(),
+            SimTK::Matrix(), SimTK::Matrix(),
             parameters.elementwiseAddScalar(error).getAsRowVector());
         // If error is constant:
         // sqrt(sum_i^N (err_{i}^2) / N) = err
@@ -829,18 +1200,19 @@ int main() {
     SimTK_START_TEST("testMuscolloInterface");
         SimTK_SUBTEST(testSlidingMass);
         SimTK_SUBTEST(testSolverOptions);
-        SimTK_SUBTEST(testStateTracking);
-        SimTK_SUBTEST(testGuess);
-        SimTK_SUBTEST(testMucoIterate);
-
         //SimTK_SUBTEST(testEmpty);
         //SimTK_SUBTEST(testCopy);
         //SimTK_SUBTEST(testSolveRepeatedly);
         //SimTK_SUBTEST(testOMUCOSerialization);
         SimTK_SUBTEST(testBounds);
         SimTK_SUBTEST(testBuildingProblem);
-        // TODO what happens when Ipopt does not converge.
-        // TODO specifying optimizer options.
+        SimTK_SUBTEST(testWorkflow);
+
+        SimTK_SUBTEST(testStateTracking);
+        SimTK_SUBTEST(testGuess);
+        SimTK_SUBTEST(testGuessTimeStepping);
+        SimTK_SUBTEST(testMucoIterate);
+
 
         SimTK_SUBTEST(testInterpolate);
     SimTK_END_TEST();

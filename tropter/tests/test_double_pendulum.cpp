@@ -45,7 +45,7 @@ public:
     double m1 = 1;
 
     void calc_differential_algebraic_equations(
-            const DAEInput<T>& in, DAEOutput<T> out) const override final {
+            const Input<T>& in, Output<T> out) const override final {
         const auto& x = in.states;
         const auto& tau = in.controls;
         const auto& q0 = x[0];
@@ -114,6 +114,7 @@ public:
         const int N = 100;
         DirectCollocationSolver<T> dircol(ocp, "trapezoidal", solver, N);
         dircol.get_opt_solver().set_hessian_approximation(hessian_approx);
+        dircol.get_opt_solver().set_sparsity_detection("random");
         tropter::Iterate guess;
         const int Nguess = 2;
         guess.time.setLinSpaced(Nguess, 0, 1);
@@ -189,17 +190,15 @@ public:
         this->add_control("tau0", {-100, 100});
         this->add_control("tau1", {-100, 100});
     }
-    void calc_integral_cost(const T& time,
-            const VectorX<T>& states,
-            const VectorX<T>& /*controls*/,
-            const VectorX<T>& /*parameters*/,
-            T& integrand) const
-    {
+    void calc_integral_cost(const Input<T>& in, T& integrand) const {
+        
+        const auto& time = in.time;
+        const auto& states = in.states;
+
         VectorX<T> desired(2);
         desired << (time / 1.0) * 0.50 * PI,
                    (time / 1.0) * 0.25 * PI;
         integrand = (states.head(2) - desired).squaredNorm();
-
     }
 
     static Solution run_test(const std::string& solver,
@@ -211,6 +210,7 @@ public:
         // from the solution using an exact Hessian does not converge.
         dircol.get_opt_solver().set_hessian_approximation(
                 hessian_approx);
+        dircol.get_opt_solver().set_sparsity_detection("random");
         Solution solution = dircol.solve();
         //dircol.print_constraint_values(solution);
         solution.write("double_pendulum_coordinate_tracking.csv");
@@ -237,7 +237,7 @@ public:
     double m0 = 1;
     double m1 = 1;
     void calc_differential_algebraic_equations(
-            const DAEInput<T>& in, DAEOutput<T> out) const override final {
+            const Input<T>& in, Output<T> out) const override final {
         const auto& x = in.states;
         const auto& udot = in.controls.template head<2>();
         const auto& tau = in.controls.template tail<2>();
@@ -287,12 +287,11 @@ public:
         this->add_path_constraint("u0", 0);
         this->add_path_constraint("u1", 0);
     }
-    void calc_integral_cost(const T& time,
-            const VectorX<T>& states,
-            const VectorX<T>& /*controls*/,
-            const VectorX<T>& /*parameters*/,
-            T& integrand) const
-    {
+    void calc_integral_cost(const Input<T>& in, T& integrand) const {
+        
+        const auto& time = in.time;
+        const auto& states = in.states;
+
         VectorX<T> desired(2);
         desired << (time / 1.0) * 0.50 * PI,
                    (time / 1.0) * 0.25 * PI;
@@ -305,8 +304,9 @@ public:
         DirectCollocationSolver<T> dircol(ocp, "trapezoidal", solver, N);
         dircol.get_opt_solver().set_hessian_approximation(
                 hessian_approx);
-         dircol.get_opt_solver().set_advanced_option_string
-                 ("print_timing_statistics", "yes");
+        dircol.get_opt_solver().set_sparsity_detection("random");
+        dircol.get_opt_solver().set_advanced_option_string
+                ("print_timing_statistics", "yes");
         Solution solution = dircol.solve();
         // dircol.print_constraint_values(solution);
         solution.write("implicit_double_pendulum_coordinate_tracking.csv");
