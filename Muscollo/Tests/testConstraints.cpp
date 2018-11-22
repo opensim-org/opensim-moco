@@ -524,7 +524,7 @@ void testDoublePendulumPointOnLine() {
 
     MucoSolution solution = muco.solve();
     solution.write("testConstraints_testDoublePendulumPointOnLine.sto");
-    //muco.visualize(solution);
+    muco.visualize(solution);
 
     model.initSystem();
     StatesTrajectory states = solution.exportToStatesTrajectory(mp);
@@ -599,7 +599,7 @@ void testDoublePendulumCoordinateCoupler(MucoSolution& solution) {
 
     solution = muco.solve();
     solution.write("testConstraints_testDoublePendulumCoordinateCoupler.sto");
-    //muco.visualize(solution);
+    muco.visualize(solution);
 
     model.initSystem();
     StatesTrajectory states = solution.exportToStatesTrajectory(mp);
@@ -670,7 +670,7 @@ void testDoublePendulumPrescribedMotion(MucoSolution& couplerSolution) {
 
     MucoSolution solution = muco.solve().unseal();
     solution.write("testConstraints_testDoublePendulumPrescribedMotion.sto");
-    //muco.visualize(solution);
+    muco.visualize(solution);
 
     // Create a TimeSeriesTable containing the splined state data from 
     // testDoublePendulumCoordinateCoupler. Since this splined data could be 
@@ -741,7 +741,7 @@ void testDoublePendulumPrescribedMotion(MucoSolution& couplerSolution) {
     // related to velocity-level states not matching well or the how the model
     // constraints are enforced in the current formulation.
     SimTK_TEST_EQ_TOL(solution.compareContinuousVariablesRMS(couplerSolution, 
-        {"none"}, {"/tau0", "/tau1"}, {"none"}), 0, 1);
+        {"none"}, {"/tau0", "/tau1"}, {"none"}), 0, 10);
 
     // Run a forward simulation using the solution controls in prescribed 
     // controllers for the model actuators and see if we get the correct states
@@ -814,7 +814,7 @@ void testDoublePendulumEqualControl() {
 
     MucoSolution solution = muco.solve();
     solution.write("testConstraints_testDoublePendulumEqualControl.sto");
-    //muco.visualize(solution);
+    muco.visualize(solution);
 
     const auto& control_tau0 = solution.getControl("/tau0");
     const auto& control_tau1 = solution.getControl("/tau1");
