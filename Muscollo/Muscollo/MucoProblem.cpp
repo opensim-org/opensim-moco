@@ -218,7 +218,6 @@ void MucoPhase::printDescription(std::ostream& stream) const {
     }
     stream.flush();
 }
-
 void MucoPhase::initialize(Model& model) const {
     /// Must use the model provided in this function, *not* the one stored as
     /// a property in this class.

@@ -376,9 +376,8 @@ public:
         InverseDynamicsSolver id(this->m_model);
         SimTK::Vector udot(NQ, controls.data() /*, controls.data()*/);
         SimTK::Vector residual = id.solve(this->m_state, udot);
-
         std::copy(&residual[0], &residual[0] + residual.size(),
-                out.path.data());
+                 out.path.data());
 
         // TODO Antoine and Gil said realizing Dynamics is a lot costlier than
         // realizing to Velocity and computing forces manually.
@@ -410,6 +409,9 @@ public:
         } else {
             this->m_model.realizePosition(this->m_state);
         }
+
+        this->m_model.realizePosition(this->m_state);
+
         integrand = this->m_phase0.calcIntegralCost(this->m_state);
     }
 };
@@ -598,7 +600,8 @@ MucoSolution MucoTropterSolver::solveImpl() const {
     //    optsolver.set_advanced_option(TODO);
     //}
     //optsolver.set_advanced_option_string("print_timing_statistics", "yes");
-    // TODO optsolver.set_advanced_option_string("derivative_test", "second-order");
+    optsolver.set_advanced_option_string("derivative_test", "second-order");
+    optsolver.set_advanced_option_real("derivative_test_perturbation", 1e-3);
     // TODO optsolver.set_findiff_hessian_step_size(1e-3);
 
     tropter::Iterate tropIterate = convert(getGuess());

@@ -328,7 +328,7 @@ MucoSolution solveMarkerTrackingProblem(bool createGuess,
     // TODO tracking.set_weight(0.000001);
     tracking.setFreeRadius(0.01);
     tracking.setTrackedMarkerComponents("xy");
-    // TODO mp.addCost(tracking);
+    mp.addCost(tracking);
 
     auto data = STOFileAdapter::read("walk_gait1018_subject01_grf.mot");
     auto time = data.getIndependentColumn();
@@ -370,8 +370,9 @@ MucoSolution solveMarkerTrackingProblem(bool createGuess,
     ms.set_num_mesh_points(50);
     ms.set_verbosity(2);
     ms.set_optim_solver("ipopt");
-    ms.set_optim_hessian_approximation("limited-memory"); // TODO "exact");
+    ms.set_optim_hessian_approximation("limited-memory");
     ms.set_dynamics_mode("implicit");
+    // ms.set_optim_ipopt_print_level(12);
     ms.set_optim_max_iterations(5000);
     ms.set_optim_convergence_tolerance(1e-4);
     ms.set_optim_constraint_tolerance(1e-2);
