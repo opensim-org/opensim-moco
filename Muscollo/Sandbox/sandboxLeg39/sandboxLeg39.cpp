@@ -149,10 +149,10 @@ Model createLeg39Model(const std::string& actuatorType) {
 
     if (actuatorType == "torques") {
         // Remove muscles and add coordinate actuators
-        addCoordinateActuator(model, "pelvis_tx", 500);
-        addCoordinateActuator(model, "pelvis_ty", 500);
-        addCoordinateActuator(model, "pelvis_tz", 500);
-        addCoordinateActuator(model, "pelvis_tilt", 25);
+        addCoordinateActuator(model, "pelvis_tx", 1000);
+        addCoordinateActuator(model, "pelvis_ty", 1000);
+        addCoordinateActuator(model, "pelvis_tz", 1000);
+        addCoordinateActuator(model, "pelvis_tilt", 50);
         addCoordinateActuator(model, "hip_angle_r", 20);
         addCoordinateActuator(model, "knee_angle_r", 20);
         addCoordinateActuator(model, "ankle_angle_r", 5);
@@ -273,16 +273,16 @@ void markerTrackingLeg39(const std::string& actuatorType) {
     mp.addCost(markerTracking);
 
     MucoTropterSolver& ms = muco.initSolver();
-    ms.set_num_mesh_points(10);
+    ms.set_num_mesh_points(50);
     ms.set_verbosity(2);
     ms.set_optim_solver("ipopt");
-    ms.set_optim_convergence_tolerance(1e-2);
+    ms.set_optim_convergence_tolerance(1e-3);
     ms.set_optim_hessian_approximation("exact");
 
-    MucoIterate guess = ms.createGuess();
-    guess.setStatesTrajectory(
-        STOFileAdapter::read("Leg39_swing_IK_results_radians.sto"), true, true);
-    ms.setGuess(guess);
+    //MucoIterate guess = ms.createGuess();
+    //guess.setStatesTrajectory(
+    //    STOFileAdapter::read("Leg39_swing_IK_results_radians.sto"), true, true);
+    ms.setGuessFile("sandboxLeg39_torques_marker_tracking_solution.sto");
 
     MucoSolution solution = muco.solve();
     muco.visualize(solution);
