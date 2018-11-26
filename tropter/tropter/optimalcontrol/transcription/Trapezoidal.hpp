@@ -40,7 +40,9 @@ void Trapezoidal<T>::set_ocproblem(
     m_num_states = m_ocproblem->get_num_states();
     m_num_controls = m_ocproblem->get_num_controls();
     m_num_adjuncts = m_ocproblem->get_num_adjuncts();
+    //m_num_slacks = 2 * m_ocproblem->get_num_multibody_constraints();
     m_num_continuous_variables = m_num_states + m_num_controls + m_num_adjuncts;
+    // += m_num_slacks;
     m_num_time_variables = 2;
     m_num_parameters = m_ocproblem->get_num_parameters();
     m_num_dense_variables = m_num_time_variables + m_num_parameters;
@@ -101,6 +103,11 @@ void Trapezoidal<T>::set_ocproblem(
                     << i_mesh;
             m_variable_names.push_back(ss.str());
         }
+        // TODO add slack variable names here. Ideally, the slack variable names
+        // are based on the adjunct variable names that are acting as
+        // constraint multipliers. How to detect the correct adjunct variables?
+        // Include that an adjunct is a constraint multipliers as a part of the
+        // continuous variable info?
     }
 
     m_constraint_names.clear();
@@ -290,6 +297,7 @@ void Trapezoidal<T>::calc_constraints(const VectorX<T>& x,
     auto states = make_states_trajectory_view(x);
     auto controls = make_controls_trajectory_view(x);
     auto adjuncts = make_adjuncts_trajectory_view(x);
+    // auto slacks = make_slacks_trajectory_view(x);
     auto parameters = make_parameters_view(x);
 
     // Initialize on iterate.
@@ -1026,6 +1034,20 @@ Trapezoidal<T>::make_adjuncts_trajectory_view(const VectorX<S>& x) const
             Eigen::OuterStride<Eigen::Dynamic>(m_num_continuous_variables)};
 }
 
+//template<typename T>
+//template<typename S>
+//typename Trapezoidal<T>::template TrajectoryViewConst<S>
+//Trapezoidal<T>::make_slacks_trajectory_view(const VectorX<S>& x) const
+//{
+//    return {
+//            // State of slacks for first mesh interval.
+//            x.data() + m_num_dense_variables + m_num_states + m_num_controls
+//                + m_num_adjuncts,
+//            m_num_slacks,
+//            m_num_mesh_points-1,
+//            Eigen::OuterStride<Eigen::Dynamic>(m_num_continuous_variables)};
+//}
+
 // TODO avoid the duplication with the above.
 template<typename T>
 template<typename S>
@@ -1080,6 +1102,20 @@ Trapezoidal<T>::make_adjuncts_trajectory_view(VectorX<S>& x) const
            // Distance between the start of each column; same as above.
            Eigen::OuterStride<Eigen::Dynamic>(m_num_continuous_variables)};
 }
+
+//template<typename T>
+//template<typename S>
+//typename Trapezoidal<T>::template TrajectoryView<S>
+//Trapezoidal<T>::make_slacks_trajectory_view(VectorX<S>& x) const
+//{
+//    return {
+//            // State of slacks for first mesh interval.
+//            x.data() + m_num_dense_variables + m_num_states + m_num_controls
+//                + m_num_adjuncts,
+//            m_num_slacks,
+//            m_num_mesh_points-1, // N-1 mesh points for slack variables
+//            Eigen::OuterStride<Eigen::Dynamic>(m_num_continuous_variables)};
+//}
 
 template<typename T>
 typename Trapezoidal<T>::ConstraintsView

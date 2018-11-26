@@ -30,13 +30,16 @@ namespace transcription {
 /// states(t=0)
 /// controls(t=0)
 /// adjuncts(t=0)
+///// slacks(t=0)
 /// states(t=1)
 /// controls(t=1)
 /// adjuncts(t=1)
+///// slacks(t=1)
 /// ...
 /// states(t=N)
 /// controls(t=N)
 /// adjuncts(t=N)
+///// slacks(t=N)
 /// @endverbatim
 ///
 /// The constraints are ordered as follows:
@@ -148,6 +151,9 @@ protected:
     template<typename S>
     TrajectoryViewConst<S>
     make_adjuncts_trajectory_view(const VectorX<S>& variables) const;
+    //template<typename S>
+    //TrajectoryViewConst<S>
+    //make_slacks_trajectory_view(const VectorX<S>& variables) const;
     // TODO find a way to avoid these duplicated functions, using SFINAE.
     /// This provides a view to which you can write.
     template<typename S>
@@ -164,6 +170,9 @@ protected:
     template<typename S>
     TrajectoryView<S>
     make_adjuncts_trajectory_view(VectorX<S>& variables) const;
+    //template<typename S>
+    //TrajectoryView<S>
+    //make_slacks_trajectory_view(VectorX<S>& variables) const;
 
     // TODO templatize.
     using DefectsTrajectoryView = Eigen::Map<MatrixX<T>>;
@@ -196,6 +205,7 @@ private:
     int m_num_states = -1;
     int m_num_controls = -1;
     int m_num_adjuncts = -1;
+    //int m_num_slacks = -1;
     int m_num_continuous_variables = -1;
     int m_num_dynamics_constraints = -1;
     int m_num_path_constraints = -1;

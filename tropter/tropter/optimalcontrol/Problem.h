@@ -155,6 +155,8 @@ public:
     {   return (int)m_parameter_infos.size(); }
     int get_num_path_constraints() const
     {   return (int)m_path_constraint_infos.size(); }
+    //int get_num_multibody_constraints() const
+    //{   return m_num_multibody_constraints; } 
     /// Get the names of all the states in the order they appear in the
     /// `states` input to calc_differential_algebraic_equations(), etc.
     /// Note: this function is not free to call.
@@ -241,10 +243,13 @@ public:
     /// This returns an index that can be used to access this specific adjunct
     /// variable within `dynamics()`, `path_constraints()`, etc.
     /// TODO check if an adjunct with the provided name already exists.
+    /// TODO doc for multibody constraints.
     int add_adjunct(const std::string& name, const Bounds& bounds,
             const InitialBounds& initial_bounds = InitialBounds(),
             const FinalBounds& final_bounds = FinalBounds()) {
+            //const bool& is_multibody_constraint_multiplier = false) {
 
+        //if (is_multibody_constraint_multiplier) m_num_multibody_constraints++;
         m_adjunct_infos.push_back({name, bounds, initial_bounds, final_bounds});
         return (int)m_adjunct_infos.size() - 1;
     }
@@ -429,6 +434,7 @@ private:
     std::vector<ContinuousVariableInfo> m_adjunct_infos;
     std::vector<ParameterInfo> m_parameter_infos;
     std::vector<PathConstraintInfo> m_path_constraint_infos;
+    //int m_num_multibody_constraints = 0;
 };
 
 } // namespace tropter

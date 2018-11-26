@@ -295,9 +295,9 @@ public:
                                       convert(multInfo.getFinalBounds()));
                     std::string lambdaName(multInfo.getName());
                     this->add_adjunct(lambdaName.replace(0, 10, "lambda"),
-                        convert(multInfo.getBounds()),
-                        convert(multInfo.getInitialBounds()),
-                        convert(multInfo.getFinalBounds()));
+                                      convert(multInfo.getBounds()),
+                                      convert(multInfo.getInitialBounds()),
+                                      convert(multInfo.getFinalBounds()));
                     std::string gammaName(multInfo.getName());
                     this->add_adjunct(gammaName.replace(0, 6, "gamma_bar"),
                                       convert(multInfo.getBounds()),
@@ -808,8 +808,9 @@ MucoSolution MucoTropterSolver::solveImpl() const {
     //    optsolver.set_advanced_option(TODO);
     //}
 
-    tropter::Iterate tropIterate = convert(getGuess());
-    tropter::Solution tropSolution = dircol.solve(tropIterate);
+    //tropter::Iterate tropIterate = convert(getGuess());
+    tropter::Solution tropSolution = dircol.solve(
+        dircol.make_initial_guess_from_bounds());
 
     if (get_verbosity()) {
         dircol.print_constraint_values(tropSolution);

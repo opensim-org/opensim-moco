@@ -88,9 +88,9 @@ Model createWeldedLeg39Model(const std::string& actuatorType) {
 
     if (actuatorType == "torques") { 
         // Remove muscles and add coordinate actuators
-        addCoordinateActuator(model, "hip_angle_r", 20);
-        addCoordinateActuator(model, "knee_angle_r", 20);
-        addCoordinateActuator(model, "ankle_angle_r", 5);
+        addCoordinateActuator(model, "hip_angle_r", 50);
+        addCoordinateActuator(model, "knee_angle_r", 50);
+        addCoordinateActuator(model, "ankle_angle_r", 50);
         //addCoordinateActuator(model, "tib_tx_r", 35);
         //addCoordinateActuator(model, "tib_ty_r", 150);
         //addCoordinateActuator(model, "pat_angle_r", 5);
@@ -195,8 +195,10 @@ void minimizeControlEffortWeldedLeg39(const std::string& actuatorType) {
     effort.setName("control_effort");
     mp.addCost(effort);
 
+    mp.setMultiplierBounds({-100, 100});
+
     MucoTropterSolver& ms = muco.initSolver();
-    ms.set_num_mesh_points(25);
+    ms.set_num_mesh_points(20);
     ms.set_verbosity(2);
     ms.set_optim_solver("ipopt");
     ms.set_optim_convergence_tolerance(1e-1);
@@ -291,8 +293,8 @@ void markerTrackingLeg39(const std::string& actuatorType) {
 
 void main() {
 
-    minimizeControlEffortWeldedLeg39("torques");
-    //stateTrackingWeldedLeg39("torques");
+    //minimizeControlEffortWeldedLeg39("torques");
+    stateTrackingWeldedLeg39("torques");
     //markerTrackingLeg39("torques");
     //minimizeControlEffortWeldedLeg39("path_actuators");
 
