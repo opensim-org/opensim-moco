@@ -293,25 +293,25 @@ void testHangingMuscleMinimumTime(bool ignoreTendonCompliance) {
     // model.addComponent(rep);
 
     SimTK::State state = model.initSystem();
-    const auto& actuator = model.getComponent("actuator");
+    const auto& actuator = model.getComponent("/forceset/actuator");
 
     const auto* dgf = dynamic_cast<const DeGrooteFregly2016Muscle*>(&actuator);
     const bool usingDGF = dgf != nullptr;
 
     if (!ignoreTendonCompliance) {
-        model.setStateVariableValue(state, "actuator/activation",
+        model.setStateVariableValue(state, "/forceset/actuator/activation",
                 initActivation);
-        model.setStateVariableValue(state, "joint/height/value", initHeight);
+        model.setStateVariableValue(state, "/joint/height/value", initHeight);
         model.equilibrateMuscles(state);
         if (usingDGF) {
             std::cout << "Equilibrium norm fiber length: "
                     << model.getStateVariableValue(state,
-                            "actuator/norm_fiber_length")
+                            "forceset/actuator/norm_fiber_length")
                     << std::endl;
         } else {
             std::cout << "Equilibrium fiber length: "
                     << model.getStateVariableValue(state,
-                            "actuator/fiber_length")
+                            "forceset/actuator/fiber_length")
                     << std::endl;
         }
     }
@@ -330,13 +330,13 @@ void testHangingMuscleMinimumTime(bool ignoreTendonCompliance) {
     {
         MucoTool muco;
         MucoProblem& problem = muco.updProblem();
-        problem.setModel(model);
+        problem.setModelCopy(model);
         problem.setTimeBounds(0, {0.05, 1.0});
         // TODO this might have been the culprit when using the Millard muscle:
         // TODO TODO TODO
-        problem.setStateInfo("joint/height/value", {0.10, 0.20},
+        problem.setStateInfo("/joint/height/value", {0.10, 0.20},
                 initHeight, finalHeight);
-        problem.setStateInfo("joint/height/speed", {-10, 10}, 0, 0);
+        problem.setStateInfo("/joint/height/speed", {-10, 10}, 0, 0);
         // TODO initial fiber length?
         // TODO how to enforce initial equilibrium with explicit dynamics?
         if (!ignoreTendonCompliance) {
@@ -344,18 +344,23 @@ void testHangingMuscleMinimumTime(bool ignoreTendonCompliance) {
                 // We would prefer to use a range of [0.2, 1.8] but then IPOPT
                 // tries very small fiber lengths that cause tendon stretch to be
                 // HUGE, causing insanely high tendon forces.
-                problem.setStateInfo("actuator/norm_fiber_length", {0.8, 1.8},
-                        model.getStateVariableValue(state, "actuator/norm_fiber_length"));
+                problem.setStateInfo("/forceset/actuator/norm_fiber_length",
+                        {0.8, 1.8},
+                        model.getStateVariableValue(state,
+                                "/forceset/actuator/norm_fiber_length"));
             } else {
-                problem.setStateInfo("actuator/fiber_length", {0.0, 0.3},
-                        model.getStateVariableValue(state, "actuator/fiber_length"));
+                problem.setStateInfo("/forceset/actuator/fiber_length",
+                        {0.0, 0.3},
+                        model.getStateVariableValue(state,
+                                "/forceset/actuator/fiber_length"));
             }
         }
         // OpenSim might not allow activations of 0.
-        problem.setStateInfo("actuator/activation", {0.01, 1}, initActivation);
-        problem.setControlInfo("actuator", {0.01, 1});
+        problem.setStateInfo("/forceset/actuator/activation",
+                {0.01, 1}, initActivation);
+        problem.setControlInfo("/forceset/actuator", {0.01, 1});
 
-        problem.addCost(MucoFinalTimeCost());
+        problem.addCost<MucoFinalTimeCost>();
 
         MucoTropterSolver& solver = muco.initSolver();
         solver.set_optim_sparsity_detection("initial-guess");
@@ -373,9 +378,9 @@ void testHangingMuscleMinimumTime(bool ignoreTendonCompliance) {
         solutionFilename += ".sto";
         solutionTrajOpt.write(solutionFilename);
         std::cout << "Solution joint/height/value trajectory: "
-                << solutionTrajOpt.getState("joint/height/value") << std::endl;
+                << solutionTrajOpt.getState("/joint/height/value") << std::endl;
         std::cout << "Solution joint/height/speed trajectory: "
-                << solutionTrajOpt.getState("joint/height/speed") << std::endl;
+                << solutionTrajOpt.getState("/joint/height/speed") << std::endl;
     }
 
     // Perform time stepping forward simulation using optimized controls.
@@ -384,18 +389,18 @@ void testHangingMuscleMinimumTime(bool ignoreTendonCompliance) {
     {
         // Add a controller to the model.
         const SimTK::Vector& time = solutionTrajOpt.getTime();
-        const auto control = solutionTrajOpt.getControl("actuator");
+        const auto control = solutionTrajOpt.getControl("/forceset/actuator");
         auto* controlFunction = new GCVSpline(5, time.nrow(), &time[0],
                 &control[0]);
         auto* controller = new PrescribedController();
-        controller->addActuator(model.getComponent<Actuator>("actuator"));
+        controller->addActuator(model.getComponent<Actuator>("forceset/actuator"));
         controller->prescribeControlForActuator("actuator", controlFunction);
         model.addController(controller);
 
         // Set the initial state.
         SimTK::State state = model.initSystem();
         model.setStateVariableValue(state, "joint/height/value", initHeight);
-        model.setStateVariableValue(state, "actuator/activation",
+        model.setStateVariableValue(state, "/forceset/actuator/activation",
                 initActivation);
 
         // Integrate.
@@ -418,43 +423,49 @@ void testHangingMuscleMinimumTime(bool ignoreTendonCompliance) {
                 << std::endl;
         MucoTool muco;
         MucoProblem& problem = muco.updProblem();
-        problem.setModel(model);
+        for (auto& controller : model.updComponentList<Controller>()) {
+            controller.setEnabled(false);
+        }
+        problem.setModelCopy(model);
         // Using an equality constraint for the time bounds was essential for
         // recovering the correct excitation.
         const double finalTime =
                 solutionTrajOpt.getTime()[solutionTrajOpt.getNumTimes() - 1];
         problem.setTimeBounds(0, finalTime);
-        problem.setStateInfo("joint/height/value", {0.10, 0.20},
+        problem.setStateInfo("/joint/height/value", {0.10, 0.20},
                 initHeight, finalHeight);
-        problem.setStateInfo("joint/height/speed", {-10, 10}, 0, 0);
+        problem.setStateInfo("/joint/height/speed", {-10, 10}, 0, 0);
         if (!ignoreTendonCompliance) {
             if (usingDGF) {
                 // We would prefer to use a range of [0.2, 1.8] but then IPOPT
                 // tries very small fiber lengths that cause tendon stretch to be
                 // HUGE, causing insanely high tendon forces.
-                problem.setStateInfo("actuator/norm_fiber_length", {0.8, 1.8},
-                        model.getStateVariableValue(state, "actuator/norm_fiber_length"));
+                problem.setStateInfo("/forceset/actuator/norm_fiber_length",
+                        {0.8, 1.8},
+                        model.getStateVariableValue(state,
+                                "/forceset/actuator/norm_fiber_length"));
             } else {
-                problem.setStateInfo("actuator/fiber_length", {0.0, 0.3},
-                        model.getStateVariableValue(state, "actuator/fiber_length"));
+                problem.setStateInfo("/forceset/actuator/fiber_length",
+                        {0.0, 0.3},
+                        model.getStateVariableValue(state,
+                                "/forceset/actuator/fiber_length"));
             }
         }
         // OpenSim might not allow activations of 0.
-        problem.setStateInfo("actuator/activation", {0.01, 1}, initActivation);
-        problem.setControlInfo("actuator", {0.01, 1});
+        problem.setStateInfo("/forceset/actuator/activation",
+                {0.01, 1}, initActivation);
+        problem.setControlInfo("/forceset/actuator", {0.01, 1});
 
-        MucoStateTrackingCost tracking;
-
+        auto* tracking = problem.addCost<MucoStateTrackingCost>();
         auto states = solutionTrajOpt.exportToStatesStorage().exportToTable();
         TimeSeriesTable ref(states.getIndependentColumn());
-        ref.appendColumn("joint/height/value",
-                states.getDependentColumn("joint/height/value"));
+        ref.appendColumn("/joint/height/value",
+                states.getDependentColumn("/joint/height/value"));
         // Tracking joint/height/speed slightly increases the iterations to
         // converge, and tracking activation cuts the iterations in half.
         // TODO try tracking all states, for fun.
-        tracking.setReference(ref);
-        tracking.setAllowUnusedReferences(true);
-        problem.addCost(tracking);
+        tracking->setReference(ref);
+        tracking->setAllowUnusedReferences(true);
 
         MucoTropterSolver& solver = muco.initSolver();
         solver.set_optim_sparsity_detection("initial-guess");
@@ -622,8 +633,8 @@ void test2DOFs2Muscles(bool ignoreTendonCompliance) {
 
     model.setStateVariableValue(state, "jtx/tx/value", initTX);
     model.setStateVariableValue(state, "jty/ty/value", initTY);
-    model.setStateVariableValue(state, "left/activation", initActivation);
-    model.setStateVariableValue(state, "right/activation", initActivation);
+    model.setStateVariableValue(state, "forceset/left/activation", initActivation);
+    model.setStateVariableValue(state, "forceset/right/activation", initActivation);
     model.equilibrateMuscles(state);
 
     // Manager manager(model, state);
@@ -639,33 +650,33 @@ void test2DOFs2Muscles(bool ignoreTendonCompliance) {
     {
         MucoTool muco;
         MucoProblem& problem = muco.updProblem();
-        problem.setModel(model);
+        problem.setModelCopy(model);
         if (ignoreTendonCompliance) {
             problem.setTimeBounds(0, 0.2);
         } else {
             problem.setTimeBounds(0, 0.5);
         }
-        problem.setStateInfo("jtx/tx/value", {-0.03, 0.03}, initTX, 0.03);
-        problem.setStateInfo("jty/ty/value", {-2 * width, 0},
+        problem.setStateInfo("/jtx/tx/value", {-0.03, 0.03}, initTX, 0.03);
+        problem.setStateInfo("/jty/ty/value", {-2 * width, 0},
                 initTY, -width + 0.05);
-        problem.setStateInfo("jtx/tx/speed", {-15, 15}, 0, 0);
-        problem.setStateInfo("jty/ty/speed", {-15, 15}, 0, 0);
+        problem.setStateInfo("/jtx/tx/speed", {-15, 15}, 0, 0);
+        problem.setStateInfo("/jty/ty/speed", {-15, 15}, 0, 0);
         if (!ignoreTendonCompliance) {
-            problem.setStateInfo("left/norm_fiber_length", {0.6, 1.8},
+            problem.setStateInfo("/forceset/left/norm_fiber_length", {0.6, 1.8},
                     model.getStateVariableValue(state,
-                            "left/norm_fiber_length"));
-            problem.setStateInfo("right/norm_fiber_length", {0.6, 1.8},
+                            "forceset/left/norm_fiber_length"));
+            problem.setStateInfo("/forceset/right/norm_fiber_length", {0.6, 1.8},
                     model.getStateVariableValue(state,
-                            "right/norm_fiber_length"));
+                            "forceset/right/norm_fiber_length"));
         }
         // OpenSim might not allow activations of 0.
-        problem.setStateInfo("left/activation", {0.01, 1}, initActivation);
-        problem.setStateInfo("right/activation", {0.01, 1}, initActivation);
-        problem.setControlInfo("left", {0.01, 1});
-        problem.setControlInfo("right", {0.01, 1});
+        problem.setStateInfo("/forceset/left/activation", {0.01, 1}, initActivation);
+        problem.setStateInfo("/forceset/right/activation", {0.01, 1}, initActivation);
+        problem.setControlInfo("/forceset/left", {0.01, 1});
+        problem.setControlInfo("/forceset/right", {0.01, 1});
 
         // TODO change to activation?
-        problem.addCost(MucoControlCost());
+        problem.addCost<MucoControlCost>();
 
         MucoTropterSolver& solver = muco.initSolver();
         solver.set_optim_sparsity_detection("initial-guess");

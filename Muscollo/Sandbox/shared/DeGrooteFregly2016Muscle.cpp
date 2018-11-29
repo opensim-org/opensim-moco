@@ -187,8 +187,8 @@ computeStateVariableDerivatives(const SimTK::State& s) const {
                     + constant;
         };
         auto calcResidualDeriv = [this,
-                &activationActiveForceLengthMultiplierCosPenn,
-                &constant](
+                &activationActiveForceLengthMultiplierCosPenn
+                /*,&constant*/](
                 const SimTK::Real& normFiberVelocity) {
             return activationActiveForceLengthMultiplierCosPenn
                     * calcForceVelocityMultiplierDerivative(normFiberVelocity)
