@@ -58,6 +58,7 @@ public:
     Trapezoidal(std::shared_ptr<const OCProblem> ocproblem,
             unsigned num_mesh_points = 50) {
         if (std::is_same<T, double>::value) {
+            // TODO
             this->set_use_supplied_sparsity_hessian_lagrangian(true);
         }
         set_num_mesh_points(num_mesh_points);

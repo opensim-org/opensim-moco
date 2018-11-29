@@ -99,10 +99,10 @@ int main() {
     // Configure the solver.
     // =====================
     MucoTropterSolver& ms = muco.initSolver();
-    ms.set_num_mesh_points(50);
+    ms.set_num_mesh_points(4);
 
     // TODO interface for setting these options:
-    // TODO ms.setOption("optim.hessian-approximation", "limited-memory");
+    ms.set_optim_hessian_approximation("exact");
     // TODO ms.set_optimizer_algorithm("ipopt");
 
 

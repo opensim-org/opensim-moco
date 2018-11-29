@@ -557,7 +557,7 @@ MucoSolution MucoTropterSolver::solveImpl() const {
     //}
     //optsolver.set_advanced_option_string("print_timing_statistics", "yes");
     optsolver.set_advanced_option_string("derivative_test", "second-order");
-    optsolver.set_advanced_option_real("derivative_test_perturbation", 1e-3);
+    // optsolver.set_advanced_option_real("derivative_test_perturbation", 1e-3);
     // TODO optsolver.set_findiff_hessian_step_size(1e-3);
 
     tropter::OptimalControlIterate tropIterate = convert(getGuess());

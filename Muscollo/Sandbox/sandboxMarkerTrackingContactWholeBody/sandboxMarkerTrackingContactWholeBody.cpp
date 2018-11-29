@@ -353,8 +353,8 @@ MucoSolution solveMarkerTrackingProblem(bool createGuess,
             grfTracking.append_forces(force.getName());
         }
         // TODO horizontal component
-        // grfTracking.set_tracked_grf_components("vertical");
-        grfTracking.set_tracked_grf_components("horizontal");
+        grfTracking.set_tracked_grf_components("vertical");
+        // grfTracking.set_tracked_grf_components("horizontal");
         // grfTracking.set_tracked_grf_components("all");
         grfTracking.set_free_force_window(25.0);
         mp.addCost(grfTracking);

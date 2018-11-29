@@ -78,10 +78,12 @@ public:
     static void run_test() {
         auto ocp = std::make_shared<SlidingMassMinimumTime<T>>();
         const int halfN = 20;
-        const int N = 2 * halfN;
+        const int N = 2; // TODO 2 * halfN;
         DirectCollocationSolver<T> dircol(ocp, "trapezoidal", "ipopt", N);
-        //dircol.get_opt_solver().set_advanced_option_string
-        //        ("derivative_test", "second-order");
+        dircol.get_opt_solver().set_advanced_option_string
+                ("derivative_test", "second-order");
+        dircol.get_opt_solver().set_advanced_option_real("derivative_test_perturbation", 1e-3);
+        dircol.get_opt_solver().set_findiff_hessian_mode("slow");
         dircol.get_opt_solver().set_findiff_hessian_step_size(1e-3);
         OptimalControlSolution solution = dircol.solve();
         solution.write("sliding_mass_minimum_time_solution.csv");
@@ -99,7 +101,12 @@ TEST_CASE("Sliding mass minimum time.") {
     comp.num_mesh_points = 4;
     comp.compare();
 
-    SlidingMassMinimumTime<adouble>::run_test();
+    // TODO
+    comp.num_mesh_points = 2;
+    comp.findiff_hessian_mode = "slow";
+    comp.compare();
+
+    // TODO SlidingMassMinimumTime<adouble>::run_test();
     SlidingMassMinimumTime<double>::run_test();
 }
 
