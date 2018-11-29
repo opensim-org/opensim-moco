@@ -204,8 +204,8 @@ computeStateVariableDerivatives(const SimTK::State& s) const {
             equilNormFiberVelocity =
             // TODO        solveBisection(calcResidual, -velocityBound, velocityBound);
             // TODO better initial guess.
-            // This seems to require about 2-5 iterations.
-            solveNewton(calcResidual, calcResidualDeriv, 0.0);
+            // This seems to require about 2-5 iterations w/1e-7 tolerance.
+            solveNewton(calcResidual, calcResidualDeriv, 0.0, 1e-9, 10);
         } catch (const Exception& e) {
             std::cout << format("DEBUG computeStateVariableDerivatives"
                             "\n\ttime: %g"
@@ -332,9 +332,8 @@ SimTK::Real DeGrooteFregly2016Muscle::solveBisection(
         ++iterCount;
     }
     if (iterCount == maxIterations)
-        printMessage("Warning: bisection reached max iterations "
-                        "at x = %g (%s %s).\n", midpoint,
-                getConcreteClassName(), getName());
+        printMessage("Warning in %s %s: bisection reached max iterations "
+                "at x = %g.\n", getConcreteClassName(), getName(), midpoint);
     return midpoint;
 }
 
@@ -346,22 +345,42 @@ SimTK::Real DeGrooteFregly2016Muscle::solveNewton(
         int maxIterations) const {
     SimTK::Real x = initGuess;
     SimTK::Real residual = calcResidual(x);
+    SimTK::Real residualDeriv;
     SimTK::Real delta;
+    std::vector<SimTK::Real> xHist;
+    std::vector<SimTK::Real> resHist;
+    std::vector<SimTK::Real> resDerivHist;
+    std::vector<SimTK::Real> deltaHist;
     for (int iterCount = 0; iterCount < maxIterations; ++iterCount) {
-        delta = residual / calcResidualDeriv(x);
+        residualDeriv = calcResidualDeriv(x);
+        delta = residual / residualDeriv;
+        xHist.push_back(x);
+        resHist.push_back(residual);
+        resDerivHist.push_back(residualDeriv);
+        deltaHist.push_back(delta);
+        if (SimTK::isInf(residual)) throw Exception();
+        if (SimTK::isNaN(delta)) {
+            printMessage("Warning in %s %s: delta is NaN at "
+                    "iterCount = %i, x = %g. Iteration history:\n",
+                    getConcreteClassName(), getName(), iterCount, x);
+            for (int i = 0; i < iterCount; ++i) {
+                printMessage("i: %i\n\tx: %g\n\tresidual: %g\n\t"
+                        "residualDeriv: %g\n\tdelta %g\n",
+                        i, xHist[i], resHist[i], resDerivHist[i], deltaHist[i]);
+            }
+        }
         x -= delta;
         residual = calcResidual(x);
         if (abs(residual) <= yTolerance) {
             if (getDebugLevel() >= 1) {
-                printMessage("solveNewton iterCount: %i (%s %s).\n",
-                        iterCount, getConcreteClassName(), getName());
+                printMessage("In %s %s: solveNewton iterCount: %i.\n",
+                        getConcreteClassName(), getName(), iterCount);
             }
             return x;
         }
     }
-    printMessage("Warning: Newton solve reached max iterations "
-            "at x = %g (%s %s).\n", x,
-            getConcreteClassName(), getName());
+    printMessage("Warning in %s %s: Newton solve reached max iterations "
+            "at x = %g.\n", getConcreteClassName(), getName(), x);
     return x;
 }
 
