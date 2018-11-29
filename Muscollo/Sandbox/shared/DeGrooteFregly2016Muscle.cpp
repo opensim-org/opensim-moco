@@ -42,37 +42,37 @@ void DeGrooteFregly2016Muscle::extendFinalizeFromProperties() {
         "use max_isometric_force instead.");
 
     SimTK_ERRCHK2_ALWAYS(get_default_norm_fiber_length() >= 0.2,
-         "Thelen2003Muscle::extendFinalizeFromProperties",
+         "DeGrooteFregly2016Muscle::extendFinalizeFromProperties",
          "%s: default_norm_fiber_length must be >= 0.2, but it is %g.",
          getName().c_str(), get_default_norm_fiber_length());
 
     SimTK_ERRCHK2_ALWAYS(get_default_norm_fiber_length() <= 1.8,
-         "Thelen2003Muscle::extendFinalizeFromProperties",
+         "DeGrooteFregly2016Muscle::extendFinalizeFromProperties",
          "%s: default_norm_fiber_length must be <= 1.8, but it is %g.",
          getName().c_str(), get_default_norm_fiber_length());
 
     SimTK_ERRCHK2_ALWAYS(get_activation_time_constant() > 0,
-         "Thelen2003Muscle::extendFinalizeFromProperties",
+         "DeGrooteFregly2016Muscle::extendFinalizeFromProperties",
          "%s: activation_time_constant must be greater than zero, "
          "but it is %g.", getName().c_str(), get_activation_time_constant());
 
     SimTK_ERRCHK2_ALWAYS(get_deactivation_time_constant() > 0,
-         "Thelen2003Muscle::extendFinalizeFromProperties",
+         "DeGrooteFregly2016Muscle::extendFinalizeFromProperties",
          "%s: deactivation_time_constant must be greater than zero, "
          "but it is %g.", getName().c_str(), get_deactivation_time_constant());
 
     SimTK_ERRCHK2_ALWAYS(get_default_activation() > 0,
-        "Thelen2003Muscle::extendFinalizeFromProperties",
+        "DeGrooteFregly2016Muscle::extendFinalizeFromProperties",
         "%s: default_activation must be greater than zero, "
         "but it is %g.", getName().c_str(), get_default_activation());
 
     SimTK_ERRCHK2_ALWAYS(get_fiber_damping() >= 0,
-        "Thelen2003Muscle::extendFinalizeFromProperties",
+        "DeGrooteFregly2016Muscle::extendFinalizeFromProperties",
         "%s: fiber_damping must be greater than or equal to zero, "
         "but it is %g.", getName().c_str(), get_fiber_damping());
 
     SimTK_ERRCHK2_ALWAYS(get_tendon_strain_at_one_norm_force() > 0,
-        "Thelen2003Muscle::extendFinalizeFromProperties",
+        "DeGrooteFregly2016Muscle::extendFinalizeFromProperties",
         "%s: tendon_strain_at_one_norm_force must be greater than zero, "
         "but it is %g.", getName().c_str(),
         get_tendon_strain_at_one_norm_force());
