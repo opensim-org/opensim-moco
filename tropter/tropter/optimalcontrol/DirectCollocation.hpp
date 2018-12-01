@@ -18,6 +18,7 @@
 
 #include "DirectCollocation.h"
 #include "transcription/Trapezoidal.h"
+#include "transcription/HermiteSimpson.h"
 #include <tropter/optimization/SNOPTSolver.h>
 #include <tropter/optimization/IPOPTSolver.h>
 
@@ -38,6 +39,9 @@ DirectCollocationSolver<T>::DirectCollocationSolver(
             transcrip_lower.begin(), ::tolower);
     if (transcrip_lower == "trapezoidal") {
         m_transcription.reset(new transcription::Trapezoidal<T>(ocproblem,
+                                                             num_mesh_points));
+    } else if (transcrip_lower == "hermite-simpson") {
+        m_transcription.reset(new transcription::HermiteSimpson<T>(ocproblem,
                                                              num_mesh_points));
     } else {
         TROPTER_THROW("Unrecognized transcription method %s.", transcrip);
@@ -64,6 +68,15 @@ void DirectCollocationSolver<T>::set_verbosity(int verbosity) {
             "verbosity", verbosity, "0 or 1");
     m_optsolver->set_verbosity(verbosity);
     m_verbosity = verbosity;
+}
+
+template<typename T>
+void DirectCollocationSolver<T>::set_hessian_block_sparsity_mode(
+        std::string mode) {
+    TROPTER_VALUECHECK(mode == "dense" || mode == "sparse",
+        "hessian block sparsity mode", mode, "dense or sparse");
+    m_transcription->set_hessian_block_sparsity_mode(mode);
+    m_hessian_block_sparsity_mode = mode;
 }
 
 template<typename T>

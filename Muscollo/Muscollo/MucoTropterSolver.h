@@ -67,6 +67,13 @@ public:
     "'random' (default) or 'initial-guess'");
     OpenSim_DECLARE_PROPERTY(optim_ipopt_print_level, int,
     "IPOPT's verbosity (see IPOPT documentation).");
+    OpenSim_DECLARE_PROPERTY(transcription_scheme, std::string,
+    "'trapezoidal' (default) for trapezoidal collocation, or "
+    "'hermite-simpson' for separated Hermite-Simpson collocation.");
+    OpenSim_DECLARE_PROPERTY(hessian_block_sparsity_mode, std::string,
+        "'dense' for dense blocks on the hessian diagonal, or "
+        "'sparse' for sparse blocks on the hessian diagonal, detected from the "
+        "optimal control problem.");
     OpenSim_DECLARE_PROPERTY(multiplier_weight, double,
     "The weight of the squared multiplier cost term included in the optimal "
     "control problem when only enforcing holonomic constraints in the model. A "
