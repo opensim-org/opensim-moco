@@ -165,8 +165,8 @@ protected:
                 // a non-derivative scalar constraint equation, also add a
                 // Lagrange multplier to the problem.
                 if (kinLevels[i] == KinematicLevel::Position ||
-                        kinLevels[i] == KinematicLevel::Velocity ||
-                        kinLevels[i] == KinematicLevel::Acceleration) {
+                    kinLevels[i] == KinematicLevel::Velocity ||
+                    kinLevels[i] == KinematicLevel::Acceleration) {
 
                     const auto& multInfo = multInfos[multIndexThisConstraint];
                     this->add_adjunct(multInfo.getName(),
@@ -285,6 +285,11 @@ protected:
     mutable SimTK::Vector qdot;
     mutable SimTK::Vector qdotCorr;
     mutable SimTK::Vector udot;
+    // This member variable avoids unnecessary extra allocation of memory for
+    // spatial accelerations, which are incidental to the computation of
+    // generalized accelerations when specifying the dynamics with model
+    // constraints present.
+    mutable SimTK::Vector_<SimTK::SpatialVec> A_GB;
     // The total number of scalar holonomic, non-holonomic, and acceleration 
     // constraint equations enabled in the model. This does not count equations 																	
     // for derivatives of holonomic and non-holonomic constraints. 
@@ -395,102 +400,87 @@ public:
             model.setControls(simTKState, osimControls);
         }
 
-        // If enabled constraints exist in the model, compute accelerations
-        // based on Lagrange multipliers.
+        // TODO Antoine and Gil said realizing Dynamics is a lot costlier than
+        // realizing to Velocity and computing forces manually.
+        model.realizeDynamics(simTKState);
+
+        const SimTK::MultibodySystem& multibody = model.getMultibodySystem();
+        const SimTK::Vector_<SimTK::SpatialVec>& appliedBodyForces =
+            multibody.getRigidBodyForces(simTKState, 
+                SimTK::Stage::Dynamics);
+        const SimTK::Vector& appliedMobilityForces =
+            multibody.getMobilityForces(simTKState, 
+                SimTK::Stage::Dynamics);
+
         if (this->m_numMultibodyConstraintEquations) {
-            // TODO Antoine and Gil said realizing Dynamics is a lot costlier than
-            // realizing to Velocity and computing forces manually.
-            model.realizeDynamics(simTKState);
-
-            const SimTK::MultibodySystem& multibody =
-                    model.getMultibodySystem();
-            const SimTK::Vector_<SimTK::SpatialVec>& appliedBodyForces =
-                    multibody.getRigidBodyForces(simTKState,
-                            SimTK::Stage::Dynamics);
-            const SimTK::Vector& appliedMobilityForces =
-                    multibody.getMobilityForces(simTKState,
-                            SimTK::Stage::Dynamics);
-
-            const SimTK::SimbodyMatterSubsystem& matter =
-                    model.getMatterSubsystem();
-
             this->calcMultibodyConstraintForces(in, simTKState,
                     constraintBodyForces, constraintMobilityForces);
-				
-            matter.calcAccelerationIgnoringConstraints(simTKState,
-                    appliedMobilityForces + constraintMobilityForces,
-                    appliedBodyForces + constraintBodyForces, udot, A_GB);
-					
-			// Apply velocity correction to qdot if at a mesh interval midpoint.
-            // This correction modifies the dynamics to enable a projection of
-            // the model coordinates back onto the constraint manifold whenever
-            // they deviate.
-            // Posa, Kuindersma, Tedrake, 2016. "Optimization and stabilization
-            // of trajectories for constrained dynamical systems"
-            // Note: Only supported for the Hermite-Simpson transcription 
-            // scheme.
-            if (diffuses.size() != 0) {
-                SimTK::Vector gamma((int)diffuses.size(), diffuses.data());
-                matter.multiplyByGTranspose(simTKState, gamma, qdotCorr);
-                qdot = simTKState.getQDot() + qdotCorr;
-            } else {
-                qdot = simTKState.getQDot();
-            }
-
-            // Constraint errors.
-            // TODO double-check that disabled constraints don't show up in
-            // state
-			if (out.path.size() != 0) {
-                // Position-level errors.
-				std::copy_n(simTKState.getQErr().getContiguousScalarData(),
-					m_total_mp, out.path.data());
-				if (m_mucoTropterSolver.get_enforce_constraint_derivatives()) {
-                    // Velocity-level errors.
-					std::copy_n(
-                        simTKState.getUErr().getContiguousScalarData(),
-						m_total_mp + m_total_mv, out.path.data() + m_total_mp);
-                    // Acceleration-level errors.
-					std::copy_n(
-                        simTKState.getUDotErr().getContiguousScalarData(),
-						m_total_mp + m_total_mv + m_total_ma,
-						out.path.data() + 2*m_total_mp + m_total_mv);
-				}
-			}
-
-            // Copy state derivative values to output struct. We cannot simply
-            // use getYDot() because that requires realizing to Acceleration.
-            const int nq = simTKState.getQ().size();
-            const int nu = udot.size();
-            const int nz = simTKState.getZ().size();
-            std::copy_n(qdot.getContiguousScalarData(),
-                    nq, out.dynamics.data());
-            std::copy_n(udot.getContiguousScalarData(),
-                    udot.size(), out.dynamics.data() + nq);
-            std::copy_n(simTKState.getZDot().getContiguousScalarData(), nz,
-                    out.dynamics.data() + nq + nu);
-
         } else {
-            // TODO Antoine and Gil said realizing Dynamics is a lot costlier than
-            // realizing to Velocity and computing forces manually.
-            model.realizeAcceleration(simTKState);
-
-            // Copy state derivative values to output struct.
-            std::copy_n(simTKState.getYDot().getContiguousScalarData(),
-                    states.size(), out.dynamics.data());
+            constraintBodyForces.setToZero();
+            constraintMobilityForces.setToZero();
         }
+
+        const SimTK::SimbodyMatterSubsystem& matter = 
+            model.getMatterSubsystem();
+				
+        matter.calcAccelerationIgnoringConstraints(simTKState,
+                appliedMobilityForces + constraintMobilityForces,
+                appliedBodyForces + constraintBodyForces, udot, A_GB);
+					
+		// Apply velocity correction to qdot if at a mesh interval midpoint.
+        // This correction modifies the dynamics to enable a projection of
+        // the model coordinates back onto the constraint manifold whenever
+        // they deviate.
+        // Posa, Kuindersma, Tedrake, 2016. "Optimization and stabilization
+        // of trajectories for constrained dynamical systems"
+        // Note: Only supported for the Hermite-Simpson transcription 
+        // scheme.
+        if (diffuses.size() != 0) {
+            SimTK::Vector gamma((int)diffuses.size(), diffuses.data());
+            matter.multiplyByGTranspose(simTKState, gamma, qdotCorr);
+            qdot = simTKState.getQDot() + qdotCorr;
+        } else {
+            qdot = simTKState.getQDot();
+        }
+
+        // Constraint errors.
+        // TODO double-check that disabled constraints don't show up in
+        // state
+		if (out.path.size() != 0) {
+            // Position-level errors.
+			std::copy_n(simTKState.getQErr().getContiguousScalarData(),
+				m_total_mp, out.path.data());
+			if (m_mucoTropterSolver.get_enforce_constraint_derivatives()) {
+                // Velocity-level errors.
+				std::copy_n(
+                    simTKState.getUErr().getContiguousScalarData(),
+					m_total_mp + m_total_mv, out.path.data() + m_total_mp);
+                // Acceleration-level errors.
+				std::copy_n(
+                    simTKState.getUDotErr().getContiguousScalarData(),
+					m_total_mp + m_total_mv + m_total_ma,
+					out.path.data() + 2*m_total_mp + m_total_mv);
+			}
+		}
+
+        // Copy state derivative values to output struct. We cannot simply
+        // use getYDot() because that requires realizing to Acceleration.
+        const int nq = simTKState.getQ().size();
+        const int nu = udot.size();
+        const int nz = simTKState.getZ().size();
+        std::copy_n(qdot.getContiguousScalarData(),
+                nq, out.dynamics.data());
+        std::copy_n(udot.getContiguousScalarData(),
+                udot.size(), out.dynamics.data() + nq);
+        std::copy_n(simTKState.getZDot().getContiguousScalarData(), nz,
+                out.dynamics.data() + nq + nu);
 	
 		// TODO move condition inside function
 		if (out.path.size() != 0) {
 			this->calcPathConstraintErrors(simTKState,
 					out.path.data() + this->m_numMultibodyConstraintEquations);
 		}
-    }
-private:
-    // This member variable avoids unnecessary extra allocation of memory for
-    // spatial accelerations, which are incidental to the computation of
-    // generalized accelerations when specifying the dynamics with model
-    // constraints present.
-    mutable SimTK::Vector_<SimTK::SpatialVec> A_GB;
+    }    
 };
 
 template <typename T>
@@ -502,9 +492,6 @@ public:
         OPENSIM_THROW_IF(this->m_state.getNZ(), Exception,
                 "Cannot use implicit dynamics mode if the system has auxiliary "
                 "states.");
-        OPENSIM_THROW_IF(this->m_numMultibodyConstraintEquations, Exception,
-                "Cannot use implicit dynamics mode with multibody "
-                "constraints.");
         // Add adjuncts for udot, which we call "w".
         int NU = this->m_state.getNU();
         OPENSIM_THROW_IF(NU != this->m_state.getNQ(), Exception,
@@ -527,28 +514,42 @@ public:
         const auto& states = in.states;
         const auto& controls = in.controls;
         const auto& adjuncts = in.adjuncts;
+        const auto& diffuses = in.diffuses;
 
         auto& model = this->m_model;
         auto& simTKState = this->m_state;
+        const SimTK::SimbodyMatterSubsystem& matter =
+            model.getMatterSubsystem();
 
         simTKState.setTime(in.time);
         const auto NQ = simTKState.getNQ(); // TODO we assume NQ = NU
 
         const auto& u = states.segment(NQ, NQ);
         const auto& w = adjuncts.segment(
-            this->m_numMultibodyConstraintEquations, NQ);
+            this->m_total_mp + this->m_total_mv + this->m_total_ma, NQ);
 
         // Kinematic differential equations
         // --------------------------------
         // qdot = u
         // TODO does not work for quaternions!
-        out.dynamics.head(NQ) = u;
+        if (diffuses.size() != 0) {
+            model.realizeVelocity(simTKState);
+            SimTK::Vector gamma((int)diffuses.size(), diffuses.data());
+            matter.multiplyByGTranspose(simTKState, gamma, qdotCorr);
+            SimTK::Vector qdot((int)u.size(), u.data());
+            qdot += qdotCorr;
+
+            std::copy_n(qdot.getContiguousScalarData(),
+                NQ, out.dynamics.data());
+        } else {
+            out.dynamics.head(NQ) = u;
+        }
+        
 
         // Multibody dynamics: differential equations
         // ------------------------------------------
         // udot = w
         out.dynamics.segment(NQ, NQ) = w;
-
 
         // Multibody dynamics: "F - ma = 0"
         // --------------------------------
@@ -568,10 +569,35 @@ public:
             model.setControls(simTKState, osimControls);
         }
 
-        // TODO: Update to support multibody constraints, using
-        // this->calcMultibodyConstraintForces()
 		// TODO move condition inside path constraint function
 		if (out.path.size() != 0) {
+            // Multibody constraint errors.
+            if (this->m_numMultibodyConstraintEquations) {
+                this->calcMultibodyConstraintForces(in, simTKState,
+                    constraintBodyForces, constraintMobilityForces);
+            }
+            else {
+                constraintBodyForces.setToZero();
+                constraintMobilityForces.setToZero();
+            }
+
+            // Position-level errors.
+            std::copy_n(simTKState.getQErr().getContiguousScalarData(),
+                m_total_mp, out.path.data());
+            if (m_mucoTropterSolver.get_enforce_constraint_derivatives()) {
+                // Velocity-level errors.
+                std::copy_n(
+                    simTKState.getUErr().getContiguousScalarData(),
+                    m_total_mp + m_total_mv,
+                    out.path.data() + m_total_mp);
+                // Acceleration-level errors.
+                std::copy_n(
+                    simTKState.getUDotErr().getContiguousScalarData(),
+                    m_total_mp + m_total_mv + m_total_ma,
+                    out.path.data() + 2 * m_total_mp + m_total_mv);
+            }
+
+            // Path constraint errors.
 			double* pathConstraintErrorBegin =
 					out.path.data() + this->m_numMultibodyConstraintEquations;
 			this->calcPathConstraintErrors(simTKState, pathConstraintErrorBegin);
@@ -579,13 +605,26 @@ public:
 					simTKState.getSystemStage() >= SimTK::Stage::Acceleration,
 					Exception,
 					"Cannot realize to Acceleration in implicit dynamics mode.");
+
+            // Residuals.
+            model.realizeDynamics(simTKState);
+            const SimTK::MultibodySystem& multibody = 
+                model.getMultibodySystem();
+            const SimTK::Vector_<SimTK::SpatialVec>& appliedBodyForces =
+                multibody.getRigidBodyForces(simTKState, 
+                    SimTK::Stage::Dynamics);
+            const SimTK::Vector& appliedMobilityForces =
+                multibody.getMobilityForces(simTKState, 
+                    SimTK::Stage::Dynamics);
 		
-            InverseDynamicsSolver id(model);
             SimTK::Vector udot((int)w.size(), w.data(), true);
-            SimTK::Vector residual = id.solve(simTKState, udot);
+            matter.calcResidualForceIgnoringConstraints(simTKState,
+                appliedMobilityForces + constraintMobilityForces,
+                appliedBodyForces + constraintBodyForces,
+                udot, residual);
 
             double* residualBegin =
-                    pathConstraintErrorBegin + 
+                    pathConstraintErrorBegin +
                     this->m_numPathConstraintEquations;
             std::copy_n(residual.getContiguousScalarData(), residual.size(),
                     residualBegin);
@@ -625,6 +664,8 @@ public:
                 Exception,
                 "Cannot realize to Acceleration in implicit dynamics mode.");
     }
+private:
+    mutable SimTK::Vector residual;
 };
 
 } // namespace OpenSim

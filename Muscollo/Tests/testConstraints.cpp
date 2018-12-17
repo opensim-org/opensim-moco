@@ -519,18 +519,19 @@ void testDoublePendulumPointOnLine(bool enforce_constraint_derivatives) {
     MucoTropterSolver& ms = muco.initSolver();
     ms.set_num_mesh_points(10);
     ms.set_verbosity(2);
-    ms.set_optim_solver("ipopt");
+    ms.set_optim_solver("snopt");
     ms.set_optim_convergence_tolerance(1e-4);
     ms.set_optim_hessian_approximation("exact");
     ms.set_hessian_block_sparsity_mode("dense");
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_enforce_constraint_derivatives(enforce_constraint_derivatives);
     ms.set_lagrange_multiplier_weight(10);
+    ms.set_dynamics_mode("implicit");
     ms.setGuess("bounds");
 
     MucoSolution solution = muco.solve();
     solution.write("testConstraints_testDoublePendulumPointOnLine.sto");
-    //muco.visualize(solution);
+    muco.visualize(solution);
 
     model->initSystem();
     StatesTrajectory states = solution.exportToStatesTrajectory(mp);
@@ -608,6 +609,7 @@ void testDoublePendulumCoordinateCoupler(MucoSolution& solution,
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_enforce_constraint_derivatives(enforce_constraint_derivatives);
     ms.set_lagrange_multiplier_weight(10);
+    ms.set_dynamics_mode("implicit");
     ms.setGuess("bounds");
 
     solution = muco.solve();
@@ -686,6 +688,7 @@ void testDoublePendulumPrescribedMotion(MucoSolution& couplerSolution,
     ms.set_hessian_block_sparsity_mode("dense");
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_enforce_constraint_derivatives(enforce_constraint_derivatives);
+    ms.set_dynamics_mode("implicit");
     ms.set_lagrange_multiplier_weight(10);
 
     // Set guess based on coupler solution trajectory.
@@ -880,10 +883,10 @@ int main() {
         // TODO test tolerances can be improved significantly by not including
         // Hermite-Simpson midpoint values in comparisons.
         // Direct collocation tests, without constraint derivatives.
-        SimTK_SUBTEST1(testDoublePendulumPointOnLine, false);
-        MucoSolution couplerSol;
-        SimTK_SUBTEST2(testDoublePendulumCoordinateCoupler, couplerSol, false);
-        SimTK_SUBTEST2(testDoublePendulumPrescribedMotion, couplerSol, false);
+        //SimTK_SUBTEST1(testDoublePendulumPointOnLine, false);
+        //MucoSolution couplerSol;
+        //SimTK_SUBTEST2(testDoublePendulumCoordinateCoupler, couplerSol, false);
+        //SimTK_SUBTEST2(testDoublePendulumPrescribedMotion, couplerSol, false);
         // Direct collocation tests, with constraint derivatives.
         SimTK_SUBTEST1(testDoublePendulumPointOnLine, true);
         MucoSolution couplerSol2;

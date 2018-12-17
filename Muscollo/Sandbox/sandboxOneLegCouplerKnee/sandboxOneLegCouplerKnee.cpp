@@ -93,18 +93,13 @@ Model createRightLegWeldedPelvisModel(const std::string& actuatorType) {
         addCoordinateActuator(model, "hip_adduction_r", 20);
         addCoordinateActuator(model, "hip_rotation_r", 20);
         addCoordinateActuator(model, "knee_angle_r", 20);
-        addCoordinateActuator(model, "knee_angle_r_beta", 1);
         addCoordinateActuator(model, "ankle_angle_r", 20);
         removeMuscles(model);
     } else if (actuatorType == "path_actuators") {
         replaceMusclesWithPathActuators(model);
     } else if (actuatorType == "muscles") {
-        addCoordinateActuator(model, "hip_flexion_r", 20);
         addCoordinateActuator(model, "hip_adduction_r", 20);
         addCoordinateActuator(model, "hip_rotation_r", 20);
-        addCoordinateActuator(model, "knee_angle_r", 20);
-        addCoordinateActuator(model, "knee_angle_r_beta", 1);
-        addCoordinateActuator(model, "ankle_angle_r", 20);
     } else {
         OPENSIM_THROW(Exception, "Invalid actuator type");
     }
@@ -156,32 +151,27 @@ Model createRightLegModel(const std::string& actuatorType) {
 
     if (actuatorType == "torques") {
         // Remove muscles and add coordinate actuators
-        addCoordinateActuator(model, "pelvis_tx", 2000);
-        addCoordinateActuator(model, "pelvis_ty", 2000);
-        addCoordinateActuator(model, "pelvis_tz", 2000);
-        addCoordinateActuator(model, "pelvis_tilt", 50);
-        addCoordinateActuator(model, "pelvis_list", 50);
-        addCoordinateActuator(model, "pelvis_rotation", 50);
-        addCoordinateActuator(model, "hip_flexion_r", 50);
-        addCoordinateActuator(model, "hip_adduction_r", 50);
-        addCoordinateActuator(model, "hip_rotation_r", 50);
-        addCoordinateActuator(model, "knee_angle_r", 50);
-        addCoordinateActuator(model, "knee_angle_r_beta", 1);
-        addCoordinateActuator(model, "ankle_angle_r", 50);
+        addCoordinateActuator(model, "pelvis_tx", 1000);
+        addCoordinateActuator(model, "pelvis_ty", 1000);
+        addCoordinateActuator(model, "pelvis_tz", 1000);
+        addCoordinateActuator(model, "pelvis_tilt", 10);
+        addCoordinateActuator(model, "pelvis_list", 10);
+        addCoordinateActuator(model, "pelvis_rotation", 10);
+        addCoordinateActuator(model, "hip_flexion_r", 10);
+        addCoordinateActuator(model, "hip_adduction_r", 10);
+        addCoordinateActuator(model, "hip_rotation_r", 10);
+        addCoordinateActuator(model, "knee_angle_r", 10);
+        addCoordinateActuator(model, "ankle_angle_r", 10);
         removeMuscles(model);
     } else if (actuatorType == "muscles") {
-        addCoordinateActuator(model, "pelvis_tx", 2000);
-        addCoordinateActuator(model, "pelvis_ty", 2000);
-        addCoordinateActuator(model, "pelvis_tz", 2000);
-        addCoordinateActuator(model, "pelvis_tilt", 50);
-        addCoordinateActuator(model, "pelvis_list", 50);
-        addCoordinateActuator(model, "pelvis_rotation", 50);
-        addCoordinateActuator(model, "hip_flexion_r", 50);
-        addCoordinateActuator(model, "hip_adduction_r", 50);
-        addCoordinateActuator(model, "hip_rotation_r", 50);
-        addCoordinateActuator(model, "knee_angle_r", 50);
-        addCoordinateActuator(model, "knee_angle_r_beta", 1);
-        addCoordinateActuator(model, "ankle_angle_r", 50);
+        addCoordinateActuator(model, "pelvis_tx", 1000);
+        addCoordinateActuator(model, "pelvis_ty", 1000);
+        addCoordinateActuator(model, "pelvis_tz", 1000);
+        addCoordinateActuator(model, "pelvis_tilt", 10);
+        addCoordinateActuator(model, "pelvis_list", 10);
+        addCoordinateActuator(model, "pelvis_rotation", 10);
+        addCoordinateActuator(model, "hip_adduction_r", 10);
+        addCoordinateActuator(model, "hip_rotation_r", 10);
     } else {
         OPENSIM_THROW(Exception, "Invalid actuator type");
     }
@@ -204,61 +194,34 @@ void minimizeControlEffortRightLegWeldedPelvis(const std::string& actuatorType)
 
     // Set bounds.
     mp.setTimeBounds(0, 1);
-    mp.setStateInfo("/jointset/hip_r/hip_flexion_r/value", {-10, 10},
+    mp.setStateInfo("/jointset/hip_r/hip_flexion_r/value", {-5, 5},
         -SimTK::Pi / 4.0, SimTK::Pi / 4.0);
-    mp.setStateInfo("/jointset/hip_r/hip_rotation_r/value", {-10, 10});
-    mp.setStateInfo("/jointset/hip_r/hip_adduction_r/value", {-10, 10});
-    mp.setStateInfo("/jointset/walker_knee_r/knee_angle_r/value", {-10, 10}, 
+    mp.setStateInfo("/jointset/walker_knee_r/knee_angle_r/value", {-5, 5}, 
         -0.6, 0);
-    mp.setStateInfo("/jointset/patellofemoral_r/knee_angle_r_beta/value", 
-        {-10, 10});
-    mp.setStateInfo("/jointset/ankle_r/ankle_angle_r/value", {-10, 10}, -0.1,
+    mp.setStateInfo("/jointset/ankle_r/ankle_angle_r/value", {-5, 5}, -0.1,
         0.1);
-
-    mp.setControlInfo("/forceset/bifemsh_r", {0.01, 1});
-    mp.setControlInfo("/forceset/med_gas_r", {0.01, 1});
-    mp.setControlInfo("/forceset/glut_max2_r", {0.01, 1});
-    mp.setControlInfo("/forceset/psoas_r", {0.01, 1});
-    mp.setControlInfo("/forceset/rect_fem_r", {0.01, 1});
-    mp.setControlInfo("/forceset/semimem_r", {0.01, 1});
-    mp.setControlInfo("/forceset/soleus_r", {0.01, 1});
-    mp.setControlInfo("/forceset/tib_ant_r", {0.01, 1});
-    mp.setControlInfo("/forceset/vas_int_r", {0.01, 1});
 
     auto* effort = mp.addCost<MucoControlCost>();
     effort->setName("control_effort");
-    effort->setWeight("tau_hip_flexion_r", 1000);
-    effort->setWeight("tau_hip_adduction_r", 1000);
-    effort->setWeight("tau_hip_rotation_r", 1000);
-    effort->setWeight("tau_knee_angle_r", 1000);
-    effort->setWeight("tau_knee_angle_r_beta", 1000);
-    effort->setWeight("tau_ankle_angle_r", 1000);
-    effort->setWeight("/forceset/bifemsh_r", 0);
-    effort->setWeight("/forceset/med_gas_r", 0);
-    effort->setWeight("/forceset/glut_max2_r",0);
-    effort->setWeight("/forceset/psoas_r", 0);
-    effort->setWeight("/forceset/rect_fem_r", 0);
-    effort->setWeight("/forceset/semimem_r", 0);
-    effort->setWeight("/forceset/soleus_r", 0);
-    effort->setWeight("/forceset/tib_ant_r", 0);
-    effort->setWeight("/forceset/vas_int_r", 0);
 
     MucoTropterSolver& ms = muco.initSolver();
-    ms.set_num_mesh_points(5);
+    ms.set_num_mesh_points(25);
     ms.set_verbosity(2);
     ms.set_optim_solver("snopt");
-    //ms.set_optim_convergence_tolerance(1e-3);
+    ms.set_optim_convergence_tolerance(1e-2);
+    ms.set_optim_constraint_tolerance(1e-3);
     //ms.set_optim_hessian_approximation("exact");
     //ms.set_hessian_block_sparsity_mode("dense");
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_enforce_constraint_derivatives(true);
     ms.set_lagrange_multiplier_weight(10);
-    ms.set_velocity_correction_bounds({-0.25, 0.25});
+    ms.set_optim_max_iterations(1000000);
+    //ms.set_velocity_correction_bounds({-0.25, 0.25});
     ms.setGuess("bounds");
     //ms.setGuessFile("sandboxRightLeg_weldedPelvis_" +
     //    actuatorType + "_minimize_control_effort_solution.sto");
 
-    MucoSolution solution = muco.solve().unseal();
+    MucoSolution solution = muco.solve();
     muco.visualize(solution);
 }
 
@@ -272,7 +235,6 @@ void stateTrackingRightLegWeldedPelvis(const std::string& actuatorType) {
 
     //mp.setTimeBounds(0.3, 1.45); // full gait cycle
     mp.setTimeBounds(1.0, 1.45); // swing only
-
     mp.setStateInfo("/jointset/hip_r/hip_flexion_r/value", {-10, 10});
     mp.setStateInfo("/jointset/hip_r/hip_rotation_r/value", {-10, 10});
     mp.setStateInfo("/jointset/hip_r/hip_adduction_r/value", {-10, 10});
@@ -281,33 +243,23 @@ void stateTrackingRightLegWeldedPelvis(const std::string& actuatorType) {
     {-10, 10});
     mp.setStateInfo("/jointset/ankle_r/ankle_angle_r/value", {-10, 10});
 
-    mp.setControlInfo("/forceset/bifemsh_r", {0.01, 1});
-    mp.setControlInfo("/forceset/med_gas_r", {0.01, 1});
-    mp.setControlInfo("/forceset/glut_max2_r", {0.01, 1});
-    mp.setControlInfo("/forceset/psoas_r", {0.01, 1});
-    mp.setControlInfo("/forceset/rect_fem_r", {0.01, 1});
-    mp.setControlInfo("/forceset/semimem_r", {0.01, 1});
-    mp.setControlInfo("/forceset/soleus_r", {0.01, 1});
-    mp.setControlInfo("/forceset/tib_ant_r", {0.01, 1});
-    mp.setControlInfo("/forceset/vas_int_r", {0.01, 1});
-
-    auto* effort = mp.addCost<MucoControlCost>();
-    effort->setName("control_effort");
-    effort->setWeight("tau_hip_flexion_r", 10);
-    effort->setWeight("tau_hip_adduction_r", 0);
-    effort->setWeight("tau_hip_rotation_r", 0);
-    effort->setWeight("tau_knee_angle_r", 10);
-    effort->setWeight("tau_knee_angle_r_beta", 1000);
-    effort->setWeight("tau_ankle_angle_r", 10);
-    effort->setWeight("forceset/bifemsh_r", 0);
-    effort->setWeight("forceset/med_gas_r", 0);
-    effort->setWeight("forceset/glut_max2_r", 0);
-    effort->setWeight("forceset/psoas_r", 0);
-    effort->setWeight("forceset/rect_fem_r", 0);
-    effort->setWeight("forceset/semimem_r", 0);
-    effort->setWeight("forceset/soleus_r", 0);
-    effort->setWeight("forceset/tib_ant_r", 0);
-    effort->setWeight("forceset/vas_int_r", 0);
+    //auto* effort = mp.addCost<MucoControlCost>();
+    //effort->setName("control_effort");
+    //effort->setWeight("tau_hip_flexion_r", 100);
+    //effort->setWeight("tau_hip_adduction_r", 0);
+    //effort->setWeight("tau_hip_rotation_r", 0);
+    //effort->setWeight("tau_knee_angle_r", 100);
+    //effort->setWeight("tau_knee_angle_r_beta", 1000);
+    //effort->setWeight("tau_ankle_angle_r", 100);
+    //effort->setWeight("forceset/bifemsh_r", 0);
+    //effort->setWeight("forceset/med_gas_r", 0);
+    //effort->setWeight("forceset/glut_max2_r", 0);
+    //effort->setWeight("forceset/psoas_r", 0);
+    //effort->setWeight("forceset/rect_fem_r", 0);
+    //effort->setWeight("forceset/semimem_r", 0);
+    //effort->setWeight("forceset/soleus_r", 0);
+    //effort->setWeight("forceset/tib_ant_r", 0);
+    //effort->setWeight("forceset/vas_int_r", 0);
 
 
     auto* stateTracking = mp.addCost<MucoStateTrackingCost>();
@@ -316,22 +268,20 @@ void stateTrackingRightLegWeldedPelvis(const std::string& actuatorType) {
     stateTracking->setReference(statesRef);
     stateTracking->setWeight(
         "/jointset/patellofemoral_r/knee_angle_r_beta/value", 0);
-    //stateTracking->setWeight("/jointset/hip_r/hip_flexion_r/value", 10);
-    //stateTracking->setWeight("/jointset/hip_r/hip_adduction_r/value", 10);
-    //stateTracking->setWeight("/jointset/walker_knee_r/knee_angle_r/value", 10);
     stateTracking->setAllowUnusedReferences(true);
 
-
     MucoTropterSolver& ms = muco.initSolver();
-    ms.set_num_mesh_points(20);
+    ms.set_num_mesh_points(15);
     ms.set_verbosity(2);
     ms.set_optim_solver("snopt");
-    ms.set_optim_convergence_tolerance(1e-3);
+    ms.set_optim_convergence_tolerance(1e-4);
+    ms.set_optim_constraint_tolerance(1e-3);
+    ms.set_dynamics_mode("implicit");
     ms.set_optim_hessian_approximation("exact");
     ms.set_hessian_block_sparsity_mode("dense");
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_enforce_constraint_derivatives(true);
-    ms.set_lagrange_multiplier_weight(1);
+    ms.set_lagrange_multiplier_weight(10);
 
     MucoIterate guess = ms.createGuess();
     model.initSystem();
@@ -358,49 +308,6 @@ void stateTrackingRightLeg(const std::string& actuatorType) {
     //auto time = markersRef.getIndependentColumn();
     mp.setTimeBounds(0.3, 1.45); // full gait cycle
     // mp.setTimeBounds(1.0, 1.45); // swing only
-    mp.setStateInfo("/jointset/ground_pelvis/pelvis_tx/value", {-5, 5});
-    mp.setStateInfo("/jointset/ground_pelvis/pelvis_ty/value", {-5, 5});
-    mp.setStateInfo("/jointset/ground_pelvis/pelvis_tz/value", {-5, 5});
-    mp.setStateInfo("/jointset/ground_pelvis/pelvis_tilt/value", {-10, 10});
-    mp.setStateInfo("/jointset/ground_pelvis/pelvis_list/value", {-10, 10});
-    mp.setStateInfo("/jointset/ground_pelvis/pelvis_rotation/value", 
-        {-10, 10});
-    mp.setStateInfo("/jointset/hip_r/hip_flexion_r/value", {-10, 10});
-    mp.setStateInfo("/jointset/hip_r/hip_rotation_r/value", {-10, 10});
-    mp.setStateInfo("/jointset/hip_r/hip_adduction_r/value", {-10, 10});
-    mp.setStateInfo("/jointset/walker_knee_r/knee_angle_r/value", {-10, 10});
-    mp.setStateInfo("/jointset/patellofemoral_r/knee_angle_r_beta/value",
-        {-10, 10});
-    mp.setStateInfo("/jointset/ankle_r/ankle_angle_r/value", {-10, 10});
-
-    mp.setControlInfo("/forceset/bifemsh_r", {0.01, 1});
-    mp.setControlInfo("/forceset/med_gas_r", {0.01, 1});
-    mp.setControlInfo("/forceset/glut_max2_r", {0.01, 1});
-    mp.setControlInfo("/forceset/psoas_r", {0.01, 1.5});
-    mp.setControlInfo("/forceset/rect_fem_r", {0.01, 1});
-    mp.setControlInfo("/forceset/semimem_r", {0.01, 1});
-    mp.setControlInfo("/forceset/soleus_r", {0.01, 1});
-    mp.setControlInfo("/forceset/tib_ant_r", {0.01, 1});
-    mp.setControlInfo("/forceset/vas_int_r", {0.01, 1});
-
-    auto* effort = mp.addCost<MucoControlCost>();
-    effort->setName("control_effort");
-    effort->setWeight("tau_hip_flexion_r", 10);
-    effort->setWeight("tau_hip_adduction_r", 10);
-    effort->setWeight("tau_hip_rotation_r", 10);
-    effort->setWeight("tau_knee_angle_r", 10);
-    effort->setWeight("tau_knee_angle_r_beta", 10);
-    effort->setWeight("tau_ankle_angle_r", 10);
-    effort->setWeight("forceset/bifemsh_r", 0);
-    effort->setWeight("forceset/med_gas_r", 0);
-    effort->setWeight("forceset/glut_max2_r", 0);
-    effort->setWeight("forceset/psoas_r", 0);
-    effort->setWeight("forceset/rect_fem_r", 0);
-    effort->setWeight("forceset/semimem_r", 0);
-    effort->setWeight("forceset/soleus_r", 0);
-    effort->setWeight("forceset/tib_ant_r", 0);
-    effort->setWeight("forceset/vas_int_r", 0);
-
 
     auto* stateTracking = mp.addCost<MucoStateTrackingCost>();
     stateTracking->setName("state_tracking");
@@ -410,26 +317,27 @@ void stateTrackingRightLeg(const std::string& actuatorType) {
         "/jointset/patellofemoral_r/knee_angle_r_beta/value", 0);
     stateTracking->setAllowUnusedReferences(true);
     
-
     MucoTropterSolver& ms = muco.initSolver();
-    ms.set_num_mesh_points(10);
+    ms.set_num_mesh_points(35);
     ms.set_verbosity(2);
     ms.set_optim_solver("snopt");
-    ms.set_optim_convergence_tolerance(1e-3);
+    ms.set_optim_convergence_tolerance(1e-2);
+    ms.set_optim_constraint_tolerance(1e-3);
     ms.set_optim_hessian_approximation("exact");
     ms.set_hessian_block_sparsity_mode("dense");
     ms.set_transcription_scheme("hermite-simpson");
+    ms.set_dynamics_mode("implicit");
     ms.set_enforce_constraint_derivatives(true);
     ms.set_lagrange_multiplier_weight(10);
 
-    MucoIterate guess = ms.createGuess();
-    model.initSystem();
-    model.getSimbodyEngine().convertDegreesToRadians(statesRef);
-    STOFileAdapter::write(statesRef, "ik_results_radians.sto");
-    guess.setStatesTrajectory(statesRef, true, true);
-    ms.setGuess(guess);
-    //ms.setGuessFile("sandboxRightLeg_" + actuatorType 
-    //     + "_state_tracking_solution.sto");
+    //MucoIterate guess = ms.createGuess();
+    //model.initSystem();
+    //model.getSimbodyEngine().convertDegreesToRadians(statesRef);
+    //STOFileAdapter::write(statesRef, "ik_results_radians.sto");
+    //guess.setStatesTrajectory(statesRef, true, true);
+    //ms.setGuess(guess);
+    ms.setGuessFile("sandboxRightLeg_" + actuatorType 
+         + "_state_tracking_solution.sto");
 
     MucoSolution solution = muco.solve();
     muco.visualize(solution);
@@ -484,8 +392,8 @@ void main() {
     // "incorrect constraint derivatives". This may suggest a bug in our own
     // Jacobian derivative calculations. But why only for path actuators and
     // muscles?
-    //minimizeControlEffortRightLegWeldedPelvis("muscles");
-    stateTrackingRightLegWeldedPelvis("muscles");
-    //stateTrackingRightLeg("muscles");
+    minimizeControlEffortRightLegWeldedPelvis("muscles");
+    //stateTrackingRightLegWeldedPelvis("torques");
+    //stateTrackingRightLeg("torques");
     //markerTrackingRightLeg("torques");
 }
