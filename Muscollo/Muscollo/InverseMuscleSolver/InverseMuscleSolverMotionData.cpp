@@ -200,6 +200,15 @@ InverseMuscleSolverMotionData::InverseMuscleSolverMotionData(
     // them in multibody tree order.
     // TODO better error handling for invalid column labels.
     try {
+        std::cout << "coordPaths: " << std::endl;
+        for (const auto& coordPath : _coordPathsToActuate) {
+            std::cout << coordPath << std::endl;
+        }
+        std::cout << "genForces: " << std::endl;
+        for (const auto& genForce : netGenForcesTable->getColumnLabels()) {
+            std::cout << genForce << std::endl;
+        }
+
         _netGeneralizedForces = GCVSplineSet(*netGenForcesTable,
                 _coordPathsToActuate);
     } catch (KeyNotFound&) {

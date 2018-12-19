@@ -17,6 +17,7 @@
  * -------------------------------------------------------------------------- */
 
 #include <Muscollo/osimMuscollo.h>
+#include <Muscollo/InverseMuscleSolver/GlobalStaticOptimization.h>
 #include <OpenSim/Tools/InverseKinematicsTool.h>
 #include <OpenSim/Tools/IKTaskSet.h>
 #include <OpenSim/Common/osimCommon.h>
@@ -36,9 +37,9 @@ void addCoordinateActuator(Model& model, std::string coordName,
     auto* actu = new CoordinateActuator();
     actu->setName("tau_" + coordName);
     actu->setCoordinate(&coordSet.get(coordName));
-    actu->setOptimalForce(optimalForce);
-    actu->setMinControl(-1);
-    actu->setMaxControl(1);
+    actu->setOptimalForce(1);
+    actu->setMinControl(-optimalForce);
+    actu->setMaxControl(optimalForce);
     model.addComponent(actu);
 }
 
@@ -90,16 +91,22 @@ Model createRightLegWeldedPelvisModel(const std::string& actuatorType) {
     if (actuatorType == "torques") {
         // Remove muscles and add coordinate actuators
         addCoordinateActuator(model, "hip_flexion_r", 20);
-        addCoordinateActuator(model, "hip_adduction_r", 20);
-        addCoordinateActuator(model, "hip_rotation_r", 20);
+        //addCoordinateActuator(model, "hip_adduction_r", 20);
+        //addCoordinateActuator(model, "hip_rotation_r", 20);
         addCoordinateActuator(model, "knee_angle_r", 20);
+        //addCoordinateActuator(model, "knee_angle_r_beta", 20);
         addCoordinateActuator(model, "ankle_angle_r", 20);
         removeMuscles(model);
     } else if (actuatorType == "path_actuators") {
         replaceMusclesWithPathActuators(model);
     } else if (actuatorType == "muscles") {
-        addCoordinateActuator(model, "hip_adduction_r", 20);
-        addCoordinateActuator(model, "hip_rotation_r", 20);
+        //scaleMuscleOptimalForces(model, 10);
+        addCoordinateActuator(model, "hip_flexion_r", 75);
+        addCoordinateActuator(model, "hip_adduction_r", 50);
+        addCoordinateActuator(model, "hip_rotation_r", 50);
+        //addCoordinateActuator(model, "knee_angle_r", 50);
+
+        //addCoordinateActuator(model, "knee_angle_r_beta", 20);
     } else {
         OPENSIM_THROW(Exception, "Invalid actuator type");
     }
@@ -184,7 +191,8 @@ Model createRightLegModel(const std::string& actuatorType) {
     return model;
 }
 
-void minimizeControlEffortRightLegWeldedPelvis(const std::string& actuatorType) 
+MucoSolution minimizeControlEffortRightLegWeldedPelvis(
+        const std::string& actuatorType) 
 {
     MucoTool muco;
     muco.setName("sandboxRightLeg_weldedPelvis_" + actuatorType +
@@ -193,9 +201,9 @@ void minimizeControlEffortRightLegWeldedPelvis(const std::string& actuatorType)
     mp.setModelCopy(createRightLegWeldedPelvisModel(actuatorType));
 
     // Set bounds.
-    mp.setTimeBounds(0, 1);
+    mp.setTimeBounds(0, {0.5, 5});
     mp.setStateInfo("/jointset/hip_r/hip_flexion_r/value", {-5, 5},
-        -SimTK::Pi / 4.0, SimTK::Pi / 4.0);
+        -SimTK::Pi / 3.0, SimTK::Pi / 6.0);
     mp.setStateInfo("/jointset/walker_knee_r/knee_angle_r/value", {-5, 5}, 
         -0.6, 0);
     mp.setStateInfo("/jointset/ankle_r/ankle_angle_r/value", {-5, 5}, -0.1,
@@ -205,24 +213,25 @@ void minimizeControlEffortRightLegWeldedPelvis(const std::string& actuatorType)
     effort->setName("control_effort");
 
     MucoTropterSolver& ms = muco.initSolver();
-    ms.set_num_mesh_points(25);
+    ms.set_num_mesh_points(50);
     ms.set_verbosity(2);
     ms.set_optim_solver("snopt");
     ms.set_optim_convergence_tolerance(1e-2);
-    ms.set_optim_constraint_tolerance(1e-3);
+    ms.set_optim_constraint_tolerance(1e-2);
     //ms.set_optim_hessian_approximation("exact");
     //ms.set_hessian_block_sparsity_mode("dense");
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_enforce_constraint_derivatives(true);
-    ms.set_lagrange_multiplier_weight(10);
-    ms.set_optim_max_iterations(1000000);
-    //ms.set_velocity_correction_bounds({-0.25, 0.25});
+    //ms.set_lagrange_multiplier_weight(1);
+    ms.set_velocity_correction_bounds({-1, 1});
     ms.setGuess("bounds");
     //ms.setGuessFile("sandboxRightLeg_weldedPelvis_" +
     //    actuatorType + "_minimize_control_effort_solution.sto");
 
     MucoSolution solution = muco.solve();
     muco.visualize(solution);
+
+    return solution;
 }
 
 void stateTrackingRightLegWeldedPelvis(const std::string& actuatorType) {
@@ -392,7 +401,43 @@ void main() {
     // "incorrect constraint derivatives". This may suggest a bug in our own
     // Jacobian derivative calculations. But why only for path actuators and
     // muscles?
-    minimizeControlEffortRightLegWeldedPelvis("muscles");
+    MucoSolution torqueSol = 
+    minimizeControlEffortRightLegWeldedPelvis("torques");
+
+    //MucoIterate torqueSol(
+    //    "sandboxRightLeg_weldedPelvis_torques_minimize_control_effort_solution.sto");
+
+    GlobalStaticOptimization gso;
+    Model muscleModel = createRightLegWeldedPelvisModel("muscles");
+    gso.setModel(muscleModel);
+    gso.setKinematicsData(torqueSol.exportToStatesTable());
+
+    const auto& timeVec = torqueSol.getTime();
+    std::vector<double> time;
+    for (int i = 0; i < timeVec.size(); ++i) {
+        time.push_back(timeVec[i]);
+    }
+    const auto& coordSet = muscleModel.getCoordinateSet();
+    std::vector<std::string> coordNames;
+    for (int i = 0; i < coordSet.getSize(); ++i) {
+        std::string coordNameFullPath = 
+            coordSet.get(i).getAbsolutePathString();
+
+        if (coordNameFullPath.find("beta") != std::string::npos) {
+            // do nothing
+        } else {
+            coordNames.push_back(coordNameFullPath);
+        }
+    }
+
+    TimeSeriesTable netGenForces(time, torqueSol.getControlsTrajectory(),
+        coordNames);
+    gso.setNetGeneralizedForcesData(netGenForces);
+    
+    GlobalStaticOptimization::Solution gsoSol = gso.solve();
+
+
+    //minimizeControlEffortRightLegWeldedPelvis("muscles");
     //stateTrackingRightLegWeldedPelvis("torques");
     //stateTrackingRightLeg("torques");
     //markerTrackingRightLeg("torques");
