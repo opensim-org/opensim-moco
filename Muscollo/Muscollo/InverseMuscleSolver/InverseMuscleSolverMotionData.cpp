@@ -65,7 +65,7 @@ InverseMuscleSolverMotionData::InverseMuscleSolverMotionData(
         // convergence time of the optimization.
         // We pad because OpenSim's other tools also pad; not clear if it's
         // really necessary.
-        statesSto.pad(statesSto.getSize()/2);
+        //statesSto.pad(statesSto.getSize()/2);
         statesSto.lowpassIIR(cutoffFrequency);
     }
     auto statesTraj = StatesTrajectory::createFromStatesStorage(model,
@@ -141,7 +141,7 @@ InverseMuscleSolverMotionData::InverseMuscleSolverMotionData(
                 momentArmsThisDOF.appendRow(state.getTime(), rowMA);
             }
             CSVFileAdapter::write(momentArmsThisDOF,
-                    "DEBUG_momentArmsThisDOF.csv");
+                    "DEBUG_momentArmsThisDOF_" + std::to_string(i_dof) + ".csv");
             _momentArms[i_dof] = GCVSplineSet(momentArmsThisDOF);
         }
     }
@@ -200,15 +200,6 @@ InverseMuscleSolverMotionData::InverseMuscleSolverMotionData(
     // them in multibody tree order.
     // TODO better error handling for invalid column labels.
     try {
-        std::cout << "coordPaths: " << std::endl;
-        for (const auto& coordPath : _coordPathsToActuate) {
-            std::cout << coordPath << std::endl;
-        }
-        std::cout << "genForces: " << std::endl;
-        for (const auto& genForce : netGenForcesTable->getColumnLabels()) {
-            std::cout << genForce << std::endl;
-        }
-
         _netGeneralizedForces = GCVSplineSet(*netGenForcesTable,
                 _coordPathsToActuate);
     } catch (KeyNotFound&) {

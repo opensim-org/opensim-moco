@@ -157,7 +157,10 @@ public:
     T calcNormPassiveFiberForce(const T& normFiberLength) const {
         // Passive force-length curve.
         static const double kPE = 4.0;
-        static const double e0  = 0.6;
+        // TODO the default for this value is 0.6, which is fine for most 
+        // muscles, but can be too stiff for some muscles (i.e. hamstrings).
+        // We should allow muscle specific values for this parameter.
+        static const double e0  = 5; // 0.6;
         static const double denom = exp(kPE) - 1;
         static const double numer_offset = exp(kPE * (0.2 - 1)/e0);
         // The version of this equation in the supplementary materials of De
@@ -188,7 +191,7 @@ public:
         //        << static_cast<const double&>(forceVelMult + 0) << " "
         //        << static_cast<const double&>(normPassiveFibForce + 0) << " "
         //        << std::endl;
-        return activation*activeForceLenMult*forceVelMult + normPassiveFibForce;
+        return activation*activeForceLenMult*forceVelMult; //+ normPassiveFibForce;
     }
     T calcNormFiberForceAlongTendon(const T& activation,
                                     const T& normFiberLength,

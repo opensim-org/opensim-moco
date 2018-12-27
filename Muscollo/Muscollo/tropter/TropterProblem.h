@@ -373,8 +373,6 @@ public:
             const tropter::Input<T>& in,
             tropter::Output<T> out) const override {
 
-        // TODO convert to implicit formulation.
-
         const auto& states = in.states;
         const auto& controls = in.controls;
 		const auto& adjuncts = in.adjuncts;
@@ -412,12 +410,11 @@ public:
             multibody.getMobilityForces(simTKState, 
                 SimTK::Stage::Dynamics);
 
+        constraintBodyForces.setToZero();
+        constraintMobilityForces.setToZero();
         if (this->m_numMultibodyConstraintEquations) {
             this->calcMultibodyConstraintForces(in, simTKState,
                     constraintBodyForces, constraintMobilityForces);
-        } else {
-            constraintBodyForces.setToZero();
-            constraintMobilityForces.setToZero();
         }
 
         const SimTK::SimbodyMatterSubsystem& matter = 
@@ -572,13 +569,11 @@ public:
 		// TODO move condition inside path constraint function
 		if (out.path.size() != 0) {
             // Multibody constraint errors.
+            constraintBodyForces.setToZero();
+            constraintMobilityForces.setToZero();
             if (this->m_numMultibodyConstraintEquations) {
                 this->calcMultibodyConstraintForces(in, simTKState,
                     constraintBodyForces, constraintMobilityForces);
-            }
-            else {
-                constraintBodyForces.setToZero();
-                constraintMobilityForces.setToZero();
             }
 
             // Position-level errors.

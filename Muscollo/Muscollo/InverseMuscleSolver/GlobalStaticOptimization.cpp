@@ -245,6 +245,7 @@ public:
                 muscleForces[i_act] =
                         _muscles[i_act].calcRigidTendonFiberForceAlongTendon(
                                 activation, musTenLen, musTenVel);
+
             }
 
             // Compute generalized forces from muscles.
