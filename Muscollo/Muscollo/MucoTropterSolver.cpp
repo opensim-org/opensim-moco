@@ -42,9 +42,11 @@ void MucoTropterSolver::constructProperties() {
     constructProperty_optim_ipopt_print_level(-1);
     constructProperty_transcription_scheme("trapezoidal");
     constructProperty_velocity_correction_bounds({-0.1, 0.1});
-    // These must be empty to allow user input error checking.
-    constructProperty_hessian_block_sparsity_mode();
-    constructProperty_lagrange_multiplier_weight();
+    constructProperty_exact_hessian_block_sparsity_mode("dense");
+    constructProperty_minimize_lagrange_multipliers(false);
+    constructProperty_lagrange_multiplier_weight(1);
+
+    // This is empty to allow user input error checking.
     constructProperty_enforce_constraint_derivatives();
 
     constructProperty_guess_file("");
@@ -236,25 +238,25 @@ MucoSolution MucoTropterSolver::solveImpl() const {
     // Block sparsity detected is only in effect when using an exact Hessian
     // approximation.
     OPENSIM_THROW_IF(get_optim_hessian_approximation() == "limited-memory" &&
-        !getProperty_hessian_block_sparsity_mode().empty(), Exception, 
-        "A value for solver property 'hessian_block_sparsity_mode' was "
+        !getProperty_exact_hessian_block_sparsity_mode().empty(), Exception, 
+        "A value for solver property 'exact_hessian_block_sparsity_mode' was "
         "provided, but is unused when using a 'limited-memory' Hessian "
         "approximation. Set solver property 'optim_hessian_approximation' to"
         "'exact' for Hessian block sparsity to take effect.");
-    OPENSIM_THROW_IF(get_optim_hessian_approximation() == "exact" &&
-        getProperty_hessian_block_sparsity_mode().empty(), Exception,
-        "Solver property 'optim_hessian_approximation' set to 'exact'. "
-        "Set 'hessian_block_sparsity_mode' to 'dense' or 'sparse' to specify "
-        "block sparsity detection mode.");
-    if (!getProperty_hessian_block_sparsity_mode().empty()) {
-        checkPropertyInSet(*this, getProperty_hessian_block_sparsity_mode(),
+    if (!getProperty_exact_hessian_block_sparsity_mode().empty()) {
+        checkPropertyInSet(*this, 
+            getProperty_exact_hessian_block_sparsity_mode(),
             {"dense", "sparse"});
     }
-    // If a Lagrange multiplier weight was provided, check that it is positive.
-    if (!getProperty_lagrange_multiplier_weight().empty()) {
-        checkPropertyIsPositive(*this, 
-            getProperty_lagrange_multiplier_weight());
-    }
+    // Hessian information is not used in SNOPT.
+    OPENSIM_THROW_IF(get_optim_hessian_approximation() == "exact" &&
+        get_optim_solver() == "snopt", Exception,
+        "The property 'optim_hessian_approximation' was set to exact while "
+        "using SNOPT as the optimization solver, but SNOPT does not utilize "
+        "Hessian information.");
+
+    // Check that the Lagrange multiplier weight is positive
+     checkPropertyIsPositive(*this, getProperty_lagrange_multiplier_weight());
 
     // Create direct collocation solver.
     // ---------------------------------
@@ -263,9 +265,9 @@ MucoSolution MucoTropterSolver::solveImpl() const {
         get_optim_solver(), 
         get_num_mesh_points());
     dircol.set_verbosity(get_verbosity() >= 1);
-    if (!getProperty_hessian_block_sparsity_mode().empty()) {
-        dircol.set_hessian_block_sparsity_mode(
-            get_hessian_block_sparsity_mode());
+    if (!getProperty_exact_hessian_block_sparsity_mode().empty()) {
+        dircol.set_exact_hessian_block_sparsity_mode(
+            get_exact_hessian_block_sparsity_mode());
     }
 
     // Get optimization solver to check the remaining property settings.
@@ -330,7 +332,7 @@ MucoSolution MucoTropterSolver::solveImpl() const {
     // check the rank of the constraint Jacobian and if rank-deficient, print
     // recommendation to the user to enable Lagrange multiplier minimization.
     if (!getProperty_enforce_constraint_derivatives().empty() && 
-             getProperty_lagrange_multiplier_weight().empty()) {
+             !get_minimize_lagrange_multipliers()) {
         const auto& model = getProblemRep().getModel();
         const auto& matter = model.getMatterSubsystem();
         Storage storage = mucoSolution.exportToStatesStorage();
@@ -367,8 +369,9 @@ MucoSolution MucoTropterSolver::solveImpl() const {
                       << std::to_string(G.nrow()) + " row(s) but is only rank "
                       << std::to_string(rank) + ".\nTry removing "
                       << "redundant constraints from the model or enable \n" 
-                      << "minimization of Lagrange multipliers by specifying "
-                      << "a value \nto the solver property "
+                      << "minimization of Lagrange multipliers by utilizing "
+                      << "the solver \nproperties "
+                      << "'minimize_lagrange_multipliers' and \n"
                       << "'lagrange_multiplier_weight'.\n";
             std::cout << "---------------------------------------------------"
                       << "--\n\n";

@@ -199,6 +199,7 @@ Model createRightLegModel(const std::string& actuatorType) {
         addCoordinateActuator(model, "ankle_angle_r", 10);
         removeMuscles(model);
     } else if (actuatorType == "muscles") {
+        // Reserve actuators
         addCoordinateActuator(model, "pelvis_tx", 1000);
         addCoordinateActuator(model, "pelvis_ty", 1000);
         addCoordinateActuator(model, "pelvis_tz", 1000);
@@ -252,7 +253,6 @@ MucoSolution minimizeControlEffortRightLegWeldedPelvis(
     ms.set_optim_convergence_tolerance(1e-2);
     ms.set_optim_constraint_tolerance(1e-2);
     //ms.set_optim_hessian_approximation("exact");
-    //ms.set_hessian_block_sparsity_mode("dense");
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_optim_max_iterations(1000000);
     ms.set_enforce_constraint_derivatives(true);
@@ -336,10 +336,10 @@ void stateTrackingRightLegWeldedPelvis(const std::string& actuatorType) {
     ms.set_optim_constraint_tolerance(1e-3);
     ms.set_dynamics_mode("implicit");
     ms.set_optim_hessian_approximation("exact");
-    ms.set_hessian_block_sparsity_mode("dense");
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_enforce_constraint_derivatives(true);
     ms.set_lagrange_multiplier_weight(10);
+    ms.set_minimize_lagrange_multipliers(true);
 
     MucoIterate guess = ms.createGuess();
     model.initSystem();
@@ -382,10 +382,10 @@ void stateTrackingRightLeg(const std::string& actuatorType) {
     ms.set_optim_convergence_tolerance(1e-2);
     ms.set_optim_constraint_tolerance(1e-3);
     ms.set_optim_hessian_approximation("exact");
-    ms.set_hessian_block_sparsity_mode("dense");
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_dynamics_mode("implicit");
     ms.set_enforce_constraint_derivatives(true);
+    ms.set_minimize_lagrange_multipliers(true);
     ms.set_lagrange_multiplier_weight(10);
 
     //MucoIterate guess = ms.createGuess();
@@ -415,10 +415,9 @@ void markerTrackingRightLeg(const std::string& actuatorType) {
 
     auto* markerTracking = mp.addCost<MucoMarkerTrackingCost>();
     markerTracking->setName("marker_tracking");
-    InverseKinematicsTool iktool("ik_setup.xml");
-    IKTaskSet& tasks = iktool.getIKTaskSet();
+    IKTaskSet iktasks("ik_tasks.xml");
     Set<MarkerWeight> markerWeights;
-    tasks.createMarkerWeightSet(markerWeights);
+    iktasks.createMarkerWeightSet(markerWeights);
     markerTracking->setMarkersReference(MarkersReference(markersRef,
         &markerWeights));
     markerTracking->setAllowUnusedReferences(true);
@@ -429,9 +428,9 @@ void markerTrackingRightLeg(const std::string& actuatorType) {
     ms.set_optim_solver("ipopt");
     ms.set_optim_convergence_tolerance(1e-3);
     ms.set_optim_hessian_approximation("exact");
-    ms.set_hessian_block_sparsity_mode("dense");
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_enforce_constraint_derivatives(true);
+    ms.set_minimize_lagrange_multipliers(true);
     ms.set_lagrange_multiplier_weight(10);
 
     MucoIterate guess = ms.createGuess();

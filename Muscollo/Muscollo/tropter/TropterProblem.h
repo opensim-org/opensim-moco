@@ -62,7 +62,7 @@ protected:
 
         addStateVariables();
         addControlVariables();
-        addMultibodyConstraints();
+        addKinematicConstraints();
         addGenericPathConstraints();
         addParameters();
     }
@@ -89,26 +89,26 @@ protected:
         }
     }
 
-    void addMultibodyConstraints() {
-        // Add any scalar constraints associated with multibody constraints in
+    void addKinematicConstraints() {
+        // Add any scalar constraints associated with kinematic constraints in
         // the model as path constraints in the problem.
-		        // Whether or not enabled kinematic constraints exist in the model, 
+        // Whether or not enabled kinematic constraints exist in the model, 
         // check that optional solver properties related to constraints are
         // set properly.
-        std::vector<std::string> mcNames =
-            m_mucoProbRep.createMultibodyConstraintNames();
-        if (mcNames.empty()) {
+        std::vector<std::string> kcNames =
+            m_mucoProbRep.createKinematicConstraintNames();
+        if (kcNames.empty()) {
             OPENSIM_THROW_IF(
                 !m_mucoTropterSolver
                 .getProperty_enforce_constraint_derivatives().empty(),
                 Exception, "Solver property 'enforce_constraint_derivatives' "
                 "was set but no enabled kinematic constraints exist in the "
-                "model.")
+                "model.");
             OPENSIM_THROW_IF(
-                !m_mucoTropterSolver
-                .getProperty_lagrange_multiplier_weight().empty(),
-                Exception, "Solver property 'lagrange_multiplier_weight' was "
-                "set but no enabled kinematic constraints exist in the model.")
+                get_minimize_lagrange_multipliers,
+                Exception, "Solver property 'minimize_lagrange_multipliers' "
+                "was enabled but no enabled kinematic constraints exist in the "
+                "model.");
         } else {
             OPENSIM_THROW_IF(
                 m_mucoTropterSolver
@@ -118,34 +118,45 @@ protected:
                 "'enforce_constraint_derivatives' to either 'true' or 'false'."
                 );
         }
-		
+        
         int cid, mp, mv, ma;
         int numEquationsThisConstraint; 
         int multIndexThisConstraint;
         std::vector<MucoBounds> bounds;
         std::vector<std::string> labels;
         std::vector<KinematicLevel> kinLevels;
-        for (const auto& mcName : mcNames) {
-            const auto& mc = m_mucoProbRep.getMultibodyConstraint(mcName);
-            const auto& multInfos = m_mucoProbRep.getMultiplierInfos(mcName);
-            cid = mc.getSimbodyConstraintIndex();
-            mp = mc.getNumPositionEquations();
-            mv = mc.getNumVelocityEquations();
-            ma = mc.getNumAccelerationEquations();
-            bounds = mc.getConstraintInfo().getBounds();
-            labels = mc.getConstraintInfo().getConstraintLabels();
-            kinLevels = mc.getKinematicLevels();
+        bool enforceConstraintDerivs = 
+            m_mucoTropterSolver.get_enforce_constraint_derivatives();
+        for (const auto& kcName : kcNames) {
+            const auto& kc = m_mucoProbRep.getKinematicConstraint(kcName);
+            const auto& multInfos = m_mucoProbRep.getMultiplierInfos(kcName);
+            cid = kc.getSimbodyConstraintIndex();
+            mp = kc.getNumPositionEquations();
+            mv = kc.getNumVelocityEquations();
+            ma = kc.getNumAccelerationEquations();
+            bounds = kc.getConstraintInfo().getBounds();
+            labels = kc.getConstraintInfo().getConstraintLabels();
+            kinLevels = kc.getKinematicLevels();
+
+            // TODO only add velocity correction variables for holonomic
+            // constraint derivatives? For now, disallow enforcing derivatives
+            // if non-holonomic or acceleration constraints present.
+            OPENSIM_THROW_IF(enforceConstraintDerivs && mv != 0, Exception, 
+                "Enforcing constraint derivatives is supported only for "
+                "holonomic (position-level) constraints. "
+                "There are " + std::to_string(mv) + " velocity-level "
+                "scalar constraints associated with the model Constraint "
+                "at ConstraintIndex " + std::to_string(cid) + ".");
+            OPENSIM_THROW_IF(enforceConstraintDerivs && ma != 0, Exception, 
+                "Enforcing constraint derivatives is supported only for "
+                "holonomic (position-level) constraints. "
+                "There are " + std::to_string(ma) + " acceleration-level "
+                "scalar constraints associated with the model Constraint "
+                "at ConstraintIndex " + std::to_string(cid) + ".");
 
             m_total_mp += mp;
             m_total_mv += mv;
             m_total_ma += ma;
-            if (m_mucoTropterSolver.get_enforce_constraint_derivatives()) {
-                // This includes constraint derivatives: 3*mp + 2*mv + ma.
-                numEquationsThisConstraint 
-                    = mc.getConstraintInfo().getNumEquations();
-			} else {
-                numEquationsThisConstraint = mp + mv + ma;				   
-            }
 
             // Loop through all scalar constraints associated with the model
             // constraint and corresponding path constraints to the optimal
@@ -155,41 +166,55 @@ protected:
             // they are only added if the current constraint equation is not a
             // derivative of a position- or velocity-level equation.
             multIndexThisConstraint = 0;
-            for (int i = 0; i < numEquationsThisConstraint; ++i) {
-
-                // TODO name constraints based on model constraint names
-                // or coordinate names if a locked or prescribed coordinate
-                this->add_path_constraint(labels[i], convertBounds(bounds[i]));
-
+            numEquationsThisConstraint = 0;
+            for (int i = 0; i < kc.getConstraintInfo().getNumEquations(); ++i) {
+                
                 // If the index for this path constraint represents an
                 // a non-derivative scalar constraint equation, also add a
-                // Lagrange multplier to the problem.
+                // Lagrange multiplier to the problem.
                 if (kinLevels[i] == KinematicLevel::Position ||
                         kinLevels[i] == KinematicLevel::Velocity ||
                         kinLevels[i] == KinematicLevel::Acceleration) {
+
+                    // TODO name constraints based on model constraint names
+                    // or coordinate names if a locked or prescribed coordinate
+                    this->add_path_constraint(labels[i], 
+                                              convertBounds(bounds[i]));
 
                     const auto& multInfo = multInfos[multIndexThisConstraint];
                     this->add_adjunct(multInfo.getName(),
                             convertBounds(multInfo.getBounds()),
                             convertBounds(multInfo.getInitialBounds()),
                             convertBounds(multInfo.getFinalBounds()));
-					// Add velocity correction variables if enforcing
+                    // Add velocity correction variables if enforcing
                     // constraint equation derivatives.
-                    if (m_mucoTropterSolver
-                            .get_enforce_constraint_derivatives()) {
+                    if (enforceConstraintDerivs) {
                         // TODO this naming convention assumes that the 
                         // associated Lagrange multiplier name begins with
                         // "lambda", which may change in the future.
+                        OPENSIM_THROW_IF(
+                            multInfo.getName().substr(0, 6) != "lambda",
+                            Exception, "Expected the multiplier name for this "
+                            "constraint to begin with 'lambda' but it begins "
+                            "with '" + multInfo.getName().substr(0, 6) + "'.");
                         this->add_diffuse(std::string(
                                 multInfo.getName()).replace(0, 6, "gamma"),
                             convertBounds(m_mucoTropterSolver
                                 .get_velocity_correction_bounds()));
                     }
                     ++multIndexThisConstraint;
+                    ++numEquationsThisConstraint;
+
+                // If enforcing constraint derivatives, also add path 
+                // constraints for kinematic constraint equation derivatives.
+                } else if (enforceConstraintDerivs) {
+                    this->add_path_constraint(labels[i], 
+                                              convertBounds(bounds[i]));
+                    ++numEquationsThisConstraint;
                 }
             }
 
-            m_numMultibodyConstraintEquations += numEquationsThisConstraint;
+            m_numKinematicConstraintEquations += numEquationsThisConstraint;
         }
 
     }
@@ -206,7 +231,8 @@ protected:
                 this->add_path_constraint(labels[i], convertBounds(bounds[i]));
             }
         }
-        m_numPathConstraintEquations = m_mucoProbRep.getNumPathConstraintEquations();
+        m_numPathConstraintEquations = 
+            m_mucoProbRep.getNumPathConstraintEquations();
     }
 
     void addParameters() {
@@ -249,10 +275,8 @@ protected:
 
         integrand = m_mucoProbRep.calcIntegralCost(m_state);
 
-        if (!m_mucoTropterSolver.getProperty_lagrange_multiplier_weight()
-              .empty()) {
-            // If the user provided a weight, add squared multiplers cost to 
-            // integrand.
+        if (m_mucoTropterSolver.get_minimize_lagrange_multipliers()) {
+            // Add squared multiplers cost to the integrand.
             for (int i = 0; i < (m_total_mp + m_total_mv + m_total_ma); ++i) {						
                 integrand += 
                     m_mucoTropterSolver.get_lagrange_multiplier_weight() 
@@ -280,7 +304,7 @@ protected:
     mutable SimTK::State m_state;
 
     std::vector<std::string> m_svNamesInSysOrder;
-	mutable SimTK::Vector_<SimTK::SpatialVec> constraintBodyForces;
+    mutable SimTK::Vector_<SimTK::SpatialVec> constraintBodyForces;
     mutable SimTK::Vector constraintMobilityForces;
     mutable SimTK::Vector qdot;
     mutable SimTK::Vector qdotCorr;
@@ -298,9 +322,9 @@ protected:
     mutable int m_total_ma = 0;
 
     // The total number of scalar constraint equations associated with model
-    // multibody constraints that the solver is responsible for enforcing. This
+    // kinematic constraints that the solver is responsible for enforcing. This
     // number does include equations for constraint derivatives.
-    mutable int m_numMultibodyConstraintEquations = 0;
+    mutable int m_numKinematicConstraintEquations = 0;
     // The total number of scalar constraint equations associated with
     // MucoPathConstraints added to the MucoProblem.
     mutable int m_numPathConstraintEquations = 0;
@@ -320,7 +344,7 @@ protected:
         }
     }
 
-    void calcMultibodyConstraintForces(const tropter::Input<T>& in,
+    void calcKinematicConstraintForces(const tropter::Input<T>& in,
             const SimTK::State& state,
             SimTK::Vector_<SimTK::SpatialVec>& constraintBodyForces,
             SimTK::Vector& constraintMobilityForces) const {
@@ -330,7 +354,7 @@ protected:
 
         // Multipliers are negated so constraint forces can be used like
         // applied forces.
-        SimTK::Vector multipliers(m_numMultibodyConstraintEquations,
+        SimTK::Vector multipliers(m_numKinematicConstraintEquations,
                 in.adjuncts.data(), true);
         matter.calcConstraintForcesFromMultipliers(state, -multipliers,
                 constraintBodyForces, constraintMobilityForces);
@@ -375,7 +399,7 @@ public:
 
         const auto& states = in.states;
         const auto& controls = in.controls;
-		const auto& adjuncts = in.adjuncts;
+        const auto& adjuncts = in.adjuncts;
         const auto& diffuses = in.diffuses;
 
         auto& model = this->m_model;
@@ -637,7 +661,7 @@ public:
         std::cout << residual << std::endl;
         std::cout << udot << std::endl;
         std::cout << "adjuncts " << adjuncts << std::endl;
-        std::cout << "num multibody " << this->m_numMultibodyConstraintEqs;
+        std::cout << "num multibody " << this->m_numKinematicConstraintEqs;
          */
     }
     void calc_integral_cost(const tropter::Input<T>& in,
