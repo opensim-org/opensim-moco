@@ -91,9 +91,6 @@ OSIMMUSCOLLO_API void replaceMusclesWithPathActuators(Model& model);
 
 OSIMMUSCOLLO_API void removeMuscles(Model& model);
 
-OSIMMUSCOLLO_API void scaleMuscleOptimalForces(Model& model, 
-        double scaleFactor);
-
 /// The map provides the index of each state variable in
 /// SimTK::State::getY() from its each state variable path string.
 OSIMMUSCOLLO_API

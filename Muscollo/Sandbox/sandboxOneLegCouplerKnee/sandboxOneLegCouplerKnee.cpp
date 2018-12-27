@@ -125,24 +125,16 @@ Model createRightLegWeldedPelvisModel(const std::string& actuatorType) {
         for (int i = 0; i < muscNames.size(); ++i) {
             const auto& name = muscNames.get(i);
             FiberForceLengthCurve fflc(
-                model.getComponent<Millard2012EquilibriumMuscle>("/forceset/" + name)
-                .getFiberForceLengthCurve());
+                model.getComponent<Millard2012EquilibriumMuscle>(
+                    "/forceset/" + name).getFiberForceLengthCurve());
             fflc.set_strain_at_one_norm_force(100000);
             fflc.set_stiffness_at_low_force(0.00000001);
             fflc.set_stiffness_at_one_norm_force(0.0001);
             fflc.set_curviness(0);
-            model.updComponent<Millard2012EquilibriumMuscle>("/forceset/" + name)
-                .setFiberForceLengthCurve(fflc);
+            model.updComponent<Millard2012EquilibriumMuscle>(
+                "/forceset/" + name).setFiberForceLengthCurve(fflc);
         }
 
-        //scaleMuscleOptimalForces(model, 1000);
-        //addCoordinateActuator(model, "hip_flexion_r", 10000);
-        ////addCoordinateActuator(model, "hip_adduction_r", 50);
-        ////addCoordinateActuator(model, "hip_rotation_r", 50);
-        //addCoordinateActuator(model, "knee_angle_r", 10000);
-        //addCoordinateActuator(model, "ankle_angle_r", 10000);
-
-        //addCoordinateActuator(model, "knee_angle_r_beta", 20);
     } else {
         OPENSIM_THROW(Exception, "Invalid actuator type");
     }
@@ -250,13 +242,14 @@ MucoSolution minimizeControlEffortRightLegWeldedPelvis(
 
     auto* effort = mp.addCost<MucoControlCost>();
     effort->setName("control_effort");
+    effort->set_weight(100);
 
     MucoTropterSolver& ms = muco.initSolver();
     ms.set_num_mesh_points(10);
     ms.set_verbosity(2);
     ms.set_optim_solver("snopt");
     ms.set_dynamics_mode("implicit");
-    ms.set_optim_convergence_tolerance(1e-3);
+    ms.set_optim_convergence_tolerance(1e-2);
     ms.set_optim_constraint_tolerance(1e-2);
     //ms.set_optim_hessian_approximation("exact");
     //ms.set_hessian_block_sparsity_mode("dense");
@@ -457,11 +450,11 @@ void main() {
     // "incorrect constraint derivatives". This may suggest a bug in our own
     // Jacobian derivative calculations. But why only for path actuators and
     // muscles?
-    //MucoSolution torqueSol = 
-    //minimizeControlEffortRightLegWeldedPelvis("torques");
+    MucoSolution torqueSol = 
+    minimizeControlEffortRightLegWeldedPelvis("torques");
 
-    MucoIterate torqueSol(
-        "sandboxRightLeg_weldedPelvis_torques_minimize_control_effort_solution.sto");
+    //MucoIterate torqueSol(
+    //    "sandboxRightLeg_weldedPelvis_torques_minimize_control_effort_solution.sto");
 
     GlobalStaticOptimization gso;
     Model muscleModel = createRightLegWeldedPelvisModel("muscles");

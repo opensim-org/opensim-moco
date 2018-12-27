@@ -505,11 +505,6 @@ GlobalStaticOptimization::solve() const {
             Exception,
             "Invalid value for cutoff frequency for joint moments.");
     if (netGeneralizedForces.getNumRows()) {
-        std::cout << "coordsToActuate: " << std::endl;
-        for (int i = 0; i < coordsToActuate.size(); ++i) {
-            std::cout << coordsToActuate[i] << std::endl;
-        }
-
         motionData = InverseMuscleSolverMotionData(model, coordsToActuate,
                 initialTime, finalTime, kinematics,
                 get_lowpass_cutoff_frequency_for_kinematics(),

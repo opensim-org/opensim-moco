@@ -65,7 +65,7 @@ InverseMuscleSolverMotionData::InverseMuscleSolverMotionData(
         // convergence time of the optimization.
         // We pad because OpenSim's other tools also pad; not clear if it's
         // really necessary.
-        //statesSto.pad(statesSto.getSize()/2);
+        statesSto.pad(statesSto.getSize()/2);
         statesSto.lowpassIIR(cutoffFrequency);
     }
     auto statesTraj = StatesTrajectory::createFromStatesStorage(model,

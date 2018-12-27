@@ -157,10 +157,7 @@ public:
     T calcNormPassiveFiberForce(const T& normFiberLength) const {
         // Passive force-length curve.
         static const double kPE = 4.0;
-        // TODO the default for this value is 0.6, which is fine for most 
-        // muscles, but can be too stiff for some muscles (i.e. hamstrings).
-        // We should allow muscle specific values for this parameter.
-        static const double e0  = 5; // 0.6;
+        static const double e0  = 0.6;
         static const double denom = exp(kPE) - 1;
         static const double numer_offset = exp(kPE * (0.2 - 1)/e0);
         // The version of this equation in the supplementary materials of De
@@ -179,8 +176,9 @@ public:
                 calcActiveForceLengthMultiplier(normFiberLength);
 
         // Passive force-length curve.
-        const T normPassiveFibForce =
-                calcNormPassiveFiberForce(normFiberLength);
+        // TODO passive elements too stiff for certain muscles (i.e. hamstrings)
+        //const T normPassiveFibForce =
+        //        calcNormPassiveFiberForce(normFiberLength);
 
         // Force-velocity curve.
         const T forceVelMult = calcForceVelocityMultiplier(normFiberVelocity);

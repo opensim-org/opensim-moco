@@ -361,13 +361,6 @@ void OpenSim::removeMuscles(Model& model) {
     }
 }
 
-void OpenSim::scaleMuscleOptimalForces(Model& model, double scaleFactor) {
-
-    for (auto& musc : model.updComponentList<Muscle>()) {
-        musc.setOptimalForce(scaleFactor * musc.getOptimalForce());
-    }
-}
-
 std::vector<std::string> OpenSim::createStateVariableNamesInSystemOrder(
         const Model& model) {
     std::vector<std::string> svNamesInSysOrder;

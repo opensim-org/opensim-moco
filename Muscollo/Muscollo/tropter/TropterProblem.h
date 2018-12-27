@@ -165,8 +165,8 @@ protected:
                 // a non-derivative scalar constraint equation, also add a
                 // Lagrange multplier to the problem.
                 if (kinLevels[i] == KinematicLevel::Position ||
-                    kinLevels[i] == KinematicLevel::Velocity ||
-                    kinLevels[i] == KinematicLevel::Acceleration) {
+                        kinLevels[i] == KinematicLevel::Velocity ||
+                        kinLevels[i] == KinematicLevel::Acceleration) {
 
                     const auto& multInfo = multInfos[multIndexThisConstraint];
                     this->add_adjunct(multInfo.getName(),
