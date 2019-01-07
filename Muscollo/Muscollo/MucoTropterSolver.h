@@ -99,6 +99,8 @@ public:
     "set the bounds on the slack varia1bles performing the velocity correction "
     "to project the model coordinates back onto the constraint manifold. "
     "Default: [-0.1, 0.1]");
+    //OpenSim_DECLARE_OPTIONAL_PROPERTY(acceleration_tracking_reference, 
+    //TimeSeriesTable, "TODO");
     // TODO OpenSim_DECLARE_LIST_PROPERTY(enforce_constraint_kinematic_levels, 
     //   std::string, "");
     // TODO must make more general for multiple phases, mesh refinement.
@@ -174,6 +176,13 @@ public:
     /// Print the available options for the underlying optimization solver.
     static void printOptimizationSolverOptions(std::string solver = "ipopt");
 
+    void setAccelerationTrackingReference(const TimeSeriesTable& accelRef) {
+        m_accelTrackingRef = accelRef;
+    }
+    const TimeSeriesTable& getAccelerationTrackingReference() const {
+        return m_accelTrackingRef;
+    }
+
 protected:
 
     /// Internal tropter optimal control problem.
@@ -207,6 +216,7 @@ private:
     MucoIterate m_guessFromAPI;
     mutable SimTK::ResetOnCopy<MucoIterate> m_guessFromFile;
     mutable SimTK::ReferencePtr<const MucoIterate> m_guessToUse;
+    mutable TimeSeriesTable m_accelTrackingRef;
 };
 
 } // namespace OpenSim

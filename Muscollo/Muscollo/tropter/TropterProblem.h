@@ -24,6 +24,7 @@
 
 #include <simbody/internal/Constraint.h>
 #include <OpenSim/Simulation/InverseDynamicsSolver.h>
+#include <OpenSim/Common/GCVSplineSet.h>
 
 #include <tropter/tropter.h>
 
@@ -105,7 +106,7 @@ protected:
                 "was set but no enabled kinematic constraints exist in the "
                 "model.");
             OPENSIM_THROW_IF(
-                get_minimize_lagrange_multipliers,
+                m_mucoTropterSolver.get_minimize_lagrange_multipliers(),
                 Exception, "Solver property 'minimize_lagrange_multipliers' "
                 "was enabled but no enabled kinematic constraints exist in the "
                 "model.");
@@ -436,8 +437,8 @@ public:
 
         constraintBodyForces.setToZero();
         constraintMobilityForces.setToZero();
-        if (this->m_numMultibodyConstraintEquations) {
-            this->calcMultibodyConstraintForces(in, simTKState,
+        if (this->m_numKinematicConstraintEquations) {
+            this->calcKinematicConstraintForces(in, simTKState,
                     constraintBodyForces, constraintMobilityForces);
         }
 
@@ -499,7 +500,7 @@ public:
 		// TODO move condition inside function
 		if (out.path.size() != 0) {
 			this->calcPathConstraintErrors(simTKState,
-					out.path.data() + this->m_numMultibodyConstraintEquations);
+					out.path.data() + this->m_numKinematicConstraintEquations);
 		}
     }    
 };
@@ -517,16 +518,40 @@ public:
         int NU = this->m_state.getNU();
         OPENSIM_THROW_IF(NU != this->m_state.getNQ(), Exception,
                 "Quaternions are not supported.");
+        std::vector<std::string> accelNames;
         for (int iudot = 0; iudot < NU; ++iudot) {
+            // TODO when quaternions are supported, skip the NQ state variable
+            // names and create names based on the speeds, which are guaranteed
+            // to be one-to-one with accelerations.
             auto name = this->m_svNamesInSysOrder[iudot];
             auto leafpos = name.find("value");
             OPENSIM_THROW_IF(leafpos == std::string::npos, Exception,
                     "Internal error.");
             name.replace(leafpos, name.size(), "accel");
+            accelNames.push_back(name);
             // TODO: How to choose bounds on udot?
             this->add_adjunct(name, {-1000, 1000});
             this->add_path_constraint(name.substr(0, leafpos) + "residual", 0);
         }
+        
+        const auto& accelRef = 
+            m_mucoTropterSolver.getAccelerationTrackingReference();
+        if (accelRef.getMatrix().nrow() != 0) {
+            auto allSplines = GCVSplineSet(accelRef);
+            // Acceleration reference names.
+            auto afn = accelRef.getColumnLabels();
+
+            for (int i = 0; i < accelNames.size(); ++i) {
+                const auto& name = accelNames[i];
+                if (std::find(afn.begin(), afn.end(), name) != afn.end()) {
+                    accelTrackIndices.push_back(i);
+                    accelTrackNames.push_back(name);
+                    accelTrackRefs.cloneAndAppend(allSplines.get(name));
+                }
+            }
+           
+        }
+        
     }
     void calc_differential_algebraic_equations(
             const tropter::Input<T>& in,
@@ -565,7 +590,6 @@ public:
         } else {
             out.dynamics.head(NQ) = u;
         }
-        
 
         // Multibody dynamics: differential equations
         // ------------------------------------------
@@ -595,8 +619,8 @@ public:
             // Multibody constraint errors.
             constraintBodyForces.setToZero();
             constraintMobilityForces.setToZero();
-            if (this->m_numMultibodyConstraintEquations) {
-                this->calcMultibodyConstraintForces(in, simTKState,
+            if (this->m_numKinematicConstraintEquations) {
+                this->calcKinematicConstraintForces(in, simTKState,
                     constraintBodyForces, constraintMobilityForces);
             }
 
@@ -618,7 +642,7 @@ public:
 
             // Path constraint errors.
 			double* pathConstraintErrorBegin =
-					out.path.data() + this->m_numMultibodyConstraintEquations;
+					out.path.data() + this->m_numKinematicConstraintEquations;
 			this->calcPathConstraintErrors(simTKState, pathConstraintErrorBegin);
 			OPENSIM_THROW_IF(
 					simTKState.getSystemStage() >= SimTK::Stage::Acceleration,
@@ -671,6 +695,22 @@ public:
                 this->m_state.getSystemStage() >= SimTK::Stage::Acceleration,
                 Exception,
                 "Cannot realize to Acceleration in implicit dynamics mode.");
+
+        // Acceleration tracking cost.
+        if (accelTrackNames.size()) {
+            const auto& adjuncts = in.adjuncts;
+            const auto NQ = this->m_state.getNQ(); // TODO we assume NQ = NU
+            const auto& w = adjuncts.segment(
+                this->m_total_mp + this->m_total_mv + this->m_total_ma, NQ);
+            SimTK::Vector timeVec(1, in.time);
+            for (int i = 0; i < accelTrackNames.size(); ++i) {
+                const auto& currValue = w[accelTrackIndices[i]];
+                const auto& refValue = 
+                    accelTrackRefs.get(accelTrackNames[i]).calcValue(timeVec);
+
+                integrand += pow(currValue - refValue, 2);
+            }
+        }
     }
     void calc_endpoint_cost(const T& final_time,
             const tropter::VectorX<T>& states,
@@ -685,6 +725,9 @@ public:
     }
 private:
     mutable SimTK::Vector residual;
+    mutable std::vector<int> accelTrackIndices;
+    mutable std::vector<std::string> accelTrackNames;
+    mutable GCVSplineSet accelTrackRefs;
 };
 
 } // namespace OpenSim

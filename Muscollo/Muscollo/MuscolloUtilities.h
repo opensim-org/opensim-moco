@@ -94,6 +94,10 @@ OSIMMUSCOLLO_API void replaceMusclesWithPathActuators(Model& model);
 /// @note This only removes muscles within the model's ForceSet.
 OSIMMUSCOLLO_API void removeMuscles(Model& model);
 
+// TODO this doesn't work with ground
+OSIMMUSCOLLO_API void replaceJointWithWeldJoint(Model& model, 
+    const std::string& jointName);
+
 /// The map provides the index of each state variable in
 /// SimTK::State::getY() from its each state variable path string.
 OSIMMUSCOLLO_API

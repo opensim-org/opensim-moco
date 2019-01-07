@@ -96,7 +96,6 @@ void snopt_userfunction(int*   /* Status */,
         probproxy->calc_objective(*num_variables, x, new_variables, F[0]);
         probproxy->calc_constraints(*num_variables, x, new_variables,
                 *length_F - 1, &F[1]);
-
     }
     // TODO SNOPT's derivative checker throws an exception in certain problems 
     // for errors in the tropter-computed Jacobian. For now, used the SNOPT-

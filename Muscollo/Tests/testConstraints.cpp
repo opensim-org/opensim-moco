@@ -883,15 +883,17 @@ int main() {
         // TODO test tolerances can be improved significantly by not including
         // Hermite-Simpson midpoint values in comparisons.
         // Direct collocation tests, without constraint derivatives.
-        //SimTK_SUBTEST1(testDoublePendulumPointOnLine, false);
-        //MucoSolution couplerSol;
-        //SimTK_SUBTEST2(testDoublePendulumCoordinateCoupler, couplerSol, false);
-        //SimTK_SUBTEST2(testDoublePendulumPrescribedMotion, couplerSol, false);
-        // Direct collocation tests, with constraint derivatives.
+        SimTK_SUBTEST1(testDoublePendulumPointOnLine, false);
+        MucoSolution couplerSol;
+        SimTK_SUBTEST2(testDoublePendulumCoordinateCoupler, couplerSol, false);
+        SimTK_SUBTEST2(testDoublePendulumPrescribedMotion, couplerSol, false);
+        // Direct collocation tests, enforcing constraint derivatives.
         SimTK_SUBTEST1(testDoublePendulumPointOnLine, true);
-        MucoSolution couplerSol2;
-        SimTK_SUBTEST2(testDoublePendulumCoordinateCoupler, couplerSol2, true);
-        SimTK_SUBTEST2(testDoublePendulumPrescribedMotion, couplerSol2, true);
+        MucoSolution couplerSolEnforceDerivs;
+        SimTK_SUBTEST2(testDoublePendulumCoordinateCoupler, 
+            couplerSolEnforceDerivs, true);
+        SimTK_SUBTEST2(testDoublePendulumPrescribedMotion, 
+            couplerSolEnforceDerivs, true);
         // Custom path constraint test.
         SimTK_SUBTEST(testDoublePendulumEqualControl);
     SimTK_END_TEST();
