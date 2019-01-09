@@ -163,43 +163,37 @@ SNOPTSolver::optimize_impl(const VectorXd& variablesArg) const {
     // for errors in the tropter-computed Jacobian. For now, used the SNOPT-
     // computed Jacobian until this is resolved.
 
-    //SparsityCoordinates jacobian_sparsity;
-    //calc_sparsity(variables,
-    //        jacobian_sparsity, false,
-    //        SparsityCoordinates()  /*hessian_sparsity*/);
-    //int jacobian_num_nonzeros = (int)jacobian_sparsity.row.size();
-    //std::cout << "jacobian_num_nonzeros: " << jacobian_num_nonzeros << std::endl;
+    SparsityCoordinates jacobian_sparsity;
+    calc_sparsity(variables,
+            jacobian_sparsity, false,
+            SparsityCoordinates()  /*hessian_sparsity*/);
+    int jacobian_num_nonzeros = (int)jacobian_sparsity.row.size();
+    int neG = num_variables + jacobian_num_nonzeros;
 
-    //int length_G = num_variables + jacobian_num_nonzeros;
-    //std::cout << "length_G: " << length_G << std::endl;
+    // Row indices of Jacobian G (rows correspond to "fun"ctions).
+    VectorXi iGfun(neG);
+    // Column indices of Jacobian G (columns correspond to "var"iables).
+    VectorXi jGvar(neG);
+    // The first row is the gradient of the objective; we assume it is dense.
+    iGfun.head(num_variables).setZero();
+    // In MATLAB, this would be jGvar(1:num_variables) = 0:num_variables-1.
+    jGvar.head(num_variables).setLinSpaced(num_variables, 0, num_variables-1);
 
-    //int num_nonzeros_G = length_G;
-    //std::cout << "num_nonzeros_G: " << num_nonzeros_G << std::endl;
+    for (int index = 0; index < jacobian_num_nonzeros; ++index) {
+        // The Jacobian of the constraints is shifted down one row, since
+        // the first row of G is the gradient of the objective function.
+        iGfun[num_variables + index] = jacobian_sparsity.row[index] + 1;
+        jGvar[num_variables + index] = jacobian_sparsity.col[index];
+    }
 
-    //// Row indices of Jacobian G (rows correspond to "fun"ctions).
-    //VectorXi iGfun(length_G);
-    //// Column indices of Jacobian G (columns correspond to "var"iables).
-    //VectorXi jGvar(length_G);
-    //// The first row is the gradient of the objective; we assume it is dense.
-    //iGfun.head(num_variables).setZero();
-    //// In MATLAB, this would be jGvar(1:num_variables) = 0:num_variables-1.
-    //jGvar.head(num_variables).setLinSpaced(num_variables, 0, num_variables-1);
-
-    //for (int index = 0; index < jacobian_num_nonzeros; ++index) {
-    //    // The Jacobian of the constraints is shifted down one row, since
-    //    // the first row of G is the gradient of the objective function.
-    //    iGfun[num_variables + index] = jacobian_sparsity.row[index] + 1;
-    //    jGvar[num_variables + index] = jacobian_sparsity.col[index];
-    //}
-
-    //for (int i = 0; i < num_variables; ++i) {
-    //    std::cout << iGfun[i] << ", " << jGvar[i] << std::endl;
-    //}
+    for (int i = 0; i < num_variables; ++i) {
+        std::cout << iGfun[i] << ", " << jGvar[i] << std::endl;
+    }
 
     // TODO linear portion of F. Can we omit this?
     // TODO for our generic problems, we cannot provide this.
-    // int lenA = 1; int neA = 0;
-    // VectorXi iAfun(lenA); VectorXi jAvar(lenA); VectorXd A;
+     int lenA = 1; int neA = 0;
+     VectorXi iAfun(lenA); VectorXi jAvar(lenA); VectorXd A;
     // For some reason, SNOPT allows the length of the iGfun and jGvar arrays
     // to be greater than the number of nonzero elements.
 
@@ -263,6 +257,16 @@ SNOPTSolver::optimize_impl(const VectorXd& variablesArg) const {
         variables.data(), xstate.data(), xmul.data(),
         F.data(), Fstate.data(), Fmul.data(),
         nS, nInf, sInf);
+
+    int info = snopt_prob.solve(Cold, length_F, num_variables, ObjAdd,
+        ObjRow, snopt_userfunction,
+        iAfun, jAvar, A, neA,
+        iGfun, jGvar, neG,
+        xlow.data(), xupp.data(), Flow.data(), Fupp.data(),
+        variables.data(), xstate.data(), xmul.data(),
+        F.data(), Fstate.data(), Fmul.data(),
+        nS, nInf, sInf);
+
     
     // Output problem information.
     // ---------------------------

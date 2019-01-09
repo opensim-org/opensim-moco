@@ -1,0 +1,3 @@
+MuscolloAddSandboxExecutable(NAME sandboxSitToStand
+		LIB_DEPENDS osimMuscollo tropter
+		RESOURCES Rajagopal2015_right_leg_9musc_bottom_up.osim)

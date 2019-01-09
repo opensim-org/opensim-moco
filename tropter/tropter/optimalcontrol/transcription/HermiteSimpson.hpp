@@ -63,8 +63,8 @@ void HermiteSimpson<T>::set_ocproblem(
     m_num_dynamics_constraints = m_num_defects * m_num_states;
     m_num_path_constraints = m_ocproblem->get_num_path_constraints();
     // TODO rename..."total_path_constraints"?
-    int num_path_traj_constraints = m_num_mesh_points * m_num_path_constraints;
-    //int num_path_traj_constraints = m_num_col_points * m_num_path_constraints;
+    //int num_path_traj_constraints = m_num_mesh_points * m_num_path_constraints;
+    int num_path_traj_constraints = m_num_col_points * m_num_path_constraints;
     int num_constraints = m_num_dynamics_constraints +
         num_path_traj_constraints;
     this->set_num_constraints(num_constraints);
@@ -177,7 +177,7 @@ void HermiteSimpson<T>::set_ocproblem(
         }
     }
     const auto path_constraint_names = m_ocproblem->get_path_constraint_names();
-    for (int i_mesh = 0; i_mesh < m_num_mesh_points; ++i_mesh) {
+    for (int i_mesh = 0; i_mesh < m_num_col_points; ++i_mesh) {
         for (const auto& path_constraint_name : path_constraint_names) {
             std::stringstream ss;
             ss << path_constraint_name << "_"
@@ -267,9 +267,9 @@ void HermiteSimpson<T>::set_ocproblem(
     // Defects must be 0.
     VectorXd dynamics_bounds = VectorXd::Zero(m_num_dynamics_constraints);
     VectorXd path_constraints_traj_lower =
-        path_constraints_lower.replicate(m_num_mesh_points, 1);
+        path_constraints_lower.replicate(m_num_col_points, 1);
     VectorXd path_constraints_traj_upper =
-        path_constraints_upper.replicate(m_num_mesh_points, 1);
+        path_constraints_upper.replicate(m_num_col_points, 1);
     constraint_lower << dynamics_bounds, path_constraints_traj_lower;
     constraint_upper << dynamics_bounds, path_constraints_traj_upper;
     this->set_constraint_bounds(constraint_lower, constraint_upper);
@@ -413,8 +413,8 @@ void HermiteSimpson<T>::calc_constraints(const VectorX<T>& x,
         {i_col, time, states.col(i_col), controls.col(i_col),
             adjuncts.col(i_col), m_empty_diffuse_col, parameters},
             {m_derivs_mesh.col(i_mesh),
-            constr_view.path_constraints.col(i_mesh)});
-            //constr_view.path_constraints.col(i_col)});
+            //constr_view.path_constraints.col(i_mesh)});
+            constr_view.path_constraints.col(i_col)});
         i_mesh++;
     }
     // Evaluate points on the mesh interval interior.
@@ -425,10 +425,10 @@ void HermiteSimpson<T>::calc_constraints(const VectorX<T>& x,
         {i_col, time, states.col(i_col), controls.col(i_col),
             adjuncts.col(i_col), diffuses.col(i_mid), parameters},
             {m_derivs_mid.col(i_mid),
-            m_empty_path_constraint_col});
-            TROPTER_THROW_IF(m_empty_path_constraint_col.size() != 0, 
-                "Invalid resize of empty path constraint output.");
-            //constr_view.path_constraints.col(i_col)});
+            //m_empty_path_constraint_col});
+            //TROPTER_THROW_IF(m_empty_path_constraint_col.size() != 0, 
+            //    "Invalid resize of empty path constraint output.");
+            constr_view.path_constraints.col(i_col)});
         i_mid++;
     }
 
@@ -1117,8 +1117,8 @@ void HermiteSimpson<T>::
     for (size_t i_mesh = 0; i_mesh < size_t(values.path_constraints.cols());
         ++i_mesh) {
 
-        stream << std::setw(4) << 2*i_mesh << "  "
-            << ocp_vars.time[2*i_mesh] << "  ";
+        stream << std::setw(4) << i_mesh << "  "
+            << ocp_vars.time[i_mesh] << "  ";
         for (size_t i_pc = 0; i_pc < pathcon_names.size(); ++i_pc) {
             auto& value = static_cast<const double&>(
                 values.path_constraints(i_pc, i_mesh));
@@ -1346,7 +1346,7 @@ HermiteSimpson<T>::make_constraints_view(Eigen::Ref<VectorX<T>> constr) const
     // defects (bottom m_num_states rows) for each mesh interval.
     return{DefectsTrajectoryView(d_ptr, 2*m_num_states, m_num_mesh_points-1),
            PathConstraintsTrajectoryView(pc_ptr, m_num_path_constraints,
-                   m_num_mesh_points)};
+                   m_num_col_points)};
 }
 
 } // namespace transcription

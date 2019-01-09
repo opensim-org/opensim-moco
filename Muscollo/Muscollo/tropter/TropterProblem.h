@@ -619,6 +619,7 @@ public:
             // Multibody constraint errors.
             constraintBodyForces.setToZero();
             constraintMobilityForces.setToZero();
+            
             if (this->m_numKinematicConstraintEquations) {
                 this->calcKinematicConstraintForces(in, simTKState,
                     constraintBodyForces, constraintMobilityForces);
@@ -643,7 +644,9 @@ public:
             // Path constraint errors.
 			double* pathConstraintErrorBegin =
 					out.path.data() + this->m_numKinematicConstraintEquations;
-			this->calcPathConstraintErrors(simTKState, pathConstraintErrorBegin);
+			this->calcPathConstraintErrors(simTKState, 
+                pathConstraintErrorBegin);
+
 			OPENSIM_THROW_IF(
 					simTKState.getSystemStage() >= SimTK::Stage::Acceleration,
 					Exception,
