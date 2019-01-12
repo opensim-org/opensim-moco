@@ -7,6 +7,11 @@ set_package_properties(casadi PROPERTIES
         TYPE REQUIRED
         PURPOSE "Differentiation and optimizer interface.")
 
+# Copy CasADi into our installation.
+install(DIRECTORY "${CASADI_CMAKE_DIR}/../../../"
+        DESTINATION "${CMAKE_INSTALL_PREFIX}"
+        USE_SOURCE_PERMISSIONS)
+
 find_package(OpenSim 4.0 REQUIRED)
 set_package_properties(OpenSim PROPERTIES
         URL http://opensim.stanford.edu
