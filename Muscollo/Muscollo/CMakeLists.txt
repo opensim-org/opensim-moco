@@ -16,19 +16,19 @@ add_library(osimMuscollo SHARED
         MucoProblem.cpp
         MucoProblemRep.h
         MucoProblemRep.cpp
-        MucoCost.h
-        MucoCost.cpp
-        MucoMarkerEndpointCost.h
-        MucoMarkerEndpointCost.cpp
-        MucoMarkerTrackingCost.h
-        MucoMarkerTrackingCost.cpp
+        MucoCost/MucoCost.h
+        MucoCost/MucoCost.cpp
+        MucoCost/MucoMarkerEndpointCost.h
+        MucoCost/MucoMarkerEndpointCost.cpp
+        MucoCost/MucoMarkerTrackingCost.h
+        MucoCost/MucoMarkerTrackingCost.cpp
         MucoWeightSet.h
-        MucoStateTrackingCost.h
-        MucoStateTrackingCost.cpp
-        MucoControlCost.h
-        MucoControlCost.cpp
-        MucoJointReactionNormCost.h
-        MucoJointReactionNormCost.cpp
+        MucoCost/MucoStateTrackingCost.h
+        MucoCost/MucoStateTrackingCost.cpp
+        MucoCost/MucoControlCost.h
+        MucoCost/MucoControlCost.cpp
+        MucoCost/MucoJointReactionNormCost.h
+        MucoCost/MucoJointReactionNormCost.cpp
         MucoSolver.h
         MucoSolver.cpp
         MucoIterate.h
@@ -57,7 +57,11 @@ add_library(osimMuscollo SHARED
         Components/ModelFactory.cpp
         MucoCasADiSolver/MucoCasADiSolver.h
         MucoCasADiSolver/MucoCasADiSolver.cpp
-        MucoCasADiSolver/CasADiTranscription.cpp MucoCasADiSolver/CasADiTranscription.h MucoCasADiSolver/CasADiTrapezoidal.cpp MucoCasADiSolver/CasADiTrapezoidal.h)
+        MucoCasADiSolver/CasADiTranscription.h
+        MucoCasADiSolver/CasADiTranscription.cpp
+        MucoCasADiSolver/CasADiTrapezoidal.h
+        MucoCasADiSolver/CasADiTrapezoidal.cpp
+        MucoCost/MucoInertialMeasurementUnitTrackingCost.cpp MucoCost/MucoInertialMeasurementUnitTrackingCost.h)
 target_link_libraries(osimMuscollo PUBLIC osimActuators
                                    PRIVATE tropter casadi)
 

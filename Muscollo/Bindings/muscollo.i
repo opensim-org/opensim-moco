@@ -1,16 +1,18 @@
 %newobject *::clone;
 
+%include
+
 /* To recognize SimTK::RowVector in header files (TODO: move to simbody.i) */
 typedef SimTK::RowVector_<double> RowVector;
 
 %include <Muscollo/osimMuscolloDLL.h>
-%include <Muscollo/MucoCost.h>
 %include <Muscollo/MucoWeightSet.h>
-%include <Muscollo/MucoStateTrackingCost.h>
-%include <Muscollo/MucoMarkerTrackingCost.h>
-%include <Muscollo/MucoMarkerEndpointCost.h>
-%include <Muscollo/MucoControlCost.h>
-%include <Muscollo/MucoJointReactionNormCost.h>
+%include <Muscollo/MucoCost/MucoCost.h>
+%include <Muscollo/MucoCost/MucoStateTrackingCost.h>
+%include <Muscollo/MucoCost/MucoMarkerTrackingCost.h>
+%include <Muscollo/MucoCost/MucoMarkerEndpointCost.h>
+%include <Muscollo/MucoCost/MucoControlCost.h>
+%include <Muscollo/MucoCost/MucoJointReactionNormCost.h>
 
 
 // %template(MucoBoundsVector) std::vector<OpenSim::MucoBounds>;

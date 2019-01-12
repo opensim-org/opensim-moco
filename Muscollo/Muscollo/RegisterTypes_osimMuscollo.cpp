@@ -18,7 +18,7 @@
 #include "RegisterTypes_osimMuscollo.h"
 #include <OpenSim/Common/Object.h>
 
-#include "MucoCost.h"
+#include "MucoCost/MucoCost.h"
 #include "MucoBounds.h"
 #include "MucoProblem.h"
 #include "MucoSolver.h"
@@ -27,11 +27,11 @@
 #include "InverseMuscleSolver/GlobalStaticOptimization.h"
 #include "InverseMuscleSolver/INDYGO.h"
 #include "MucoWeightSet.h"
-#include "MucoStateTrackingCost.h"
-#include "MucoMarkerTrackingCost.h"
-#include "MucoMarkerEndpointCost.h"
-#include "MucoControlCost.h"
-#include "MucoJointReactionNormCost.h"
+#include "MucoCost/MucoStateTrackingCost.h"
+#include "MucoCost/MucoMarkerTrackingCost.h"
+#include "MucoCost/MucoMarkerEndpointCost.h"
+#include "MucoCost/MucoControlCost.h"
+#include "MucoCost/MucoJointReactionNormCost.h"
 #include "MucoParameter.h"
 #include "ActivationCoordinateActuator.h"
 

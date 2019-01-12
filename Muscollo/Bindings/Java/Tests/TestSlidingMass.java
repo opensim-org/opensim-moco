@@ -78,7 +78,7 @@ class TestSlidingMass {
 
     // Configure the solver.
     // =====================
-    MucoTropterSolver ms = muco.initSolver();
+    MucoTropterSolver ms = muco.initTropterSolver();
     ms.set_num_mesh_points(50);
 
     // Now that we've finished setting up the tool, print it to a file.

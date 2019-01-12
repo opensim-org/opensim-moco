@@ -1,9 +1,7 @@
-#ifndef MUSCOLLO_OSIMMUSCOLLO_H
-#define MUSCOLLO_OSIMMUSCOLLO_H
 /* -------------------------------------------------------------------------- *
- * OpenSim Muscollo: osimMuscollo.h                                           *
+ * OpenSim Muscollo: MucoInertialMeasurementUnitTrackingCost.cpp              *
  * -------------------------------------------------------------------------- *
- * Copyright (c) 2017 Stanford University and the Authors                     *
+ * Copyright (c) 2018 Stanford University and the Authors                     *
  *                                                                            *
  * Author(s): Christopher Dembia                                              *
  *                                                                            *
@@ -18,28 +16,4 @@
  * limitations under the License.                                             *
  * -------------------------------------------------------------------------- */
 
-#include "MucoWeightSet.h"
-#include "Muscollo/MucoCost/MucoStateTrackingCost.h"
-#include "Muscollo/MucoCost/MucoMarkerTrackingCost.h"
-#include "Muscollo/MucoCost/MucoMarkerEndpointCost.h"
-#include "Muscollo/MucoCost/MucoControlCost.h"
-#include "Muscollo/MucoCost/MucoJointReactionNormCost.h"
-#include "MucoIterate.h"
-#include "MucoBounds.h"
-#include "MucoProblem.h"
-#include "MucoSolver.h"
-#include "MucoTool.h"
-#include "MucoTropterSolver.h"
-#include "MuscolloUtilities.h"
-#include "MucoParameter.h"
-#include "MucoConstraint.h"
-#include "ActivationCoordinateActuator.h"
-
-#include "Components/StationPlaneContactForce.h"
-#include "Components/ModelFactory.h"
-
-#include "MucoCasADiSolver/MucoCasADiSolver.h"
-
-#include "RegisterTypes_osimMuscollo.h"
-
-#endif // MUSCOLLO_OSIMMUSCOLLO_H
+#include "MucoInertialMeasurementUnitTrackingCost.h"

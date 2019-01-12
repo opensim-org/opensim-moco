@@ -19,7 +19,7 @@
  * -------------------------------------------------------------------------- */
 
 #include "MucoCost.h"
-#include "MucoWeightSet.h"
+#include "../MucoWeightSet.h"
 
 #include <OpenSim/Common/TimeSeriesTable.h>
 #include <OpenSim/Common/GCVSplineSet.h>

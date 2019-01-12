@@ -20,7 +20,7 @@
 
 #include "osimMuscolloDLL.h"
 #include "MucoVariableInfo.h"
-#include "MucoCost.h"
+#include "MucoCost/MucoCost.h"
 #include "MucoConstraint.h"
 #include "MucoParameter.h"
 #include <OpenSim/Simulation/Model/Model.h>

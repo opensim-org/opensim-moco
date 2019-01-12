@@ -17,7 +17,7 @@
  * -------------------------------------------------------------------------- */
 
 #include "MucoStateTrackingCost.h"
-#include "MuscolloUtilities.h"
+#include "../MuscolloUtilities.h"
 #include <OpenSim/Simulation/Model/Model.h>
 
 using namespace OpenSim;

@@ -1,9 +1,9 @@
-#ifndef MUSCOLLO_OSIMMUSCOLLO_H
-#define MUSCOLLO_OSIMMUSCOLLO_H
+#ifndef MUSCOLLO_MUCOINERTIALMEASUREMENTUNITTRACKINGCOST_H
+#define MUSCOLLO_MUCOINERTIALMEASUREMENTUNITTRACKINGCOST_H
 /* -------------------------------------------------------------------------- *
- * OpenSim Muscollo: osimMuscollo.h                                           *
+ * OpenSim Muscollo: MucoInertialMeasurementUnitTrackingCost.h                *
  * -------------------------------------------------------------------------- *
- * Copyright (c) 2017 Stanford University and the Authors                     *
+ * Copyright (c) 2018 Stanford University and the Authors                     *
  *                                                                            *
  * Author(s): Christopher Dembia                                              *
  *                                                                            *
@@ -18,28 +18,13 @@
  * limitations under the License.                                             *
  * -------------------------------------------------------------------------- */
 
-#include "MucoWeightSet.h"
-#include "Muscollo/MucoCost/MucoStateTrackingCost.h"
-#include "Muscollo/MucoCost/MucoMarkerTrackingCost.h"
-#include "Muscollo/MucoCost/MucoMarkerEndpointCost.h"
-#include "Muscollo/MucoCost/MucoControlCost.h"
-#include "Muscollo/MucoCost/MucoJointReactionNormCost.h"
-#include "MucoIterate.h"
-#include "MucoBounds.h"
-#include "MucoProblem.h"
-#include "MucoSolver.h"
-#include "MucoTool.h"
-#include "MucoTropterSolver.h"
-#include "MuscolloUtilities.h"
-#include "MucoParameter.h"
-#include "MucoConstraint.h"
-#include "ActivationCoordinateActuator.h"
+#include "MucoCost.h"
 
-#include "Components/StationPlaneContactForce.h"
-#include "Components/ModelFactory.h"
+namespace OpenSim {
 
-#include "MucoCasADiSolver/MucoCasADiSolver.h"
+class MucoInertialMeasurementUnitTrackingCost : public MucoCost {
+};
 
-#include "RegisterTypes_osimMuscollo.h"
+} // namespace OpenSim
 
-#endif // MUSCOLLO_OSIMMUSCOLLO_H
+#endif // MUSCOLLO_MUCOINERTIALMEASUREMENTUNITTRACKINGCOST_H

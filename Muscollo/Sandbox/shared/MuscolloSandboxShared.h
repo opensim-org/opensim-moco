@@ -21,7 +21,7 @@
 #include <OpenSim/Common/osimCommon.h>
 #include <OpenSim/Simulation/osimSimulation.h>
 #include <OpenSim/Actuators/osimActuators.h>
-#include <Muscollo/MucoCost.h>
+#include <Muscollo/MucoCost/MucoCost.h>
 
 namespace OpenSim {
 

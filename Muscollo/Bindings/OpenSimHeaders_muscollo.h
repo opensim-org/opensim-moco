@@ -4,13 +4,13 @@
 */
 
 #include <Muscollo/osimMuscolloDLL.h>
-#include <Muscollo/MucoCost.h>
+#include <Muscollo/MucoCost/MucoCost.h>
 #include <Muscollo/MucoWeightSet.h>
-#include <Muscollo/MucoStateTrackingCost.h>
-#include <Muscollo/MucoMarkerTrackingCost.h>
-#include <Muscollo/MucoMarkerEndpointCost.h>
-#include <Muscollo/MucoControlCost.h>
-#include <Muscollo/MucoJointReactionNormCost.h>
+#include <Muscollo/MucoCost/MucoStateTrackingCost.h>
+#include <Muscollo/MucoCost/MucoMarkerTrackingCost.h>
+#include <Muscollo/MucoCost/MucoMarkerEndpointCost.h>
+#include <Muscollo/MucoCost/MucoControlCost.h>
+#include <Muscollo/MucoCost/MucoJointReactionNormCost.h>
 #include <Muscollo/MucoBounds.h>
 #include <Muscollo/MucoProblem.h>
 #include <Muscollo/MucoParameter.h>
