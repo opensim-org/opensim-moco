@@ -158,7 +158,7 @@ namespace OpenSim {
     %ignore MocoTropterSolver::MocoTropterSolver(const MocoProblem&);
 }
 %include <Moco/MocoTropterSolver.h>
-%include <Moco/MucoCasADiSolver/MucoCasADiSolver.h>
+%include <Moco/MocoCasADiSolver/MocoCasADiSolver.h>
 %include <Moco/MocoTool.h>
 
 %include <Moco/ActivationCoordinateActuator.h>
