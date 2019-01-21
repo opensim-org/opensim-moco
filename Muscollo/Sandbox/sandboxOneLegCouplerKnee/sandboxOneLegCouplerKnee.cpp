@@ -167,6 +167,11 @@ MucoSolution minimizeControlEffortRightLeg(const Options& opt) {
     auto* effort = mp.addCost<MucoControlCost>();
     effort->setName("control_effort");
 
+    //auto* reaction = mp.addCost<MucoJointReactionNormCost>();
+    //reaction->setName("joint_reaction");
+    //reaction->set_weight(0.1);
+    //reaction->setJointPath("/jointset/walker_knee_r/");
+
     MucoTropterSolver& ms = muco.initSolver();
     ms.set_num_mesh_points(opt.num_mesh_points);
     ms.set_verbosity(2);
@@ -177,24 +182,29 @@ MucoSolution minimizeControlEffortRightLeg(const Options& opt) {
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_optim_max_iterations(opt.max_iterations);
     ms.set_enforce_constraint_derivatives(true);
-    auto guess = ms.createGuess("bounds");
-    // If the controlsGuess struct field is not empty, use it to set the
-    // controls in the trajectory guess.
-    if (opt.controlsGuess.getMatrix().nrow() != 0) {
-        for (const auto& label : opt.controlsGuess.getColumnLabels()) {
-            // Get the 
-            SimTK::Vector controlGuess =
-                opt.controlsGuess.getDependentColumn(label);
-            // Interpolate controls guess to correct length.
-            SimTK::Vector prevTime = createVectorLinspace(
-                opt.controlsGuess.getMatrix().nrow(), 0, 1);
-            auto controlGuessInterp = interpolate(prevTime, controlGuess,
-                guess.getTime());
-            // Set the guess for this control.
-            guess.setControl(label, controlGuessInterp);
+    if (opt.previousSolution.empty()) {
+        auto guess = ms.createGuess("bounds");
+        // If the controlsGuess struct field is not empty, use it to set the
+        // controls in the trajectory guess.
+        if (opt.controlsGuess.getMatrix().nrow() != 0) {
+            for (const auto& label : opt.controlsGuess.getColumnLabels()) {
+                // Get the 
+                SimTK::Vector controlGuess =
+                    opt.controlsGuess.getDependentColumn(label);
+                // Interpolate controls guess to correct length.
+                SimTK::Vector prevTime = createVectorLinspace(
+                    opt.controlsGuess.getMatrix().nrow(), 0, 1);
+                auto controlGuessInterp = interpolate(prevTime, controlGuess,
+                    guess.getTime());
+                // Set the guess for this control.
+                guess.setControl(label, controlGuessInterp);
+            }
         }
+        ms.setGuess(guess);
     }
-    ms.setGuess(guess);
+    else {
+        ms.setGuess(opt.previousSolution);
+    }
 
     MucoSolution solution = muco.solve();
     muco.visualize(solution);
@@ -355,34 +365,39 @@ void main() {
     // Predictive problem.
     Options opt;
     opt.weldPelvis = true;
-    opt.num_mesh_points = 50;
-    opt.solver = "ipopt";
+    opt.num_mesh_points = 10;
+    opt.solver = "snopt";
     opt.dynamics_mode = "implicit";
+    opt.actuatorType = "muscles";
+    opt.constraint_tol = 1e-6;
+    opt.convergence_tol = 1e-6;
+    opt.previousSolution = MucoSolution(
+        "sandboxRightLeg_weldedPelvis_muscles_minimize_control_effort_solution_good.sto");
     MucoSolution torqueSolEffort = minimizeControlEffortRightLeg(opt); 
 
-    // Tracking problem.
-    opt.convergence_tol = 1e-4;
-    opt.constraint_tol = 1e-4;
-    opt.dynamics_mode = "explicit";
-    opt.previousSolution = torqueSolEffort;
-    TimeSeriesTable controlsGuess;
-    controlsGuess.updMatrix() = torqueSolEffort.getControlsTrajectory();
-    controlsGuess.setColumnLabels(torqueSolEffort.getControlNames());
-    opt.controlsGuess = controlsGuess;
-    MucoSolution torqueSolTracking = stateTrackingRightLeg(opt);
+    // Tracking problems seem to need the tighter tolerance.
+    //opt.convergence_tol = 1e-4;
+    //opt.constraint_tol = 1e-4;
+    //opt.dynamics_mode = "explicit";
+    //opt.previousSolution = torqueSolEffort;
+    //TimeSeriesTable controlsGuess;
+    //controlsGuess.updMatrix() = torqueSolEffort.getControlsTrajectory();
+    //controlsGuess.setColumnLabels(torqueSolEffort.getControlNames());
+    //opt.controlsGuess = controlsGuess;
+    //MucoSolution torqueSolTracking = stateTrackingRightLeg(opt);
 
-    std::cout << "Predictive versus tracking comparison" << std::endl;
-    std::cout << "-------------------------------------" << std::endl;
-    std::cout << "States RMS error: ";
-    std::cout << 
-        torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
-        {}, {"none"}, {"none"}, {"none"});
-    std::cout << std::endl;
-    std::cout << "Controls RMS error: ";
-    std::cout <<
-        torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
-        {"none"}, {}, {"none"}, {"none"});
-    std::cout << std::endl;
+    //std::cout << "Predictive versus tracking comparison" << std::endl;
+    //std::cout << "-------------------------------------" << std::endl;
+    //std::cout << "States RMS error: ";
+    //std::cout << 
+    //    torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
+    //    {}, {"none"}, {"none"}, {"none"});
+    //std::cout << std::endl;
+    //std::cout << "Controls RMS error: ";
+    //std::cout <<
+    //    torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
+    //    {"none"}, {}, {"none"}, {"none"});
+    //std::cout << std::endl;
     //std::cout << "Derivatives RMS error: ";
     //std::cout <<
     //    torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
@@ -397,7 +412,6 @@ void main() {
     //opt.num_mesh_points = 10;
     //opt.convergence_tol = 1e-2;
     //MucoSolution musclesSol = minimizeControlEffortRightLeg(opt);
-    // Noisy accelerations -- due to velocity correction variables?
 
     //opt.num_mesh_points = 10;
     //opt.actuatorType = "torques";
