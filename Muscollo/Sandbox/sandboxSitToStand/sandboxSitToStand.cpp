@@ -88,17 +88,25 @@ Model createRightLegModel(const std::string& actuatorType) {
     hip_r_pin->updCoordinate().setName("hip_flexion_r");
     model.addJoint(hip_r_pin);
 
+    // Make pelvis heavier to simulate torso.
+    //model.updBodySet().get("pelvis").setMass(10.0);
+
     if (actuatorType == "torques") {
         // Remove muscles and add coordinate actuators.
-        addCoordinateActuator(model, "hip_flexion_r", 10);
-        addCoordinateActuator(model, "knee_angle_r", 10);
-        addCoordinateActuator(model, "ankle_angle_r", 10);
+        addCoordinateActuator(model, "hip_flexion_r", 50);
+        addCoordinateActuator(model, "knee_angle_r", 50);
+        addCoordinateActuator(model, "ankle_angle_r", 50);
         removeMuscles(model);
     }
     else if (actuatorType == "muscles") {
-        //addCoordinateActuator(model, "hip_flexion_r", 10);
-        //addCoordinateActuator(model, "knee_angle_r", 10);
-        //addCoordinateActuator(model, "ankle_angle_r", 10);
+        // Strengthen muscles.
+        auto& muscSet = model.updMuscles();
+        double factor = 10.0;
+        for (int i = 0; i < muscSet.getSize(); ++i) {
+            auto& musc = muscSet.get(i);
+            musc.setMaxIsometricForce(factor*musc.getMaxIsometricForce());
+        }
+
         // Remove effect of passive fiber forces.
         minimizePassiveFiberForces(model);
     }
@@ -137,8 +145,8 @@ MucoSolution minimizeControlEffortRightLeg(const Options& opt) {
 
     // Set bounds.
     mp.setTimeBounds(0, 1);
-    mp.setStateInfo("/jointset/hip_r/hip_flexion_r/value", {-5, 5},
-        -SimTK::Pi / 2.0, 0);
+    mp.setStateInfo("/jointset/hip_r/hip_flexion_r/value", {-1, 1},
+        -1, 0);
     mp.setStateInfo("/jointset/walker_knee_r/knee_angle_r/value", {-3, 0}, 
         -SimTK::Pi / 1.5, 0);
     mp.setStateInfo("/jointset/ankle_r/ankle_angle_r/value", {-1, 1}, 
@@ -167,29 +175,31 @@ MucoSolution minimizeControlEffortRightLeg(const Options& opt) {
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_optim_max_iterations(opt.max_iterations);
     ms.set_enforce_constraint_derivatives(true);
-    if (opt.dynamics_mode == "explicit") {
-        ms.set_minimize_lagrange_multipliers(true);
-        ms.set_lagrange_multiplier_weight(10);
-    }
-    ms.set_velocity_correction_bounds({-0.01, 0.01});
-    auto guess = ms.createGuess("bounds");
-    // If the controlsGuess struct field is not empty, use it to set the
-    // controls in the trajectory guess.
-    if (opt.controlsGuess.getMatrix().nrow() != 0) {
-        for (const auto& label : opt.controlsGuess.getColumnLabels()) {
-            // Get the 
-            SimTK::Vector controlGuess =
-                opt.controlsGuess.getDependentColumn(label);
-            // Interpolate controls guess to correct length.
-            SimTK::Vector prevTime = createVectorLinspace(
-                opt.controlsGuess.getMatrix().nrow(), 0, 1);
-            auto controlGuessInterp = interpolate(prevTime, controlGuess,
-                guess.getTime());
-            // Set the guess for this control.
-            guess.setControl(label, controlGuessInterp);
+    ms.set_minimize_lagrange_multipliers(true);
+    ms.set_lagrange_multiplier_weight(10);
+    ms.set_velocity_correction_bounds({-1, 1});
+    if (opt.previousSolution.empty()) {
+        auto guess = ms.createGuess("bounds");
+        // If the controlsGuess struct field is not empty, use it to set the
+        // controls in the trajectory guess.
+        if (opt.controlsGuess.getMatrix().nrow() != 0) {
+            for (const auto& label : opt.controlsGuess.getColumnLabels()) {
+                // Get the 
+                SimTK::Vector controlGuess =
+                    opt.controlsGuess.getDependentColumn(label);
+                // Interpolate controls guess to correct length.
+                SimTK::Vector prevTime = createVectorLinspace(
+                    opt.controlsGuess.getMatrix().nrow(), 0, 1);
+                auto controlGuessInterp = interpolate(prevTime, controlGuess,
+                    guess.getTime());
+                // Set the guess for this control.
+                guess.setControl(label, controlGuessInterp);
+            }
         }
+        ms.setGuess(guess);
+    } else {
+        ms.setGuess(opt.previousSolution);
     }
-    ms.setGuess(guess);
 
     MucoSolution solution = muco.solve().unseal();
     muco.visualize(solution);
@@ -275,6 +285,8 @@ MucoSolution stateTrackingRightLeg(const Options& opt) {
 
     const auto& prevTime = prevSol.getTime();
     mp.setTimeBounds(prevTime[0], prevTime[prevTime.size() - 1]);
+    mp.setStateInfo("/jointset/hip_r/hip_flexion_r/value", {-1, 1});
+    mp.setStateInfo("/jointset/ankle_r/ankle_angle_r/value", {-1, 1});
 
     auto* tracking = mp.addCost<MucoStateTrackingCost>();
     tracking->setName("tracking");
@@ -285,7 +297,6 @@ MucoSolution stateTrackingRightLeg(const Options& opt) {
 
     auto* effort = mp.addCost<MucoControlCost>();
     effort->setName("effort");
-    effort->set_weight(10);
 
     MucoTropterSolver& ms = muco.initSolver();
     ms.set_num_mesh_points(opt.num_mesh_points);
@@ -297,12 +308,10 @@ MucoSolution stateTrackingRightLeg(const Options& opt) {
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_optim_max_iterations(opt.max_iterations);
     ms.set_enforce_constraint_derivatives(true);
-    ms.set_velocity_correction_bounds({-0.01, 0.01});
+    ms.set_velocity_correction_bounds({-1, 1});
     // Need this term to recover the correct multipliers. (explicit only)
-    if (opt.dynamics_mode == "explicit") {
-        ms.set_minimize_lagrange_multipliers(true);
-        ms.set_lagrange_multiplier_weight(1);
-    }
+    ms.set_minimize_lagrange_multipliers(true);
+    ms.set_lagrange_multiplier_weight(0.1);
 
     // Create guess.
     // -------------
@@ -335,22 +344,42 @@ MucoSolution stateTrackingRightLeg(const Options& opt) {
 void main() {
     // Predictive problem.
     Options opt;
-    opt.num_mesh_points = 20;
+    opt.num_mesh_points = 10;
     opt.solver = "snopt";
     opt.dynamics_mode = "implicit";
-    opt.constraint_tol = 1e-2;
-    opt.convergence_tol = 1e-3;
-    //opt.hessian_approx = "limited-memory";
-    //MucoSolution torqueSolEffort = minimizeControlEffortRightLeg(opt);
-    //MucoSolution torqueSolEffort("sandboxRightLeg_torques_minimize_control_effort_solution.sto");
-
-    //opt.previousSolution = torqueSolEffort;
-    //opt.constraint_tol = 1e-4;
-    //opt.convergence_tol = 1e-4;
-    //MucoSolution torqueSolTrack = stateTrackingRightLeg(opt);
-
-
+    // Tight tolerances needed for smooth solution.
+    opt.constraint_tol = 1e-6;
+    opt.convergence_tol = 1e-6;
     opt.actuatorType = "muscles";
-    //opt.controlsGuess = createGuessFromGSO(torqueSolEffort, opt);
-    MucoSolution muscleSolEffort = minimizeControlEffortRightLeg(opt);
+    //opt.previousSolution = MucoSolution(
+    //    "sandboxRightLeg_torques_minimize_control_effort_solution.sto");
+    MucoSolution torqueSolEffort = minimizeControlEffortRightLeg(opt);
+    //MucoSolution torqueSolEffort(
+    //       "sandboxRightLeg_torques_minimize_control_effort_solution.sto");
+
+    // Tracking problem.
+    //opt.dynamics_mode = "explicit";
+    //opt.previousSolution = torqueSolEffort;
+    //opt.constraint_tol = 1e-6;
+    //opt.convergence_tol = 1e-6;
+    //opt.num_mesh_points = 20;
+    //MucoSolution torqueSolTracking = stateTrackingRightLeg(opt);
+
+    //std::cout << "Predictive versus tracking comparison" << std::endl;
+    //std::cout << "-------------------------------------" << std::endl;
+    //std::cout << "States RMS error: ";
+    //std::cout <<
+    //    torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
+    //    {}, {"none"}, {"none"}, {"none"});
+    //std::cout << std::endl;
+    //std::cout << "Controls RMS error: ";
+    //std::cout <<
+    //    torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
+    //    {"none"}, {}, {"none"}, {"none"});
+    //std::cout << std::endl;
+
+    //opt.actuatorType = "muscles";
+    //opt.constraint_tol = 1e-2;
+    //opt.convergence_tol = 1e-2;
+    //MucoSolution muscleSolEffort = minimizeControlEffortRightLeg(opt);
 }
