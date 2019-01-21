@@ -335,11 +335,11 @@ MucoSolution stateTrackingRightLeg(const Options& opt) {
 void main() {
     // Predictive problem.
     Options opt;
-    opt.num_mesh_points = 20;
+    opt.num_mesh_points = 25;
     opt.solver = "snopt";
     opt.dynamics_mode = "implicit";
-    opt.constraint_tol = 1e-2;
-    opt.convergence_tol = 1e-3;
+    opt.constraint_tol = 1e-3;
+    opt.convergence_tol = 1e-4;
     //opt.hessian_approx = "limited-memory";
     //MucoSolution torqueSolEffort = minimizeControlEffortRightLeg(opt);
     //MucoSolution torqueSolEffort("sandboxRightLeg_torques_minimize_control_effort_solution.sto");
