@@ -131,10 +131,11 @@ public:
     /// Calculate the sum of integrand over all the integral cost terms in this
     /// phase for the provided state. That is, the returned value is *not* an
     /// integral over time.
-    SimTK::Real calcIntegralCost(const SimTK::State& state) const {
+    SimTK::Real calcIntegralCost(const SimTK::State& state, 
+            const MucoInput& input) const {
         SimTK::Real integrand = 0;
         for (const auto& cost : m_costs) {
-            integrand += cost->calcIntegralCost(state);
+            integrand += cost->calcIntegralCost(state, input);
         }
         return integrand;
     }

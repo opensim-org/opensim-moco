@@ -71,7 +71,7 @@
  }
 
  void MucoMarkerTrackingCost::calcIntegralCostImpl(const SimTK::State& state, 
-        double& integrand) const {
+        const MucoInput& input, double& integrand) const {
      const auto& time = state.getTime();
      getModel().realizePosition(state);
      SimTK::Vector timeVec(1, time);

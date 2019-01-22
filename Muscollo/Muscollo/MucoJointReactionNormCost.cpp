@@ -17,6 +17,7 @@
  * -------------------------------------------------------------------------- */
 
 #include "MucoJointReactionNormCost.h"
+#include "MucoProblem.h"
 #include <OpenSim/Simulation/Model/Model.h>
     
 using namespace OpenSim;
@@ -41,9 +42,15 @@ void MucoJointReactionNormCost::initializeOnModelImpl(
 }
 
 void MucoJointReactionNormCost::calcIntegralCostImpl(const SimTK::State& state,
-        double& integrand) const {
+        const MucoInput& input, double& integrand) const {
 
-    getModel().realizeAcceleration(state);
+    SimTK::Vector_<SimTK::SpatialVec> constraintBodyForces;
+    SimTK::Vector constraintMobilityForces;
+
+    const auto& matter = getModel().getMatterSubsystem();
+    matter.calcConstraintForcesFromMultipliers(state, -input.multipliers,
+        constraintBodyForces, constraintMobilityForces);
+
     // TODO: Cache the joint.
     const auto& joint = getModel().getComponent<Joint>(get_joint_path());
     integrand = joint.calcReactionOnChildExpressedInGround(state).norm();

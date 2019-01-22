@@ -97,7 +97,7 @@ void MucoControlCost::initializeOnModelImpl(const Model& model) const {
 }
 
 void MucoControlCost::calcIntegralCostImpl(const SimTK::State& state,
-        double& integrand) const {
+        const MucoInput& input, double& integrand) const {
     getModel().realizeVelocity(state); // TODO would avoid this, ideally.
     const auto& controls = getModel().getControls(state);
     integrand = 0;

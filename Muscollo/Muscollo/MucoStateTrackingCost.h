@@ -26,6 +26,8 @@
 
 namespace OpenSim {
 
+struct MucoInput;
+
 // TODO can we track generailzed speeds too?
 // TODO allow raising error to different powers (cubed).
 // TODO allow a "deadband."
@@ -98,7 +100,7 @@ public:
 protected:
     // TODO check that the reference covers the entire possible time range.
     void initializeOnModelImpl(const Model&) const override;
-    void calcIntegralCostImpl(const SimTK::State& state,
+    void calcIntegralCostImpl(const SimTK::State& state, const MucoInput& input,
             double& integrand) const override;
 private:
     OpenSim_DECLARE_PROPERTY(reference_file, std::string,

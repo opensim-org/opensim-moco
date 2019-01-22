@@ -63,6 +63,11 @@ void HermiteSimpson<T>::set_ocproblem(
     m_num_dynamics_constraints = m_num_defects * m_num_states;
     m_num_path_constraints = m_ocproblem->get_num_path_constraints();
     // TODO rename..."total_path_constraints"?
+    // TODO enforce path constraints at mesh points or collocation points?
+    //      Posa et al. 2016 suggests that you only need to enforce at mesh
+    //      mesh points in explicit mode. But experience with implicit mode so
+    //      far suggests enforcing at all collocation points. Should we enforce
+    //      path constraints differently for different dynamics modes?
     //int num_path_traj_constraints = m_num_mesh_points * m_num_path_constraints;
     int num_path_traj_constraints = m_num_col_points * m_num_path_constraints;
     int num_constraints = m_num_dynamics_constraints +

@@ -22,6 +22,8 @@
 
 namespace OpenSim {
 
+struct MucoInput;
+
 /// Minimize the reaction loads on the child body of a specified joint. 
 /// The norm of the reaction forces and moments integrated over the phase is 
 /// the specific quantity minimized.
@@ -51,7 +53,7 @@ public:
 
 protected:
     void initializeOnModelImpl(const Model&) const override;
-    void calcIntegralCostImpl(const SimTK::State& state,
+    void calcIntegralCostImpl(const SimTK::State& state, const MucoInput& input,
             double& integrand) const override;
 
 private:

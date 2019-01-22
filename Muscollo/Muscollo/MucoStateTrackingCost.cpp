@@ -95,7 +95,8 @@ void MucoStateTrackingCost::initializeOnModelImpl(const Model& model) const {
 }
 
 void MucoStateTrackingCost::calcIntegralCostImpl(/*int meshIndex,*/
-        const SimTK::State& state, double& integrand) const {
+        const SimTK::State& state, const MucoInput& input, 
+        double& integrand) const {
     const auto& time = state.getTime();
 
     SimTK::Vector timeVec(1, time);

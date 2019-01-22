@@ -48,7 +48,7 @@ public:
     void setWeight(const std::string& controlName, const double& weight);
 protected:
     void initializeOnModelImpl(const Model&) const override;
-    void calcIntegralCostImpl(const SimTK::State& state,
+    void calcIntegralCostImpl(const SimTK::State& state, const MucoInput& input,
             double& integrand) const override;
 private:
     void constructProperties();

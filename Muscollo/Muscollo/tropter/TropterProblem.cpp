@@ -212,6 +212,53 @@ convertToTropterIterate(const OpenSim::MucoIterate& mucoIter) const {
     return tropIter;
 }
 
+template <typename T>
+MucoInput MucoTropterSolver::TropterProblemBase<T>::
+convertToMucoInput(const tropter::Input<T>& tropInput) const {
+
+    SimTK::Vector states;
+    if (tropInput.states.size()) {
+        states.resize((int)tropInput.states.size());
+        std::copy_n(tropInput.states.data(), tropInput.states.size(),
+                states.updContiguousScalarData());
+    }
+
+    SimTK::Vector controls;
+    if (tropInput.controls.size()) {
+        controls.resize((int)tropInput.controls.size());
+        std::copy_n(tropInput.controls.data(), tropInput.controls.size(),
+                controls.updContiguousScalarData());
+    }
+
+    SimTK::Vector multipliers;
+    const int& numMultipliers =
+            this->m_total_mp + this->m_total_mv + this->m_total_ma;
+    if (numMultipliers) {
+        multipliers.resize(numMultipliers);
+        std::copy_n(tropInput.adjuncts.data(), numMultipliers,
+                multipliers.updContiguousScalarData());
+    }
+
+    SimTK::Vector derivatives;
+    const int numDerivatives =
+            (int)tropInput.adjuncts.size() - numMultipliers;
+    if (numDerivatives) {
+        derivatives.resize(numDerivatives);
+        std::copy_n(tropInput.adjuncts.data() + numMultipliers, numDerivatives,
+                derivatives.updContiguousScalarData());
+    }
+
+    SimTK::Vector parameters;
+    if (tropInput.parameters.size()) {
+        parameters.resize((int)tropInput.parameters.size());
+        std::copy_n(tropInput.parameters.data(), tropInput.parameters.size(),
+                parameters.updContiguousScalarData());
+    }
+            
+    return {tropInput.time_index, tropInput.time, states, controls, multipliers, 
+            derivatives, parameters};
+}
+
 // Explicit template instantiations.
 // ---------------------------------
 template class MucoTropterSolver::TropterProblemBase<double>;

@@ -23,6 +23,19 @@
 namespace OpenSim {
 
 // ============================================================================
+// MucoInput
+// ============================================================================
+struct MucoInput {
+    const int time_index;
+    const double time;
+    const SimTK::Vector states;
+    const SimTK::Vector controls;
+    const SimTK::Vector multipliers;
+    const SimTK::Vector derivatives;
+    const SimTK::Vector parameters;
+};
+
+// ============================================================================
 // MucoPhase
 // ============================================================================
 

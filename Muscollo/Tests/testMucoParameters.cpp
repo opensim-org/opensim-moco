@@ -182,7 +182,7 @@ class RotationalAccelerationCost : public MucoCost {
 OpenSim_DECLARE_CONCRETE_OBJECT(RotationalAccelerationCost, MucoCost);
 protected:
     void calcIntegralCostImpl(const SimTK::State& state,
-        SimTK::Real& integrand) const override {
+        const MucoInput& input, SimTK::Real& integrand) const override {
 
         getModel().realizeAcceleration(state); // TODO would avoid this, ideally.
         const auto& accel = getModel().getStateVariableDerivativeValue(

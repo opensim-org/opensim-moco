@@ -21,6 +21,7 @@
 #include "../MucoBounds.h"
 #include "../MucoTropterSolver.h"
 #include "../MuscolloUtilities.h"
+#include "../MucoProblem.h"
 
 #include <simbody/internal/Constraint.h>
 #include <OpenSim/Simulation/InverseDynamicsSolver.h>
@@ -274,7 +275,8 @@ protected:
             m_model.realizePosition(m_state);
         }
 
-        integrand = m_mucoProbRep.calcIntegralCost(m_state);
+        MucoInput input = TropterProblemBase<T>::convertToMucoInput(in);
+        integrand = m_mucoProbRep.calcIntegralCost(m_state, input);
 
         if (m_mucoTropterSolver.get_minimize_lagrange_multipliers()) {
             // Add squared multiplers cost to the integrand.
@@ -382,6 +384,9 @@ public:
 
     tropter::Iterate
     convertToTropterIterate(const MucoIterate& mucoIter) const;
+
+    MucoInput
+    convertToMucoInput(const tropter::Input<T>& tropInput) const;
 };
 
 
@@ -619,7 +624,6 @@ public:
             // Multibody constraint errors.
             constraintBodyForces.setToZero();
             constraintMobilityForces.setToZero();
-            
             if (this->m_numKinematicConstraintEquations) {
                 this->calcKinematicConstraintForces(in, simTKState,
                     constraintBodyForces, constraintMobilityForces);
@@ -698,6 +702,8 @@ public:
                 this->m_state.getSystemStage() >= SimTK::Stage::Acceleration,
                 Exception,
                 "Cannot realize to Acceleration in implicit dynamics mode.");
+
+        MucoInput mucoInput = TropterProblemBase<T>::convertToMucoInput(in);
 
         // Acceleration tracking cost.
         if (accelTrackNames.size()) {

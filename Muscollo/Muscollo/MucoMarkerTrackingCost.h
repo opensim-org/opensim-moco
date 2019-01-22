@@ -72,7 +72,7 @@ public:
 
 protected:
     void initializeOnModelImpl(const Model&) const override;
-    void calcIntegralCostImpl(const SimTK::State& state,
+    void calcIntegralCostImpl(const SimTK::State& state, const MucoInput& input,
         double& integrand) const override;
     OpenSim_DECLARE_PROPERTY(markers_reference, MarkersReference,
             "MarkersReference object containing the marker trajectories to be "

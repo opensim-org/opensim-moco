@@ -271,7 +271,7 @@ SCENARIO("Solving a problem with acceleration-level quantities", "[implicit]") {
     class AccelerationIntegralCost : public MucoCost {
     OpenSim_DECLARE_CONCRETE_OBJECT(AccelerationIntegralCost, MucoCost);
         void calcIntegralCostImpl(const SimTK::State& state,
-                SimTK::Real& cost) const override {
+                const MucoInput& input, SimTK::Real& cost) const override {
             getModel().realizeAcceleration(state);
             cost = state.getYDot().norm();
         }

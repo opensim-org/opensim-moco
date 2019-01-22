@@ -27,6 +27,7 @@
 namespace OpenSim {
 
 class Model;
+struct MucoInput;
 
 // TODO give option to specify gradient and Hessian analytically.
 
@@ -51,9 +52,10 @@ public:
     MucoCost(std::string name, double weight);
 
     /// This includes the weight.
-    SimTK::Real calcIntegralCost(const SimTK::State& state) const {
+    SimTK::Real calcIntegralCost(const SimTK::State& state, 
+            const MucoInput& input) const {
         double integrand = 0;
-        calcIntegralCostImpl(state, integrand);
+        calcIntegralCostImpl(state, input, integrand);
         return get_weight() * integrand;
     }
     /// This includes the weight.
@@ -86,7 +88,7 @@ protected:
     /// getModel().realizeVelocity(state);
     /// @endcode
     virtual void calcIntegralCostImpl(const SimTK::State& state,
-            double& integrand) const;
+            const MucoInput& input, double& integrand) const;
     /// The endpoint cost cannot depend on actuator controls.
     virtual void calcEndpointCostImpl(const SimTK::State& finalState,
             SimTK::Real& cost) const;
@@ -104,7 +106,7 @@ private:
 };
 
 inline void MucoCost::calcIntegralCostImpl(const SimTK::State&,
-        double&) const {}
+        const MucoInput&, double&) const {}
 
 inline void MucoCost::calcEndpointCostImpl(const SimTK::State&,
         double&) const {}
