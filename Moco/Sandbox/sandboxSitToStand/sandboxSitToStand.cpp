@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- *
- * OpenSim Moco: sandboxOneLegCouplerKnee.cpp                                 *
+ * OpenSim Moco: sandboxSitToStand.cpp                                        *
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2017 Stanford University and the Authors                     *
  *                                                                            *
@@ -18,15 +18,13 @@
 
 #include <Moco/osimMoco.h>
 #include <Moco/InverseMuscleSolver/GlobalStaticOptimization.h>
-#include <OpenSim/Tools/InverseKinematicsTool.h>
-#include <OpenSim/Tools/IKTaskSet.h>
 #include <OpenSim/Common/osimCommon.h>
 #include <OpenSim/Simulation/osimSimulation.h>
 #include <OpenSim/Actuators/osimActuators.h>
+#include <OpenSim/Simulation/SimbodyEngine/PointOnLineConstraint.h>
 
 using namespace OpenSim;
 using SimTK::Vec3;
-using SimTK::Inertia;
 
 /// Convenience function to apply an CoordinateActuator to the model.
 void addCoordinateActuator(Model& model, std::string coordName,
@@ -65,62 +63,50 @@ void minimizePassiveFiberForces(Model& model) {
 
 /// Create a right-leg only model with the following options:
 ///     1) actuatorType: "torques" or "muscles"
-///     2) weldPelvis: bool
-Model createRightLegModel(const std::string& actuatorType,
-    const bool& weldPelvis) {
-    Model model("Rajagopal2015_right_leg_9musc.osim");
+Model createRightLegModel(const std::string& actuatorType) {
+    Model model("Rajagopal2015_right_leg_9musc_bottom_up.osim");
     model.finalizeConnections(); // Need this here to access offset frames.
 
-    // Replace ground_pelvis, subtalar_r, and mtp_r joints with weld joints.
-    if (weldPelvis) {
-        replaceJointWithWeldJoint(model, "ground_pelvis");
-    }
+    // Replace subtalar_r and mtp_r joints with weld joints.
     replaceJointWithWeldJoint(model, "subtalar_r");
     replaceJointWithWeldJoint(model, "mtp_r");
 
     // Replace hip_r ball joint and replace with pin joint.
     auto& hip_r = model.updJointSet().get("hip_r");
-    PhysicalOffsetFrame* pelvis_offset_hip_r
-        = PhysicalOffsetFrame().safeDownCast(hip_r.getParentFrame().clone());
     PhysicalOffsetFrame* femur_r_offset_hip_r
+        = PhysicalOffsetFrame().safeDownCast(hip_r.getParentFrame().clone());
+    PhysicalOffsetFrame* pelvis_offset_hip_r
         = PhysicalOffsetFrame().safeDownCast(hip_r.getChildFrame().clone());
     model.updJointSet().remove(&hip_r);
     auto* hip_r_pin = new PinJoint("hip_r",
-        model.getBodySet().get("pelvis"),
-        pelvis_offset_hip_r->get_translation(),
-        pelvis_offset_hip_r->get_orientation(),
         model.getBodySet().get("femur_r"),
         femur_r_offset_hip_r->get_translation(),
-        femur_r_offset_hip_r->get_orientation());
+        femur_r_offset_hip_r->get_orientation(),
+        model.getBodySet().get("pelvis"),
+        pelvis_offset_hip_r->get_translation(),
+        pelvis_offset_hip_r->get_orientation());
     hip_r_pin->updCoordinate().setName("hip_flexion_r");
     model.addJoint(hip_r_pin);
 
+    // Make pelvis heavier to simulate torso.
+    //model.updBodySet().get("pelvis").setMass(10.0);
+
     if (actuatorType == "torques") {
         // Remove muscles and add coordinate actuators.
-        addCoordinateActuator(model, "hip_flexion_r", 10);
-        addCoordinateActuator(model, "knee_angle_r", 10);
-        addCoordinateActuator(model, "ankle_angle_r", 10);
-        if (!weldPelvis) {
-            addCoordinateActuator(model, "pelvis_tx", 1000);
-            addCoordinateActuator(model, "pelvis_ty", 1000);
-            addCoordinateActuator(model, "pelvis_tz", 1000);
-            addCoordinateActuator(model, "pelvis_tilt", 10);
-            addCoordinateActuator(model, "pelvis_list", 10);
-            addCoordinateActuator(model, "pelvis_rotation", 10);
-        }
+        addCoordinateActuator(model, "hip_flexion_r", 50);
+        addCoordinateActuator(model, "knee_angle_r", 50);
+        addCoordinateActuator(model, "ankle_angle_r", 50);
         removeMuscles(model);
     }
     else if (actuatorType == "muscles") {
-        if (!weldPelvis) {
-            // Residual actuators (necessary since we don't have ground 
-            // contact).
-            addCoordinateActuator(model, "pelvis_tx", 1000);
-            addCoordinateActuator(model, "pelvis_ty", 1000);
-            addCoordinateActuator(model, "pelvis_tz", 1000);
-            addCoordinateActuator(model, "pelvis_tilt", 10);
-            addCoordinateActuator(model, "pelvis_list", 10);
-            addCoordinateActuator(model, "pelvis_rotation", 10);
+        // Strengthen muscles.
+        auto& muscSet = model.updMuscles();
+        double factor = 10.0;
+        for (int i = 0; i < muscSet.getSize(); ++i) {
+            auto& musc = muscSet.get(i);
+            musc.setMaxIsometricForce(factor*musc.getMaxIsometricForce());
         }
+
         // Remove effect of passive fiber forces.
         minimizePassiveFiberForces(model);
     }
@@ -138,41 +124,43 @@ Model createRightLegModel(const std::string& actuatorType,
 
 struct Options {
     std::string actuatorType = "torques";
-    bool weldPelvis = false;
     int num_mesh_points = 10;
     double convergence_tol = 1e-2;
     double constraint_tol = 1e-2;
     int max_iterations = 100000;
     std::string solver = "snopt";
     std::string dynamics_mode = "explicit";
+    std::string hessian_approx = "limited-memory";
     TimeSeriesTable controlsGuess = {};
     MocoIterate previousSolution = {};
 };
 
 MocoSolution minimizeControlEffortRightLeg(const Options& opt) {
     MocoTool moco;
-    std::string weldedPelvisStr = "";
-    if (opt.weldPelvis) { weldedPelvisStr = "weldedPelvis_"; }
-    moco.setName("sandboxRightLeg_" + weldedPelvisStr + opt.actuatorType +
+    moco.setName("sandboxRightLeg_" + opt.actuatorType + 
         "_minimize_control_effort");
     MocoProblem& mp = moco.updProblem();
-    mp.setModelCopy(createRightLegModel(opt.actuatorType, opt.weldPelvis));
+    Model model = createRightLegModel(opt.actuatorType);
+    mp.setModelCopy(model);
 
     // Set bounds.
     mp.setTimeBounds(0, 1);
-    mp.setStateInfo("/jointset/hip_r/hip_flexion_r/value", {-5, 5},
-        -SimTK::Pi / 3.0, SimTK::Pi / 5.0);
-    mp.setStateInfo("/jointset/walker_knee_r/knee_angle_r/value", {0, 3}, 1, 0);
-    mp.setStateInfo("/jointset/ankle_r/ankle_angle_r/value", {-0.7, 0.5}, -0.2,
-        0.2);
+    mp.setStateInfo("/jointset/hip_r/hip_flexion_r/value", {-1, 1},
+        -1, 0);
+    mp.setStateInfo("/jointset/walker_knee_r/knee_angle_r/value", {-3, 0}, 
+        -SimTK::Pi / 1.5, 0);
+    mp.setStateInfo("/jointset/ankle_r/ankle_angle_r/value", {-1, 1}, 
+        -SimTK::Pi / 4.0, 0);
+
+    if (opt.actuatorType == "muscles") {
+        for (int i = 0; i < model.getMuscles().getSize(); ++i) {
+            auto muscPath = model.getMuscles().get(i).getAbsolutePathString();
+            mp.setControlInfo(muscPath, {0.02, 1});
+        }
+    }
 
     auto* effort = mp.addCost<MocoControlCost>();
     effort->setName("control_effort");
-
-    //auto* reaction = mp.addCost<MocoJointReactionNormCost>();
-    //reaction->setName("joint_reaction");
-    //reaction->set_weight(0.1);
-    //reaction->setJointPath("/jointset/walker_knee_r/");
 
     MocoTropterSolver& ms = moco.initSolver();
     ms.set_num_mesh_points(opt.num_mesh_points);
@@ -181,9 +169,15 @@ MocoSolution minimizeControlEffortRightLeg(const Options& opt) {
     ms.set_optim_convergence_tolerance(opt.convergence_tol);
     ms.set_optim_constraint_tolerance(opt.constraint_tol);
     ms.set_optim_solver(opt.solver);
+    if (opt.solver == "ipopt") {
+        ms.set_optim_hessian_approximation(opt.hessian_approx);
+    }
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_optim_max_iterations(opt.max_iterations);
     ms.set_enforce_constraint_derivatives(true);
+    ms.set_minimize_lagrange_multipliers(true);
+    ms.set_lagrange_multiplier_weight(10);
+    ms.set_velocity_correction_bounds({-1, 1});
     if (opt.previousSolution.empty()) {
         auto guess = ms.createGuess("bounds");
         // If the controlsGuess struct field is not empty, use it to set the
@@ -203,8 +197,7 @@ MocoSolution minimizeControlEffortRightLeg(const Options& opt) {
             }
         }
         ms.setGuess(guess);
-    }
-    else {
+    } else {
         ms.setGuess(opt.previousSolution);
     }
 
@@ -218,7 +211,7 @@ TimeSeriesTable createGuessFromGSO(const MocoSolution& torqueSolution,
     const Options& opt) {
 
     GlobalStaticOptimization gso;
-    Model model = createRightLegModel("muscles", opt.weldPelvis);
+    Model model = createRightLegModel("muscles");
     gso.setModel(model);
     gso.setKinematicsData(torqueSolution.exportToStatesTable());
 
@@ -244,8 +237,12 @@ TimeSeriesTable createGuessFromGSO(const MocoSolution& torqueSolution,
         // via the coordinate coupler constraint.
         if (coordNameFullPath.find("knee_angle_r_beta") == std::string::npos) {
             coordNames.push_back(coordNameFullPath);
+            std::cout << coordNameFullPath << std::endl;
         }
+       
     }
+
+    std::cout << torqueSolution.getControlsTrajectory().ncol() << std::endl;
 
     // Create the net generalized forces table and pass it to the GSO problem.
     TimeSeriesTable netGenForces(time, torqueSolution.getControlsTrajectory(),
@@ -272,12 +269,10 @@ TimeSeriesTable createGuessFromGSO(const MocoSolution& torqueSolution,
 
 MocoSolution stateTrackingRightLeg(const Options& opt) {
     MocoTool moco;
-    std::string weldedPelvisStr = "";
-    if (opt.weldPelvis) { weldedPelvisStr = "weldedPelvis_"; }
-    moco.setName("sandboxRightLeg_" + weldedPelvisStr + opt.actuatorType +
-        "_state_tracking");
+    moco.setName("sandboxRightLeg_" + opt.actuatorType + "_state_tracking");
     MocoProblem& mp = moco.updProblem();
-    Model model = createRightLegModel(opt.actuatorType, opt.weldPelvis);
+    Model model = createRightLegModel(opt.actuatorType);
+    mp.setModelCopy(model);
 
     // Get previous solution.
     MocoIterate prevSol = opt.previousSolution;
@@ -285,12 +280,13 @@ MocoSolution stateTrackingRightLeg(const Options& opt) {
     // Get states trajectory from previous solution. Need to set the problem
     // model and call initSystem() to create the table internally.
     model.initSystem();
-    mp.setModelCopy(model);
     TimeSeriesTable prevStateTraj =
         prevSol.exportToStatesTrajectory(mp).exportToTable(model);
 
     const auto& prevTime = prevSol.getTime();
     mp.setTimeBounds(prevTime[0], prevTime[prevTime.size() - 1]);
+    mp.setStateInfo("/jointset/hip_r/hip_flexion_r/value", {-1, 1});
+    mp.setStateInfo("/jointset/ankle_r/ankle_angle_r/value", {-1, 1});
 
     auto* tracking = mp.addCost<MocoStateTrackingCost>();
     tracking->setName("tracking");
@@ -301,8 +297,7 @@ MocoSolution stateTrackingRightLeg(const Options& opt) {
 
     auto* effort = mp.addCost<MocoControlCost>();
     effort->setName("effort");
-    effort->set_weight(0.0001);
-    
+
     MocoTropterSolver& ms = moco.initSolver();
     ms.set_num_mesh_points(opt.num_mesh_points);
     ms.set_verbosity(2);
@@ -313,11 +308,10 @@ MocoSolution stateTrackingRightLeg(const Options& opt) {
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_optim_max_iterations(opt.max_iterations);
     ms.set_enforce_constraint_derivatives(true);
+    ms.set_velocity_correction_bounds({-1, 1});
     // Need this term to recover the correct multipliers. (explicit only)
-    if (opt.dynamics_mode == "explicit") {
-        ms.set_minimize_lagrange_multipliers(true);
-        ms.set_lagrange_multiplier_weight(10);
-    }
+    ms.set_minimize_lagrange_multipliers(true);
+    ms.set_lagrange_multiplier_weight(0.1);
 
     // Create guess.
     // -------------
@@ -327,7 +321,7 @@ MocoSolution stateTrackingRightLeg(const Options& opt) {
     // controls in the trajectory guess.
     if (opt.controlsGuess.getMatrix().nrow() != 0) {
         for (const auto& label : opt.controlsGuess.getColumnLabels()) {
-            // Get the control guess
+            // Get the 
             SimTK::Vector controlGuess =
                 opt.controlsGuess.getDependentColumn(label);
             // Interpolate controls guess to correct length.
@@ -348,63 +342,44 @@ MocoSolution stateTrackingRightLeg(const Options& opt) {
 }
 
 void main() {
-
-    // When solving problems while providing derivative infomration, SNOPT 
-    // sometime exits with error 52: "incorrect constraint derivatives", but 
-    // only for problems with muscles. This may suggest a bug in our own
-    // Jacobian derivative calculations. Why only for muscles?
-
     // Predictive problem.
     Options opt;
-    opt.weldPelvis = true;
-    opt.num_mesh_points = 20;
+    opt.num_mesh_points = 10;
     opt.solver = "snopt";
     opt.dynamics_mode = "implicit";
-    opt.constraint_tol = 1e-3;
-    opt.convergence_tol = 1e-3;
-    MocoSolution torqueSolEffort = minimizeControlEffortRightLeg(opt);
-
-    // Tracking problems seem to need the tighter tolerance.
-    opt.convergence_tol = 1e-4;
-    opt.constraint_tol = 1e-4;
-    //opt.dynamics_mode = "explicit";
-    opt.previousSolution = torqueSolEffort;
-    //TimeSeriesTable controlsGuess;
-    //controlsGuess.updMatrix() = torqueSolEffort.getControlsTrajectory();
-    //controlsGuess.setColumnLabels(torqueSolEffort.getControlNames());
-    //opt.controlsGuess = controlsGuess;
-    MocoSolution torqueSolTracking = stateTrackingRightLeg(opt);
-
-    std::cout << "Predictive versus tracking comparison" << std::endl;
-    std::cout << "-------------------------------------" << std::endl;
-    std::cout << "States RMS error: ";
-    std::cout << 
-        torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
-        {}, {"none"}, {"none"}, {"none"});
-    std::cout << std::endl;
-    std::cout << "Controls RMS error: ";
-    std::cout <<
-        torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
-        {"none"}, {}, {"none"}, {"none"});
-    std::cout << std::endl;
-    //std::cout << "Derivatives RMS error: ";
-    //std::cout <<
-    //    torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
-    //    {"none"}, {"none"}, {"none"}, {});
-    //std::cout << std::endl;
-
-    // TODO stiff passive muscle elements
-    //TimeSeriesTable activationsMinimizeControlEffort = 
-    //    createGuessFromGSO(torqueSol, opt);
-
-    //opt.num_mesh_points = 10;
-    //opt.solver = "snopt";
-    //opt.dynamics_mode = "implicit";
+    // Tight tolerances needed for smooth solution.
+    opt.constraint_tol = 1e-6;
+    opt.convergence_tol = 1e-6;
     //opt.actuatorType = "muscles";
+    //opt.previousSolution = MocoSolution(
+    //    "sandboxRightLeg_torques_minimize_control_effort_solution.sto");
+    MocoSolution torqueSolEffort = minimizeControlEffortRightLeg(opt);
+    //MocoSolution torqueSolEffort(
+    //       "sandboxRightLeg_torques_minimize_control_effort_solution.sto");
+
+    // Tracking problem.
+    //opt.dynamics_mode = "explicit";
+    //opt.previousSolution = torqueSolEffort;
     //opt.constraint_tol = 1e-6;
     //opt.convergence_tol = 1e-6;
-    //opt.previousSolution = MocoSolution(
-    //    "sandboxRightLeg_weldedPelvis_muscles_minimize_control_effort_solution_good.sto");
-    //MocoSolution torqueSolEffort = minimizeControlEffortRightLeg(opt);
+    //opt.num_mesh_points = 20;
+    //MocoSolution torqueSolTracking = stateTrackingRightLeg(opt);
 
+    //std::cout << "Predictive versus tracking comparison" << std::endl;
+    //std::cout << "-------------------------------------" << std::endl;
+    //std::cout << "States RMS error: ";
+    //std::cout <<
+    //    torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
+    //    {}, {"none"}, {"none"}, {"none"});
+    //std::cout << std::endl;
+    //std::cout << "Controls RMS error: ";
+    //std::cout <<
+    //    torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
+    //    {"none"}, {}, {"none"}, {"none"});
+    //std::cout << std::endl;
+
+    //opt.actuatorType = "muscles";
+    //opt.constraint_tol = 1e-2;
+    //opt.convergence_tol = 1e-2;
+    //MocoSolution muscleSolEffort = minimizeControlEffortRightLeg(opt);
 }
