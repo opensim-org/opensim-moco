@@ -101,7 +101,7 @@ problem.addCost(cost);
 
 % Configure the solver.
 % =====================
-solver = moco.initSolver();
+solver = moco.initTropterSolver();
 solver.set_num_mesh_points(50);
 solver.set_optim_convergence_tolerance(1e-3);
 

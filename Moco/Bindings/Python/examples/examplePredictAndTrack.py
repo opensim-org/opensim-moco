@@ -138,7 +138,7 @@ def solvePrediction():
 
 
     # Configure the solver.
-    solver = moco.initSolver()
+    solver = moco.initTropterSolver()
     solver.set_num_mesh_points(50)
     solver.set_verbosity(2)
     solver.set_optim_solver("ipopt")
@@ -232,12 +232,12 @@ def solveStateTracking(stateRef):
     # TODO problem.addCost(effort)
 
     # Configure the solver.
-    solver = moco.initSolver()
+    solver = moco.initTropterSolver()
     solver.set_num_mesh_points(50)
     solver.set_verbosity(2)
     solver.set_optim_solver("ipopt")
     solver.set_optim_hessian_approximation("exact")
-    solver.set_hessian_block_sparsity_mode("dense")
+    solver.set_exact_hessian_block_sparsity_mode("dense")
 
     # Save the problem to a setup file for reference.
     moco.printToXML("examplePredictAndTrack_track_states.omoco")
@@ -286,12 +286,12 @@ def solveMarkerTracking(markersRef, guess):
     # problem.addCost(effort)
 
     # Configure the solver.
-    solver = moco.initSolver()
+    solver = moco.initTropterSolver()
     solver.set_num_mesh_points(50)
     solver.set_verbosity(2)
     solver.set_optim_solver("ipopt")
     solver.set_optim_hessian_approximation("exact")
-    solver.set_hessian_block_sparsity_mode("dense")
+    solver.set_exact_hessian_block_sparsity_mode("dense")
     
     solver.setGuess(guess)
 
