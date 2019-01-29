@@ -184,6 +184,9 @@ MocoSolution minimizeControlEffortRightLeg(const Options& opt) {
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_optim_max_iterations(opt.max_iterations);
     ms.set_enforce_constraint_derivatives(true);
+    ms.set_velocity_correction_bounds({-0.00001, 0.00001});
+    ms.set_minimize_lagrange_multipliers(true);
+    ms.set_lagrange_multiplier_weight(10);
     if (opt.previousSolution.empty()) {
         auto guess = ms.createGuess("bounds");
         // If the controlsGuess struct field is not empty, use it to set the
@@ -288,9 +291,15 @@ MocoSolution stateTrackingRightLeg(const Options& opt) {
     mp.setModelCopy(model);
     TimeSeriesTable prevStateTraj =
         prevSol.exportToStatesTrajectory(mp).exportToTable(model);
+    GCVSplineSet prevStateSpline(prevStateTraj, prevSol.getStateNames());
 
     const auto& prevTime = prevSol.getTime();
     mp.setTimeBounds(prevTime[0], prevTime[prevTime.size() - 1]);
+    mp.setStateInfo("/jointset/hip_r/hip_flexion_r/value", {-5, 5},
+        -SimTK::Pi / 3.0, SimTK::Pi / 5.0);
+    mp.setStateInfo("/jointset/walker_knee_r/knee_angle_r/value", {0, 3}, 1, 0);
+    mp.setStateInfo("/jointset/ankle_r/ankle_angle_r/value", {-0.7, 0.5}, -0.2,
+        0.2);
 
     auto* tracking = mp.addCost<MocoStateTrackingCost>();
     tracking->setName("tracking");
@@ -313,11 +322,9 @@ MocoSolution stateTrackingRightLeg(const Options& opt) {
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_optim_max_iterations(opt.max_iterations);
     ms.set_enforce_constraint_derivatives(true);
-    // Need this term to recover the correct multipliers. (explicit only)
-    if (opt.dynamics_mode == "explicit") {
-        ms.set_minimize_lagrange_multipliers(true);
-        ms.set_lagrange_multiplier_weight(10);
-    }
+    ms.set_velocity_correction_bounds({-0.1, 0.1});
+    ms.set_minimize_lagrange_multipliers(false);
+    ms.set_lagrange_multiplier_weight(10);
 
     // Create guess.
     // -------------
@@ -357,36 +364,40 @@ void main() {
     // Predictive problem.
     Options opt;
     opt.weldPelvis = true;
-    opt.num_mesh_points = 20;
+    opt.num_mesh_points = 50;
     opt.solver = "snopt";
-    opt.dynamics_mode = "implicit";
-    opt.constraint_tol = 1e-3;
-    opt.convergence_tol = 1e-3;
+    opt.dynamics_mode = "explicit";
+    opt.constraint_tol = 1e-2;
+    opt.convergence_tol = 1e-2;
     MocoSolution torqueSolEffort = minimizeControlEffortRightLeg(opt);
+    //MocoSolution torqueSolEffort(
+    //"sandboxRightLeg_weldedPelvis_torques_minimize_control_effort_solution.sto");
 
     // Tracking problems seem to need the tighter tolerance.
-    opt.convergence_tol = 1e-4;
-    opt.constraint_tol = 1e-4;
+    //MocoSolution torqueSolEffort(
+    //"sandboxRightLeg_weldedPelvis_torques_minimize_control_effort_solution.sto");
     //opt.dynamics_mode = "explicit";
+    opt.constraint_tol = 1e-4;
+    opt.convergence_tol = 1e-4;
     opt.previousSolution = torqueSolEffort;
     //TimeSeriesTable controlsGuess;
     //controlsGuess.updMatrix() = torqueSolEffort.getControlsTrajectory();
     //controlsGuess.setColumnLabels(torqueSolEffort.getControlNames());
     //opt.controlsGuess = controlsGuess;
-    MocoSolution torqueSolTracking = stateTrackingRightLeg(opt);
+    //MocoSolution torqueSolTracking = stateTrackingRightLeg(opt);
 
-    std::cout << "Predictive versus tracking comparison" << std::endl;
-    std::cout << "-------------------------------------" << std::endl;
-    std::cout << "States RMS error: ";
-    std::cout << 
-        torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
-        {}, {"none"}, {"none"}, {"none"});
-    std::cout << std::endl;
-    std::cout << "Controls RMS error: ";
-    std::cout <<
-        torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
-        {"none"}, {}, {"none"}, {"none"});
-    std::cout << std::endl;
+    //std::cout << "Predictive versus tracking comparison" << std::endl;
+    //std::cout << "-------------------------------------" << std::endl;
+    //std::cout << "States RMS error: ";
+    //std::cout << 
+    //    torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
+    //    {}, {"none"}, {"none"}, {"none"});
+    //std::cout << std::endl;
+    //std::cout << "Controls RMS error: ";
+    //std::cout <<
+    //    torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
+    //    {"none"}, {}, {"none"}, {"none"});
+    //std::cout << std::endl;
     //std::cout << "Derivatives RMS error: ";
     //std::cout <<
     //    torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,

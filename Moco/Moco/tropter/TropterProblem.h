@@ -262,6 +262,7 @@ protected:
         const auto& states = in.states;
         const auto& controls = in.controls;
         const auto& adjuncts = in.adjuncts;
+        const auto& diffuses = in.diffuses;
 
         // TODO would it make sense to a vector of States, one for each mesh
         // point, so that each can preserve their cache?
@@ -288,6 +289,11 @@ protected:
                 integrand += 
                     m_mocoTropterSolver.get_lagrange_multiplier_weight()
                     * adjuncts[i] * adjuncts[i];
+
+                //if (diffuses.size() != 0) {
+                //    integrand += 10 * diffuses[i] * diffuses[i];
+                //}
+                
             }
         }
     }

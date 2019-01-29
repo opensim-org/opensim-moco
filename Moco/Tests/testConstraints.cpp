@@ -469,12 +469,12 @@ MocoIterate runForwardSimulation(Model model, const MocoSolution& solution,
     // should match very closely, since the foward simulation controls are 
     // created from splines of the OCP solution controls
     SimTK_TEST_EQ_TOL(solution.compareContinuousVariablesRMS(forwardSolution,
-        {"none"}, {}, {"none"}), 0, 1e-9);
+        {"none"}, {}, {"none"}, {"none"}), 0, 1e-9);
 
     // Compare states trajectory between forward simulation and OCP solution.
     // The states trajectory may not match as well as the controls.
     SimTK_TEST_EQ_TOL(solution.compareContinuousVariablesRMS(forwardSolution,
-        {}, {"none"}, {"none"}), 0, tol);
+        {}, {"none"}, {"none"}, {"none"}), 0, tol);
 
     return forwardSolution;
 }
@@ -483,7 +483,8 @@ MocoIterate runForwardSimulation(Model model, const MocoSolution& solution,
 /// specified final configuration while subject to a constraint that its
 /// end-effector must lie on a vertical line through the origin and minimize
 /// control effort.
-void testDoublePendulumPointOnLine(bool enforce_constraint_derivatives) {
+void testDoublePendulumPointOnLine(bool enforce_constraint_derivatives, 
+        std::string dynamics_mode) {
     MocoTool moco;
     moco.setName("double_pendulum_point_on_line");
     MocoProblem& mp = moco.updProblem();
@@ -523,6 +524,7 @@ void testDoublePendulumPointOnLine(bool enforce_constraint_derivatives) {
     ms.set_optim_convergence_tolerance(1e-4);
     ms.set_optim_hessian_approximation("exact");
     ms.set_transcription_scheme("hermite-simpson");
+    ms.set_dynamics_mode(dynamics_mode);
     ms.set_enforce_constraint_derivatives(enforce_constraint_derivatives);
     ms.set_minimize_lagrange_multipliers(true);
     ms.set_lagrange_multiplier_weight(10);
@@ -559,7 +561,7 @@ void testDoublePendulumPointOnLine(bool enforce_constraint_derivatives) {
 /// its two coordinates together via a linear relationship and minimizing 
 /// control effort.
 void testDoublePendulumCoordinateCoupler(MocoSolution& solution, 
-        bool enforce_constraint_derivatives) {
+        bool enforce_constraint_derivatives, std::string dynamics_mode) {
     MocoTool moco;
     moco.setName("double_pendulum_coordinate_coupler");
 
@@ -605,6 +607,7 @@ void testDoublePendulumCoordinateCoupler(MocoSolution& solution,
     ms.set_optim_convergence_tolerance(1e-3);
     ms.set_optim_hessian_approximation("exact");
     ms.set_transcription_scheme("hermite-simpson");
+    ms.set_dynamics_mode(dynamics_mode);
     ms.set_enforce_constraint_derivatives(enforce_constraint_derivatives);
     ms.set_minimize_lagrange_multipliers(true);
     ms.set_lagrange_multiplier_weight(10);
@@ -638,7 +641,7 @@ void testDoublePendulumCoordinateCoupler(MocoSolution& solution,
 /// prescribed motion based on the previous test case (see
 /// testDoublePendulumCoordinateCoupler).
 void testDoublePendulumPrescribedMotion(MocoSolution& couplerSolution,
-        bool enforce_constraint_derivatives) {
+        bool enforce_constraint_derivatives, std::string dynamics_mode) {
     MocoTool moco;
     moco.setName("double_pendulum_prescribed_motion");
     MocoProblem& mp = moco.updProblem();
@@ -684,6 +687,7 @@ void testDoublePendulumPrescribedMotion(MocoSolution& couplerSolution,
     ms.set_optim_convergence_tolerance(1e-3);
     ms.set_optim_hessian_approximation("exact");
     ms.set_transcription_scheme("hermite-simpson");
+    ms.set_dynamics_mode(dynamics_mode);
     ms.set_enforce_constraint_derivatives(enforce_constraint_derivatives);
     ms.set_minimize_lagrange_multipliers(true);
     ms.set_lagrange_multiplier_weight(10);
@@ -880,15 +884,27 @@ int main() {
         // TODO test tolerances can be improved significantly by not including
         // Hermite-Simpson midpoint values in comparisons.
         // Direct collocation tests, without constraint derivatives.
-        SimTK_SUBTEST1(testDoublePendulumPointOnLine, false);
-        MocoSolution couplerSol;
-        SimTK_SUBTEST2(testDoublePendulumCoordinateCoupler, couplerSol, false);
-        SimTK_SUBTEST2(testDoublePendulumPrescribedMotion, couplerSol, false);
-        // Direct collocation tests, with constraint derivatives.
-        SimTK_SUBTEST1(testDoublePendulumPointOnLine, true);
-        MocoSolution couplerSol2;
-        SimTK_SUBTEST2(testDoublePendulumCoordinateCoupler, couplerSol2, true);
-        SimTK_SUBTEST2(testDoublePendulumPrescribedMotion, couplerSol2, true);
+        //SimTK_SUBTEST2(testDoublePendulumPointOnLine, false, "explicit");
+        //MocoSolution couplerSol;
+        //SimTK_SUBTEST3(testDoublePendulumCoordinateCoupler, couplerSol, false,
+        //    "explicit");
+        //SimTK_SUBTEST3(testDoublePendulumPrescribedMotion, couplerSol, false, 
+        //    "explicit");
+        //// Direct collocation tests, enforced constraint derivatives.
+        //SimTK_SUBTEST2(testDoublePendulumPointOnLine, true, "explicit");
+        //MocoSolution couplerSolDerivs;
+        //SimTK_SUBTEST3(testDoublePendulumCoordinateCoupler, couplerSolDerivs, 
+        //    true, "explicit");
+        //SimTK_SUBTEST3(testDoublePendulumPrescribedMotion, couplerSolDerivs, 
+        //    true, "explicit");
+        // Direct collocation tests, enforced constraint derivatives, implicit 
+        // mode.
+        //SimTK_SUBTEST2(testDoublePendulumPointOnLine, true, "implicit");
+        MocoSolution couplerSolImplicit;
+        SimTK_SUBTEST3(testDoublePendulumCoordinateCoupler, couplerSolImplicit,
+            true, "implicit");
+        SimTK_SUBTEST3(testDoublePendulumPrescribedMotion, couplerSolImplicit,
+            true, "implicit");
         // Custom path constraint test.
         SimTK_SUBTEST(testDoublePendulumEqualControl);
     SimTK_END_TEST();
