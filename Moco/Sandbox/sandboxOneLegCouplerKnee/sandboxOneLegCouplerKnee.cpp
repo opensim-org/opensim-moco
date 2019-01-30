@@ -145,7 +145,6 @@ struct Options {
     int max_iterations = 100000;
     std::string solver = "snopt";
     std::string dynamics_mode = "explicit";
-    TimeSeriesTable controlsGuess = {};
     MocoIterate previousSolution = {};
 };
 
@@ -184,30 +183,14 @@ MocoSolution minimizeControlEffortRightLeg(const Options& opt) {
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_optim_max_iterations(opt.max_iterations);
     ms.set_enforce_constraint_derivatives(true);
-    ms.set_velocity_correction_bounds({-0.00001, 0.00001});
+    ms.set_velocity_correction_bounds({-0.0001, 0.0001});
     ms.set_minimize_lagrange_multipliers(true);
     ms.set_lagrange_multiplier_weight(10);
+    //ms.set_optim_hessian_approximation("exact");
     if (opt.previousSolution.empty()) {
         auto guess = ms.createGuess("bounds");
-        // If the controlsGuess struct field is not empty, use it to set the
-        // controls in the trajectory guess.
-        if (opt.controlsGuess.getMatrix().nrow() != 0) {
-            for (const auto& label : opt.controlsGuess.getColumnLabels()) {
-                // Get the 
-                SimTK::Vector controlGuess =
-                    opt.controlsGuess.getDependentColumn(label);
-                // Interpolate controls guess to correct length.
-                SimTK::Vector prevTime = createVectorLinspace(
-                    opt.controlsGuess.getMatrix().nrow(), 0, 1);
-                auto controlGuessInterp = interpolate(prevTime, controlGuess,
-                    guess.getTime());
-                // Set the guess for this control.
-                guess.setControl(label, controlGuessInterp);
-            }
-        }
         ms.setGuess(guess);
-    }
-    else {
+    } else {
         ms.setGuess(opt.previousSolution);
     }
 
@@ -322,32 +305,17 @@ MocoSolution stateTrackingRightLeg(const Options& opt) {
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_optim_max_iterations(opt.max_iterations);
     ms.set_enforce_constraint_derivatives(true);
-    ms.set_velocity_correction_bounds({-0.1, 0.1});
-    ms.set_minimize_lagrange_multipliers(false);
+    ms.set_velocity_correction_bounds({-0.0001, 0.0001});
+    ms.set_minimize_lagrange_multipliers(true);
     ms.set_lagrange_multiplier_weight(10);
+    ms.set_optim_hessian_approximation("exact");
 
     // Create guess.
     // -------------
-    auto guess = ms.createGuess("bounds");
-    // Controls guess.
-    // If the controlsGuess struct field is not empty, use it to set the
-    // controls in the trajectory guess.
-    if (opt.controlsGuess.getMatrix().nrow() != 0) {
-        for (const auto& label : opt.controlsGuess.getColumnLabels()) {
-            // Get the control guess
-            SimTK::Vector controlGuess =
-                opt.controlsGuess.getDependentColumn(label);
-            // Interpolate controls guess to correct length.
-            auto controlGuessInterp = interpolate(prevTime, controlGuess,
-                guess.getTime());
-            // Set the guess for this control.
-            guess.setControl(label, controlGuessInterp);
-        }
-    }
-    // States guess.
-    guess.setStatesTrajectory(prevStateTraj);
-    ms.setGuess(guess);
+    ms.setGuess(opt.previousSolution);
 
+    // Solve.
+    // ------
     MocoSolution solution = moco.solve().unseal();
     moco.visualize(solution);
 
@@ -356,53 +324,40 @@ MocoSolution stateTrackingRightLeg(const Options& opt) {
 
 void main() {
 
-    // When solving problems while providing derivative infomration, SNOPT 
-    // sometime exits with error 52: "incorrect constraint derivatives", but 
-    // only for problems with muscles. This may suggest a bug in our own
-    // Jacobian derivative calculations. Why only for muscles?
+    // When solving problems while providing derivative infomration from 
+    // tropter, SNOPT sometime exits with error 52: "incorrect constraint 
+    // derivatives", but only for problems with muscles. This may suggest a bug 
+    // in our own Jacobian derivative calculations. Why only for muscles?
 
     // Predictive problem.
     Options opt;
     opt.weldPelvis = true;
-    opt.num_mesh_points = 50;
+    opt.num_mesh_points = 10;
     opt.solver = "snopt";
     opt.dynamics_mode = "explicit";
-    opt.constraint_tol = 1e-2;
-    opt.convergence_tol = 1e-2;
+    opt.constraint_tol = 1e-4;
+    opt.convergence_tol = 1e-4;
     MocoSolution torqueSolEffort = minimizeControlEffortRightLeg(opt);
     //MocoSolution torqueSolEffort(
     //"sandboxRightLeg_weldedPelvis_torques_minimize_control_effort_solution.sto");
 
-    // Tracking problems seem to need the tighter tolerance.
-    //MocoSolution torqueSolEffort(
-    //"sandboxRightLeg_weldedPelvis_torques_minimize_control_effort_solution.sto");
-    //opt.dynamics_mode = "explicit";
     opt.constraint_tol = 1e-4;
-    opt.convergence_tol = 1e-4;
+    opt.convergence_tol = 1e-6;
     opt.previousSolution = torqueSolEffort;
-    //TimeSeriesTable controlsGuess;
-    //controlsGuess.updMatrix() = torqueSolEffort.getControlsTrajectory();
-    //controlsGuess.setColumnLabels(torqueSolEffort.getControlNames());
-    //opt.controlsGuess = controlsGuess;
-    //MocoSolution torqueSolTracking = stateTrackingRightLeg(opt);
+    MocoSolution torqueSolTracking = stateTrackingRightLeg(opt);
 
-    //std::cout << "Predictive versus tracking comparison" << std::endl;
-    //std::cout << "-------------------------------------" << std::endl;
-    //std::cout << "States RMS error: ";
-    //std::cout << 
-    //    torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
-    //    {}, {"none"}, {"none"}, {"none"});
-    //std::cout << std::endl;
-    //std::cout << "Controls RMS error: ";
-    //std::cout <<
-    //    torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
-    //    {"none"}, {}, {"none"}, {"none"});
-    //std::cout << std::endl;
-    //std::cout << "Derivatives RMS error: ";
-    //std::cout <<
-    //    torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
-    //    {"none"}, {"none"}, {"none"}, {});
-    //std::cout << std::endl;
+    std::cout << "Predictive versus tracking comparison" << std::endl;
+    std::cout << "-------------------------------------" << std::endl;
+    std::cout << "States RMS error: ";
+    std::cout << 
+        torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
+        {}, {"none"}, {"none"}, {"none"});
+    std::cout << std::endl;
+    std::cout << "Controls RMS error: ";
+    std::cout <<
+        torqueSolTracking.compareContinuousVariablesRMS(torqueSolEffort,
+        {"none"}, {}, {"none"}, {"none"});
+    std::cout << std::endl;
 
     // TODO stiff passive muscle elements
     //TimeSeriesTable activationsMinimizeControlEffort = 

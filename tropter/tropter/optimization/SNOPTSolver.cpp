@@ -84,7 +84,7 @@ std::string convert_info_integer_to_string(int info) {
 void snopt_userfunction(int*   /* Status */,
         int* num_variables, double x[],
         int*   needF, int* length_F  , double  F[],
-        int*   /*needG*/, int* /*neG*/, double /*G*/[],
+        int*   /* needG  */, int* /*  neG  */, double /* G */[],
         char*  /*    cu  */, int* /* lencu */,
         int   [] /* iu   */, int* /* leniu */,
         double[] /* ru   */, int* /* lenru */)
@@ -164,28 +164,28 @@ SNOPTSolver::optimize_impl(const VectorXd& variablesArg) const {
     // for errors in the tropter-computed Jacobian. For now, used the SNOPT-
     // computed Jacobian until this is resolved.
 
-    //SparsityCoordinates jacobian_sparsity;
-    //calc_sparsity(variables,
-    //        jacobian_sparsity, false,
-    //        SparsityCoordinates()  /*hessian_sparsity*/);
-    //int jacobian_num_nonzeros = (int)jacobian_sparsity.row.size();
-    //int neG = num_variables + jacobian_num_nonzeros;
+    SparsityCoordinates jacobian_sparsity;
+    calc_sparsity(variables,
+            jacobian_sparsity, false,
+            SparsityCoordinates()  /*hessian_sparsity*/);
+    int jacobian_num_nonzeros = (int)jacobian_sparsity.row.size();
+    int neG = num_variables + jacobian_num_nonzeros;
 
-    //// Row indices of Jacobian G (rows correspond to "fun"ctions).
-    //VectorXi iGfun(neG);
-    //// Column indices of Jacobian G (columns correspond to "var"iables).
-    //VectorXi jGvar(neG);
-    //// The first row is the gradient of the objective; we assume it is dense.
-    //iGfun.head(num_variables).setZero();
-    //// In MATLAB, this would be jGvar(1:num_variables) = 0:num_variables-1.
-    //jGvar.head(num_variables).setLinSpaced(num_variables, 0, num_variables-1);
+    // Row indices of Jacobian G (rows correspond to "fun"ctions).
+    VectorXi iGfun(neG);
+    // Column indices of Jacobian G (columns correspond to "var"iables).
+    VectorXi jGvar(neG);
+    // The first row is the gradient of the objective; we assume it is dense.
+    iGfun.head(num_variables).setZero();
+    // In MATLAB, this would be jGvar(1:num_variables) = 0:num_variables-1.
+    jGvar.head(num_variables).setLinSpaced(num_variables, 0, num_variables-1);
 
-    //for (int index = 0; index < jacobian_num_nonzeros; ++index) {
-    //    // The Jacobian of the constraints is shifted down one row, since
-    //    // the first row of G is the gradient of the objective function.
-    //    iGfun[num_variables + index] = jacobian_sparsity.row[index] + 1;
-    //    jGvar[num_variables + index] = jacobian_sparsity.col[index];
-    //}
+    for (int index = 0; index < jacobian_num_nonzeros; ++index) {
+        // The Jacobian of the constraints is shifted down one row, since
+        // the first row of G is the gradient of the objective function.
+        iGfun[num_variables + index] = jacobian_sparsity.row[index] + 1;
+        jGvar[num_variables + index] = jacobian_sparsity.col[index];
+    }
 
     //for (int i = 0; i < num_variables; ++i) {
     //    std::cout << iGfun[i] << ", " << jGvar[i] << std::endl;
@@ -193,8 +193,8 @@ SNOPTSolver::optimize_impl(const VectorXd& variablesArg) const {
 
     // TODO linear portion of F. Can we omit this?
     // TODO for our generic problems, we cannot provide this.
-    // int lenA = 1; int neA = 0;
-    // VectorXi iAfun(lenA); VectorXi jAvar(lenA); VectorXd A;
+     int lenA = 1; int neA = 0;
+     VectorXi iAfun(lenA); VectorXi jAvar(lenA); VectorXd A;
     // For some reason, SNOPT allows the length of the iGfun and jGvar arrays
     // to be greater than the number of nonzero elements.
 
@@ -262,8 +262,8 @@ SNOPTSolver::optimize_impl(const VectorXd& variablesArg) const {
     // Use this form of solve() if providing Jacobian information.
     //int info = snopt_prob.solve(Cold, length_F, num_variables, ObjAdd,
     //    ObjRow, snopt_userfunction,
-    //    iAfun, jAvar, A, neA,
-    //    iGfun, jGvar, neG,
+    //    iAfun.data(), jAvar.data(), A.data(), neA,
+    //    iGfun.data(), jGvar.data(), neG,
     //    xlow.data(), xupp.data(), Flow.data(), Fupp.data(),
     //    variables.data(), xstate.data(), xmul.data(),
     //    F.data(), Fstate.data(), Fmul.data(),
