@@ -56,6 +56,8 @@ public:
     void calc_jacobian(unsigned num_variables, const double* variables,
             bool new_variables,
             unsigned num_nonzeros, double* nonzeros) const override;
+    void calc_jacobian_numjac(unsigned num_variables,
+        const double* variables, double* jacobian_values) const override;
     /// The Hessian is computed in a way that exploits sparsity and requires
     /// as few perturbations of the objective and constraint functions as
     /// possible. This algorithm was taken from Algorithm 9.8 on page 294 of
@@ -109,6 +111,17 @@ private:
     mutable Eigen::VectorXd m_constr_pos;
     mutable Eigen::VectorXd m_constr_neg;
     mutable Eigen::MatrixXd m_jacobian_compressed;
+
+    mutable Eigen::VectorXd fac;
+    mutable Eigen::VectorXd Fty;
+    mutable Eigen::VectorXd thresh;
+    mutable Eigen::VectorXd yscale;
+    mutable Eigen::VectorXd del;
+    mutable Eigen::VectorXd m_constr_del;
+    mutable Eigen::MatrixXd dense_jacobian;
+
+    //mutable Eigen::VectorXd seed_del;
+    //mutable SparsityCoordinates m_jacobian_indices;
 
     // Hessian/Lagrangian.
     // -------------------

@@ -239,6 +239,12 @@ calc_jacobian(unsigned num_variables, const double* x, bool /*new_x*/,
 }
 
 void Problem<adouble>::Decorator::
+calc_jacobian_numjac(unsigned num_variables, const double* variables,
+    double* jacobian_values) const {
+    calc_jacobian(num_variables, variables, true, 0, jacobian_values);
+}
+
+void Problem<adouble>::Decorator::
 calc_hessian_lagrangian(unsigned num_variables, const double* x,
         bool /*new_x*/, double obj_factor,
         unsigned num_constraints, const double* lambda,

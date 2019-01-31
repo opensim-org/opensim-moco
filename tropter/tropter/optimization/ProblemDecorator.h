@@ -90,6 +90,8 @@ public:
     virtual void calc_jacobian(unsigned num_variables, const double* variables,
             bool new_variables,
             unsigned num_nonzeros, double* nonzeros) const = 0;
+    virtual void calc_jacobian_numjac(unsigned num_variables, 
+            const double* variables, double* jacobian_values) const = 0;
     virtual void calc_hessian_lagrangian(
             unsigned num_variables, const double* variables, bool new_variables,
             double obj_factor,

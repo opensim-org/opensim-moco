@@ -107,6 +107,8 @@ calc_sparsity(const Eigen::VectorXd& variables,
     // Allocate memory that is used in jacobian().
     m_constr_pos.resize(num_jac_rows);
     m_constr_neg.resize(num_jac_rows);
+    Fty.resize(num_jac_rows);
+    m_constr_del.resize(num_jac_rows);
     m_jacobian_compressed.resize(num_jac_rows, num_jacobian_seeds);
 
     // Hessian.
@@ -265,8 +267,8 @@ calc_jacobian(unsigned num_variables, const double* variables, bool /*new_x*/,
     // TODO give error message that sparsity() must be called first.
 
     // TODO scale by magnitude of x.
-    const double eps = std::sqrt(Eigen::NumTraits<double>::epsilon());
-    const double two_eps = 2 * eps;
+    const double sqrt_eps = std::sqrt(Eigen::NumTraits<double>::epsilon());
+    const double two_sqrt_eps = 2 * sqrt_eps;
     // Number of perturbation directions.
     const auto& seed = m_jacobian_coloring->get_seed_matrix();
     const Eigen::Index num_seeds = seed.cols();
@@ -279,15 +281,100 @@ calc_jacobian(unsigned num_variables, const double* variables, bool /*new_x*/,
     for (Eigen::Index iseed = 0; iseed < num_seeds; ++iseed) {
         const auto direction = seed.col(iseed);
         // Perturb x in the positive direction.
-        m_problem.calc_constraints(x0 + eps * direction, m_constr_pos);
+        m_problem.calc_constraints(x0 + sqrt_eps * direction, m_constr_pos);
         // Perturb x in the negative direction.
-        m_problem.calc_constraints(x0 - eps * direction, m_constr_neg);
+        m_problem.calc_constraints(x0 - sqrt_eps * direction, m_constr_neg);
         // Compute central difference.
         m_jacobian_compressed.col(iseed) =
-                (m_constr_pos - m_constr_neg) / two_eps;
+                (m_constr_pos - m_constr_neg) / two_sqrt_eps;
     }
 
     m_jacobian_coloring->recover(m_jacobian_compressed, jacobian_values);
+}
+
+void Problem<double>::Decorator::
+calc_jacobian_numjac(unsigned num_variables, const double* variables,
+    double* jacobian_values) const
+{
+    // Initialize.
+    const double eps = Eigen::NumTraits<double>::epsilon();
+    const double br = pow(eps, 0.875);
+    const double bl = pow(eps, 0.75);
+    const double bu = pow(eps, 0.25);
+    const double facmin = pow(eps, 0.78);
+    const double facmax = 0.1;
+    Eigen::Map<const VectorXd> x0(variables, num_variables);
+    m_problem.calc_constraints(x0, Fty);
+    const unsigned ny = num_variables;
+    const int nF = (int)Fty.size();
+    //if (!fac.size()) {
+    fac.resize(ny);
+    fac.setConstant(sqrt(eps));
+    //}
+
+    // Select an increment del for a difference approximation to column j of
+    // dFdy. The vector fac accounts for experience gained in previous calls to
+    // numjac.
+    thresh.resize(ny); // TODO make this a user option.
+    thresh.setOnes();
+    const double typicalY = 0; // TODO make this a user option.
+    yscale = thresh.cwiseMax(x0.cwiseAbs()).cwiseMax(typicalY);
+    del = (x0 + fac.cwiseProduct(yscale)) - x0;
+    // Find indices of zeros in del
+    std::vector<Eigen::Index> del_zero_idxs;
+    for (Eigen::Index i = 0; i < del.size(); ++i) {
+        if (del[i] == 0) {
+            del_zero_idxs.push_back(i);
+        }
+    }
+
+    for (const Eigen::Index j : del_zero_idxs) {
+        while (true) {
+            if (fac[j] < facmax) {
+                fac[j] = std::min(100*fac[j], facmax);
+                del[j] = (x0[j] + fac[j]*yscale[j]) - x0[j];
+                if (del[j]) break;
+            } else {
+                del[j] = thresh[j];
+                break;
+            }
+        } 
+    }
+
+    // Keep del pointing into region
+    if (nF == ny) {
+        //thresh.setZero(); // Reusing this memory.
+        Eigen::Matrix<bool, Eigen::Dynamic, 1> s = 
+            (Fty.cwiseSign().array() >= 0);
+        Eigen::Matrix<bool, Eigen::Dynamic, 1> not_s = (s.array() != true);
+        del = (s.cast<double>() - not_s.cast<double>())
+              .cwiseProduct(del.cwiseAbs());
+    }
+
+    // Number of perturbation directions.
+    const auto& seed = m_jacobian_coloring->get_seed_matrix();
+    const Eigen::Index num_seeds = seed.cols();
+
+    // Compute the dense "compressed Jacobian" using the directions ColPack
+    // told us to use.
+    for (Eigen::Index iseed = 0; iseed < num_seeds; ++iseed) {
+        const auto direction = seed.col(iseed);
+        // Perturb.
+        m_problem.calc_constraints(x0 + del.cwiseProduct(direction), 
+            m_constr_del);
+
+        // Compute difference.
+        m_jacobian_compressed.col(iseed) = m_constr_del - Fty;
+    }
+
+    m_jacobian_coloring->recover(m_jacobian_compressed, jacobian_values);
+    Eigen::SparseMatrix<double> sparse_jacobian;
+
+    m_jacobian_coloring->convert(jacobian_values, sparse_jacobian);
+    sparse_jacobian.toDense().cwiseQuotient(del.asDiagonal().toDenseMatrix());
+
+    m_jacobian_coloring->recover(sparse_jacobian.toDense(), jacobian_values);
+
 }
 
 void Problem<double>::Decorator::

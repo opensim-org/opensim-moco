@@ -186,7 +186,6 @@ MocoSolution minimizeControlEffortRightLeg(const Options& opt) {
     ms.set_velocity_correction_bounds({-0.0001, 0.0001});
     ms.set_minimize_lagrange_multipliers(true);
     ms.set_lagrange_multiplier_weight(10);
-    //ms.set_optim_hessian_approximation("exact");
     if (opt.previousSolution.empty()) {
         auto guess = ms.createGuess("bounds");
         ms.setGuess(guess);
@@ -292,10 +291,6 @@ MocoSolution stateTrackingRightLeg(const Options& opt) {
     tracking->setWeight("/jointset/patellofemoral_r/knee_angle_r_beta/value", 0);
     tracking->setWeight("/jointset/patellofemoral_r/knee_angle_r_beta/speed", 0);
 
-    auto* effort = mp.addCost<MocoControlCost>();
-    effort->setName("effort");
-    effort->set_weight(0.0001);
-
     MocoTropterSolver& ms = moco.initSolver();
     ms.set_num_mesh_points(opt.num_mesh_points);
     ms.set_verbosity(2);
@@ -309,7 +304,6 @@ MocoSolution stateTrackingRightLeg(const Options& opt) {
     ms.set_velocity_correction_bounds({-0.0001, 0.0001});
     ms.set_minimize_lagrange_multipliers(true);
     ms.set_lagrange_multiplier_weight(10);
-    ms.set_optim_hessian_approximation("exact");
 
     // Create guess.
     // -------------
@@ -333,17 +327,17 @@ void main() {
     // Predictive problem.
     Options opt;
     opt.weldPelvis = true;
-    opt.num_mesh_points = 10;
-    opt.solver = "snopt";
+    opt.num_mesh_points = 20;
+    opt.solver = "ipopt";
     opt.dynamics_mode = "explicit";
-    opt.constraint_tol = 1e-4;
-    opt.convergence_tol = 1e-4;
-    MocoSolution torqueSolEffort = minimizeControlEffortRightLeg(opt);
-    //MocoSolution torqueSolEffort(
-    //"sandboxRightLeg_weldedPelvis_torques_minimize_control_effort_solution.sto");
+    opt.constraint_tol = 1e-2;
+    opt.convergence_tol = 1e-2;
+    //MocoSolution torqueSolEffort = minimizeControlEffortRightLeg(opt);
+    MocoSolution torqueSolEffort(
+    "sandboxRightLeg_weldedPelvis_torques_minimize_control_effort_solution.sto");
 
-    opt.constraint_tol = 1e-4;
-    opt.convergence_tol = 1e-6;
+    //opt.constraint_tol = 1e-4;
+    //opt.convergence_tol = 1e-6;
     opt.previousSolution = torqueSolEffort;
     MocoSolution torqueSolTracking = stateTrackingRightLeg(opt);
 
@@ -364,12 +358,12 @@ void main() {
     //TimeSeriesTable activationsMinimizeControlEffort = 
     //    createGuessFromGSO(torqueSol, opt);
 
-    //opt.num_mesh_points = 10;
-    //opt.solver = "snopt";
-    //opt.dynamics_mode = "implicit";
-    //opt.actuatorType = "muscles";
-    //opt.constraint_tol = 1e-6;
-    //opt.convergence_tol = 1e-6;
+    opt.num_mesh_points = 10;
+    opt.solver = "snopt";
+    opt.dynamics_mode = "explicit";
+    opt.actuatorType = "muscles";
+    opt.constraint_tol = 1e-4;
+    opt.convergence_tol = 1e-4;
     //opt.previousSolution = MocoSolution(
     //    "sandboxRightLeg_weldedPelvis_muscles_minimize_control_effort_solution_good.sto");
     //MocoSolution torqueSolEffort = minimizeControlEffortRightLeg(opt);

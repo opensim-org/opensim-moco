@@ -186,6 +186,7 @@ Solution IPOPTSolver::optimize_impl(const VectorXd& guess) const {
                 value);
         ipoptions->SetStringValue("hessian_approximation", value);
     }
+    ipoptions->SetStringValue("jacobian_approximation", "finite-difference-values");
 
     // Set advanced options.
     for (const auto& option : get_advanced_options_string()) {
@@ -410,8 +411,9 @@ bool IPOPTSolver::TNLP::eval_jac_g(
         return true;
     }
 
-    m_problem.calc_jacobian(num_variables, x, new_x, num_nonzeros_jacobian,
-            values);
+    //m_problem.calc_jacobian(num_variables, x, new_x, num_nonzeros_jacobian,
+    //        values);
+    m_problem.calc_jacobian_numjac(num_variables, x, values);
     return true;
 }
 

@@ -51,6 +51,8 @@ public:
     void calc_jacobian(unsigned num_variables, const double* variables,
             bool new_variables,
             unsigned num_nonzeros, double* nonzeros) const override;
+    void calc_jacobian_numjac(unsigned num_variables,
+        const double* variables, double* jacobian_values) const override;
     void calc_hessian_lagrangian(unsigned num_variables,
             const double* variables, bool new_variables, double obj_factor,
             unsigned num_constraints, const double* lambda, bool new_lambda,
