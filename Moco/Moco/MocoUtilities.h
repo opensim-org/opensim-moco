@@ -45,6 +45,13 @@ inline bool endsWith(const std::string& string, const std::string& ending) {
     }
     return false;
 }
+/// Get a string with the current date and time formatted using the ISO standard
+/// extended datetime format (%Y-%m-%dT%X))
+OSIMMOCO_API std::string getFormattedDateTime();
+
+class StatesTrajectory;
+class Model;
+class MocoIterate;
 
 /// Create a SimTK::Vector with the provided length whose elements are
 /// linearly spaced between start and end.
@@ -106,10 +113,10 @@ OSIMMOCO_API void replaceMusclesWithPathActuators(Model& model);
 /// @note This only removes muscles within the model's ForceSet.
 OSIMMOCO_API void removeMuscles(Model& model);
 
-/// Replace a joint in the model with a WeldJoint. 
+/// Replace a joint in the model with a WeldJoint.
 /// @note This assumes the joint is in the JointSet and that the joint's
 ///       connectees are PhysicalOffsetFrames.
-OSIMMOCO_API void replaceJointWithWeldJoint(Model& model, 
+OSIMMOCO_API void replaceJointWithWeldJoint(Model& model,
     const std::string& jointName);
 
 /// The map provides the index of each state variable in

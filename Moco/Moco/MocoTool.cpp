@@ -36,6 +36,7 @@ MocoTool::MocoTool(const std::string& omocoFile) : Object(omocoFile) {
 }
 
 void MocoTool::constructProperties() {
+    constructProperty_write_setup("./");
     constructProperty_write_solution("./");
     constructProperty_problem(MocoProblem());
     constructProperty_solver(MocoTropterSolver());
@@ -85,16 +86,26 @@ MocoSolution MocoTool::solve() const {
     const_cast<Self*>(this)->initSolverInternal();
     MocoSolution solution = get_solver().solve();
     bool originallySealed = solution.isSealed();
+    if (get_write_setup() != "false") {
+        OpenSim::IO::makeDir(get_write_setup());
+        std::string prefix = getName().empty() ? "MocoTool" : getName();
+        const std::string filename = get_write_setup() +
+               SimTK::Pathname::getPathSeparator() + prefix + "_setup_"
+               + getFormattedDateTime() + ".omoco";
+        print(filename);
+    }
     if (get_write_solution() != "false") {
         OpenSim::IO::makeDir(get_write_solution());
         std::string prefix = getName().empty() ? "MocoTool" : getName();
         solution.unseal();
         const std::string filename = get_write_solution() +
-                SimTK::Pathname::getPathSeparator() + prefix + "_solution.sto";
+                SimTK::Pathname::getPathSeparator() + prefix + "_solution_"
+                + getFormattedDateTime() + ".sto";
         try {
             solution.write(filename);
         } catch (const TimestampGreaterThanEqualToNext&) {
-            std::cout << "Could not write solution to file...skipping."
+            std::cout << "Could not write solution to file due to "
+                         "nonincreasing timestamps...skipping."
                     << std::endl;
         }
         if (originallySealed) solution.seal();
