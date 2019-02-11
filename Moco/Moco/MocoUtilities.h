@@ -49,10 +49,6 @@ inline bool endsWith(const std::string& string, const std::string& ending) {
 /// extended datetime format (%Y-%m-%dT%X))
 OSIMMOCO_API std::string getFormattedDateTime();
 
-class StatesTrajectory;
-class Model;
-class MocoIterate;
-
 /// Create a SimTK::Vector with the provided length whose elements are
 /// linearly spaced between start and end.
 OSIMMOCO_API
