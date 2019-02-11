@@ -73,10 +73,14 @@ class MocoCasADiSolver;
 class OSIMMOCO_API MocoTool : public Object {
     OpenSim_DECLARE_CONCRETE_OBJECT(MocoTool, Object);
 public:
+    OpenSim_DECLARE_PROPERTY(write_setup, std::string,
+    "Provide the folder path (relative to working directory) to which the "
+    "MocoTool setup file (.omoco) should be written. Set to 'false' to not "
+    "write the setup to disk. (default: working directory).");
     OpenSim_DECLARE_PROPERTY(write_solution, std::string,
     "Provide the folder path (relative to working directory) to which the "
     "solution files should be written. Set to 'false' to not write the "
-    "solution to disk.");
+    "solution to disk. (default: working directory).");
 
     MocoTool();
 
