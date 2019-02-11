@@ -28,16 +28,8 @@ MocoTropterSolver::MocoTropterSolver() {
 }
 
 void MocoTropterSolver::constructProperties() {
-    constructProperty_num_mesh_points(100);
-    constructProperty_verbosity(2);
-    constructProperty_dynamics_mode("explicit");
-    constructProperty_optim_solver("ipopt");
-    constructProperty_optim_max_iterations(-1);
-    constructProperty_optim_convergence_tolerance(-1);
-    constructProperty_optim_constraint_tolerance(-1);
-    constructProperty_optim_hessian_approximation("limited-memory");
+    constructProperty_optim_jacobian_approximation("exact");
     constructProperty_optim_sparsity_detection("random");
-    constructProperty_optim_ipopt_print_level(-1);
     constructProperty_transcription_scheme("trapezoidal");
     constructProperty_velocity_correction_bounds({-0.1, 0.1});
     constructProperty_exact_hessian_block_sparsity_mode();
@@ -46,8 +38,6 @@ void MocoTropterSolver::constructProperties() {
 
     // This is empty to allow user input error checking.
     constructProperty_enforce_constraint_derivatives();
-
-    constructProperty_guess_file("");
 }
 
 std::shared_ptr<const MocoTropterSolver::TropterProblemBase<double>>
@@ -72,9 +62,8 @@ MocoIterate MocoTropterSolver::createGuess(const std::string& type) const {
             && type != "random"
             && type != "time-stepping",
             Exception,
-            "Unexpected guess type '" + type +
-            "'; supported types are 'bounds', 'random', and "
-            "'time-stepping'.");
+            format("Unexpected guess type '%s'; supported types are 'bounds', "
+                   "'random', and 'time-stepping'.", type));
 
     if (type == "time-stepping") {
         return createGuessTimeStepping();
@@ -177,11 +166,12 @@ MocoSolution MocoTropterSolver::solveImpl() const {
     // is set as the transcription scheme.
     if (!getProperty_enforce_constraint_derivatives().empty()) {
         OPENSIM_THROW_IF(get_transcription_scheme() != "hermite-simpson" &&
-            get_enforce_constraint_derivatives(), Exception,
-            "If enforcing derivatives of model kinematic constraints, then the "
-            "property 'transcription_scheme' must be set to "
-            "'hermite-simpson'. Currently, it is set to '" + 
-            get_transcription_scheme() + "'.");    
+                get_enforce_constraint_derivatives(), Exception,
+                format("If enforcing derivatives of model kinematic "
+                       "constraints, then the property 'transcription_scheme' "
+                       "must be set to 'hermite-simpson'. "
+                       "Currently, it is set to '%s'.",
+                        get_transcription_scheme()));
     }
     // Block sparsity detected is only in effect when using an exact Hessian
     // approximation.
@@ -241,6 +231,7 @@ MocoSolution MocoTropterSolver::solveImpl() const {
     if (get_optim_constraint_tolerance() != -1)
         optsolver.set_constraint_tolerance(get_optim_constraint_tolerance());
 
+    optsolver.set_jacobian_approximation(get_optim_jacobian_approximation());
     optsolver.set_hessian_approximation(get_optim_hessian_approximation());
 
     if (get_optim_solver() == "ipopt") {

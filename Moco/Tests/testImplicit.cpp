@@ -86,7 +86,6 @@ MocoSolution solveDoublePendulumSwingup(const std::string& dynamics_mode) {
     solver.set_dynamics_mode(dynamics_mode);
     solver.set_num_mesh_points(N);
     //solver.set_verbosity(2);
-    //solver.set_optim_hessian_approximation("exact");
 
     MocoIterate guess = solver.createGuess();
     guess.resampleWithNumTimes(2);
@@ -114,7 +113,7 @@ MocoSolution solveDoublePendulumSwingup(const std::string& dynamics_mode) {
 }
 
 TEMPLATE_TEST_CASE("Similar solutions between implicit and explicit dynamics",
-        "[implicit]", MocoTropterSolver, MocoCasADiSolver) {
+        "[implicit]", MocoTropterSolver /*, TODO MocoCasADiSolver*/ ) {
     GIVEN("solutions to implicit and explicit problems") {
 
         auto solutionImplicit =
@@ -171,7 +170,7 @@ TEMPLATE_TEST_CASE("Similar solutions between implicit and explicit dynamics",
 }
 
 TEMPLATE_TEST_CASE("Combining implicit dynamics mode with path constraints",
-        "[implicit]", MocoTropterSolver, MocoCasADiSolver) {
+        "[implicit]", MocoTropterSolver /* TODO , MocoCasADiSolver */ ) {
     class MyPathConstraint : public MocoPathConstraint {
         OpenSim_DECLARE_CONCRETE_OBJECT(MyPathConstraint, MocoPathConstraint);
         void initializeOnModelImpl(const Model& model) const override {
@@ -264,7 +263,7 @@ SCENARIO("Using MocoIterate with the implicit dynamics mode",
 }
 
 TEMPLATE_TEST_CASE("Solving a problem with acceleration-level quantities",
-        "[implicit]", MocoTropterSolver, MocoCasADiSolver) {
+        "[implicit]", MocoTropterSolver /* TODO , MocoCasADiSolver */ ) {
     MocoTool moco;
     moco.updProblem().setModelCopy(ModelFactory::createPendulum());
     auto& solver = moco.initSolver<TestType>();

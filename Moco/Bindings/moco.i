@@ -152,6 +152,7 @@ EXPOSE_BOUNDS_CONSTRUCTORS_HELPER(MocoFinalBounds);
 %include <Moco/MocoIterate.h>
 
 %include <Moco/MocoSolver.h>
+%include <Moco/MocoDirectCollocationSolver.h>
 
 
 namespace OpenSim {

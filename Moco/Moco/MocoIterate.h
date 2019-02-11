@@ -64,7 +64,6 @@ num_controls=<number-of-control-variables>
 num_derivatives=<number-of-derivative-variables>
 num_multipliers=<number-of-multiplier-variables>
 num_parameters=<number-of-parameter-variables>
-num_states=<number-of-state-variables>
 num_slacks=<number-of-slack-variables>
 num_states=<number-of-state-variables>
 time,<state-0-name>,...,<control-0-name>,...,<multiplier-0-name>,..., \
@@ -184,7 +183,7 @@ public:
     /// If all times have the same value (e.g., 0.0), then the value of each
     /// variable for all time is its previous value at the initial time.
     /// @throws Exception if new times are not within existing initial and final
-    /// times or if the new times are decreasing, or if getNumTimes() < 2.
+    /// times, if the new times are decreasing, or if getNumTimes() < 2.
     void resample(SimTK::Vector newTime);
     /// @}
 
