@@ -190,6 +190,8 @@ TEST_CASE("SNOPT, trapezoidal") {
 
     auto ocp = std::make_shared<SlidingMass<double>>();
     DirectCollocationSolver<double> dircol(ocp, "trapezoidal", "snopt");
+    dircol.get_opt_solver().set_jacobian_approximation(
+            "finite-difference-values");
     Solution solution = dircol.solve();
     solution.write("sliding_mass_solution.csv");
     //Iterate initial_guess = ocp->make_guess_template();
@@ -216,6 +218,8 @@ TEST_CASE("SNOPT, hermite-simpson") {
 
     auto ocp = std::make_shared<SlidingMass<double>>();
     DirectCollocationSolver<double> dircol(ocp, "hermite-simpson", "snopt");
+    dircol.get_opt_solver().set_jacobian_approximation(
+            "finite-difference-values");
     Solution solution = dircol.solve();
     solution.write("sliding_mass_solution.csv");
     //Iterate initial_guess = ocp->make_guess_template();
