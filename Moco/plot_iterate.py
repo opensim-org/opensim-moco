@@ -133,7 +133,6 @@ for i in range(num_plots):
     if i == num_plots - 1:
         ax.set_xlabel('time')
     ax.set_title(plot_names[i])
-    ax.set_xticklabels([])
     for idat, dat in enumerate(data):
         if column_names[i] in dat.dtype.names:
             ax.plot(dat['time'], dat[column_names[i]], 'o-', markersize=3)
