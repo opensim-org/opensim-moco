@@ -27,23 +27,22 @@ namespace CasOC {
 /// approximated by trapezoidal quadrature.
 class Trapezoidal : public Transcription {
 public:
-    Trapezoidal(const Solver& solver, const Problem& problem);
+    Trapezoidal(const Solver& solver, const Problem& problem)
+        : Transcription(solver, problem, solver.getNumMeshPoints(), 
+            solver.getNumMeshPoints()) { 
+
+        OPENSIM_THROW_IF(problem.getEnforceConstraintDerivatives(),
+            OpenSim::Exception, "Enforcing kinematic constraint derivatives "
+            "not supported with trapezoidal transcription.");
+        transcribe(); 
+    }
 
 private:
-    Iterate createInitialGuessFromBoundsImpl() const override;
-    Iterate createRandomIterateWithinBoundsImpl() const override;
-    casadi::DM createTimesImpl(
-            casadi::DM initialTime, casadi::DM finalTime) const override {
-        return createTimes<casadi::DM>(initialTime, finalTime);
-    }
+    casadi::DM createQuadratureCoefficientsImpl() const override;
+    casadi::DM createKinematicConstraintIndicesImpl() const override;
+    casadi::DM createResidualConstraintIndicesImpl() const override;
+    void applyConstraintsImpl() override;
 
-    template <typename T>
-    T createTimes(const T& initialTime, const T& finalTime) const {
-        return (finalTime - initialTime) * m_mesh + initialTime;
-    }
-    casadi::DM m_mesh;
-    casadi::MX m_times;
-    casadi::MX m_duration;
 };
 
 } // namespace CasOC

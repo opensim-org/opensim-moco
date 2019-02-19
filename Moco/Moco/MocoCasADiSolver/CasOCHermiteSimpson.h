@@ -1,9 +1,11 @@
+#ifndef MOCO_CASOCHERMITESIMPSON_H
+#define MOCO_CASOCHERMITESIMPSON_H
 /* -------------------------------------------------------------------------- *
- * OpenSim Moco: MocoDirectCollocationSolver.cpp                              *
+ * OpenSim Moco: CasOCHermiteSimpson.h                                        *
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2019 Stanford University and the Authors                     *
  *                                                                            *
- * Author(s): Christopher Dembia                                              *
+ * Author(s): Nicholas Bianco                                                 *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may    *
  * not use this file except in compliance with the License. You may obtain a  *
@@ -16,26 +18,28 @@
  * limitations under the License.                                             *
  * -------------------------------------------------------------------------- */
 
-#include "MocoDirectCollocationSolver.h"
+#include "CasOCTranscription.h"
 
-using namespace OpenSim;
+namespace CasOC {
 
-void MocoDirectCollocationSolver::constructProperties() {
-    constructProperty_num_mesh_points(100);
-    constructProperty_verbosity(2);
-    constructProperty_transcription_scheme("trapezoidal");
-    constructProperty_dynamics_mode("explicit");
-    constructProperty_optim_solver("ipopt");
-    constructProperty_optim_max_iterations(-1);
-    constructProperty_optim_convergence_tolerance(-1);
-    constructProperty_optim_constraint_tolerance(-1);
-    constructProperty_optim_hessian_approximation("limited-memory");
-    constructProperty_optim_ipopt_print_level(-1);
-    constructProperty_guess_file("");
-    constructProperty_velocity_correction_bounds({-0.1, 0.1});
-    constructProperty_minimize_lagrange_multipliers(false);
-    constructProperty_lagrange_multiplier_weight(1.0);
+/// Enforce the differential equations in the problem using a Hermite-
+/// Simpson (third-order) approximation. The integral in the objective 
+/// function is approximated by Simpson quadrature.
+class HermiteSimpson : public Transcription {
+public:
+    HermiteSimpson(const Solver& solver, const Problem& problem)
+        : Transcription(solver, problem, 2*solver.getNumMeshPoints() - 1, 
+            solver.getNumMeshPoints()) 
+    { transcribe(); }
 
-    // This is empty to allow user input error checking.
-    constructProperty_enforce_constraint_derivatives();
-}
+private:
+    casadi::DM createQuadratureCoefficientsImpl() const override;
+    casadi::DM createKinematicConstraintIndicesImpl() const override;
+    casadi::DM createResidualConstraintIndicesImpl() const override;
+    void applyConstraintsImpl() override;
+
+};
+
+} // namespace CasOC
+
+#endif // MOCO_CASOCHERMITESIMPSON_H

@@ -42,6 +42,10 @@ public:
         // Using "forward", iterations are 10x faster but problems don't
         // converge.
     }
+    // bool has_jacobian_sparsity() const override {
+    //     return true;
+    // }
+    // casadi::Sparsity get_jacobian_sparsity() const override;
 
 protected:
     const Problem* m_casProblem;
@@ -51,8 +55,8 @@ class PathConstraint : public Function {
 public:
     void constructFunction(const Problem* casProblem, const std::string& name,
             int numEquations) {
-        Function::constructFunction(casProblem, name);
         m_numEquations = numEquations;
+        Function::constructFunction(casProblem, name);
     }
     casadi_int get_n_in() override final { return 4; }
     casadi_int get_n_out() override final { return 1; }
@@ -141,10 +145,14 @@ public:
 
 /// This function should compute forward dynamics (explicit multibody dynamics),
 /// auxiliary explicit dynamics, and the errors for the kinematic constraints.
+template <bool CalcKinConErrors>
 class MultibodySystem : public Function {
 public:
+    void constructFunction(const Problem* casProblem, const std::string& name) {
+        Function::constructFunction(casProblem, name);
+    }
     casadi_int get_n_in() override final { return 5; }
-    casadi_int get_n_out() override final { return 3; }
+    casadi_int get_n_out() override final { return CalcKinConErrors ? 3 : 2; }
     std::string get_name_in(casadi_int i) override final {
         switch (i) {
         case 0: return "time";
@@ -159,7 +167,62 @@ public:
         switch (i) {
         case 0: return "multibody_derivatives";
         case 1: return "auxiliary_derivatives";
-        case 2: return "kinematic_constraint_errors";
+        case 2:
+            if (CalcKinConErrors) {
+                return "kinematic_constraint_errors";
+            } else {
+                OPENSIM_THROW(OpenSim::Exception, "Internal error.")
+            }
+        default: OPENSIM_THROW(OpenSim::Exception, "Internal error.");
+        }
+    }
+    casadi::Sparsity get_sparsity_in(casadi_int i) override final;
+    casadi::Sparsity get_sparsity_out(casadi_int i) override final;
+};
+
+class VelocityCorrection : public Function {
+public:
+    void constructFunction(const Problem* casProblem, const std::string& name) {
+        Function::constructFunction(casProblem, name);
+    }
+    casadi_int get_n_in() override final { return 3; }
+    casadi_int get_n_out() override final { return 1; }
+    std::string get_name_in(casadi_int i) override final {
+        switch (i) {
+        case 0: return "time";
+        case 1: return "states";
+        case 2: return "slacks";
+        default: OPENSIM_THROW(OpenSim::Exception, "Internal error.");
+        }
+    }
+    std::string get_name_out(casadi_int i) override final {
+        switch (i) {
+        case 0: return "velocity_correction";
+        default: OPENSIM_THROW(OpenSim::Exception, "Internal error.");
+        }
+    }
+    casadi::Sparsity get_sparsity_in(casadi_int i) override final;
+    casadi::Sparsity get_sparsity_out(casadi_int i) override final;
+};
+
+class MultibodySystemImplicit : public Function {
+    casadi_int get_n_in() override final { return 6; }
+    casadi_int get_n_out() override final { return 2; }
+    std::string get_name_in(casadi_int i) override final {
+        switch (i) {
+        case 0: return "time";
+        case 1: return "states";
+        case 2: return "controls";
+        case 3: return "multipliers";
+        case 4: return "derivatives";
+        case 5: return "parameters";
+        default: OPENSIM_THROW(OpenSim::Exception, "Internal error.");
+        }
+    }
+    std::string get_name_out(casadi_int i) override final {
+        switch (i) {
+        case 0: return "multibody_residuals";
+        case 1: return "auxiliary_derivatives";
         default: OPENSIM_THROW(OpenSim::Exception, "Internal error.");
         }
     }

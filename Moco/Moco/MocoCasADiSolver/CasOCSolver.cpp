@@ -16,9 +16,9 @@
  * limitations under the License.                                             *
  * -------------------------------------------------------------------------- */
 
-#include "CasOCProblem.h"
-
 #include "../MocoUtilities.h"
+#include "CasOCHermiteSimpson.h"
+#include "CasOCProblem.h"
 #include "CasOCTranscription.h"
 #include "CasOCTrapezoidal.h"
 
@@ -31,6 +31,8 @@ std::unique_ptr<Transcription> Solver::createTranscription() const {
     std::unique_ptr<Transcription> transcription;
     if (m_transcriptionScheme == "trapezoidal") {
         transcription = OpenSim::make_unique<Trapezoidal>(*this, m_problem);
+    } else if (m_transcriptionScheme == "hermite-simpson") {
+        transcription = OpenSim::make_unique<HermiteSimpson>(*this, m_problem);
     } else {
         OPENSIM_THROW(Exception, format("Unknown transcription scheme '%s'.",
                                          m_transcriptionScheme));
@@ -49,6 +51,10 @@ Iterate Solver::createRandomIterateWithinBounds() const {
 }
 
 Solution Solver::solve(const Iterate& guess) const {
+    OPENSIM_THROW_IF(isDynamicsModeImplicit() &&
+                             m_problem.getNumKinematicConstraintEquations(),
+            OpenSim::Exception,
+            "Cannot use implicit dynamics mode with kinematic constraints.");
     auto transcription = createTranscription();
     return transcription->solve(guess);
 }

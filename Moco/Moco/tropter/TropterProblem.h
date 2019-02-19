@@ -102,7 +102,7 @@ protected:
         // Whether or not enabled kinematic constraints exist in the model, 
         // check that optional solver properties related to constraints are
         // set properly.
-        std::vector<std::string> kcNames =
+        const std::vector<std::string> kcNames =
             m_mocoProbRep.createKinematicConstraintNames();
         if (kcNames.empty()) {
             OPENSIM_THROW_IF(
@@ -137,7 +137,7 @@ protected:
         std::vector<MocoBounds> bounds;
         std::vector<std::string> labels;
         std::vector<KinematicLevel> kinLevels;
-        bool enforceConstraintDerivs = 
+        const bool enforceConstraintDerivs =
             m_mocoTropterSolver.get_enforce_constraint_derivatives();
         for (const auto& kcName : kcNames) {
             const auto& kc = m_mocoProbRep.getKinematicConstraint(kcName);
@@ -269,10 +269,10 @@ protected:
         m_state.setTime(time);
         // We must skip over unused slots in the SimTK::State that are
         for (int isv = 0; isv < states.size(); ++isv) {
-            m_state.updY()[m_yIndexMap.at(isv)] = states[isv];
+            simTKState.updY()[m_yIndexMap.at(isv)] = states[isv];
         }
 
-        if (setControlsToNaN) m_model.updControls(m_state).setToNaN();
+        if (setControlsToNaN) m_model.updControls(simTKState).setToNaN();
     }
 
     void setSimTKState(const T& time,
@@ -283,11 +283,11 @@ protected:
 
         // Set the controls for actuators in the OpenSim model.
         if (m_model.getNumControls()) {
-            auto& osimControls = m_model.updControls(m_state);
+            auto& osimControls = m_model.updControls(simTKState);
             std::copy_n(controls.data(), controls.size(),
                     osimControls.updContiguousScalarData());
-            m_model.realizeVelocity(m_state);
-            m_model.setControls(m_state, osimControls);
+            m_model.realizeVelocity(simTKState);
+            m_model.setControls(simTKState, osimControls);
         }
     }
 
@@ -303,7 +303,6 @@ protected:
         // point, so that each can preserve their cache?
         this->setSimTKState(time, states, controls, m_state);
 
-        m_model.realizePosition(m_state);
         integrand = m_mocoProbRep.calcIntegralCost(m_state);
 
         if (m_mocoTropterSolver.get_minimize_lagrange_multipliers()) {
@@ -332,8 +331,8 @@ protected:
 
     std::vector<std::string> m_svNamesInSysOrder;
     std::unordered_map<int, int> m_yIndexMap;
-    mutable SimTK::Vector_<SimTK::SpatialVec> constraintBodyForces;
-    mutable SimTK::Vector constraintMobilityForces;
+    mutable SimTK::Vector_<SimTK::SpatialVec> m_constraintBodyForces;
+    mutable SimTK::Vector m_constraintMobilityForces;
     mutable SimTK::Vector qdot;
     mutable SimTK::Vector qdotCorr;
     mutable SimTK::Vector udot;
@@ -453,11 +452,12 @@ public:
                     model.getMatterSubsystem();
 
             this->calcKinematicConstraintForces(in, simTKState,
-                    this->constraintBodyForces, this->constraintMobilityForces);
+                    this->m_constraintBodyForces,
+                    this->m_constraintMobilityForces);
                 
             matter.calcAccelerationIgnoringConstraints(simTKState,
-                    appliedMobilityForces + this->constraintMobilityForces,
-                    appliedBodyForces + this->constraintBodyForces,
+                    appliedMobilityForces + this->m_constraintMobilityForces,
+                    appliedBodyForces + this->m_constraintBodyForces,
                     this->udot, A_GB);
                     
             // Apply velocity correction to qdot if at a mesh interval midpoint.

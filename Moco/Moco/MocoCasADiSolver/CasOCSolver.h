@@ -46,6 +46,26 @@ public:
     const std::string& getTranscriptionScheme() const {
         return m_transcriptionScheme;
     }
+    void setDynamicsMode(std::string dynamicsMode) {
+        OPENSIM_THROW_IF(
+                dynamicsMode != "explicit" && dynamicsMode != "implicit",
+                OpenSim::Exception, "Invalid dynamics mode.");
+        m_dynamicsMode = std::move(dynamicsMode);
+    }
+    const std::string& getDynamicsMode() const { return m_dynamicsMode; }
+    bool isDynamicsModeImplicit() const { return m_dynamicsMode == "implicit"; }
+    void setMinimizeLagrangeMultipliers(bool tf) {
+        m_minimizeLagrangeMultipliers = tf;
+    }
+    bool getMinimizeLagrangeMultipliers() const {
+        return m_minimizeLagrangeMultipliers;
+    }
+    void setLagrangeMultiplierWeight(double weight) {
+        m_lagrangeMultiplierWeight = weight;
+    }
+    double getLagrangeMultiplierWeight() const {
+        return m_lagrangeMultiplierWeight;
+    }
 
     void setOptimSolver(std::string optimSolver) {
         m_optimSolver = std::move(optimSolver);
@@ -74,7 +94,10 @@ private:
 
     const Problem& m_problem;
     int m_numMeshPoints;
-    std::string m_transcriptionScheme;
+    std::string m_transcriptionScheme = "trapezoidal";
+    std::string m_dynamicsMode = "explicit";
+    bool m_minimizeLagrangeMultipliers = false;
+    double m_lagrangeMultiplierWeight = 1.0;
     casadi::Dict m_pluginOptions;
     casadi::Dict m_solverOptions;
     std::string m_optimSolver;
