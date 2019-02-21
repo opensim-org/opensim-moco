@@ -395,7 +395,7 @@ void HermiteSimpson<T>::calc_constraints(const VectorX<T>& x,
     // ======================
     m_ocproblem->initialize_on_iterate(parameters);
 
-    // Organize the constrants vector.
+    // Organize the constraints vector.
     ConstraintsView constr_view = make_constraints_view(constraints);
 
     // Dynamics and path constraints.

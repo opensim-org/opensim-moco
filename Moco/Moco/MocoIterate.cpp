@@ -703,6 +703,13 @@ bool MocoIterate::isCompatible(
             mpdn.push_back(name);
         }
     }
+    for (auto name : mpsn) {
+        auto leafpos = name.find("value");
+        if (leafpos != std::string::npos) {
+            name.replace(leafpos, name.size(), "jerk");
+            mpdn.push_back(name);
+        }
+    }
     std::sort(mpdn.begin(), mpdn.end());
 
     bool compatible = mpsn == sn && mpcn == cn && mpmn == mn &&

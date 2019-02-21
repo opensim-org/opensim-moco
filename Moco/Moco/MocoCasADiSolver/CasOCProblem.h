@@ -245,7 +245,7 @@ public:
     /// FunctionType must derive from MultibodySystem.
     template <template <bool> class FunctionType, typename... Args>
     void setMultibodySystem(Args&&... args) {
-        // Constraint a full multibody system (i.e. including kinematic
+        // Construct a full multibody system (i.e. including kinematic
         // constraints).
         m_multibodyFunc = OpenSim::make_unique<FunctionType<true>>(
             std::forward<Args>(args)...);
@@ -267,7 +267,7 @@ public:
     }
     template <template <bool> class FunctionType, typename... Args>
     void setImplicitMultibodySystem(Args&&... args) {
-        // Constraint a full implicit multibody system (i.e. including kinematic
+        // Construct a full implicit multibody system (i.e. including kinematic
         // constraints).
         m_implicitMultibodyFunc = OpenSim::make_unique<FunctionType<true>>(
                     std::forward<Args>(args)...);
@@ -305,6 +305,16 @@ public:
                 OPENSIM_THROW_IF(leafpos == std::string::npos,
                         OpenSim::Exception, "Internal error.");
                 name.replace(leafpos, name.size(), "accel");
+                it.derivative_names.push_back(name);
+            }
+        }
+        for (const auto& info : m_stateInfos) {
+            if (info.type == StateType::Speed) {
+                auto name = info.name;
+                auto leafpos = name.find("speed");
+                OPENSIM_THROW_IF(leafpos == std::string::npos,
+                    OpenSim::Exception, "Internal error.");
+                name.replace(leafpos, name.size(), "jerk");
                 it.derivative_names.push_back(name);
             }
         }

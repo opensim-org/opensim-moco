@@ -83,8 +83,19 @@ void HermiteSimpson::applyConstraintsImpl() {
     // We have arranged the code this way so that all constraints at a given
     // mesh point are grouped together (organizing the sparsity of the Jacobian
     // this way might have benefits for sparse linear algebra).
-    const auto& states = m_vars[Var::states];
-    const DM zeroS = casadi::DM::zeros(m_problem.getNumStates(), 1);
+    DM zeroS;
+    MX states;
+    if (m_solver.isDynamicsModeImplicit()) {
+        const auto& derivatives = m_vars[Var::derivatives];
+        states = casadi::MX::vertcat({m_vars[Var::states],
+            derivatives(Slice(0, m_problem.getNumSpeeds()), Slice())});
+        zeroS = casadi::DM::zeros(
+            m_problem.getNumStates() + m_problem.getNumSpeeds(), 1);
+    } else {
+        states = m_vars[Var::states];
+        zeroS = casadi::DM::zeros(m_problem.getNumStates(), 1);
+    }
+
     const DM zeroU = casadi::DM::zeros(m_problem.getNumSpeeds(), 1);
 
     int time_i, time_mid, time_ip1;
@@ -115,18 +126,17 @@ void HermiteSimpson::applyConstraintsImpl() {
 
             // The residuals are enforced at the mesh interval midpoints.
             if (m_solver.isDynamicsModeImplicit()) {
-                std::cout << "time_i: " << time_i << std::endl;
-                std::cout << "time_mid: " << time_mid << std::endl;
-
                 addConstraints(zeroU, zeroU, m_residual(Slice(), time_i));
                 addConstraints(zeroU, zeroU, m_residual(Slice(), time_mid));
+                // We only need to add a constraint on this time point for the 
+                // last mesh interval since, for all other mesh intervals, the
+                // time_ip1 point for a given mesh interval is covered by the 
+                // next mesh interval's time_i point.
+                if (imesh == m_numMeshIntervals-1) {
+                    addConstraints(zeroU, zeroU, m_residual(Slice(), time_ip1));
+                }
             }
-        } else {
-            if (m_solver.isDynamicsModeImplicit()) {
-                std::cout << "time_i: " << time_i << std::endl;
-                addConstraints(zeroU, zeroU, m_residual(Slice(), time_i));
-            }
-        }
+        } 
         
         // Kinematic constraint errors.
         if (m_problem.getNumKinematicConstraintEquations()) {

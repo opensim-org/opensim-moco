@@ -37,6 +37,8 @@ void Transcription::transcribe() {
 
     // Create variables.
     // -----------------
+    const int NQ = m_problem.getNumCoordinates();
+    const int NU = m_problem.getNumSpeeds();
     m_vars[Var::initial_time] = MX::sym("initial_time");
     m_vars[Var::final_time] = MX::sym("final_time");
     m_duration = m_vars[Var::final_time] - m_vars[Var::initial_time];
@@ -49,7 +51,7 @@ void Transcription::transcribe() {
             "multipliers", m_problem.getNumMultipliers(), m_numGridPoints);
     if (m_solver.isDynamicsModeImplicit()) {
         m_vars[Var::derivatives] = MX::sym(
-                "derivatives", m_problem.getNumSpeeds(), m_numGridPoints);
+                "derivatives", 2*NU, m_numGridPoints);
     }
     // TODO: This assumes that slack variables are applied at all collocation
     // points on the mesh interval interior.
@@ -155,6 +157,10 @@ void Transcription::transcribe() {
                     m_solver.getLagrangeMultiplierWeight();
             integralCost += multiplierWeight * dot(mults, mults);
         }
+        if (m_solver.isDynamicsModeImplicit()) {
+            const auto jerks = m_vars[Var::derivatives](Slice(NU, 2*NU), itime);
+            integralCost += 0.001*dot(jerks, jerks);
+        }
     }
     integralCost *= m_duration;
 
@@ -166,8 +172,6 @@ void Transcription::transcribe() {
 
     // Compute DAEs at necessary grid points.
     // --------------------------------------
-    const int NQ = m_problem.getNumCoordinates();
-    const int NU = m_problem.getNumSpeeds();
     OPENSIM_THROW_IF(NQ != NU, OpenSim::Exception,
             "Problems with differing numbers of coordinates and speeds are not "
             "supported (e.g., quaternions).");
@@ -177,9 +181,11 @@ void Transcription::transcribe() {
     // TODO: Does creating all this memory have efficiency implications in
     // CasADi?
     // Initialize memory for state derivatives and constraint errors.
-    m_xdot = MX(m_problem.getNumStates(), m_numGridPoints);
     if (m_solver.isDynamicsModeImplicit()) {
         m_residual = MX(m_problem.getNumSpeeds(), residualIndices.nnz());
+        m_xdot = MX(m_problem.getNumStates() + NU, m_numGridPoints);
+    } else {
+        m_xdot = MX(m_problem.getNumStates(), m_numGridPoints);
     }
     m_kcerr = MX(m_problem.getNumKinematicConstraintEquations(),
             kinematicConstraintIndices.nnz());
@@ -355,8 +361,11 @@ void Transcription::calcDifferentialAlgebraicEquationsImplicit(casadi_int itime,
     const MX u = states(Slice(NQ, NQ + NU), itime);
     MX qdot = u; // TODO: This assumes the N matrix is identity.
 
-    const MX w = m_vars[Var::derivatives](Slice(), itime);
+    const MX w = m_vars[Var::derivatives](Slice(0, NU), itime);
     MX udot = w;
+
+    const MX j = m_vars[Var::derivatives](Slice(NU, 2*NU), itime);
+    MX wdot = j; 
 
     // If slack variables exist and we're not computing constraint errors at
     // this time point, compute the velocity correction and update qdot.
@@ -383,13 +392,13 @@ void Transcription::calcDifferentialAlgebraicEquationsImplicit(casadi_int itime,
             {m_times(itime), m_vars[Var::states](Slice(), itime),
                     m_vars[Var::controls](Slice(), itime),
                     m_vars[Var::multipliers](Slice(), itime),
-                    m_vars[Var::derivatives](Slice(), itime),
+                    m_vars[Var::derivatives](Slice(0, NU), itime),
                     m_vars[Var::parameters]});
     if (calcResidual) residual = dynamicsOutput.at(0);
     const MX zdot = dynamicsOutput.at(1);
 
     // Concatenate derivatives to update the state derivatives vector.
-    xdot = casadi::MX::vertcat({qdot, udot, zdot});
+    xdot = casadi::MX::vertcat({qdot, udot, zdot, wdot});
 
     // If calculating constraint errors, also update the constraint errors
     // vector.

@@ -190,9 +190,9 @@ MocoSolution minimizeControlEffortRightLeg(const Options& opt) {
     ms.set_transcription_scheme("hermite-simpson");
     ms.set_optim_max_iterations(opt.max_iterations);
     ms.set_enforce_constraint_derivatives(true);
-    ms.set_velocity_correction_bounds({-0.0001, 0.0001});
+    ms.set_velocity_correction_bounds({-0.001, 0.001});
     ms.set_minimize_lagrange_multipliers(false);
-    ms.set_lagrange_multiplier_weight(10);
+    ms.set_lagrange_multiplier_weight(0.01);
     ms.set_optim_hessian_approximation(opt.hessian_approximation);
     ms.set_dynamics_mode("implicit");
     auto guess = ms.createGuess("bounds");
@@ -362,8 +362,8 @@ void main() {
     opt.weldPelvis = true;
     opt.num_mesh_points = 20;
     opt.solver = "ipopt";
-    opt.constraint_tol = 1e-2;
-    opt.convergence_tol = 1e-2;
+    opt.constraint_tol = 1e-3;
+    opt.convergence_tol = 1e-3;
     //opt.previousSolution = MocoSolution(
     //"sandboxRightLeg_weldedPelvis_torques_minimize_control_effort_solution.sto");
     MocoSolution torqueSolEffortCasADi = 

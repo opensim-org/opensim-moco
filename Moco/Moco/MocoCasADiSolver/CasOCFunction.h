@@ -211,7 +211,7 @@ class MultibodySystemImplicit : public Function {
         case 1: return "states";
         case 2: return "controls";
         case 3: return "multipliers";
-        case 4: return "derivatives";
+        case 4: return "accelerations";
         case 5: return "parameters";
         default: OPENSIM_THROW(OpenSim::Exception, "Internal error.");
         }
