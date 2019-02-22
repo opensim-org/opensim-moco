@@ -74,12 +74,9 @@ public:
             std::string,
             "'dense' for dense blocks on the Hessian diagonal, or "
             "'sparse' for sparse blocks on the Hessian diagonal, detected from "
-            "the "
-            "optimal control problem. If using an 'exact' Hessian "
-            "approximation, this "
-            "property must be set. Note: this option only takes effect when "
-            "using "
-            "IPOPT.");
+            "the optimal control problem. If using an 'exact' Hessian "
+            "approximation, this property must be set. "
+            "Note: this option only takes effect when using IPOPT.");
     // TODO OpenSim_DECLARE_LIST_PROPERTY(enforce_constraint_kinematic_levels,
     //   std::string, "");
     // TODO must make more general for multiple phases, mesh refinement.
