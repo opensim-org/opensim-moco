@@ -38,7 +38,8 @@ void MocoStateTrackingCost::initializeOnModelImpl(const Model& model) const {
                        get_reference_file(), tablesFromFile.size()));
         // Get the first table.
         auto* firstTable =
-                dynamic_cast<TimeSeriesTable*>(tablesFromFile.begin()->second.get());
+                dynamic_cast<TimeSeriesTable*>(
+                    tablesFromFile.begin()->second.get());
         OPENSIM_THROW_IF_FRMOBJ(!firstTable, Exception,
                 "Expected reference file to contain a (scalar) "
                 "TimeSeriesTable, but it contains a different type of table.");

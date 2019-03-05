@@ -31,6 +31,7 @@
 #include <OpenSim/Simulation/Model/Model.h>
 #include <OpenSim/Simulation/SimbodyEngine/WeldJoint.h>
 #include <OpenSim/Simulation/StatesTrajectory.h>
+#include <OpenSim/Actuators/CoordinateActuator.h>
 
 using namespace OpenSim;
 
@@ -411,6 +412,47 @@ void OpenSim::replaceJointWithWeldJoint(
     model.addJoint(new_joint);
 
     model.finalizeConnections();
+}
+
+void OpenSim::addCoordinateActuatorsToModel(Model& model, double optimalForce) {
+    OPENSIM_THROW_IF(optimalForce <= 0, Exception,
+        "The optimal force must be greater than zero.");
+
+    std::cout << "Adding reserve actuators with an optimal force of "
+              << optimalForce << "..." << std::endl;
+
+    std::vector<std::string> coordPaths;
+    const auto& state = model.getWorkingState();
+    // Borrowed from 
+    // CoordinateActuator::CreateForceSetOfCoordinateActuatorsForModel().
+    // TODO: just use model.updComponentList<Coordinate>() and avoid const_cast?
+    for (const auto& constCoord : model.getComponentList<Coordinate>()) {
+        auto* actu = new CoordinateActuator();
+        auto& coord = const_cast<Coordinate&>(constCoord);
+        if (coord.isConstrained(state)) continue;
+
+        actu->setCoordinate(&coord);
+        auto path = coord.getAbsolutePathString();
+        coordPaths.push_back(path);
+        // Get rid of model name.
+        // Get rid of slashes in the path; slashes not allowed in names.
+        std::replace(path.begin(), path.end(), '/', '_');
+        if (path.at(0) == '_') { path.erase(0, 1); }
+        actu->setName(path);
+        actu->setOptimalForce(optimalForce);
+        model.addComponent(actu);
+        model.initSystem();
+    }
+
+    // Re-make the system, since there are new actuators.
+    model.initSystem();
+    std::cout << "Added " << coordPaths.size()
+              << " reserve actuator(s), for each of the following coordinates:"
+              << std::endl;
+    for (const auto& name : coordPaths) {
+        std::cout << "  " << name << std::endl;
+    }
+
 }
 
 std::vector<std::string> OpenSim::createStateVariableNamesInSystemOrder(

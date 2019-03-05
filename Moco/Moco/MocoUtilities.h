@@ -115,6 +115,10 @@ OSIMMOCO_API void removeMuscles(Model& model);
 OSIMMOCO_API void replaceJointWithWeldJoint(Model& model, 
     const std::string& jointName);
 
+/// TODO
+OSIMMOCO_API void addCoordinateActuatorsToModel(Model& model, 
+        double optimalForce);
+
 /// The map provides the index of each state variable in
 /// SimTK::State::getY() from its each state variable path string.
 /// Empty slots in Y (e.g., for quaternions) are ignored.
