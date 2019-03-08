@@ -147,8 +147,11 @@ public:
         "are created)");
     OpenSim_DECLARE_PROPERTY(kinematics_file, std::string, "TODO");
     OpenSim_DECLARE_PROPERTY(markers_file, std::string, "TODO");
+    // TODO check that time ranges in setup files are consistent with user
+    // specified time range.
     OpenSim_DECLARE_PROPERTY(ik_setup_file, std::string, "TODO");
     OpenSim_DECLARE_PROPERTY(external_loads_file, std::string, "TODO");
+    OpenSim_DECLARE_PROPERTY(id_setup_file, std::string, "TODO");
     OpenSim_DECLARE_PROPERTY(remove_force_set, bool, "TODO");
     OpenSim_DECLARE_PROPERTY(start_time, double, "TODO");
     OpenSim_DECLARE_PROPERTY(end_time, double, "TODO");
@@ -159,6 +162,7 @@ public:
         constructProperty_markers_file("");
         constructProperty_ik_setup_file("");
         constructProperty_external_loads_file("");
+        constructProperty_id_setup_file("");
         constructProperty_remove_force_set(false);
         constructProperty_start_time(-1);
         constructProperty_end_time(-1);
@@ -177,6 +181,9 @@ public:
     }
     void setExternalLoadsFile(std::string fileName) {
         set_external_loads_file(std::move(fileName));
+    }
+    void setIDSetupFile(std::string fileName) {
+        set_id_setup_file(std::move(fileName));
     }
     void setRemoveModelForceSet(bool tf) {
         set_remove_force_set(tf);
@@ -203,11 +210,12 @@ public:
 
         if (get_create_coordinate_actuators() != -1) {
             // model.initSystem() is called within this utility.
-            addCoordinateActuatorsToModel(model, 
-                    get_create_coordinate_actuators());
+            double optForce = get_create_coordinate_actuators();
+            addCoordinateActuatorsToModel(model, 1);
             const auto coordActs = model.getComponentList<CoordinateActuator>();
             for (const auto& coordAct : coordActs) {
-                problem.setControlInfo("/" + coordAct.getName(), {-1, 1});
+                problem.setControlInfo("/" + coordAct.getName(), 
+                        {-optForce, optForce});
             }
         }
 
@@ -262,24 +270,26 @@ public:
         // Set the problem guess.
         // ----------------------
         auto guess = solver.createGuess("bounds");
-        
+        //std::cout << "guess num times: " << guess.getNumTimes() << std::endl;
+
         // Set position states in guess, if available.
         if (m_kinematics_from_file.getNumRows()) {
-            applyPositionStatesToGuess(m_kinematics_from_file, model, guess);
+            applyStatesToGuess(m_kinematics_from_file, model, guess);
         } else if (m_kinematics_from_markers.getNumRows()) {
-            applyPositionStatesToGuess(m_kinematics_from_markers, model, guess);
+            applyStatesToGuess(m_kinematics_from_markers, model, guess);
         }
 
         // Set ground reaction force controls in guess, if available.
         if (m_forces.getNumRows()) {
-            for (const auto& label : m_forces.getColumnLabels()) {
-                const auto& time = guess.getTime();
-                auto col = m_forces.getDependentColumn(label);
-                auto colTime = createVectorLinspace(col.size(), time[0],
-                    time[time.size()-1]);
-                guess.setControl("/" + label, interpolate(colTime, col, time));
-            }
+            applyControlsToGuess(m_forces, guess);
         }
+
+        // Set actuator controls in guess, if available.
+        if (m_controls.getNumRows()) {
+            applyControlsToGuess(m_controls, guess);
+        }
+
+        solver.setGuess(guess);
 
         // Solve!
         // ------
@@ -295,6 +305,8 @@ private:
     TimeSeriesTable m_kinematics_from_file;
     TimeSeriesTable m_kinematics_from_markers;
     TimeSeriesTable m_forces;
+    TimeSeriesTable m_controls;
+    int m_min_data_length = -1;
 
     void configureStateTracking(MocoProblem& problem, Model& model) {
         auto* stateTracking = 
@@ -322,6 +334,10 @@ private:
                 kinematics.getIndependentColumn().back(), "kinematic");
 
         m_kinematics_from_file = kinematics;
+        if (m_min_data_length == -1 || 
+                m_min_data_length > kinematics.getNumRows()) {
+            m_min_data_length = (int)kinematics.getNumRows();
+        }
     }
 
     void configureMarkerTracking(MocoProblem& problem, Model& model) {
@@ -355,6 +371,10 @@ private:
 
         updateKinematicsLabelsAndUnits(model, kinematics);
         m_kinematics_from_markers = kinematics;
+        if (m_min_data_length == -1 ||
+                m_min_data_length > kinematics.getNumRows()) {
+            m_min_data_length = (int)kinematics.getNumRows();
+        }
     }
 
     void configureForceTracking(MocoProblem& problem, Model& model) {
@@ -403,6 +423,35 @@ private:
             ++f;
         }
 
+
+        // TODO: getting initial guess from ID moments is trickier
+        // Inverse dynamics for guess
+        //if (!get_id_setup_file().empty()) {
+        //    InverseDynamicsTool idtool(get_id_setup_file());
+        //    idtool.run();
+
+        //    m_controls = STOFileAdapter::read(
+        //        idtool.getOutputGenForceFileName());
+        //}
+
+        //TimeSeriesTable kinematics;
+        //if (m_kinematics_from_file.getNumRows()) {
+        //    kinematics = m_kinematics_from_file;
+        //} else if (m_kinematics_from_markers.getNumRows()) {
+        //    kinematics = m_kinematics_from_markers;
+        //}
+
+        //if (kinematics.getNumRows()) {
+        //    InverseDynamicsTool idtool;
+        //    idtool.setExternalLoadsFileName(get_external_loads_file());
+        //    idtool.setCoordinatesFileName(get_kinematics_file());
+        //    //auto coordVals = convertTableToStorage(kinematics);
+        //    //idtool.setCoordinateValues(coordVals);
+        //    idtool.setModel(model);
+        //    idtool.setOutputGenForceFileName("inverse_dynamics.sto");
+        //    idtool.run();
+        //}
+
         auto* grfTracking = 
                 problem.addCost<ControlTrackingCost>("grf_tracking", 1);
         grfTracking->setReference(forces);
@@ -411,6 +460,10 @@ private:
                 forces.getIndependentColumn().back(), "marker");
 
         m_forces = forces;
+        if (m_min_data_length == -1 ||
+                m_min_data_length > forces.getNumRows()) {
+            m_min_data_length = forces.getNumRows();
+        }
     }
 
     void updateKinematicsLabelsAndUnits(const Model& model, 
@@ -451,17 +504,45 @@ private:
         }
     }
 
-    void applyPositionStatesToGuess(const TimeSeriesTable& states, 
-            const Model& model, MocoIterate& guess) {
-        guess.resampleWithNumTimes((int)states.getNumRows());
+    void applyStatesToGuess(const TimeSeriesTable& states, const Model& model, 
+            MocoIterate& guess) {
+        guess.resampleWithNumTimes(m_min_data_length);
+        auto time = guess.getTime();
+        GCVSplineSet stateSplines(states);
+
+        SimTK::Vector currTime(1);
+        SimTK::Vector value(m_min_data_length);
+        SimTK::Vector speed(m_min_data_length);
         for (const auto& coord : model.getComponentList<Coordinate>()) {
-            std::string path = coord.getAbsolutePathString();
+            auto path = coord.getAbsolutePathString();
             for (int i = 0; i < states.getNumColumns(); ++i) {
-                if (path.find(states.getColumnLabel(i)) != std::string::npos) {
-                    guess.setState(path + "/value", 
-                        states.getDependentColumn(states.getColumnLabel(i)));
+                auto label = states.getColumnLabel(i);
+                if (path.find(label) != std::string::npos) {
+
+                    for (int j = 0; j < m_min_data_length; ++i) {
+                        currTime[0] = time[j];
+                        auto* spline = stateSplines.getGCVSpline(i);
+
+                        value[j] = spline->calcValue(currTime);
+                        speed[j] = spline->calcDerivative({0}, currTime);
+                    }
+
+                    guess.setState(path + "/value", value);
+                    guess.setState(path + "/speed", speed);
                 }
             }
+        }
+    }
+
+    void applyControlsToGuess(const TimeSeriesTable& table, MocoIterate& guess) 
+    {
+        guess.resampleWithNumTimes(m_min_data_length);
+        auto time = guess.getTime();
+        for (const auto& label : table.getColumnLabels()) {
+            auto col = table.getDependentColumn(label);
+            auto colTime = createVectorLinspace(m_min_data_length, time[0],
+                time[time.size() - 1]);
+            guess.setControl("/" + label, interpolate(colTime, col, time));
         }
     }
             
@@ -477,7 +558,7 @@ using namespace OpenSim;
 int main() {
 
     try {
-        Model model("subject_scaled_walk.osim");
+        Model model("subject_walk_adjusted.osim");
         replaceJointWithWeldJoint(model, "back");
         replaceJointWithWeldJoint(model, "subtalar_l");
         replaceJointWithWeldJoint(model, "subtalar_r");
@@ -492,8 +573,9 @@ int main() {
         track.set_create_coordinate_actuators(1000);
         track.setRemoveModelForceSet(true);
         track.setExternalLoadsFile("grf_walk.xml");
-        track.setStartTime(0.25);
-        track.setEndTime(2.25);
+        track.setIDSetupFile("id_setup_walk.xml");
+        track.setStartTime(0.45);
+        track.setEndTime(1.8);
 
         track.solve();
     }
