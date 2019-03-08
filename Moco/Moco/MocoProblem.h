@@ -111,6 +111,10 @@ public:
     /// associated ScalarActuator (e.g., "/forceset/soleus_r").
     void setControlInfo(const std::string& name, const MocoBounds&,
             const MocoInitialBounds& = {}, const MocoFinalBounds& = {});
+    /// TODO
+    void setControlInfo(const std::string& actuName, int controlIndex,
+            const MocoBounds&, const MocoInitialBounds& = {}, 
+            const MocoFinalBounds& = {});
     /// Set the bounds on *all* of the kinematic constraint equations in this
     /// phase. When creating a MocoProblemRep, these bounds are used to create
     /// MocoConstraintInfo's for each kinematic constraint equation in the 
@@ -239,11 +243,11 @@ public:
     /// This function does *not* provide such automatically-populated bounds
     /// from the model. For that, use see MocoProblemRep::getStateInfo().
     const MocoVariableInfo& getStateInfo(const std::string& name) const;
-    /// Access explicit controlinfos provided to this phase.
+    /// Access explicit control infos provided to this phase.
     /// Default bounds are obtained from the model.
     /// This function does *not* provide such automatically-populated bounds
     /// from the model. For that, use see MocoProblemRep::getControlInfo().
-    const MocoVariableInfo& getControlInfo(const std::string& name) const;
+    const MocoControlInfo& getControlInfo(const std::string& name) const;
 
     const MocoParameter& getParameter(const std::string& name) const;
     MocoParameter& updParameter(const std::string& name);
@@ -271,7 +275,7 @@ protected: // Protected so that doxygen shows the properties.
             "state_infos (default: [-50, 50]).");
     OpenSim_DECLARE_LIST_PROPERTY(state_infos, MocoVariableInfo,
             "The state variables' bounds.");
-    OpenSim_DECLARE_LIST_PROPERTY(control_infos, MocoVariableInfo,
+    OpenSim_DECLARE_LIST_PROPERTY(control_infos, MocoControlInfo,
             "The control variables' bounds.");
     OpenSim_DECLARE_LIST_PROPERTY(parameters, MocoParameter,
             "Parameter variables (model properties) to optimize.");
@@ -339,6 +343,10 @@ public:
     /// Set bounds for a control variable for phase 0.
     void setControlInfo(const std::string& name, const MocoBounds&,
             const MocoInitialBounds& = {}, const MocoFinalBounds& = {});
+    /// TODO
+    void setControlInfo(const std::string& actuatorName, int controlIndex, 
+            const MocoBounds&, const MocoInitialBounds& = {}, 
+            const MocoFinalBounds& = {});
     /// Set bounds for the kinematic constraints in phase 0.
     void setKinematicConstraintBounds(const MocoBounds& bounds);
     /// Set bounds for the Lagrange multipliers in phase 0.

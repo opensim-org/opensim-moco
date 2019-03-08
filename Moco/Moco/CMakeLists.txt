@@ -57,6 +57,8 @@ set(MOCO_SOURCES
         Components/ModelFactory.cpp
         Components/DiscreteForces.h
         Components/DiscreteForces.cpp
+        Components/FreePointBodyActuator.h
+        Components/FreePointBodyActuator.cpp
         MocoCasADiSolver/MocoCasADiSolver.h
         MocoCasADiSolver/MocoCasADiSolver.cpp
         MocoCasADiSolver/MocoCasADiBridge.h

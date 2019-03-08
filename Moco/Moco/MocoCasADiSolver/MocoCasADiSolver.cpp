@@ -162,12 +162,22 @@ std::unique_ptr<CasOC::Problem> MocoCasADiSolver::createCasOCProblem() const {
                 convertBounds(info.getFinalBounds()));
     }
     for (const auto& actu : model.getComponentList<Actuator>()) {
-        // TODO handle a variable number of control signals.
         const auto& actuName = actu.getAbsolutePathString();
-        const auto& info = problemRep.getControlInfo(actuName);
-        casProblem->addControl(actuName, convertBounds(info.getBounds()),
-                convertBounds(info.getInitialBounds()),
-                convertBounds(info.getFinalBounds()));
+        if (actu.numControls() == 1) {
+            const auto& info = problemRep.getControlInfo(actuName);
+            casProblem->addControl(actuName, convertBounds(info.getBounds()),
+                    convertBounds(info.getInitialBounds()),
+                    convertBounds(info.getFinalBounds()));
+        } else {
+            for (int idx = 0; idx < actu.numControls(); ++idx) {
+                std::string controlName = actuName + "_" + std::to_string(idx);
+                const auto& info = problemRep.getControlInfo(controlName);
+                casProblem->addControl(controlName, 
+                        convertBounds(info.getBounds()),
+                        convertBounds(info.getInitialBounds()),
+                        convertBounds(info.getFinalBounds()));
+            }
+        }
     }
 
     // Add any scalar constraints associated with kinematic constraints in

@@ -685,6 +685,16 @@ bool MocoIterate::isCompatible(
     auto cn(m_control_names);
     std::sort(cn.begin(), cn.end());
 
+    std::cout << "c's: " << std::endl;
+    for (const auto& c : cn) {
+        std::cout << c << std::endl;
+    }
+    std::cout << "mpc's: " << std::endl;
+    for (const auto& mpc : mpcn) {
+        std::cout << mpc << std::endl;
+    }
+    std::cout << "BLAH " << std::endl;
+
     auto mn(m_multiplier_names);
     std::sort(mn.begin(), mn.end());
 

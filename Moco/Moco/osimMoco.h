@@ -38,6 +38,7 @@
 #include "Components/StationPlaneContactForce.h"
 #include "Components/ModelFactory.h"
 #include "Components/DiscreteForces.h"
+#include "Components/FreePointBodyActuator.h"
 
 #include "MocoCasADiSolver/MocoCasADiSolver.h"
 

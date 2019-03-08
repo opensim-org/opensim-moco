@@ -85,3 +85,26 @@ void MocoVariableInfo::constructProperties() {
     constructProperty_initial_bounds();
     constructProperty_final_bounds();
 }
+
+MocoControlInfo::MocoControlInfo(const std::string& actuatorName, 
+        const MocoBounds& bounds, const MocoInitialBounds& initial, 
+        const MocoFinalBounds& final) : 
+        MocoVariableInfo(actuatorName, bounds, initial, final) {
+    constructProperties();
+    set_actuator_name(actuatorName);
+}
+
+MocoControlInfo::MocoControlInfo(const std::string& actuatorName, int index,
+        const MocoBounds& bounds, const MocoInitialBounds& initial,
+        const MocoFinalBounds& final) :
+        MocoVariableInfo(format("%s_%i", actuatorName, index), bounds, initial, 
+            final) {
+    constructProperties();
+    set_actuator_name(actuatorName);
+    set_control_index(index);
+}
+
+void MocoControlInfo::constructProperties() {
+    constructProperty_actuator_name("");
+    constructProperty_control_index(-1);
+}

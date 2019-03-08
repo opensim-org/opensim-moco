@@ -26,7 +26,7 @@
 
 namespace OpenSim {
 
-// TODO can we track generailzed speeds too?
+// TODO can we track generalized speeds too?
 // TODO allow raising error to different powers (cubed).
 // TODO allow a "deadband."
 

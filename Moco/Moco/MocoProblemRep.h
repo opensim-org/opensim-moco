@@ -237,7 +237,7 @@ private:
     std::string m_constraint_forces_path = "constraint_forces";
 
     std::unordered_map<std::string, MocoVariableInfo> m_state_infos;
-    std::unordered_map<std::string, MocoVariableInfo> m_control_infos;
+    std::unordered_map<std::string, MocoControlInfo> m_control_infos;
 
     std::vector<std::unique_ptr<MocoParameter>> m_parameters;
     std::vector<std::unique_ptr<MocoCost>> m_costs;
@@ -246,6 +246,8 @@ private:
     int m_num_kinematic_constraint_equations = -1;
     std::vector<MocoKinematicConstraint> m_kinematic_constraints;
     std::map<std::string, std::vector<MocoVariableInfo>> m_multiplier_infos_map;
+
+    //std::map<std::string, std::vector<MocoVariableInfo>> m_control_infos_map;
 };
 
 } // namespace OpenSim

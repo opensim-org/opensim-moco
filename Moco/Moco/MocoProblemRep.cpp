@@ -68,16 +68,23 @@ void MocoProblemRep::initialize() {
                 format("State info provided for nonexistent state '%s'.",
                         name));
     }
-    OpenSim::Array<std::string> actuNames;
+    OpenSim::Array<std::string> controlNames;
     const auto modelPath = m_model_base.getAbsolutePath();
-    for (const auto& actu : m_model_base.getComponentList<ScalarActuator>()) {
-        actuNames.append(actu.getAbsolutePathString());
+    for (const auto& actu : m_model_base.getComponentList<Actuator>()) {
+        std::string actuPath =
+                actu.getAbsolutePath().formRelativePath(modelPath).toString();
+        if (actu.numControls() == 1) {
+            controlNames.append("/" + actuPath);
+        } else {
+            for (int i = 0; i < actu.numControls(); ++i) {
+                controlNames.append("/" + actuPath + "_" + std::to_string(i));
+            }
+        }
     }
 
-    // TODO can only handle ScalarActuators?
     for (int i = 0; i < ph0.getProperty_control_infos().size(); ++i) {
         const auto& name = ph0.get_control_infos(i).getName();
-        OPENSIM_THROW_IF(actuNames.findIndex(name) == -1, Exception,
+        OPENSIM_THROW_IF(controlNames.findIndex(name) == -1, Exception,
                 format("Control info provided for nonexistent actuator '%s'.",
                         name));
     }
@@ -110,9 +117,30 @@ void MocoProblemRep::initialize() {
     for (const auto& actu : m_model_base.getComponentList<ScalarActuator>()) {
         const std::string actuName = actu.getAbsolutePathString();
         if (m_control_infos.count(actuName) == 0) {
-            const auto info = MocoVariableInfo(actuName,
+            const auto info = MocoControlInfo(actuName,
                     {actu.getMinControl(), actu.getMaxControl()}, {}, {});
             m_control_infos[actuName] = info;
+        }
+    }
+    for (const auto& actu : m_model_base.getComponentList<Actuator>()) {
+        const std::string actuName = actu.getAbsolutePathString();
+        // Skip all scalar actuators.
+        if (m_control_infos.count(actuName)) continue;
+        // This has to be a non-scalar actuator, so we need to add multiple
+        // control infos.
+        for (int idx = 0; idx < actu.numControls(); ++idx) {
+            std::string controlName = 
+                   actuName + "_" + std::to_string(idx);
+            if (m_control_infos.count(controlName) == 0) {
+            
+                // TODO: how to automatically set bounds for non-scalar 
+                // actuators?
+                const auto info = MocoControlInfo(actuName, idx,
+                    MocoBounds(), {}, {});
+                std::cout << "controlName: " << controlName << std::endl;
+
+                m_control_infos[controlName] = info;
+            }
         }
     }
 
@@ -270,6 +298,7 @@ std::vector<std::string> MocoProblemRep::createStateInfoNames() const {
 }
 std::vector<std::string> MocoProblemRep::createControlInfoNames() const {
     std::vector<std::string> names(m_control_infos.size());
+    std::cout << "Control infos size: " << m_control_infos.size() << std::endl;
     int i = 0;
     for (const auto& info : m_control_infos) {
         names[i] = info.first;

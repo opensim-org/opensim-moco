@@ -65,6 +65,31 @@ private:
 
 };
 
+class OSIMMOCO_API MocoControlInfo : public MocoVariableInfo {
+OpenSim_DECLARE_CONCRETE_OBJECT(MocoControlInfo, MocoVariableInfo);
+public:
+    MocoControlInfo() { constructProperties(); }
+    MocoControlInfo(const std::string& actuatorName, const MocoBounds&,
+            const MocoInitialBounds&, const MocoFinalBounds&);
+    MocoControlInfo(const std::string& actuatorName, int index,
+        const MocoBounds&, const MocoInitialBounds&, const MocoFinalBounds&);
+
+    const std::string& getActuatorName() 
+    {   return get_actuator_name(); }
+    int getControlIndex() 
+    {   return get_control_index(); }
+
+protected:
+    OpenSim_DECLARE_PROPERTY(actuator_name, std::string, 
+        "TODO.");
+    OpenSim_DECLARE_PROPERTY(control_index, int,
+        "TODO.");
+
+private:
+    void constructProperties();
+
+};
+
 } // namespace OpenSim
 
 #endif // MOCO_MOCOVARIABLEINFO_H

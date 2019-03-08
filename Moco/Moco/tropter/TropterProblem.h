@@ -94,12 +94,24 @@ protected:
 
     void addControlVariables() {
         for (const auto& actu : m_modelBase.getComponentList<Actuator>()) {
-            // TODO handle a variable number of control signals.
             const auto& actuName = actu.getAbsolutePathString();
-            const auto& info = m_mocoProbRep.getControlInfo(actuName);
-            this->add_control(actuName, convertBounds(info.getBounds()),
-                    convertBounds(info.getInitialBounds()),
-                    convertBounds(info.getFinalBounds()));
+            if (actu.numControls() == 1) {
+                const auto& info = m_mocoProbRep.getControlInfo(actuName);
+                this->add_control(actuName, convertBounds(info.getBounds()),
+                        convertBounds(info.getInitialBounds()),
+                        convertBounds(info.getFinalBounds()));
+            } else {
+                for (int idx = 0; idx < actu.numControls(); ++idx) {
+                    std::string controlName = actuName + "_" + 
+                            std::to_string(idx); 
+                    const auto& info = 
+                            m_mocoProbRep.getControlInfo(controlName);
+                    this->add_control(controlName, 
+                            convertBounds(info.getBounds()),
+                            convertBounds(info.getInitialBounds()),
+                            convertBounds(info.getFinalBounds()));
+                }
+            }
         }
     }
 
