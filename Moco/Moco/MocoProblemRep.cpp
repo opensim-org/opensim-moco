@@ -298,7 +298,6 @@ std::vector<std::string> MocoProblemRep::createStateInfoNames() const {
 }
 std::vector<std::string> MocoProblemRep::createControlInfoNames() const {
     std::vector<std::string> names(m_control_infos.size());
-    std::cout << "Control infos size: " << m_control_infos.size() << std::endl;
     int i = 0;
     for (const auto& info : m_control_infos) {
         names[i] = info.first;

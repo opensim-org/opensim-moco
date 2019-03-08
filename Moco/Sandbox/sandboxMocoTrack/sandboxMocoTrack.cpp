@@ -192,7 +192,6 @@ public:
 
         MocoTool moco;
         auto& problem = moco.updProblem();
-        auto& solver = moco.initCasADiSolver();
 
         // Modeling.
         // ---------
@@ -211,27 +210,25 @@ public:
                 problem.setControlInfo("/" + coordAct.getName(), {-1, 1});
             }
         }
-        problem.setModelCopy(model);
 
         // Costs.
         // ------
-        auto guess = solver.createGuess("bounds");
         m_start_time = get_start_time();
         m_end_time = get_end_time();
 
         // State tracking cost.
         if (!get_kinematics_file().empty()) {
-            configureStateTracking(problem, model, guess);
+            configureStateTracking(problem, model);
         }
 
         // Marker tracking cost.
         if (!get_markers_file().empty()) {
-            configureMarkerTracking(problem, model, guess);
+            configureMarkerTracking(problem, model);
         }
 
         // GRF tracking cost.
         if (!get_external_loads_file().empty()) {
-            configureForceTracking(problem, model, guess);
+            configureForceTracking(problem, model);
         }
 
         auto* effort = problem.addCost<MocoControlCost>("effort", 0.1);
@@ -253,6 +250,7 @@ public:
 
         // Configure solver.
         // -----------------
+        auto& solver = moco.initCasADiSolver();
         solver.set_num_mesh_points(25);
         solver.set_dynamics_mode("explicit");
         solver.set_optim_convergence_tolerance(1e-4);
@@ -263,7 +261,25 @@ public:
 
         // Set the problem guess.
         // ----------------------
-        solver.setGuess("bounds");
+        auto guess = solver.createGuess("bounds");
+        
+        // Set position states in guess, if available.
+        if (m_kinematics_from_file.getNumRows()) {
+            applyPositionStatesToGuess(m_kinematics_from_file, model, guess);
+        } else if (m_kinematics_from_markers.getNumRows()) {
+            applyPositionStatesToGuess(m_kinematics_from_markers, model, guess);
+        }
+
+        // Set ground reaction force controls in guess, if available.
+        if (m_forces.getNumRows()) {
+            for (const auto& label : m_forces.getColumnLabels()) {
+                const auto& time = guess.getTime();
+                auto col = m_forces.getDependentColumn(label);
+                auto colTime = createVectorLinspace(col.size(), time[0],
+                    time[time.size()-1]);
+                guess.setControl("/" + label, interpolate(colTime, col, time));
+            }
+        }
 
         // Solve!
         // ------
@@ -276,47 +292,39 @@ private:
     Model m_model;
     double m_start_time;
     double m_end_time;
+    TimeSeriesTable m_kinematics_from_file;
+    TimeSeriesTable m_kinematics_from_markers;
+    TimeSeriesTable m_forces;
 
-    void configureStateTracking(MocoProblem& problem, Model& model, 
-            MocoIterate& guess) {
+    void configureStateTracking(MocoProblem& problem, Model& model) {
         auto* stateTracking = 
             problem.addCost<MocoStateTrackingCost>("state_tracking");
-
-        const auto& s = model.getWorkingState();
         auto kinematics = STOFileAdapter::read(get_kinematics_file());
-        // This needs to happen before kinematics labels are renamed below.
-        //applyPositionStatesToGuess(kinematics, model, guess);
+
+        // Don't track coordinates that are already constrained.
+        // TODO: it would be better to just remove the columns for constrained
+        // coordinates.
+        const auto& s = model.getWorkingState();
         MocoWeightSet weights;
         for (const auto& coord : model.getComponentList<Coordinate>()) {
             std::string path = coord.getAbsolutePathString();
-            for (int i = 0; i < kinematics.getNumColumns(); ++i) {
-                if (path.find(kinematics.getColumnLabel(i))
-                    != std::string::npos) {
-                    kinematics.setColumnLabel(i, path + "/value");
-                }
-
-                // Don't track coordinates that are already constrained.
-                double weight = coord.isConstrained(s) ? 0 : 1;
-                weights.cloneAndAppend({path + "/value", weight});
-            }
+            double weight = coord.isConstrained(s) ? 0 : 1;
+            weights.cloneAndAppend({path + "/value", weight});
         }
+
+        updateKinematicsLabelsAndUnits(model, kinematics);
 
         stateTracking->setReference(kinematics);
-        if (kinematics.hasTableMetaDataKey("inDegrees") &&
-            kinematics.getTableMetaDataAsString("inDegrees") == "yes") {
-            model.getSimbodyEngine().convertDegreesToRadians(kinematics);
-        }
         stateTracking->setWeightSet(weights);
         stateTracking->setAllowUnusedReferences(true);
 
-        updateTimes(
-            kinematics.getIndependentColumn().front(),
-            kinematics.getIndependentColumn().back(),
-            "kinematic");
+        updateTimes(kinematics.getIndependentColumn().front(),
+                kinematics.getIndependentColumn().back(), "kinematic");
+
+        m_kinematics_from_file = kinematics;
     }
 
-    void configureMarkerTracking(MocoProblem& problem, Model& model, 
-            MocoIterate& guess) {
+    void configureMarkerTracking(MocoProblem& problem, Model& model) {
         MarkersReference markersRef;
         markersRef.loadMarkersFile(get_markers_file());
 
@@ -327,6 +335,7 @@ private:
 
         // If the user provided an IK setup file, get the marker weights
         // from it and append it to the MarkersReference.
+        TimeSeriesTable kinematics;
         if (!get_ik_setup_file().empty()) {
             InverseKinematicsTool iktool(get_ik_setup_file());
             auto& iktasks = iktool.getIKTaskSet();
@@ -335,21 +344,20 @@ private:
 
             markersRef.setMarkerWeightSet(markerWeights);
 
-            //iktool.run();
-            //auto kinematics = STOFileAdapter::read(
-            //    iktool.getOutputMotionFileName());
-
-            //applyPositionStatesToGuess(kinematics, model, guess);
+            iktool.run();
+            kinematics = STOFileAdapter::read(
+                iktool.getOutputMotionFileName());
         }
 
-        updateTimes(
-            markersRef.getMarkerTable().getIndependentColumn().front(), 
-            markersRef.getMarkerTable().getIndependentColumn().back(),
+        updateTimes(markersRef.getMarkerTable().getIndependentColumn().front(), 
+            markersRef.getMarkerTable().getIndependentColumn().back(), 
             "marker");
+
+        updateKinematicsLabelsAndUnits(model, kinematics);
+        m_kinematics_from_markers = kinematics;
     }
 
-    void configureForceTracking(MocoProblem& problem, Model& model,
-            MocoIterate& guess) {
+    void configureForceTracking(MocoProblem& problem, Model& model) {
         ExternalLoads extLoads(get_external_loads_file(), true);
 
         auto forces = STOFileAdapter::read(extLoads.getDataFileName());
@@ -365,8 +373,6 @@ private:
                         extForce.getTorqueIdentifier() + dirs[j]), torqueName);
                 problem.setControlInfo("/" + extForce.getName(), j,
                         {-250, 250});
-                //guess.setControl(torqueName, 
-                //        forces.getDependentColumn(torqueName));
 
                 // Forces
                 std::string forceName =
@@ -375,18 +381,14 @@ private:
                         extForce.getForceIdentifier() + dirs[j]), forceName);
                 problem.setControlInfo("/" + extForce.getName(), j + 3,
                         {-1000, 1000});
-                //guess.setControl(forceName, 
-                //        forces.getDependentColumn(forceName));
 
-                // Points
+                // Force application points
                 std::string pointName =
                         extForce.getName() + "_" + std::to_string(j + 3);
                 forces.setColumnLabel(forces.getColumnIndex(
                         extForce.getPointIdentifier() + dirs[j]), pointName);
                 problem.setControlInfo("/" + extForce.getName(), j + 6,
                         {-500, 500});
-                //guess.setControl(pointName, 
-                //       forces.getDependentColumn(pointName));
             }
 
             FreePointBodyActuator* fpbAct = new FreePointBodyActuator();
@@ -401,14 +403,32 @@ private:
             ++f;
         }
 
-        auto* grfTracking =
-            problem.addCost<ControlTrackingCost>("grf_tracking", 1);
+        auto* grfTracking = 
+                problem.addCost<ControlTrackingCost>("grf_tracking", 1);
         grfTracking->setReference(forces);
 
-        updateTimes(
-            forces.getIndependentColumn().front(),
-            forces.getIndependentColumn().back(),
-            "marker");
+        updateTimes(forces.getIndependentColumn().front(),
+                forces.getIndependentColumn().back(), "marker");
+
+        m_forces = forces;
+    }
+
+    void updateKinematicsLabelsAndUnits(const Model& model, 
+            TimeSeriesTable& kinematics) {
+        for (const auto& coord : model.getComponentList<Coordinate>()) {
+            std::string path = coord.getAbsolutePathString();
+            for (int i = 0; i < kinematics.getNumColumns(); ++i) {
+                if (path.find(kinematics.getColumnLabel(i))
+                    != std::string::npos) {
+                    kinematics.setColumnLabel(i, path + "/value");
+                }
+            }
+        }
+
+        if (kinematics.hasTableMetaDataKey("inDegrees") &&
+            kinematics.getTableMetaDataAsString("inDegrees") == "yes") {
+            model.getSimbodyEngine().convertDegreesToRadians(kinematics);
+        }
     }
 
     void updateTimes(double dataStartTime, double dataEndTime, 
@@ -433,7 +453,7 @@ private:
 
     void applyPositionStatesToGuess(const TimeSeriesTable& states, 
             const Model& model, MocoIterate& guess) {
-        guess.resampleWithNumTimes(states.getNumRows());
+        guess.resampleWithNumTimes((int)states.getNumRows());
         for (const auto& coord : model.getComponentList<Coordinate>()) {
             std::string path = coord.getAbsolutePathString();
             for (int i = 0; i < states.getNumColumns(); ++i) {
