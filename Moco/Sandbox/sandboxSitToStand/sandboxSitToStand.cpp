@@ -153,23 +153,23 @@ MocoSolution minimizeControlEffort(const Options& opt) {
 
     // Set bounds.
     mp.setTimeBounds(0, 1);
-    mp.setStateInfo("/jointset/hip_r/hip_flexion_r/value", {-1, 1}, -0.5, 0);
+    mp.setStateInfo("/jointset/hip_r/hip_flexion_r/value", {-1, 1}, -0.2, 0);
     mp.setStateInfo("/jointset/hip_r/hip_adduction_r/value", {-1, 1}, {-1, 1}, 0);
     mp.setStateInfo("/jointset/hip_r/hip_rotation_r/value", {-1, 1}, {-1, 1}, 0);
-    mp.setStateInfo("/jointset/walker_knee_r/knee_angle_r/value", {-3, 0}, -0.5, 0);
+    mp.setStateInfo("/jointset/walker_knee_r/knee_angle_r/value", {-3, 0}, -0.2, 0);
     mp.setStateInfo("/jointset/walker_knee_r/knee_adduction_r/value", {-0.1, 0.1}, {-0.1, 0.1}, 0);
-    mp.setStateInfo("/jointset/ankle_r/ankle_angle_r/value", {-0.55, 0.7}, -0.3, 0);
+    mp.setStateInfo("/jointset/ankle_r/ankle_angle_r/value", {-0.55, 0.7}, -0.2, 0);
 
     mp.setStateInfo("/jointset/hip_r/hip_flexion_r/speed", {-50, 50});
     mp.setStateInfo("/jointset/walker_knee_r/knee_angle_r/speed", {-50, 50});
     mp.setStateInfo("/jointset/ankle_r/ankle_angle_r/speed", {-50, 50});
 
-    mp.setStateInfo("/jointset/hip_l/hip_flexion_l/value", {-1, 1}, -0.5, 0);
+    mp.setStateInfo("/jointset/hip_l/hip_flexion_l/value", {-1, 1}, -0.2, 0);
     mp.setStateInfo("/jointset/hip_l/hip_adduction_l/value", {-1, 1}, {-1, 1}, 0);
     mp.setStateInfo("/jointset/hip_l/hip_rotation_l/value", {-1, 1}, {-1, 1}, 0);
-    mp.setStateInfo("/jointset/walker_knee_l/knee_angle_l/value", {-3, 0}, -0.5, 0);
+    mp.setStateInfo("/jointset/walker_knee_l/knee_angle_l/value", {-3, 0}, -0.2, 0);
     mp.setStateInfo("/jointset/walker_knee_l/knee_adduction_l/value", {-0.1, 0.1}, {-0.1, 0.1}, 0);
-    mp.setStateInfo("/jointset/ankle_l/ankle_angle_l/value", {-0.55, 0.7}, -0.3, 0);
+    mp.setStateInfo("/jointset/ankle_l/ankle_angle_l/value", {-0.55, 0.7}, -0.2, 0);
 
     mp.setStateInfo("/jointset/hip_l/hip_flexion_l/speed", {-50, 50});
     mp.setStateInfo("/jointset/walker_knee_l/knee_angle_l/speed", {-50, 50});
