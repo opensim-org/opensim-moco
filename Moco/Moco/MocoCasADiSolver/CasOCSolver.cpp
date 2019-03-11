@@ -51,7 +51,8 @@ Iterate Solver::createRandomIterateWithinBounds() const {
 
 void Solver::setSparsityDetection(const std::string& setting) {
     OPENSIM_THROW_IF(setting != "none" && setting != "random" &&
-            setting != "initial-guess", Exception);
+                             setting != "initial-guess",
+            Exception);
     m_sparsity_detection = setting;
 }
 
@@ -63,25 +64,33 @@ void Solver::setSparsityDetectionRandomCount(int count) {
 void Solver::setParallelism(std::string parallelism, int numThreads) {
     m_parallelism = parallelism;
     OPENSIM_THROW_IF(numThreads < 1, OpenSim::Exception,
-            OpenSim::format("Expected numThreads < 1 but got %i.", numThreads));
+            OpenSim::format(
+                    "Expected numThreads >= 1 but got %i.", numThreads));
     m_numThreads = numThreads;
 }
 
 Solution Solver::solve(const Iterate& guess) const {
     auto transcription = createTranscription();
     auto pointsForSparsityDetection =
-            std::make_shared<std::vector<const VariablesDM>>();
+            std::make_shared<std::vector<VariablesDM>>();
     if (m_sparsity_detection == "initial-guess") {
         // TODO: This guess has not been interpolated.
         pointsForSparsityDetection->push_back(guess.variables);
     } else if (m_sparsity_detection == "random") {
+        // Make sure the exact same sparsity pattern is used every time.
+        auto randGen = OpenSim::make_unique<SimTK::Random::Uniform>(-1, 1);
+        randGen->setSeed(0);
         for (int i = 0; i < m_sparsity_detection_random_count; ++i) {
             pointsForSparsityDetection->push_back(
-                    transcription->createRandomIterateWithinBounds().variables);
+                    transcription->createRandomIterateWithinBounds(
+                                         randGen.get())
+                            .variables);
         }
     }
-    m_problem.constructFunctions(isDynamicsModeImplicit(),
-            m_finite_difference_scheme, pointsForSparsityDetection);
+    m_problem.constructFunctions(
+            m_finite_difference_scheme,
+            std::const_pointer_cast<const std::vector<VariablesDM>>(
+                    pointsForSparsityDetection));
     return transcription->solve(guess);
 }
 

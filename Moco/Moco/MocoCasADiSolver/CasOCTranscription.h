@@ -34,7 +34,11 @@ public:
               m_numGridPoints(numGridPoints), m_numMeshPoints(numMeshPoints) {}
     virtual ~Transcription() = default;
     Iterate createInitialGuessFromBounds() const;
-    Iterate createRandomIterateWithinBounds() const;
+    /// Use the provided random number generator to generate an iterate.
+    /// Random::Uniform is used if a generator is not provided. The generator
+    /// should produce numbers with [-1, 1].
+    Iterate createRandomIterateWithinBounds(
+            const SimTK::Random* = nullptr) const;
     template <typename T>
     T createTimes(const T& initialTime, const T& finalTime) const {
         return (finalTime - initialTime) * m_grid + initialTime;
@@ -69,6 +73,8 @@ protected:
     /// avoiding an extra call on the instantiated object.
     void createVariablesAndSetBounds();
 
+    /// We assume all functions depend on time and parameters.
+    /// "inputs" is prepended by time and postpended (?) by parameters.
     casadi::MXVector evalOnTrajectory(const casadi::Function& pointFunction,
             const std::vector<Var>& inputs,
             const casadi::Matrix<casadi_int>& timeIndices) const;

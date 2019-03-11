@@ -47,10 +47,8 @@ void Transcription::createVariablesAndSetBounds() {
             MX::sym("controls", m_problem.getNumControls(), m_numGridPoints);
     m_vars[multipliers] = MX::sym(
             "multipliers", m_problem.getNumMultipliers(), m_numGridPoints);
-    if (m_solver.isDynamicsModeImplicit()) {
-        m_vars[derivatives] = MX::sym(
-                "derivatives", m_problem.getNumSpeeds(), m_numGridPoints);
-    }
+    m_vars[derivatives] = MX::sym(
+            "derivatives", m_problem.getNumDerivatives(), m_numGridPoints);
     // TODO: This assumes that slack variables are applied at all
     // collocation points on the mesh interval interior.
     m_vars[slacks] = MX::sym(
@@ -137,6 +135,8 @@ void Transcription::createVariablesAndSetBounds() {
     }
     {
         if (m_solver.isDynamicsModeImplicit()) {
+            // "Slice()" grabs everything in that dimension (like ":" in
+            // Matlab).
             // TODO: How to choose bounds on udot?
             setVariableBounds(derivatives, Slice(), Slice(), {-1000, 1000});
         }
@@ -180,7 +180,8 @@ void Transcription::transcribe() {
     // constraint errors.
     m_xdot = MX(NS, m_numGridPoints);
     if (m_solver.isDynamicsModeImplicit()) {
-        m_residual = MX(NU, m_numGridPoints);
+        m_residual = MX(
+                m_problem.getNumMultibodyDynamicsEquations(), m_numGridPoints);
     }
     m_kcerr = MX(m_problem.getNumKinematicConstraintEquations(),
             m_kinematicConstraintIndices.nnz());
@@ -192,14 +193,14 @@ void Transcription::transcribe() {
 
     if (m_problem.getEnforceConstraintDerivatives() &&
             m_numPointsIgnoringConstraints) {
-        // In Hermite-Simpson, this is a midpoint, so we must compute a
-        // velocity correction and update qdot. See
-        // MocoCasADiVelocityCorrection for more details. This function
-        // only takes multibody state variables: coordinates and speeds.
+        // In Hermite-Simpson, we must compute a velocity correction at all mesh
+        // interval midpoints and update qdot. See MocoCasADiVelocityCorrection
+        // for more details. This function only takes multibody state variables:
+        // coordinates and speeds.
         // TODO: The points at which we apply the velocity correction
-        // are correct for Trapezoidal and Hermite-Simpson, but might
-        // not be correct in general. Revisit this if we add other
-        // transcription schemes.
+        // are correct for Trapezoidal (no points) and Hermite-Simpson (mesh
+        // interval midpoints), but might not be correct in general. Revisit
+        // this if we add other transcription schemes.
         const auto velocityCorrOut = evalOnTrajectory(
                 m_problem.getVelocityCorrection(), {multibody_states, slacks},
                 m_daeIndicesIgnoringConstraints);
@@ -217,6 +218,12 @@ void Transcription::transcribe() {
         m_xdot(Slice(NQ, NQ + NU), Slice()) = w;
 
         std::vector<Var> inputs{states, controls, multipliers, derivatives};
+
+        // When the model has kinematic constraints, we must treat grid points
+        // differently, as kinematic constraints are computed for only some
+        // grid points. When the model does *not* have kinematic constraints,
+        // the DAE is the same for all grid points, but the evaluation is still
+        // done separately to keep implementation general.
 
         // residual, zdot, kcerr
         // Points where we compute algebraic constraints.
@@ -242,7 +249,7 @@ void Transcription::transcribe() {
         }
 
     } else { // Explicit dynamics mode.
-        std::vector<Var> inputs{states, controls, multipliers};
+        std::vector<Var> inputs{states, controls, multipliers, derivatives};
 
         // udot, zdot, kcerr.
         // Points where we compute algebraic constraints.
@@ -276,8 +283,8 @@ void Transcription::transcribe() {
     for (int ipc = 0; ipc < (int)m_path.size(); ++ipc) {
         const auto& info = m_problem.getPathConstraintInfos()[ipc];
         // TODO: Is it sufficiently general to apply these to mesh points?
-        const auto out = evalOnTrajectory(
-                *info.function, {states, controls}, m_daeIndices);
+        const auto out = evalOnTrajectory(*info.function,
+                {states, controls, multipliers, derivatives}, m_daeIndices);
         m_path[ipc] = out.at(0);
     }
 
@@ -296,7 +303,7 @@ void Transcription::setObjective() {
         // integrand here--that occurs when the function by casadi::nlpsol()
         // is evaluated.
         integrandTraj = evalOnTrajectory(m_problem.getIntegralCostIntegrand(),
-                {states, controls, /* TODO: multipliers */}, m_gridIndices)
+                {states, controls, multipliers, derivatives}, m_gridIndices)
                                 .at(0);
     }
 
@@ -310,11 +317,12 @@ void Transcription::setObjective() {
     }
     MX integralCost = m_duration * dot(quadCoeffs.T(), integrandTraj);
 
-    // "Slice()" grabs everything in that dimension (like ":" in Matlab).
     MXVector endpointCostOut;
     m_problem.getEndpointCost().call(
             {m_vars[final_time], m_vars[states](Slice(), -1),
-                    m_vars[parameters]},
+                    m_vars[controls](Slice(), -1),
+                    m_vars[multipliers](Slice(), -1),
+                    m_vars[derivatives](Slice(), -1), m_vars[parameters]},
             endpointCostOut);
     const auto endpointCost = endpointCostOut.at(0);
 
@@ -414,6 +422,7 @@ Solution Transcription::solve(const Iterate& guessOrig) {
     // -------------------------
     Solution solution = m_problem.createIterate<Solution>();
     solution.variables = expand(nlpResult.at("x"));
+    solution.objective = nlpResult.at("f").scalar();
     solution.times = createTimes(
             solution.variables[initial_time], solution.variables[final_time]);
     solution.stats = nlpFunc.stats();
@@ -448,14 +457,17 @@ Iterate Transcription::createInitialGuessFromBounds() const {
     return casGuess;
 }
 
-Iterate Transcription::createRandomIterateWithinBounds() const {
-    static SimTK::Random::Uniform randGen(-1, 1);
-    auto setRandom = [](DM& output, const DM& lowerDM, const DM& upperDM) {
+Iterate Transcription::createRandomIterateWithinBounds(
+        const SimTK::Random* randGen) const {
+    static const SimTK::Random::Uniform randGenDefault(-1, 1);
+    const SimTK::Random* randGenToUse = &randGenDefault;
+    if (randGen) randGenToUse = randGen;
+    auto setRandom = [&](DM& output, const DM& lowerDM, const DM& upperDM) {
         for (int irow = 0; irow < output.rows(); ++irow) {
             for (int icol = 0; icol < output.columns(); ++icol) {
                 const auto& lower = double(lowerDM(irow, icol));
                 const auto& upper = double(upperDM(irow, icol));
-                const auto rand = randGen.getValue();
+                const auto rand = randGenToUse->getValue();
                 auto value = 0.5 * (rand + 1.0) * (upper - lower) + lower;
                 if (std::isnan(value)) value = SimTK::clamp(lower, rand, upper);
                 output(irow, icol) = value;

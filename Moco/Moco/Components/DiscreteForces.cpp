@@ -1,9 +1,9 @@
 /* -------------------------------------------------------------------------- *
- * OpenSim Moco: MocoCasOCProblem.cpp                                         *
+ * OpenSim Moco: DiscreteForces.cpp                                           *
  * -------------------------------------------------------------------------- *
- * Copyright (c) 2018 Stanford University and the Authors                     *
+ * Copyright (c) 2019 Stanford University and the Authors                     *
  *                                                                            *
- * Author(s): Christopher Dembia                                              *
+ * Author(s): Nicholas Bianco                                                 *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may    *
  * not use this file except in compliance with the License. You may obtain a  *
@@ -16,27 +16,27 @@
  * limitations under the License.                                             *
  * -------------------------------------------------------------------------- */
 
-#include "CasOCProblem.h"
+#include "DiscreteForces.h"
+#include <OpenSim/Simulation/Model/Model.h>
 
-#include "../MocoUtilities.h"
-#include "CasOCTranscription.h"
-#include "CasOCTrapezoidal.h"
+using namespace OpenSim;
 
-// Shhh...we shouldn't depend on these but MocoIterate has a handy resample()
-// function.
-#include "../MocoIterate.h"
-#include "MocoCasOCProblem.h"
+void DiscreteForces::extendAddToSystem(SimTK::MultibodySystem& system) const {
+    Super::extendAddToSystem(system);
 
-using OpenSim::Exception;
-using OpenSim::format;
-
-namespace CasOC {
-
-Iterate Iterate::resample(const casadi::DM& newTimes) const {
-    auto mocoIt = OpenSim::convertToMocoIterate(*this);
-    auto simtkNewTimes = OpenSim::convertToSimTKVector(newTimes);
-    mocoIt.resample(simtkNewTimes);
-    return OpenSim::convertToCasOCIterate(mocoIt);
+    SimTK::SubsystemIndex forcesIdx = 
+        getModel().getForceSubsystem().getMySubsystemIndex();
+    SimTK::ForceSubsystem& forces = 
+        SimTK::ForceSubsystem::updDowncast(system.updSubsystem(forcesIdx));
+    m_discrete_forces = SimTK::Force::DiscreteForces(
+        SimTK::GeneralForceSubsystem::updDowncast(forces),
+        system.getMatterSubsystem());
 }
 
-} // namespace CasOC
+void DiscreteForces::setAllForces(SimTK::State& s, 
+        const SimTK::Vector& generalizedForces,
+        const SimTK::Vector_<SimTK::SpatialVec>& bodyForcesInG) const {
+
+    m_discrete_forces.setAllMobilityForces(s, generalizedForces);
+    m_discrete_forces.setAllBodyForces(s, bodyForcesInG);
+}

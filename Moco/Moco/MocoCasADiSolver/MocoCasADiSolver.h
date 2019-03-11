@@ -21,11 +21,12 @@
 #include "../MocoDirectCollocationSolver.h"
 
 namespace CasOC {
-class Problem;
 class Solver;
 } // namespace CasOC
 
 namespace OpenSim {
+
+class MocoCasOCProblem;
 
 /// This solver uses the CasADi library (https://casadi.org) to convert the
 /// MocoProblem into a generic nonlinear programming problem. CasADi efficiently
@@ -49,7 +50,8 @@ namespace OpenSim {
 ///
 /// See the optim_sparsity_detection setting for more information. In the case
 /// of "random", we use 3 random iterates and combine the resulting sparsity
-/// patterns.
+/// patterns. The seed used for these 3 random iterates is always exactly the
+/// same, ensuring that the sparsity pattern is deterministic.
 ///
 /// To explore the sparsity pattern for your problem, set optim_write_sparsity
 /// and run the resulting files with the plot_casadi_sparsity.py Python script.
@@ -165,9 +167,9 @@ public:
 protected:
     MocoSolution solveImpl() const override;
 
-    std::unique_ptr<CasOC::Problem> createCasOCProblem() const;
+    std::unique_ptr<MocoCasOCProblem> createCasOCProblem() const;
     std::unique_ptr<CasOC::Solver> createCasOCSolver(
-            const CasOC::Problem&) const;
+            const MocoCasOCProblem&) const;
 
 private:
     void constructProperties();
@@ -177,11 +179,6 @@ private:
     MocoIterate m_guessFromAPI;
     mutable SimTK::ResetOnCopy<MocoIterate> m_guessFromFile;
     mutable SimTK::ReferencePtr<const MocoIterate> m_guessToUse;
-
-    // TODO: Move this elsewhere.
-    using MocoProblemRepJar = ThreadsafeJar<const MocoProblemRep>;
-    using ThreadsafeJarPtr = std::unique_ptr<MocoProblemRepJar>;
-    mutable SimTK::ResetOnCopy<ThreadsafeJarPtr> m_jar;
 
     mutable bool m_runningInPython = false;
 };
