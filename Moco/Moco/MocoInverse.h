@@ -30,8 +30,9 @@ class MocoInverse;
 
 class MocoInverseSolution {
 public:
-    const MocoSolution& getMocoSolution() const;
-
+    const MocoSolution& getMocoSolution() const {
+        return m_mocoSolution;
+    }
 private:
     void setMocoSolution(MocoSolution mocoSolution) {
         m_mocoSolution = std::move(mocoSolution);
@@ -61,6 +62,16 @@ public:
             "(default: 50 mesh points / second).");
 
     OpenSim_DECLARE_PROPERTY(external_loads_file, std::string, "TODO");
+
+    OpenSim_DECLARE_PROPERTY(ignore_activation_dynamics, bool,
+            "Ignore activation dynamics for all muscles in the model. "
+            "If false, the muscle's setting is not modified."
+            "(default: false).");
+
+    OpenSim_DECLARE_PROPERTY(ignore_tendon_compliance, bool,
+            "Ignore tendon_compliance for all muscles in the model. "
+            "If false, the muscle's setting is not modified."
+            "(default: false).");
 
     OpenSim_DECLARE_PROPERTY(create_reserve_actuators, double,
             "Create a reserve actuator (CoordinateActuator) for each "
