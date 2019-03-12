@@ -2,7 +2,7 @@
 <OpenSimDocument Version="30000">
 	<InverseKinematicsTool name="walk">
 		<!--Directory used for writing results.-->
-		<results_directory></results_directory>
+		<results_directory>./results_walk</results_directory>
 		<!--Directory for input files-->
 		<input_directory />
 		<!--Name of the .osim file used to construct a model.-->

@@ -8,5 +8,4 @@ MocoAddSandboxExecutable(NAME sandboxMocoTrack
             ik_setup_walk.xml
             inverse_dynamics.sto
             motion_capture_walk.trc
-            subject_scaled_walk.osim
-            subject_walk_adjusted.osim)
+            subject_scaled_walk.osim)
