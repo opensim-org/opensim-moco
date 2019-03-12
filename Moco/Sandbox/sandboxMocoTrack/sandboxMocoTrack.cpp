@@ -192,7 +192,6 @@ public:
 
         MocoTool moco;
         auto& problem = moco.updProblem();
-        auto& solver = moco.initCasADiSolver();
 
         // Modeling.
         // ---------
@@ -215,23 +214,22 @@ public:
 
         // Costs.
         // ------
-        auto guess = solver.createGuess("bounds");
         m_start_time = get_start_time();
         m_end_time = get_end_time();
 
         // State tracking cost.
         if (!get_kinematics_file().empty()) {
-            configureStateTracking(problem, model, guess);
+            configureStateTracking(problem, model);
         }
 
         // Marker tracking cost.
         if (!get_markers_file().empty()) {
-            configureMarkerTracking(problem, model, guess);
+            configureMarkerTracking(problem, model);
         }
 
         // GRF tracking cost.
         if (!get_external_loads_file().empty()) {
-            configureForceTracking(problem, model, guess);
+            configureForceTracking(problem, model);
         }
 
         auto* effort = problem.addCost<MocoControlCost>("effort", 0.1);
@@ -253,16 +251,19 @@ public:
 
         // Configure solver.
         // -----------------
+        auto& solver = moco.initCasADiSolver();
         solver.set_num_mesh_points(25);
         solver.set_dynamics_mode("explicit");
-        solver.set_optim_convergence_tolerance(1e-4);
-        solver.set_optim_constraint_tolerance(1e-4);
+        solver.set_optim_convergence_tolerance(1e-3);
+        solver.set_optim_constraint_tolerance(1e-3);
         solver.set_enforce_constraint_derivatives(true);
         solver.set_transcription_scheme("hermite-simpson");
         solver.set_optim_finite_difference_scheme("forward");
 
         // Set the problem guess.
         // ----------------------
+        //auto guess = solver.createGuess("bounds");
+
         solver.setGuess("bounds");
 
         // Solve!
@@ -277,8 +278,7 @@ private:
     double m_start_time;
     double m_end_time;
 
-    void configureStateTracking(MocoProblem& problem, Model& model, 
-            MocoIterate& guess) {
+    void configureStateTracking(MocoProblem& problem, Model& model) {
         auto* stateTracking = 
             problem.addCost<MocoStateTrackingCost>("state_tracking");
 
@@ -306,6 +306,7 @@ private:
             kinematics.getTableMetaDataAsString("inDegrees") == "yes") {
             model.getSimbodyEngine().convertDegreesToRadians(kinematics);
         }
+        STOFileAdapter::write(kinematics, "coordinates_new_labels.mot");
         stateTracking->setWeightSet(weights);
         stateTracking->setAllowUnusedReferences(true);
 
@@ -315,8 +316,7 @@ private:
             "kinematic");
     }
 
-    void configureMarkerTracking(MocoProblem& problem, Model& model, 
-            MocoIterate& guess) {
+    void configureMarkerTracking(MocoProblem& problem, Model& model) {
         MarkersReference markersRef;
         markersRef.loadMarkersFile(get_markers_file());
 
@@ -348,8 +348,7 @@ private:
             "marker");
     }
 
-    void configureForceTracking(MocoProblem& problem, Model& model,
-            MocoIterate& guess) {
+    void configureForceTracking(MocoProblem& problem, Model& model) {
         ExternalLoads extLoads(get_external_loads_file(), true);
 
         auto forces = STOFileAdapter::read(extLoads.getDataFileName());
@@ -404,6 +403,7 @@ private:
         auto* grfTracking =
             problem.addCost<ControlTrackingCost>("grf_tracking", 1);
         grfTracking->setReference(forces);
+        STOFileAdapter::write(forces, "forces_new_labels.mot");
 
         updateTimes(
             forces.getIndependentColumn().front(),
@@ -433,7 +433,7 @@ private:
 
     void applyPositionStatesToGuess(const TimeSeriesTable& states, 
             const Model& model, MocoIterate& guess) {
-        guess.resampleWithNumTimes(states.getNumRows());
+        guess.resampleWithNumTimes((int)states.getNumRows());
         for (const auto& coord : model.getComponentList<Coordinate>()) {
             std::string path = coord.getAbsolutePathString();
             for (int i = 0; i < states.getNumColumns(); ++i) {
@@ -466,9 +466,9 @@ int main() {
 
         MocoTrack track;
         track.setModel(model);
-        //track.setKinematicsFile("ik_output_walk.mot");
-        track.setMarkersFile("motion_capture_walk.trc");
-        track.setIKSetupFile("ik_setup_walk.xml");
+        track.setKinematicsFile("ik_output_walk.mot");
+        //track.setMarkersFile("motion_capture_walk.trc");
+        //track.setIKSetupFile("ik_setup_walk.xml");
         track.set_create_coordinate_actuators(1000);
         track.setRemoveModelForceSet(true);
         track.setExternalLoadsFile("grf_walk.xml");
