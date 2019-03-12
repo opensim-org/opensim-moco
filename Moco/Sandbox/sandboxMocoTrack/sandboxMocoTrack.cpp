@@ -232,15 +232,26 @@ public:
             configureForceTracking(problem, model);
         }
 
+        // Set the model again, in case it was changed while configuring costs.
+        problem.setModelCopy(model);
+        
+
         auto* effort = problem.addCost<MocoControlCost>("effort", 0.1);
+
+        // Heavily penalize pelvis residuals.
+        effort->setWeight("tau_pelvis_tilt", 1000);
+        effort->setWeight("tau_pelvis_list", 1000);
+        effort->setWeight("tau_pelvis_rotation", 1000);
+        effort->setWeight("tau_pelvis_tx", 1000);
+        effort->setWeight("tau_pelvis_ty", 1000);
+        effort->setWeight("tau_pelvis_tz", 1000);
+
+        // Don't penalize GRF controls.
         for (int i = 0; i < 9; ++i) {
             effort->setWeight("Left_GRF_" + std::to_string(i), 0);
             effort->setWeight("Right_GRF_" + std::to_string(i), 0);
-
         }
-
-        problem.setModelCopy(model);
-            
+                    
         // Set the time range.
         // -------------------
         // Set the time bounds based on the time range in the kinematics file.
@@ -262,9 +273,23 @@ public:
 
         // Set the problem guess.
         // ----------------------
-        //auto guess = solver.createGuess("bounds");
+        auto guess = solver.createGuess("bounds");
 
-        solver.setGuess("bounds");
+        if (m_kinematics_from_file.getNumRows()) {
+            applyStatesToGuess(m_kinematics_from_file, model, guess);
+        } else if (m_kinematics_from_markers.getNumRows()) {
+            applyStatesToGuess(m_kinematics_from_markers, model, guess);
+        }
+
+        if (m_forces.getNumRows()) {
+            applyControlsToGuess(m_forces, guess);
+        }
+
+        if (m_controls.getNumRows()) {
+            applyControlsToGuess(m_controls, guess);
+        }
+
+        solver.setGuess(guess);
 
         // Solve!
         // ------
@@ -277,21 +302,23 @@ private:
     Model m_model;
     double m_start_time;
     double m_end_time;
+    TimeSeriesTable m_kinematics_from_file;
+    TimeSeriesTable m_kinematics_from_markers;
+    TimeSeriesTable m_forces;
+    TimeSeriesTable m_controls;
+    int m_min_data_length;
 
     void configureStateTracking(MocoProblem& problem, Model& model) {
-        auto* stateTracking = 
-            problem.addCost<MocoStateTrackingCost>("state_tracking");
+        
+        auto kinematics = STOFileAdapter::read(get_kinematics_file());
 
         const auto& s = model.getWorkingState();
-        auto kinematics = STOFileAdapter::read(get_kinematics_file());
-        // This needs to happen before kinematics labels are renamed below.
-        //applyPositionStatesToGuess(kinematics, model, guess);
         MocoWeightSet weights;
         for (const auto& coord : model.getComponentList<Coordinate>()) {
             std::string path = coord.getAbsolutePathString();
             for (int i = 0; i < kinematics.getNumColumns(); ++i) {
                 if (path.find(kinematics.getColumnLabel(i))
-                    != std::string::npos) {
+                        != std::string::npos) {
                     kinematics.setColumnLabel(i, path + "/value");
                 }
 
@@ -301,19 +328,21 @@ private:
             }
         }
 
+        auto* stateTracking =
+                problem.addCost<MocoStateTrackingCost>("state_tracking");
         stateTracking->setReference(kinematics);
-        if (kinematics.hasTableMetaDataKey("inDegrees") &&
-            kinematics.getTableMetaDataAsString("inDegrees") == "yes") {
-            model.getSimbodyEngine().convertDegreesToRadians(kinematics);
-        }
-        STOFileAdapter::write(kinematics, "coordinates_new_labels.mot");
         stateTracking->setWeightSet(weights);
         stateTracking->setAllowUnusedReferences(true);
 
-        updateTimes(
-            kinematics.getIndependentColumn().front(),
-            kinematics.getIndependentColumn().back(),
-            "kinematic");
+        updateTimes(kinematics.getIndependentColumn().front(),
+                    kinematics.getIndependentColumn().back(), "kinematic");
+
+        updateKinematicsLabelsAndUnits(model, kinematics);
+        m_kinematics_from_file = kinematics;
+        if (m_min_data_length == -1 ||
+            m_min_data_length > kinematics.getNumRows()) {
+            m_min_data_length = (int)kinematics.getNumRows();
+        }
     }
 
     void configureMarkerTracking(MocoProblem& problem, Model& model) {
@@ -327,6 +356,7 @@ private:
 
         // If the user provided an IK setup file, get the marker weights
         // from it and append it to the MarkersReference.
+        TimeSeriesTable kinematics;
         if (!get_ik_setup_file().empty()) {
             InverseKinematicsTool iktool(get_ik_setup_file());
             auto& iktasks = iktool.getIKTaskSet();
@@ -335,17 +365,21 @@ private:
 
             markersRef.setMarkerWeightSet(markerWeights);
 
-            //iktool.run();
-            //auto kinematics = STOFileAdapter::read(
-            //    iktool.getOutputMotionFileName());
-
-            //applyPositionStatesToGuess(kinematics, model, guess);
+            iktool.run();
+            kinematics = STOFileAdapter::read(
+                iktool.getOutputMotionFileName());
         }
 
-        updateTimes(
-            markersRef.getMarkerTable().getIndependentColumn().front(), 
-            markersRef.getMarkerTable().getIndependentColumn().back(),
-            "marker");
+        updateTimes(markersRef.getMarkerTable().getIndependentColumn().front(), 
+                    markersRef.getMarkerTable().getIndependentColumn().back(), 
+                    "marker");
+
+        updateKinematicsLabelsAndUnits(model, kinematics);
+        m_kinematics_from_markers = kinematics;
+        if (m_min_data_length == -1 ||
+            m_min_data_length > kinematics.getNumRows()) {
+            m_min_data_length = (int)kinematics.getNumRows();
+        }
     }
 
     void configureForceTracking(MocoProblem& problem, Model& model) {
@@ -364,8 +398,6 @@ private:
                         extForce.getTorqueIdentifier() + dirs[j]), torqueName);
                 problem.setControlInfo("/" + extForce.getName(), j,
                         {-250, 250});
-                //guess.setControl(torqueName, 
-                //        forces.getDependentColumn(torqueName));
 
                 // Forces
                 std::string forceName =
@@ -374,8 +406,6 @@ private:
                         extForce.getForceIdentifier() + dirs[j]), forceName);
                 problem.setControlInfo("/" + extForce.getName(), j + 3,
                         {-1000, 1000});
-                //guess.setControl(forceName, 
-                //        forces.getDependentColumn(forceName));
 
                 // Points
                 std::string pointName =
@@ -384,8 +414,6 @@ private:
                         extForce.getPointIdentifier() + dirs[j]), pointName);
                 problem.setControlInfo("/" + extForce.getName(), j + 6,
                         {-500, 500});
-                //guess.setControl(pointName, 
-                //       forces.getDependentColumn(pointName));
             }
 
             FreePointBodyActuator* fpbAct = new FreePointBodyActuator();
@@ -405,10 +433,32 @@ private:
         grfTracking->setReference(forces);
         STOFileAdapter::write(forces, "forces_new_labels.mot");
 
-        updateTimes(
-            forces.getIndependentColumn().front(),
-            forces.getIndependentColumn().back(),
-            "marker");
+        updateTimes(forces.getIndependentColumn().front(),
+                    forces.getIndependentColumn().back(), "marker");
+
+        m_forces = forces;
+        if (m_min_data_length == -1 ||
+            m_min_data_length > forces.getNumRows()) {
+            m_min_data_length = (int)forces.getNumRows();
+        }
+    }
+
+    void updateKinematicsLabelsAndUnits(const Model& model,
+            TimeSeriesTable& kinematics) {
+        for (const auto& coord : model.getComponentList<Coordinate>()) {
+            std::string path = coord.getAbsolutePathString();
+            for (int i = 0; i < kinematics.getNumColumns(); ++i) {
+                if (path.find(kinematics.getColumnLabel(i))
+                    != std::string::npos) {
+                    kinematics.setColumnLabel(i, path + "/value");
+                }
+            }
+        }
+
+        if (kinematics.hasTableMetaDataKey("inDegrees") &&
+            kinematics.getTableMetaDataAsString("inDegrees") == "yes") {
+            model.getSimbodyEngine().convertDegreesToRadians(kinematics);
+        }
     }
 
     void updateTimes(double dataStartTime, double dataEndTime, 
@@ -431,17 +481,45 @@ private:
         }
     }
 
-    void applyPositionStatesToGuess(const TimeSeriesTable& states, 
-            const Model& model, MocoIterate& guess) {
-        guess.resampleWithNumTimes((int)states.getNumRows());
+    void applyStatesToGuess(const TimeSeriesTable& states, const Model& model,
+            MocoIterate& guess) {
+        guess.resampleWithNumTimes(m_min_data_length);
+        auto time = guess.getTime();
+        GCVSplineSet stateSplines(states);
+
+        SimTK::Vector currTime(1);
+        SimTK::Vector value(m_min_data_length);
+        SimTK::Vector speed(m_min_data_length);
         for (const auto& coord : model.getComponentList<Coordinate>()) {
-            std::string path = coord.getAbsolutePathString();
+            auto path = coord.getAbsolutePathString();
             for (int i = 0; i < states.getNumColumns(); ++i) {
-                if (path.find(states.getColumnLabel(i)) != std::string::npos) {
-                    guess.setState(path + "/value", 
-                        states.getDependentColumn(states.getColumnLabel(i)));
+                auto label = states.getColumnLabel(i);
+                if (path.find(label) != std::string::npos) {
+
+                    for (int j = 0; j < m_min_data_length; ++i) {
+                        currTime[0] = time[j];
+                        auto* spline = stateSplines.getGCVSpline(i);
+
+                        value[j] = spline->calcValue(currTime);
+                        speed[j] = spline->calcDerivative({0}, currTime);
+                    }
+
+                    guess.setState(path + "/value", value);
+                    guess.setState(path + "/speed", speed);
                 }
             }
+        }
+    }
+
+    void applyControlsToGuess(const TimeSeriesTable& table, MocoIterate& guess)
+    {
+        guess.resampleWithNumTimes(m_min_data_length);
+        auto time = guess.getTime();
+        for (const auto& label : table.getColumnLabels()) {
+            auto col = table.getDependentColumn(label);
+            auto colTime = createVectorLinspace(m_min_data_length, time[0],
+                time[time.size() - 1]);
+            guess.setControl("/" + label, interpolate(colTime, col, time));
         }
     }
             
@@ -451,8 +529,21 @@ private:
 
 } // namespace OpenSim
 
-
 using namespace OpenSim;
+
+void addCoordinateActuator(Model& model, std::string coordName, 
+        double optimalForce) {
+
+    auto& coordSet = model.updCoordinateSet();
+
+    auto* actu = new CoordinateActuator();
+    actu->setName("tau_" + coordName);
+    actu->setCoordinate(&coordSet.get(coordName));
+    actu->setOptimalForce(1);
+    actu->setMinControl(-optimalForce);
+    actu->setMaxControl(optimalForce);
+    model.addComponent(actu);
+}
 
 int main() {
 
@@ -464,16 +555,33 @@ int main() {
         replaceJointWithWeldJoint(model, "mtp_l");
         replaceJointWithWeldJoint(model, "mtp_r");
 
+        addCoordinateActuator(model, "pelvis_tilt", 50);
+        addCoordinateActuator(model, "pelvis_list", 50);
+        addCoordinateActuator(model, "pelvis_rotation", 50);
+        addCoordinateActuator(model, "pelvis_tx", 1000);
+        addCoordinateActuator(model, "pelvis_ty", 1000);
+        addCoordinateActuator(model, "pelvis_tz", 1000);
+        addCoordinateActuator(model, "hip_adduction_l", 50);
+        addCoordinateActuator(model, "hip_adduction_r", 50);
+        addCoordinateActuator(model, "hip_flexion_l", 50);
+        addCoordinateActuator(model, "hip_flexion_r", 50);
+        addCoordinateActuator(model, "hip_rotation_l", 50);
+        addCoordinateActuator(model, "hip_rotation_r", 50);
+        addCoordinateActuator(model, "knee_angle_l", 50);
+        addCoordinateActuator(model, "knee_angle_r", 50);
+        addCoordinateActuator(model, "ankle_angle_l", 50);
+        addCoordinateActuator(model, "ankle_angle_r", 50);
+
+
         MocoTrack track;
         track.setModel(model);
-        track.setKinematicsFile("ik_output_walk.mot");
+        track.setKinematicsFile("coordinates.mot");
         //track.setMarkersFile("motion_capture_walk.trc");
         //track.setIKSetupFile("ik_setup_walk.xml");
-        track.set_create_coordinate_actuators(1000);
         track.setRemoveModelForceSet(true);
         track.setExternalLoadsFile("grf_walk.xml");
-        track.setStartTime(0.25);
-        track.setEndTime(2.25);
+        track.setStartTime(0.45);
+        track.setEndTime(1.8);
 
         track.solve();
     }
