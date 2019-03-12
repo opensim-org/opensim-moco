@@ -240,12 +240,10 @@ public:
         }
 
         auto* effort = problem.addCost<MocoControlCost>("effort", 0.1);
-        if (!get_external_loads_file().empty()) {
-            for (int i = 0; i < 9; ++i) {
-                effort->setWeight("Left_GRF_" + std::to_string(i), 0);
-                effort->setWeight("Right_GRF_" + std::to_string(i), 0);
+        for (int i = 0; i < 9; ++i) {
+            effort->setWeight("Left_GRF_" + std::to_string(i), 0);
+            effort->setWeight("Right_GRF_" + std::to_string(i), 0);
 
-            }
         }
 
         problem.setModelCopy(model);
@@ -275,21 +273,21 @@ public:
         //std::cout << "guess num times: " << guess.getNumTimes() << std::endl;
 
         // Set position states in guess, if available.
-        //if (m_kinematics_from_file.getNumRows()) {
-        //    applyStatesToGuess(m_kinematics_from_file, model, guess);
-        //} else if (m_kinematics_from_markers.getNumRows()) {
-        //    applyStatesToGuess(m_kinematics_from_markers, model, guess);
-        //}
+        if (m_kinematics_from_file.getNumRows()) {
+            applyStatesToGuess(m_kinematics_from_file, model, guess);
+        } else if (m_kinematics_from_markers.getNumRows()) {
+            applyStatesToGuess(m_kinematics_from_markers, model, guess);
+        }
 
         // Set ground reaction force controls in guess, if available.
-        //if (m_forces.getNumRows()) {
-        //    applyControlsToGuess(m_forces, guess);
-        //}
+        if (m_forces.getNumRows()) {
+            applyControlsToGuess(m_forces, guess);
+        }
 
-        //// Set actuator controls in guess, if available.
-        //if (m_controls.getNumRows()) {
-        //    applyControlsToGuess(m_controls, guess);
-        //}
+        // Set actuator controls in guess, if available.
+        if (m_controls.getNumRows()) {
+            applyControlsToGuess(m_controls, guess);
+        }
 
         solver.setGuess(guess);
 
@@ -326,9 +324,9 @@ private:
             weights.cloneAndAppend({path + "/value", weight});
         }
 
-        stateTracking->setReference(kinematics);
         updateKinematicsLabelsAndUnits(model, kinematics);
 
+        stateTracking->setReference(kinematics);
         stateTracking->setWeightSet(weights);
         stateTracking->setAllowUnusedReferences(true);
 
@@ -459,14 +457,12 @@ private:
         grfTracking->setReference(forces);
 
         updateTimes(forces.getIndependentColumn().front(),
-                forces.getIndependentColumn().back(), "force");
-
-        STOFileAdapter::write(forces, "grf_walk_new_labels.mot");
+                forces.getIndependentColumn().back(), "marker");
 
         m_forces = forces;
         if (m_min_data_length == -1 ||
                 m_min_data_length > forces.getNumRows()) {
-            m_min_data_length = (int)forces.getNumRows();
+            m_min_data_length = forces.getNumRows();
         }
     }
 
@@ -562,7 +558,7 @@ using namespace OpenSim;
 int main() {
 
     try {
-        Model model("subject_scaled_walk.osim");
+        Model model("subject_walk_adjusted.osim");
         replaceJointWithWeldJoint(model, "back");
         replaceJointWithWeldJoint(model, "subtalar_l");
         replaceJointWithWeldJoint(model, "subtalar_r");
@@ -571,13 +567,13 @@ int main() {
 
         MocoTrack track;
         track.setModel(model);
-        track.setKinematicsFile("coordinates.mot");
-        //track.setMarkersFile("motion_capture_walk.trc");
-        //track.setIKSetupFile("ik_setup_walk.xml");
+        //track.setKinematicsFile("ik_output_walk.mot");
+        track.setMarkersFile("motion_capture_walk.trc");
+        track.setIKSetupFile("ik_setup_walk.xml");
         track.set_create_coordinate_actuators(1000);
         track.setRemoveModelForceSet(true);
-        //track.setExternalLoadsFile("grf_walk.xml");
-        //track.setIDSetupFile("id_setup_walk.xml");
+        track.setExternalLoadsFile("grf_walk.xml");
+        track.setIDSetupFile("id_setup_walk.xml");
         track.setStartTime(0.45);
         track.setEndTime(1.8);
 
