@@ -259,12 +259,12 @@ public:
 
             // TODO: detect these automatically
             // Heavily penalize pelvis residuals.
-            effort->setWeight("tau_pelvis_tilt", 100);
-            effort->setWeight("tau_pelvis_list", 100);
-            effort->setWeight("tau_pelvis_rotation", 100);
-            effort->setWeight("tau_pelvis_tx", 100);
-            effort->setWeight("tau_pelvis_ty", 100);
-            effort->setWeight("tau_pelvis_tz", 100);
+            effort->setWeight("tau_pelvis_tilt", 10);
+            effort->setWeight("tau_pelvis_list", 10);
+            effort->setWeight("tau_pelvis_rotation", 10);
+            effort->setWeight("tau_pelvis_tx", 10);
+            effort->setWeight("tau_pelvis_ty", 10);
+            effort->setWeight("tau_pelvis_tz", 10);
 
             // Don't penalize GRF controls.
             for (int i = 0; i < 9; ++i) {
@@ -284,13 +284,13 @@ public:
         // Configure solver.
         // -----------------
         auto& solver = moco.initCasADiSolver();
-        solver.set_num_mesh_points(25);
+        solver.set_num_mesh_points(10);
         solver.set_dynamics_mode("explicit");
         solver.set_optim_convergence_tolerance(1e-4);
         solver.set_optim_constraint_tolerance(1e-4);
         solver.set_enforce_constraint_derivatives(true);
         solver.set_transcription_scheme("hermite-simpson");
-        solver.set_optim_finite_difference_scheme("forward");
+        solver.set_optim_finite_difference_scheme("central");
 
         // Set the problem guess.
         // ----------------------
@@ -312,9 +312,6 @@ public:
             if (m_forces.getNumRows()) {
                 applyControlsToGuess(m_forces, guess);
             }
-            //if (m_controls.getNumRows()) {
-            //    applyControlsToGuess(m_controls, guess);
-            //}
             solver.setGuess(guess);
         } else {
             solver.setGuess("bounds");
@@ -334,7 +331,6 @@ private:
     TimeSeriesTable m_kinematics_from_file;
     TimeSeriesTable m_kinematics_from_markers;
     TimeSeriesTable m_forces;
-    //TimeSeriesTable m_controls;
     int m_min_data_length;
 
     void configureStateTracking(MocoProblem& problem, Model& model) {
@@ -630,7 +626,7 @@ int main() {
         //track.setIKSetupFile("ik_setup_walk.xml");
         track.setExternalLoadsFile("grf_walk.xml");
         track.setGuessFile("sandboxMocoTrack_solution.sto");
-        track.set_minimize_controls(1);
+        //track.set_minimize_controls(0.1);
         track.setStartTime(0.45);
         track.setEndTime(1.79);
 
