@@ -135,33 +135,62 @@ private:
 
 };
 
+
+class TransformTrackingCost : public MocoCost {
+    OpenSim_DECLARE_CONCRETE_OBJECT(TransformTrackingCost, MocoCost);
+public:
+    TransformTrackingCost() {}
+    TransformTrackingCost(std::string name, double weight)
+        : MocoCost(std::move(name), weight) {}
+
+    void setReference(const TimeSeriesTable& ref) {
+        m_table = ref;
+    }
+
+protected:
+    void initializeOnModelImpl(const Model& model) const override {
+
+    }
+    void calcIntegralCostImpl(const SimTK::State& state,
+        double& integrand) const override {
+
+    }
+
+
+private:
+    TimeSeriesTable m_table;
+    mutable GCVSplineSet m_refsplines;
+};
+
+
+
 class MocoTrack : Object {
     OpenSim_DECLARE_CONCRETE_OBJECT(MocoTrack, Object);
 
 public:
-    OpenSim_DECLARE_PROPERTY(create_coordinate_actuators, double,
-        "Create a CoordinateActuator for each unconstrained coordinate in the "
-        "model, and add each to the model. Each actuator will have the "
-        "specified `optimal_force`, which should be set low to discourage the "
-        "use of the reserve actuators. (default is -1, which means no reserves "
-        "are created)");
     OpenSim_DECLARE_PROPERTY(kinematics_file, std::string, "TODO");
     OpenSim_DECLARE_PROPERTY(markers_file, std::string, "TODO");
     OpenSim_DECLARE_PROPERTY(ik_setup_file, std::string, "TODO");
     OpenSim_DECLARE_PROPERTY(external_loads_file, std::string, "TODO");
-    OpenSim_DECLARE_PROPERTY(remove_force_set, bool, "TODO");
     OpenSim_DECLARE_PROPERTY(start_time, double, "TODO");
     OpenSim_DECLARE_PROPERTY(end_time, double, "TODO");
+    OpenSim_DECLARE_PROPERTY(guess_type, std::string, 
+        "Choices: 'bounds', 'from_data', or 'from_file' (default: 'bounds')");
+    OpenSim_DECLARE_PROPERTY(guess_file, std::string, 
+        "This overrides guesses set automatically from coordinates and/or "
+        "force data.");
+    OpenSim_DECLARE_PROPERTY(minimize_controls, double, "TODO");
 
     MocoTrack() {
-        constructProperty_create_coordinate_actuators(-1);
         constructProperty_kinematics_file("");
         constructProperty_markers_file("");
         constructProperty_ik_setup_file("");
         constructProperty_external_loads_file("");
-        constructProperty_remove_force_set(false);
         constructProperty_start_time(-1);
         constructProperty_end_time(-1);
+        constructProperty_guess_type("bounds");
+        constructProperty_guess_file("");
+        constructProperty_minimize_controls(-1);
     }
 
     void setModel(Model model) { m_model = std::move(model); }
@@ -178,39 +207,27 @@ public:
     void setExternalLoadsFile(std::string fileName) {
         set_external_loads_file(std::move(fileName));
     }
-    void setRemoveModelForceSet(bool tf) {
-        set_remove_force_set(tf);
-    }
     void setStartTime(double startTime) {
         set_start_time(startTime);
     }
     void setEndTime(double endTime) {
         set_end_time(endTime);
     }
+    void setGuessFile(std::string fileName) {
+        set_guess_file(std::move(fileName));
+    }
 
     void solve() {
 
         MocoTool moco;
+        moco.setName("MocoTrack");
         auto& problem = moco.updProblem();
 
         // Modeling.
         // ---------
         Model model(m_model);
         model.finalizeFromProperties();
-
-        if (get_remove_force_set()) { model.updForceSet().clearAndDestroy(); }
         model.initSystem();
-
-        if (get_create_coordinate_actuators() != -1) {
-            // model.initSystem() is called within this utility.
-            addCoordinateActuatorsToModel(model, 
-                    get_create_coordinate_actuators());
-            const auto coordActs = model.getComponentList<CoordinateActuator>();
-            for (const auto& coordAct : coordActs) {
-                problem.setControlInfo("/" + coordAct.getName(), {-1, 1});
-            }
-        }
-        problem.setModelCopy(model);
 
         // Costs.
         // ------
@@ -235,21 +252,25 @@ public:
         // Set the model again, in case it was changed while configuring costs.
         problem.setModelCopy(model);
         
+        if (get_minimize_controls() != -1) {
+            auto* effort = problem.addCost<MocoControlCost>("control_effort");
+            assert(get_minimize_controls() > 0);
+            effort->set_weight(get_minimize_controls());
 
-        auto* effort = problem.addCost<MocoControlCost>("effort", 0.1);
+            // TODO: detect these automatically
+            // Heavily penalize pelvis residuals.
+            effort->setWeight("tau_pelvis_tilt", 100);
+            effort->setWeight("tau_pelvis_list", 100);
+            effort->setWeight("tau_pelvis_rotation", 100);
+            effort->setWeight("tau_pelvis_tx", 100);
+            effort->setWeight("tau_pelvis_ty", 100);
+            effort->setWeight("tau_pelvis_tz", 100);
 
-        // Heavily penalize pelvis residuals.
-        effort->setWeight("tau_pelvis_tilt", 1000);
-        effort->setWeight("tau_pelvis_list", 1000);
-        effort->setWeight("tau_pelvis_rotation", 1000);
-        effort->setWeight("tau_pelvis_tx", 1000);
-        effort->setWeight("tau_pelvis_ty", 1000);
-        effort->setWeight("tau_pelvis_tz", 1000);
-
-        // Don't penalize GRF controls.
-        for (int i = 0; i < 9; ++i) {
-            effort->setWeight("Left_GRF_" + std::to_string(i), 0);
-            effort->setWeight("Right_GRF_" + std::to_string(i), 0);
+            // Don't penalize GRF controls.
+            for (int i = 0; i < 9; ++i) {
+                effort->setWeight("Left_GRF_" + std::to_string(i), 0);
+                effort->setWeight("Right_GRF_" + std::to_string(i), 0);
+            }
         }
                     
         // Set the time range.
@@ -265,31 +286,39 @@ public:
         auto& solver = moco.initCasADiSolver();
         solver.set_num_mesh_points(25);
         solver.set_dynamics_mode("explicit");
-        solver.set_optim_convergence_tolerance(1e-3);
-        solver.set_optim_constraint_tolerance(1e-3);
+        solver.set_optim_convergence_tolerance(1e-4);
+        solver.set_optim_constraint_tolerance(1e-4);
         solver.set_enforce_constraint_derivatives(true);
         solver.set_transcription_scheme("hermite-simpson");
         solver.set_optim_finite_difference_scheme("forward");
 
         // Set the problem guess.
         // ----------------------
-        auto guess = solver.createGuess("bounds");
+        checkPropertyInSet(*this, getProperty_guess_type(),
+            {"bounds", "from_data", "from_file"});
+        OPENSIM_THROW_IF(get_guess_type() == "from_file" && 
+                         get_guess_file().empty(), Exception, 
+            "Guess type set to 'from_file' but no guess file was provided.");
 
-        if (m_kinematics_from_file.getNumRows()) {
-            applyStatesToGuess(m_kinematics_from_file, model, guess);
-        } else if (m_kinematics_from_markers.getNumRows()) {
-            applyStatesToGuess(m_kinematics_from_markers, model, guess);
+        if (get_guess_type() == "from_file") {
+            solver.setGuessFile(get_guess_file());
+        } else if (get_guess_type() == "from_data") {
+            auto guess = solver.createGuess("bounds");
+            if (m_kinematics_from_file.getNumRows()) {
+                applyStatesToGuess(m_kinematics_from_file, model, guess);
+            } else if (m_kinematics_from_markers.getNumRows()) {
+                applyStatesToGuess(m_kinematics_from_markers, model, guess);
+            }
+            if (m_forces.getNumRows()) {
+                applyControlsToGuess(m_forces, guess);
+            }
+            //if (m_controls.getNumRows()) {
+            //    applyControlsToGuess(m_controls, guess);
+            //}
+            solver.setGuess(guess);
+        } else {
+            solver.setGuess("bounds");
         }
-
-        if (m_forces.getNumRows()) {
-            applyControlsToGuess(m_forces, guess);
-        }
-
-        if (m_controls.getNumRows()) {
-            applyControlsToGuess(m_controls, guess);
-        }
-
-        solver.setGuess(guess);
 
         // Solve!
         // ------
@@ -305,7 +334,7 @@ private:
     TimeSeriesTable m_kinematics_from_file;
     TimeSeriesTable m_kinematics_from_markers;
     TimeSeriesTable m_forces;
-    TimeSeriesTable m_controls;
+    //TimeSeriesTable m_controls;
     int m_min_data_length;
 
     void configureStateTracking(MocoProblem& problem, Model& model) {
@@ -338,6 +367,7 @@ private:
                     kinematics.getIndependentColumn().back(), "kinematic");
 
         updateKinematicsLabelsAndUnits(model, kinematics);
+        STOFileAdapter::write(kinematics, "coordinates_new_labels.mot");
         m_kinematics_from_file = kinematics;
         if (m_min_data_length == -1 ||
             m_min_data_length > kinematics.getNumRows()) {
@@ -539,49 +569,70 @@ void addCoordinateActuator(Model& model, std::string coordName,
     auto* actu = new CoordinateActuator();
     actu->setName("tau_" + coordName);
     actu->setCoordinate(&coordSet.get(coordName));
-    actu->setOptimalForce(1);
-    actu->setMinControl(-optimalForce);
-    actu->setMaxControl(optimalForce);
+    actu->setOptimalForce(optimalForce);
+    actu->setMinControl(-1);
+    actu->setMaxControl(1);
     model.addComponent(actu);
 }
 
 int main() {
 
     try {
-        Model model("subject_scaled_walk.osim");
-        replaceJointWithWeldJoint(model, "back");
+        Model model("subject_walk_rra_adjusted.osim");
+        model.updForceSet().clearAndDestroy();
+        model.initSystem();
+    
+        // weld joints w/ locked coordinates
         replaceJointWithWeldJoint(model, "subtalar_l");
         replaceJointWithWeldJoint(model, "subtalar_r");
         replaceJointWithWeldJoint(model, "mtp_l");
         replaceJointWithWeldJoint(model, "mtp_r");
+        replaceJointWithWeldJoint(model, "radius_hand_l");
+        replaceJointWithWeldJoint(model, "radius_hand_r");
 
-        addCoordinateActuator(model, "pelvis_tilt", 50);
-        addCoordinateActuator(model, "pelvis_list", 50);
-        addCoordinateActuator(model, "pelvis_rotation", 50);
+        // upper body
+        addCoordinateActuator(model, "elbow_flex_l", 1000);
+        addCoordinateActuator(model, "elbow_flex_r", 1000);
+        addCoordinateActuator(model, "pro_sup_l", 1000);
+        addCoordinateActuator(model, "pro_sup_r", 1000);
+        addCoordinateActuator(model, "arm_add_l", 1000);
+        addCoordinateActuator(model, "arm_add_r", 1000);
+        addCoordinateActuator(model, "arm_rot_l", 1000);
+        addCoordinateActuator(model, "arm_rot_r", 1000);
+        addCoordinateActuator(model, "arm_flex_l", 1000);
+        addCoordinateActuator(model, "arm_flex_r", 1000);
+        addCoordinateActuator(model, "lumbar_bending", 1000);
+        addCoordinateActuator(model, "lumbar_extension", 1000);
+        addCoordinateActuator(model, "lumbar_rotation", 1000);
+        // lower body
+        addCoordinateActuator(model, "pelvis_tilt", 1000);
+        addCoordinateActuator(model, "pelvis_list", 1000);
+        addCoordinateActuator(model, "pelvis_rotation", 1000);
         addCoordinateActuator(model, "pelvis_tx", 1000);
         addCoordinateActuator(model, "pelvis_ty", 1000);
         addCoordinateActuator(model, "pelvis_tz", 1000);
-        addCoordinateActuator(model, "hip_adduction_l", 50);
-        addCoordinateActuator(model, "hip_adduction_r", 50);
-        addCoordinateActuator(model, "hip_flexion_l", 50);
-        addCoordinateActuator(model, "hip_flexion_r", 50);
-        addCoordinateActuator(model, "hip_rotation_l", 50);
-        addCoordinateActuator(model, "hip_rotation_r", 50);
-        addCoordinateActuator(model, "knee_angle_l", 50);
-        addCoordinateActuator(model, "knee_angle_r", 50);
-        addCoordinateActuator(model, "ankle_angle_l", 50);
-        addCoordinateActuator(model, "ankle_angle_r", 50);
+        addCoordinateActuator(model, "hip_adduction_l", 1000);
+        addCoordinateActuator(model, "hip_adduction_r", 1000);
+        addCoordinateActuator(model, "hip_flexion_l", 1000);
+        addCoordinateActuator(model, "hip_flexion_r", 1000);
+        addCoordinateActuator(model, "hip_rotation_l", 1000);
+        addCoordinateActuator(model, "hip_rotation_r", 1000);
+        addCoordinateActuator(model, "knee_angle_l", 1000);
+        addCoordinateActuator(model, "knee_angle_r", 1000);
+        addCoordinateActuator(model, "ankle_angle_l", 1000);
+        addCoordinateActuator(model, "ankle_angle_r", 1000);
 
 
         MocoTrack track;
         track.setModel(model);
-        track.setKinematicsFile("coordinates.mot");
+        track.setKinematicsFile("coordinates_rra_adjusted.sto");
         //track.setMarkersFile("motion_capture_walk.trc");
         //track.setIKSetupFile("ik_setup_walk.xml");
-        track.setRemoveModelForceSet(true);
         track.setExternalLoadsFile("grf_walk.xml");
+        track.setGuessFile("sandboxMocoTrack_solution.sto");
+        track.set_minimize_controls(1);
         track.setStartTime(0.45);
-        track.setEndTime(1.8);
+        track.setEndTime(1.79);
 
         track.solve();
     }
