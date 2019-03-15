@@ -99,7 +99,6 @@ install:
   - cmake --build . --config %BTYPE% -- /maxcpucount:4 # TODO /verbosity:quiet
   - dir C:\projects\
   - IF EXIST C:\projects\opensim-moco_deps_install dir C:\projects\opensim-moco_deps_install
-
   # To get the caching mechanism to work, we had to use a different directory
   # for the cache (maybe b/c CMake makes empty folders in
   # opensim-moco_deps_install?).
@@ -126,10 +125,10 @@ test_script:
    # Build doxygen.
   - cmake --build . --config %BTYPE% --target tropter_doxygen -- /verbosity:minimal
   - cmake --build . --config %BTYPE% --target Moco_doxygen -- /verbosity:minimal
-
+  - dir C:\
   # Install.
   - cmake --build . --config %BTYPE% --target install -- /verbosity:quiet
-
+  - dir C:\opensim-moco
 after_test:
 
   - cd %APPVEYOR_BUILD_FOLDER%
@@ -139,6 +138,7 @@ after_test:
   # - IF %APPVEYOR_REPO_BRANCH% EQU master IF NOT DEFINED APPVEYOR_PULL_REQUEST_NUMBER SET DISTR=TRUE
   # Deploy always.
   - SET DISTR=TRUE
+  - dir C:\opensim-moco
   - IF DEFINED DISTR 7z a C:\opensim-moco.zip C:\opensim-moco
   - IF DEFINED DISTR appveyor PushArtifact C:\opensim-moco.zip
   # Upload pre-built dependencies to speed up local development.
