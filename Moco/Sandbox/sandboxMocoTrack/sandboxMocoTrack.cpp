@@ -259,12 +259,12 @@ public:
 
             // TODO: detect these automatically
             // Heavily penalize pelvis residuals.
-            effort->setWeight("tau_pelvis_tilt", 10);
-            effort->setWeight("tau_pelvis_list", 10);
-            effort->setWeight("tau_pelvis_rotation", 10);
-            effort->setWeight("tau_pelvis_tx", 10);
-            effort->setWeight("tau_pelvis_ty", 10);
-            effort->setWeight("tau_pelvis_tz", 10);
+            //effort->setWeight("tau_pelvis_tilt", 10);
+            //effort->setWeight("tau_pelvis_list", 10);
+            //effort->setWeight("tau_pelvis_rotation", 10);
+            //effort->setWeight("tau_pelvis_tx", 10);
+            //effort->setWeight("tau_pelvis_ty", 10);
+            //effort->setWeight("tau_pelvis_tz", 10);
 
             // Don't penalize GRF controls.
             for (int i = 0; i < 9; ++i) {
@@ -290,7 +290,7 @@ public:
         solver.set_optim_constraint_tolerance(1e-4);
         solver.set_enforce_constraint_derivatives(true);
         solver.set_transcription_scheme("hermite-simpson");
-        solver.set_optim_finite_difference_scheme("central");
+        solver.set_optim_finite_difference_scheme("forward");
 
         // Set the problem guess.
         // ----------------------
@@ -587,34 +587,34 @@ int main() {
         replaceJointWithWeldJoint(model, "radius_hand_r");
 
         // upper body
-        addCoordinateActuator(model, "elbow_flex_l", 1000);
-        addCoordinateActuator(model, "elbow_flex_r", 1000);
-        addCoordinateActuator(model, "pro_sup_l", 1000);
-        addCoordinateActuator(model, "pro_sup_r", 1000);
-        addCoordinateActuator(model, "arm_add_l", 1000);
-        addCoordinateActuator(model, "arm_add_r", 1000);
-        addCoordinateActuator(model, "arm_rot_l", 1000);
-        addCoordinateActuator(model, "arm_rot_r", 1000);
-        addCoordinateActuator(model, "arm_flex_l", 1000);
-        addCoordinateActuator(model, "arm_flex_r", 1000);
-        addCoordinateActuator(model, "lumbar_bending", 1000);
-        addCoordinateActuator(model, "lumbar_extension", 1000);
-        addCoordinateActuator(model, "lumbar_rotation", 1000);
+        addCoordinateActuator(model, "elbow_flex_l", 10);
+        addCoordinateActuator(model, "elbow_flex_r", 10);
+        addCoordinateActuator(model, "pro_sup_l", 1);
+        addCoordinateActuator(model, "pro_sup_r", 1);
+        addCoordinateActuator(model, "arm_add_l", 10);
+        addCoordinateActuator(model, "arm_add_r", 10);
+        addCoordinateActuator(model, "arm_rot_l", 10);
+        addCoordinateActuator(model, "arm_rot_r", 10);
+        addCoordinateActuator(model, "arm_flex_l", 10);
+        addCoordinateActuator(model, "arm_flex_r", 10);
+        addCoordinateActuator(model, "lumbar_bending", 10);
+        addCoordinateActuator(model, "lumbar_extension", 50);
+        addCoordinateActuator(model, "lumbar_rotation", 10);
         // lower body
-        addCoordinateActuator(model, "pelvis_tilt", 1000);
-        addCoordinateActuator(model, "pelvis_list", 1000);
-        addCoordinateActuator(model, "pelvis_rotation", 1000);
-        addCoordinateActuator(model, "pelvis_tx", 1000);
-        addCoordinateActuator(model, "pelvis_ty", 1000);
-        addCoordinateActuator(model, "pelvis_tz", 1000);
-        addCoordinateActuator(model, "hip_adduction_l", 1000);
-        addCoordinateActuator(model, "hip_adduction_r", 1000);
-        addCoordinateActuator(model, "hip_flexion_l", 1000);
-        addCoordinateActuator(model, "hip_flexion_r", 1000);
-        addCoordinateActuator(model, "hip_rotation_l", 1000);
-        addCoordinateActuator(model, "hip_rotation_r", 1000);
-        addCoordinateActuator(model, "knee_angle_l", 1000);
-        addCoordinateActuator(model, "knee_angle_r", 1000);
+        addCoordinateActuator(model, "pelvis_tilt", 100);
+        addCoordinateActuator(model, "pelvis_list", 100);
+        addCoordinateActuator(model, "pelvis_rotation", 100);
+        addCoordinateActuator(model, "pelvis_tx", 100);
+        addCoordinateActuator(model, "pelvis_ty", 100);
+        addCoordinateActuator(model, "pelvis_tz", 100);
+        addCoordinateActuator(model, "hip_adduction_l", 100);
+        addCoordinateActuator(model, "hip_adduction_r", 100);
+        addCoordinateActuator(model, "hip_flexion_l", 100);
+        addCoordinateActuator(model, "hip_flexion_r", 100);
+        addCoordinateActuator(model, "hip_rotation_l", 50);
+        addCoordinateActuator(model, "hip_rotation_r", 50);
+        addCoordinateActuator(model, "knee_angle_l", 100);
+        addCoordinateActuator(model, "knee_angle_r", 100);
         addCoordinateActuator(model, "ankle_angle_l", 1000);
         addCoordinateActuator(model, "ankle_angle_r", 1000);
 
