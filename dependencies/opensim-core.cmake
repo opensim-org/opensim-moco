@@ -34,4 +34,5 @@ if(SUPERBUILD_opensim-core)
     add_dependencies(opensim-core simbody docopt)
 endif()
 
-
+# CACHE INVALIDATION LOG
+# - Line added to upgrade OpenSim bindings to Python 3.

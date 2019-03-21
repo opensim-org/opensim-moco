@@ -618,6 +618,7 @@ int main() {
         addCoordinateActuator(model, "ankle_angle_l", 1000);
         addCoordinateActuator(model, "ankle_angle_r", 1000);
 
+        model.print("subject_walk_rra_adjusted_updated.osim");
 
         MocoTrack track;
         track.setModel(model);
@@ -625,7 +626,7 @@ int main() {
         //track.setMarkersFile("motion_capture_walk.trc");
         //track.setIKSetupFile("ik_setup_walk.xml");
         track.setExternalLoadsFile("grf_walk.xml");
-        track.setGuessFile("sandboxMocoTrack_solution.sto");
+        //track.setGuessFile("sandboxMocoTrack_solution.sto");
         //track.set_minimize_controls(0.1);
         track.setStartTime(0.45);
         track.setEndTime(1.79);
