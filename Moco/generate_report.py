@@ -21,35 +21,50 @@ import math
 import opensim as osim
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FormatStrFormatter
+import matplotlib.cm as cm
 import numpy as np
-from collections import defaultdict
-
+from collections import defaultdict, OrderedDict
+import pdb
 import argparse
 
 parser = argparse.ArgumentParser(
     description="Generate a report given 1 or more MocoIterates.")
 parser.add_argument('model', type=str,
                     help="Model file name.")
-parser.add_argument('file', type=str, nargs='+',
+parser.add_argument('file', type=str,
                     help="Paths to MocoIterate files.")
 parser.add_argument('--bilateral', action='store_true',
                     help="Plot left and right limb coordinates together.")
+parser.add_argument('--refs', type=str, nargs='+',
+                    help="Paths to reference data files.")
 
 args = parser.parse_args()
 
-model = args.model
+model_fname = args.model
+model = osim.Model(model_fname)
 
-datafiles = args.file
+iterate_fname = args.file
+iterate = osim.MocoIterate(iterate_fname)
 
 bilateral = args.bilateral
 
+ref_files = args.refs
+refs = list()
+for ref_file in ref_files:
+    num_header_rows = 1
+    with open(ref_file) as f:
+        for line in f:
+            if not line.startswith('endheader'):
+                num_header_rows += 1
+            else:
+                break
+    this_ref = np.genfromtxt(ref_file, names=True, delimiter='\t',
+                              skip_header=num_header_rows)
+    refs.append(this_ref)
 
-import pdb
-
-model = osim.Model(model)
-iterate = osim.MocoIterate(datafiles[0])
-
-
+cmap_samples = np.linspace(0.0, 1.0, len(refs)+1)
+cmap = cm.get_cmap('jet')
 
 # TODO put this in the bindings
 def convert(simtkVector):
@@ -70,17 +85,25 @@ def getMotionTypeString(motionTypeEnum):
     else:
         return 'undefined'
 
-def removeSide(name):
+right_ls = '_'
+left_ls = '-'
+def removeSide(name, ls_dict):
     if '_r/' in name:
         name = name.replace('_r/', '/')
+        ls_dict[name].append('-')
     elif '_l/' in name:
         name = name.replace('_l/', '/')
+        ls_dict[name].append('--')
     elif '_r_' in name:
         name = name.replace('_r_', '_')
+        ls_dict[name].append('-')
     elif '_l_' in name:
         name = name.replace('_l_', '_')
+        ls_dict[name].append('--')
+    else:
+        ls_dict[name].append('-')
 
-    return name
+    return name, ls_dict
 
 plots_per_page = 18.0
 num_cols = 3
@@ -89,35 +112,49 @@ with PdfPages('report.pdf') as pdf:
 
     time = convert(iterate.getTime())
     starttime = time[0]
+    nexttime = math.ceil(time[0] * 10) / 10
     endtime = time[-1]
+    nexttolast = math.ceil(time[-1] * 10) / 10
+    timeticks = np.arange(nexttime, nexttolast, 0.2)
 
 	# States
     state_names = iterate.getStateNames()
     if len(state_names) > 0:
 
-        state_dict = defaultdict(list)
+        state_dict = OrderedDict()
+        ls_dict = defaultdict(list)
         coord_motion_types = dict()
 
-        coordSet = model.updCoordinateSet()
-        for i in range(coordSet.getSize()):
-            coord = coordSet.get(i)
-            coordName = coord.getName()
-            absPath = coord.getAbsolutePathString()
-            motionType = getMotionTypeString(coord.getMotionType())
+        jointSet = model.getJointSet()
+        for j in range(jointSet.getSize()):
+            joint = jointSet.get(j)
+            numCoords = joint.numCoordinates()
+            for c in range(numCoords):
+                coord = joint.get_coordinates(c)
+                coordName = coord.getName()
+                absPath = coord.getAbsolutePathString()
+                motionType = getMotionTypeString(coord.getMotionType())
 
-            valueName = coordName + '/value'
-            speedName = coordName + '/speed'
-            if bilateral:
-                valueName = removeSide(valueName)
-                speedName = removeSide(speedName)
+                valueName = coordName + '/value'
+                speedName = coordName + '/speed'
+                if bilateral:
+                    valueName, ls_dict = removeSide(valueName, ls_dict)      
+                    speedName, ls_dict = removeSide(speedName, ls_dict)
+                else:
+                    ls_dict[valueName].append('-')
+                    ls_dict[speedName].append('-')
 
-            valueAbsPath = absPath + '/value'
-            state_dict[valueName].append(valueAbsPath)
-            coord_motion_types[valueAbsPath] = motionType
+                valueAbsPath = absPath + '/value'
+                if not state_dict.has_key(valueName):
+                    state_dict[valueName] = list()
+                state_dict[valueName].append(valueAbsPath)
+                coord_motion_types[valueAbsPath] = motionType
 
-            speedAbsPath = absPath + '/speed'
-            state_dict[speedName].append(speedAbsPath)
-            coord_motion_types[speedAbsPath] = motionType
+                speedAbsPath = absPath + '/speed'
+                if not state_dict.has_key(speedName):
+                    state_dict[speedName] = list()
+                state_dict[speedName].append(speedAbsPath)
+                coord_motion_types[speedAbsPath] = motionType
 
 
         p = 1
@@ -127,9 +164,18 @@ with PdfPages('report.pdf') as pdf:
                 fig = plt.figure(figsize=(8.5, 11))
 
             plt.subplot(num_rows, num_cols, p)
-            for statePath in state_dict[key]:
+            for statePath, ls in zip(state_dict[key], ls_dict[key]):
                 state = convert(iterate.getState(statePath))
-                plt.plot(time, state)
+                for r, ref in enumerate(refs):
+                    # Column names are read in with slashes
+                    statePathNoSlashes = statePath.replace('/', '')
+                    if statePathNoSlashes in ref.dtype.names:
+                        plt.plot(ref['time'], ref[statePathNoSlashes], ls=ls, 
+                                 color=cmap(cmap_samples[r]))
+
+                plt.plot(time, state, ls=ls, color=cmap(
+                         cmap_samples[len(refs)]))
+
                 plt.title(key, fontsize=10)
                 plt.xlabel('time (s)', fontsize=8)
                 motionType = coord_motion_types[statePath]
@@ -147,15 +193,16 @@ with PdfPages('report.pdf') as pdf:
                     ylabel = motionType   
 
                 plt.ylabel(ylabel, fontsize=8)
-                plt.xticks(fontsize=8)
-                plt.yticks(fontsize=8)
+                plt.xticks(timeticks, fontsize=6)
+                plt.yticks(fontsize=6)
                 plt.xlim(time[0], time[-1])
-                plt.ticklabel_format(axis='y', style='sci', scilimits=(0, 4))
+                plt.ticklabel_format(axis='y', style='sci', scilimits=(-3, 3))
                 ax = plt.gca()
                 ax.get_yaxis().get_offset_text().set_position((-0.15,0))
-                ax.get_yaxis().get_offset_text().set_fontsize(8)
+                ax.get_yaxis().get_offset_text().set_fontsize(6)
                 ax.tick_params(direction='in', gridOn=True)
-
+                ax.xaxis.set_major_formatter(
+                    FormatStrFormatter('%.1f'))
 
 
 
