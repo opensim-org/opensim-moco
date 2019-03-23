@@ -586,20 +586,6 @@ int main() {
         replaceJointWithWeldJoint(model, "radius_hand_l");
         replaceJointWithWeldJoint(model, "radius_hand_r");
 
-        // upper body
-        addCoordinateActuator(model, "elbow_flex_l", 10);
-        addCoordinateActuator(model, "elbow_flex_r", 10);
-        addCoordinateActuator(model, "pro_sup_l", 1);
-        addCoordinateActuator(model, "pro_sup_r", 1);
-        addCoordinateActuator(model, "arm_add_l", 10);
-        addCoordinateActuator(model, "arm_add_r", 10);
-        addCoordinateActuator(model, "arm_rot_l", 10);
-        addCoordinateActuator(model, "arm_rot_r", 10);
-        addCoordinateActuator(model, "arm_flex_l", 10);
-        addCoordinateActuator(model, "arm_flex_r", 10);
-        addCoordinateActuator(model, "lumbar_bending", 10);
-        addCoordinateActuator(model, "lumbar_extension", 50);
-        addCoordinateActuator(model, "lumbar_rotation", 10);
         // lower body
         addCoordinateActuator(model, "pelvis_tilt", 100);
         addCoordinateActuator(model, "pelvis_list", 100);
@@ -617,6 +603,20 @@ int main() {
         addCoordinateActuator(model, "knee_angle_r", 100);
         addCoordinateActuator(model, "ankle_angle_l", 1000);
         addCoordinateActuator(model, "ankle_angle_r", 1000);
+        // upper body
+        addCoordinateActuator(model, "elbow_flex_l", 10);
+        addCoordinateActuator(model, "elbow_flex_r", 10);
+        addCoordinateActuator(model, "pro_sup_l", 1);
+        addCoordinateActuator(model, "pro_sup_r", 1);
+        addCoordinateActuator(model, "arm_add_l", 10);
+        addCoordinateActuator(model, "arm_add_r", 10);
+        addCoordinateActuator(model, "arm_rot_l", 10);
+        addCoordinateActuator(model, "arm_rot_r", 10);
+        addCoordinateActuator(model, "arm_flex_l", 10);
+        addCoordinateActuator(model, "arm_flex_r", 10);
+        addCoordinateActuator(model, "lumbar_bending", 10);
+        addCoordinateActuator(model, "lumbar_extension", 50);
+        addCoordinateActuator(model, "lumbar_rotation", 10);  
 
         model.print("subject_walk_rra_adjusted_updated.osim");
 
