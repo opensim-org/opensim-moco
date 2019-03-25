@@ -284,10 +284,10 @@ public:
         // Configure solver.
         // -----------------
         auto& solver = moco.initCasADiSolver();
-        solver.set_num_mesh_points(10);
-        solver.set_dynamics_mode("implicit");
-        solver.set_optim_convergence_tolerance(1e-2);
-        solver.set_optim_constraint_tolerance(1e-2);
+        solver.set_num_mesh_points(25);
+        solver.set_dynamics_mode("explicit");
+        solver.set_optim_convergence_tolerance(1e-3);
+        solver.set_optim_constraint_tolerance(1e-3);
         solver.set_enforce_constraint_derivatives(true);
         solver.set_transcription_scheme("hermite-simpson");
         solver.set_optim_finite_difference_scheme("forward");
@@ -626,8 +626,8 @@ int main() {
         //track.setMarkersFile("motion_capture_walk.trc");
         //track.setIKSetupFile("ik_setup_walk.xml");
         track.setExternalLoadsFile("grf_walk.xml");
-        //track.setGuessFile("sandboxMocoTrack_solution.sto");
-        //track.set_minimize_controls(0.1);
+        track.setGuessFile("sandboxMocoTrack_solution.sto");
+        track.set_minimize_controls(0.1);
         track.setStartTime(0.45);
         track.setEndTime(1.79);
 
