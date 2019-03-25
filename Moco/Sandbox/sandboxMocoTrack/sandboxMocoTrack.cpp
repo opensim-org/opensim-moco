@@ -285,9 +285,9 @@ public:
         // -----------------
         auto& solver = moco.initCasADiSolver();
         solver.set_num_mesh_points(10);
-        solver.set_dynamics_mode("explicit");
-        solver.set_optim_convergence_tolerance(1e-4);
-        solver.set_optim_constraint_tolerance(1e-4);
+        solver.set_dynamics_mode("implicit");
+        solver.set_optim_convergence_tolerance(1e-2);
+        solver.set_optim_constraint_tolerance(1e-2);
         solver.set_enforce_constraint_derivatives(true);
         solver.set_transcription_scheme("hermite-simpson");
         solver.set_optim_finite_difference_scheme("forward");
