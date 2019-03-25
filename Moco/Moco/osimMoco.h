@@ -23,6 +23,7 @@
 #include "MocoCost/MocoMarkerTrackingCost.h"
 #include "MocoCost/MocoMarkerEndpointCost.h"
 #include "MocoCost/MocoControlCost.h"
+#include "MocoCost/MocoSumSquaredStateCost.h"
 #include "MocoCost/MocoJointReactionNormCost.h"
 #include "MocoIterate.h"
 #include "MocoBounds.h"
@@ -34,9 +35,13 @@
 #include "MocoParameter.h"
 #include "MocoConstraint.h"
 
+#include "MocoInverse.h"
+
+#include "Components/PositionMotion.h"
 #include "Components/ActivationCoordinateActuator.h"
 #include "Components/StationPlaneContactForce.h"
 #include "Components/ModelFactory.h"
+#include "Components/DeGrooteFregly2016Muscle.h"
 #include "Components/DiscreteForces.h"
 #include "Components/FreePointBodyActuator.h"
 

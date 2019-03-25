@@ -38,6 +38,15 @@ std::unique_ptr<T> make_unique(Args&&... args) {
     return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
 
+/// Determine if `string` starts with the substring `start`.
+/// https://stackoverflow.com/questions/874134/find-if-string-ends-with-another-string-in-c
+inline bool startsWith(const std::string& string, const std::string& start) {
+    if (string.length() >= start.length()) {
+        return string.compare(0, start.length(), start) == 0;
+    }
+    return false;
+}
+
 /// Determine if `string` ends with the substring `ending`.
 /// https://stackoverflow.com/questions/874134/find-if-string-ends-with-another-string-in-c
 inline bool endsWith(const std::string& string, const std::string& ending) {
@@ -132,12 +141,12 @@ TimeSeriesTable resample(const TimeSeriesTable& in, const TimeVector& newTime) {
     OPENSIM_THROW_IF(newTime.size() < 2, Exception,
             "Cannot resample if number of times is 0 or 1.");
     OPENSIM_THROW_IF(newTime[0] < time[0], Exception,
-            format("New initial time (%f) cannot be greater than existing initial "
+            format("New initial time (%f) cannot be less than existing initial "
                    "time (%f)",
                     newTime[0], time[0]));
     OPENSIM_THROW_IF(newTime[newTime.size() - 1] > time[time.size() - 1],
             Exception,
-            format("New final time (%f) cannot be less than existing final "
+            format("New final time (%f) cannot be greater than existing final "
                    "time (%f)",
                     newTime[newTime.size() - 1], time[time.size() - 1]));
     for (int itime = 1; itime < (int)newTime.size(); ++itime) {
@@ -216,6 +225,14 @@ OSIMMOCO_API void replaceMusclesWithPathActuators(Model& model);
 /// Remove muscles from the model.
 /// @note This only removes muscles within the model's ForceSet.
 OSIMMOCO_API void removeMuscles(Model& model);
+
+/// Add CoordinateActuator%s for each unconstrained coordinate (e.g.,
+/// !Coordinate::isConstrained()) in the model, using the provided
+/// optimal force. Increasing the optimal force decreases the required control
+/// signal to generate a given actuation level. The actuators are added to the
+/// model's ForceSet and are named "reserve_<coordinate-path>" with forward
+/// slashes converted to underscores.
+OSIMMOCO_API void createReserveActuators(Model& model, double optimalForce);
 
 /// Replace a joint in the model with a WeldJoint.
 /// @note This assumes the joint is in the JointSet and that the joint's

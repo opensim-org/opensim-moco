@@ -24,6 +24,7 @@
 
 #include <simbody/internal/Visualizer_InputListener.h>
 
+#include <OpenSim/Actuators/CoordinateActuator.h>
 #include <OpenSim/Common/GCVSpline.h>
 #include <OpenSim/Common/PiecewiseLinearFunction.h>
 #include <OpenSim/Common/TimeSeriesTable.h>
@@ -98,14 +99,20 @@ Storage OpenSim::convertTableToStorage(const TimeSeriesTable& table) {
     sto.setColumnLabels(labels);
     const auto& times = table.getIndependentColumn();
     for (unsigned i_time = 0; i_time < table.getNumRows(); ++i_time) {
-        auto rowView = table.getRowAtIndex(i_time);
-        sto.append(times[i_time], SimTK::Vector(rowView.transpose()));
+        SimTK::Vector row(table.getRowAtIndex(i_time).transpose());
+        // This is a hack to allow creating a Storage with 0 columns.
+        double unused;
+        sto.append(times[i_time], row.size(),
+                row.size() ? row.getContiguousScalarData() : &unused);
     }
     return sto;
 }
 
 TimeSeriesTable OpenSim::filterLowpass(
         const TimeSeriesTable& table, double cutoffFreq, bool padData) {
+    OPENSIM_THROW_IF(cutoffFreq < 0, Exception,
+            format("Cutoff frequency must be non-negative; got %g.",
+                    cutoffFreq));
     auto storage = convertTableToStorage(table);
     if (padData) { storage.pad(storage.getSize() / 2); }
     storage.lowpassIIR(cutoffFreq);
@@ -362,7 +369,8 @@ MocoIterate OpenSim::simulateIterateWithTimeStepping(
 
     auto forwardSolution = MocoIterate(timeVec,
             {{"states", {states.getColumnLabels(), states.getMatrix()}},
-             {"controls", {controls.getColumnLabels(), controls.getMatrix()}}});
+                    {"controls", {controls.getColumnLabels(),
+                                         controls.getMatrix()}}});
 
     return forwardSolution;
 }
@@ -429,6 +437,50 @@ void OpenSim::removeMuscles(Model& model) {
                 format("Muscle with name %s not found in ForceSet.",
                         musc->getName()));
         model.updForceSet().remove(index);
+    }
+
+    model.finalizeConnections();
+    model.initSystem();
+}
+
+void OpenSim::createReserveActuators(Model& model, double optimalForce) {
+    OPENSIM_THROW_IF(optimalForce <= 0, Exception,
+            format("Invalid value (%g) for create_reserve_actuators; "
+                   "should be -1 or positive.",
+                    optimalForce));
+
+    std::cout << "Adding reserve actuators with an optimal force of "
+              << optimalForce << "..." << std::endl;
+
+    Model modelCopy(model);
+    auto state = modelCopy.initSystem();
+    std::vector<std::string> coordPaths;
+    // Borrowed from
+    // CoordinateActuator::CreateForceSetOfCoordinateAct...
+    for (const auto& coord : modelCopy.getComponentList<Coordinate>()) {
+        if (!coord.isConstrained(state)) {
+            auto* actu = new CoordinateActuator();
+            actu->setCoordinate(
+                    &model.updComponent<Coordinate>(
+                            coord.getAbsolutePathString()));
+            auto path = coord.getAbsolutePathString();
+            coordPaths.push_back(path);
+            // Get rid of model name.
+            // Get rid of slashes in the path; slashes not allowed in names.
+            std::replace(path.begin(), path.end(), '/', '_');
+            actu->setName("reserve_" + path);
+            actu->setOptimalForce(optimalForce);
+            model.addForce(actu);
+        }
+    }
+    // Re-make the system, since there are new actuators.
+    model.initSystem();
+    std::cout << "Added " << coordPaths.size()
+              << " reserve actuator(s), "
+                 "for each of the following coordinates:"
+              << std::endl;
+    for (const auto& name : coordPaths) {
+        std::cout << "  " << name << std::endl;
     }
 }
 

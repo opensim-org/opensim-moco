@@ -1082,8 +1082,10 @@ TEST_CASE("MocoIterate") {
                         SimTK::RowVector());
                 // If error is constant:
                 // sqrt(1/(T*N) * integral_t (sum_i^N (err_{i,t}^2))) = err
-                auto rmsBA = b.compareContinuousVariablesRMS(a, statesToCompare,
-                        controlsToCompare, multipliersToCompare);
+                auto rmsBA = b.compareContinuousVariablesRMS(a,
+                        {{"states", statesToCompare},
+                         {"controls", controlsToCompare},
+                         {"multipliers", multipliersToCompare}});
                 int N = 0;
                 if (statesToCompare.empty())
                     N += NS;
@@ -1105,8 +1107,10 @@ TEST_CASE("MocoIterate") {
                     N += (int)multipliersToCompare.size();
                 auto rmsExpected = N == 0 ? 0 : error;
                 SimTK_TEST_EQ(rmsBA, rmsExpected);
-                auto rmsAB = a.compareContinuousVariablesRMS(b, statesToCompare,
-                        controlsToCompare, multipliersToCompare);
+                auto rmsAB = a.compareContinuousVariablesRMS(b,
+                        {{"states", statesToCompare},
+                         {"controls", controlsToCompare},
+                         {"multipliers", multipliersToCompare}});
                 SimTK_TEST_EQ(rmsAB, rmsExpected);
             };
 
@@ -1232,15 +1236,16 @@ TEMPLATE_TEST_CASE("Solving an empty MocoProblem", "", MocoTropterSolver,
     THEN("problem solves without error, solution trajectories are empty.") {
         MocoSolution solution = moco.solve();
         // 100 is the default num_mesh_points.
-        CHECK(solution.getTime().size() == solver.get_num_mesh_points());
+        const int N = solver.get_num_mesh_points();
+        CHECK(solution.getTime().size() == N);
         CHECK(solution.getStatesTrajectory().ncol() == 0);
-        CHECK(solution.getStatesTrajectory().nrow() == 0);
+        CHECK(solution.getStatesTrajectory().nrow() == N);
         CHECK(solution.getControlsTrajectory().ncol() == 0);
-        CHECK(solution.getControlsTrajectory().nrow() == 0);
+        CHECK(solution.getControlsTrajectory().nrow() == N);
         CHECK(solution.getMultipliersTrajectory().ncol() == 0);
-        CHECK(solution.getMultipliersTrajectory().nrow() == 0);
+        CHECK(solution.getMultipliersTrajectory().nrow() == N);
         CHECK(solution.getDerivativesTrajectory().ncol() == 0);
-        CHECK(solution.getDerivativesTrajectory().nrow() == 0);
+        CHECK(solution.getDerivativesTrajectory().nrow() == N);
     }
 }
 

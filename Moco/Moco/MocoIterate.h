@@ -76,6 +76,9 @@ time,<state-0-name>,...,<control-0-name>,...,<multiplier-0-name>,..., \
 @endsamplefile
 (If stored in a STO file, the delimiters are tabs, not commas.)
 
+Column labels starting with "lambda" are Lagrange multiplier, and columns
+starting with "gamma" are slack variables (probably velocity corrections at
+certain collocation points).
 
 @par Implicit dynamics model
 If the solver uses an implicit dynamics mode, then there are "control"
@@ -431,16 +434,16 @@ public:
     /// states,
     /// controls,
     /// multipliers, and
-    /// derivatives to compare. To skip over all states, specify a single
-    /// element of "none" for stateNames; likewise for controlNames,
-    /// multiplierNames, and derivativeNames. Both iterates must have at least 6
-    /// time nodes.
+    /// derivatives to compare as keys for `columnsToUse`.
+    /// Values are an empty vector to compare all columns for that key,
+    /// `{"none"}` (single-entry vector with value "none") to compare none of
+    /// the columns for that key, or a vector of column labels to compare all
+    /// all columns for that key. Leaving out a key means no columns for that
+    /// key are compared.
+    /// Both iterates must have at least 6 time nodes.
     /// If the number of columns to compare is 0, this returns 0.
     double compareContinuousVariablesRMS(const MocoIterate& other,
-            std::vector<std::string> stateNames = {},
-            std::vector<std::string> controlNames = {},
-            std::vector<std::string> multiplierNames = {},
-            std::vector<std::string> derivativeNames = {}) const;
+            std::map<std::string, std::vector<std::string>> columnsToUse = {}) const;
     /// Compute the root-mean-square error between the parameters in this
     /// iterate and another. The RMS is computed by dividing the the sum of the
     /// squared errors between corresponding parameters and then dividing by the
@@ -524,6 +527,11 @@ protected:
 
 private:
     TimeSeriesTable convertToTable() const;
+    double compareContinuousVariablesRMSInternal(const MocoIterate& other,
+            std::vector<std::string> stateNames = {},
+            std::vector<std::string> controlNames = {},
+            std::vector<std::string> multiplierNames = {},
+            std::vector<std::string> derivativeNames = {}) const;
     // TODO std::string m_name;
     SimTK::Vector m_time;
     std::vector<std::string> m_state_names;
@@ -613,9 +621,7 @@ private:
         if (!success) setSealed(true);
         m_success = success;
     }
-    void setObjective(double objective) {
-        m_objective = objective;
-    }
+    void setObjective(double objective) { m_objective = objective; }
     void setStatus(std::string status) { m_status = std::move(status); }
     void setNumIterations(int numIterations) {
         m_numIterations = numIterations;
