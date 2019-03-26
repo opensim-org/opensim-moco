@@ -1,7 +1,7 @@
-#ifndef MOCO_MOCOJOINTREACTIONNORMCOST_H
-#define MOCO_MOCOJOINTREACTIONNORMCOST_H
+#ifndef MOCO_MOCOJOINTREACTIONCOST_H
+#define MOCO_MOCOJOINTREACTIONCOST_H
 /* -------------------------------------------------------------------------- *
- * OpenSim Moco: MocoJointReactionNormCost.h                                  *
+ * OpenSim Moco: MocoJointReactionCost.h                                      *
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2017 Stanford University and the Authors                     *
  *                                                                            *
@@ -32,14 +32,14 @@ namespace OpenSim {
 //      to be minimized.
 // TODO allow specification of either child or parent reaction loads to 
 //      to minimize.
-class OSIMMOCO_API MocoJointReactionNormCost : public MocoCost {
-OpenSim_DECLARE_CONCRETE_OBJECT(MocoJointReactionNormCost, MocoCost);
+class OSIMMOCO_API MocoJointReactionCost : public MocoCost {
+OpenSim_DECLARE_CONCRETE_OBJECT(MocoJointReactionCost, MocoCost);
 public: 
-    MocoJointReactionNormCost();
-    MocoJointReactionNormCost(std::string name) : MocoCost(std::move(name)) {
+    MocoJointReactionCost();
+    MocoJointReactionCost(std::string name) : MocoCost(std::move(name)) {
         constructProperties();
     }
-    MocoJointReactionNormCost(std::string name, double weight)
+    MocoJointReactionCost(std::string name, double weight)
             : MocoCost(std::move(name), weight) {
         constructProperties();
     }
@@ -55,6 +55,8 @@ protected:
             double& integrand) const override;
 
 private:
+    mutable SimTK::ReferencePtr<const Joint> m_joint;
+
     void constructProperties();
     OpenSim_DECLARE_PROPERTY(joint_path, std::string, "The model path for the "
             "joint with minimized reaction loads.");
@@ -62,4 +64,4 @@ private:
 
 } // namespace OpenSim
 
-#endif // MOCO_MOCOJOINTREACTIONNORMCOST_H
+#endif // MOCO_MOCOJOINTREACTIONCOST_H
