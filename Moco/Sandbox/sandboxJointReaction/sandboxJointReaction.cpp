@@ -87,7 +87,7 @@ void minimizePendulumReactionLoads() {
     mp.setStateInfo("j0/q0/speed", {-50, 50}, 0, 0);
     mp.setControlInfo("tau0", {-100, 100});
 
-    MocoJointReactionNormCost reactionNormCost;
+    MocoJointReactionCost reactionNormCost;
     reactionNormCost.setJointPath("j0");
     mp.addCost(reactionNormCost);
 

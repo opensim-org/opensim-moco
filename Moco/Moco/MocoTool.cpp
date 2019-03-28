@@ -105,38 +105,3 @@ void MocoTool::visualize(const MocoIterate& it) const {
     const auto& model = get_problem().getPhase(0).getModel();
     OpenSim::visualize(model, it.exportToStatesStorage());
 }
-
-TimeSeriesTable MocoTool::analyze(const MocoIterate& iterate,
-        std::vector<std::string> outputPaths) const {
-    auto model = get_problem().createRep().getModelBase();
-
-    prescribeControlsToModel(iterate, model);
-
-    auto* reporter = new TableReporter();
-    for (const auto& comp : model.getComponentList()) {
-        for (const auto& outputName : comp.getOutputNames()) {
-            const auto& output = comp.getOutput(outputName);
-            if (output.getTypeName() == "double") {
-                const auto& thisOutputPath = output.getPathName();
-                for (const auto& outputPathArg : outputPaths) {
-                    if (std::regex_match(
-                                thisOutputPath, std::regex(outputPathArg))) {
-                        reporter->addToReport(output);
-                    }
-                }
-            }
-        }
-    }
-    model.addComponent(reporter);
-
-    model.initSystem();
-
-    auto statesTraj = iterate.exportToStatesTrajectory(get_problem());
-
-    for (auto state : statesTraj) {
-        model.getSystem().prescribe(state);
-        model.realizeReport(state);
-    }
-
-    return reporter->getTable();
-}

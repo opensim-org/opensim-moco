@@ -28,6 +28,7 @@ MocoJointReactionCost::MocoJointReactionCost() {
 
 void MocoJointReactionCost::constructProperties() {
     constructProperty_joint_path("");
+    constructProperty_reaction_component(-1);
 }
 
 void MocoJointReactionCost::initializeOnModelImpl(
@@ -40,6 +41,18 @@ void MocoJointReactionCost::initializeOnModelImpl(
         Exception,
         format("Joint at path %s not found in the model. "
                "Please provide a valid joint path.", get_joint_path()));
+    
+    OPENSIM_THROW_IF_FRMOBJ(get_reaction_component() < -1 ||
+                            get_reaction_component() > 5, Exception, 
+            "Invalid reaction component value.");
+
+    if (get_reaction_component() < 3) {
+        m_vec = 0;
+        m_elt = get_reaction_component();
+    } else {
+        m_vec = 1;
+        m_elt = get_reaction_component() - 3;
+    }
 
     m_joint = &getModel().getComponent<Joint>(get_joint_path());
 }
@@ -48,6 +61,12 @@ void MocoJointReactionCost::calcIntegralCostImpl(const SimTK::State& state,
         double& integrand) const {
 
     getModel().realizeAcceleration(state);
-    // TODO: Cache the joint.
-    integrand = m_joint->calcReactionOnChildExpressedInGround(state).norm();
+    double reaction;
+    if (get_reaction_component() == -1) {
+        reaction = m_joint->calcReactionOnChildExpressedInGround(state).norm();
+    } else { 
+        reaction = 
+            m_joint->calcReactionOnChildExpressedInGround(state)[m_vec][m_elt];
+    }
+    integrand = reaction * reaction;
 }

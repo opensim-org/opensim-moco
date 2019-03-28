@@ -189,14 +189,14 @@ MocoInverseSolution MocoInverse::solve() const {
     MocoInverseSolution solution;
     solution.setMocoSolution(moco.solve().unseal());
 
-    if (getProperty_output_paths().size()) {
-        std::vector<std::string> outputPaths;
-        for (int io = 0; io < getProperty_output_paths().size(); ++io) {
-            outputPaths.push_back(get_output_paths(io));
-        }
-        solution.setOutputs(
-                moco.analyze(solution.getMocoSolution(), outputPaths));
-    }
+    //if (getProperty_output_paths().size()) {
+    //    std::vector<std::string> outputPaths;
+    //    for (int io = 0; io < getProperty_output_paths().size(); ++io) {
+    //        outputPaths.push_back(get_output_paths(io));
+    //    }
+    //    solution.setOutputs(
+    //        moco.analyze<SimTK::Real>(solution.getMocoSolution(), outputPaths));
+    //}
     return solution;
 }
 

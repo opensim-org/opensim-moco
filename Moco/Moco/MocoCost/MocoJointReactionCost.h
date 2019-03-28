@@ -19,6 +19,7 @@
  * -------------------------------------------------------------------------- */
 
 #include "MocoCost.h"
+#include "OpenSim\Simulation\SimbodyEngine\Joint.h"
 
 namespace OpenSim {
 
@@ -28,8 +29,6 @@ namespace OpenSim {
 /// This cost requires realizing to the Acceleration stage.
 /// @ingroup mococost
 // TODO allow a list property of multiple joints?
-// TODO allow specification of the components of the reaction load SpatialVec
-//      to be minimized.
 // TODO allow specification of either child or parent reaction loads to 
 //      to minimize.
 class OSIMMOCO_API MocoJointReactionCost : public MocoCost {
@@ -56,10 +55,13 @@ protected:
 
 private:
     mutable SimTK::ReferencePtr<const Joint> m_joint;
+    mutable int m_vec;
+    mutable int m_elt;
 
     void constructProperties();
     OpenSim_DECLARE_PROPERTY(joint_path, std::string, "The model path for the "
             "joint with minimized reaction loads.");
+    OpenSim_DECLARE_PROPERTY(reaction_component, int, "TODO");
 };
 
 } // namespace OpenSim

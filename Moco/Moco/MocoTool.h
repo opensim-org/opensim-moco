@@ -18,6 +18,7 @@
  * limitations under the License.                                             *
  * -------------------------------------------------------------------------- */
 
+#include <algorithm>
 #include <OpenSim/Common/Object.h>
 #include <OpenSim/Simulation/Model/Model.h>
 
@@ -131,8 +132,50 @@ public:
     /// Constraints are not enforced but prescribed motion (e.g.,
     /// PositionMotion) is.
     /// @note Parameters in the MocoIterate are **not** applied to the model.
-    TimeSeriesTable analyze(const MocoIterate& it,
-            std::vector<std::string> outputPaths) const;
+    template <typename T>
+    TimeSeriesTable_<T> analyze(const MocoIterate& iterate,
+            std::vector<std::string> outputPaths) {
+        auto model = get_problem().createRep().getModelBase();
+        model.initSystem();
+        //prescribeControlsToModel(iterate, model);
+
+        auto* reporter = new TableReporter_<T>();
+        for (const auto& comp : model.getComponentList()) {
+            for (const auto& outputName : comp.getOutputNames()) {
+                const auto& output = comp.getOutput(outputName);
+                if (output.getTypeName() == 
+                        OpenSim::Object_GetClassName<T>::name()) {
+                    auto thisOutputPath = output.getPathName();
+                    std::replace(thisOutputPath.begin(), thisOutputPath.end(),
+                            '|', '/');
+                    for (const auto& outputPathArg : outputPaths) {
+                        if (std::regex_match(
+                            thisOutputPath, std::regex(outputPathArg))) {
+                            reporter->addToReport(output);
+                        }
+                    }
+                }
+            }
+        }
+        model.addComponent(reporter);
+        model.initSystem();
+
+        auto statesTraj = iterate.exportToStatesTrajectory(get_problem());
+        for (int i = 0; i < statesTraj.getSize(); ++i) {
+            auto state = statesTraj.get(i);
+            model.getSystem().prescribe(state);
+            auto& osimControls = model.updControls(state);
+            auto controls = iterate.getControlsTrajectory().col(i);
+            std::copy_n(controls.getContiguousScalarData(), controls.size(),
+                osimControls.updContiguousScalarData());
+            model.realizeVelocity(state);
+            model.setControls(state, osimControls);
+            model.realizeReport(state);
+            
+        }
+
+        return reporter->getTable();
+    }
 
     /// @name Using other solvers
     /// @{
