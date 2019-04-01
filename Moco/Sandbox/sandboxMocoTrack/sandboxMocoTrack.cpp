@@ -531,10 +531,12 @@ private:
         for (const auto& coord : model.getComponentList<Coordinate>()) {
             std::string path = coord.getAbsolutePathString();
             for (int col = 0; col < numCols; ++col) {
+                // TODO check for coordinate names in a more robust and 
+                // systematic way
+                // TODO handle cases where IK results or full states file are
+                // passed
                 if (path.find(labels[col]) != std::string::npos ||
                         labels[col] == (path + "/value")) {
-
-                    std::cout << "labels[i]: " << labels[col] << std::endl;
 
                     coordinates.setColumnLabel(col, path + "/value");
 
@@ -547,8 +549,6 @@ private:
                     // If speed not in reference, use derivative of value for
                     // the tracking reference instead.
                     if (!speedStateInReference && !coord.isConstrained(s)) {
-                        std::cout << "path: " << path << std::endl;
-                        std::cout << "index: " << col << std::endl;
                         auto value = coordinates.getDependentColumnAtIndex(col);
                         auto* valueSpline = coordinateSplines.getGCVSpline(col);
                         SimTK::Vector speed((int)time.size());
@@ -573,7 +573,7 @@ private:
                     } else {
                         OPENSIM_THROW(Exception, format("Provided coordinate "
                             "weight with name %s does not match any states in "
-                            "the current model."));
+                            "the current model.", user_weight.getName()));
                     }
                 }
 
@@ -907,8 +907,8 @@ int main() {
     track.setControlWeights(controlWeights);
 
     MocoTool moco = track.initialize();
-    MocoSolution solution = moco.solve().unseal();
     MocoProblem problem = moco.getProblem();
+    //MocoSolution solution = moco.solve().unseal();
     //solution.write("sandboxMocoTrack_solution_trackingFeetMarkers.sto");
     //moco.visualize(solution);
 
@@ -921,7 +921,7 @@ int main() {
     track.setCoordinatesFile("sandboxMocoTrack_solution_trackingFeetMarkers.sto");
     // Track 
     MocoWeightSet coordinateWeights;
-    for (const auto& coordName : solution.getStateNames()) {
+    for (const auto& coordName : solutionPrev.getStateNames()) {
         if (coordName.find("pelvis") != std::string::npos) {
             if (coordName == "pelvis_tx" || coordName == "pelvis_tz") {
                 coordinateWeights.cloneAndAppend({coordName, 1000});
@@ -967,9 +967,9 @@ int main() {
     MocoProblem problemMTG = mocoMTG.updProblem();
 
     // Control tracking cost.
-    auto controlNames = solution.getControlNames();
+    auto controlNames = solutionPrev.getControlNames();
     // Construct controls reference.
-    auto time = solution.getTime();
+    auto time = solutionPrev.getTime();
     std::vector<double> timeVec;
     for (int i = 0; i < time.size(); ++i) {
         timeVec.push_back(time[i]);
@@ -982,14 +982,14 @@ int main() {
             // w6 from Fregly et al. 2007
             controlTrackingWeights.cloneAndAppend({controlName, 10});
             controlsRef.appendColumn(controlName, 
-                    solution.getControl(controlName));
+                    solutionPrev.getControl(controlName));
         } else if (controlName.find("hip") != std::string::npos ||
                    controlName.find("knee") != std::string::npos ||
                    controlName.find("ankle") != std::string::npos) {
             // w2 from Fregly et al. 2007
             controlTrackingWeights.cloneAndAppend({controlName, 0.5});
             controlsRef.appendColumn(controlName, 
-                    solution.getControl(controlName));
+                    solutionPrev.getControl(controlName));
         }
     }
     auto* controlTracking =
@@ -1025,6 +1025,10 @@ int main() {
         problemMTG.addCost<MocoJointReactionCost>("knee_adduction_cost_r", 1.5);
     kneeAdductionCost_r->setJointPath("/jointset/walker_knee_r");
     kneeAdductionCost_r->setReactionComponent(2);
+
+    MocoSolution solutionMTG = mocoMTG.solve().unseal();
+    solutionMTG.write("sandboxMocoTrack_solution_MTG.sto");
+    mocoMTG.visualize(solutionMTG);
 
     return EXIT_SUCCESS;
 }
