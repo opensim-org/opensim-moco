@@ -47,6 +47,9 @@ public:
     // TODO when using implicit dynamics, we will need to revisit this cost.
     void setJointPath(const std::string& path) 
     {   set_joint_path(path); }
+    void setReactionComponent(int comp) {
+        set_reaction_component(comp);
+    }
 
 protected:
     void initializeOnModelImpl(const Model&) const override;
