@@ -264,6 +264,15 @@ void MocoProblemRep::initialize() {
                     {actu.getMinControl(), actu.getMaxControl()}, {}, {});
             m_control_infos[actuName] = info;
         }
+        // Set bounds on activations corresponding to control variables if they
+        // exist.
+        std::string activName = actuName + "/activation";
+        if (stateNames.findIndex(activName) != -1 &&
+                m_state_infos.count(activName) == 0) {
+            const auto info = MocoVariableInfo(activName,
+                    {actu.getMinControl(), actu.getMaxControl()}, {}, {});
+            m_state_infos[activName] = info;
+        }
     }
     for (const auto& actu : m_model_base.getComponentList<Actuator>()) {
         const std::string actuName = actu.getAbsolutePathString();

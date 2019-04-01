@@ -182,30 +182,30 @@ protected:
             const auto& transform = 
                 m_model_frames[f]->getTransformInGround(state);
 
-            SimTK::Vector error(12, 0.0);
-            int errIdx = 0;
+            SimTK::Vector error(4, 0.0);
             int refIdx = m_refindices[f];
 
             // Rotation errors.
             if (m_trackedComps == "all" || m_trackedComps == "rotation") {
-                const auto& R = transform.R(); 
-                for (int i = 0; i < 3; ++i) {
-                    for (int j = 0; j < 3; ++j) {
-                        error[errIdx] = R(i)(j) - 
-                            m_refsplines[12*refIdx + errIdx].calcValue(timeVec);
-                        ++errIdx;
-                    }
-                }
+                const auto& R_GD = transform.R(); 
+                const SimTK::Quaternion e(
+                    m_refsplines[7*refIdx].calcValue(timeVec),
+                    m_refsplines[7*refIdx + 1].calcValue(timeVec),
+                    m_refsplines[7*refIdx + 2].calcValue(timeVec),
+                    m_refsplines[7*refIdx + 3].calcValue(timeVec));
+                const SimTK::Rotation R_GM(e);
+                const SimTK::Rotation R_DM = ~R_GD*R_GM;
+                const SimTK::Vec4 aa_DM = R_DM.convertRotationToAngleAxis();
+                error[0] = aa_DM[0];
             }
 
             // Position errors.
-            errIdx = 9; // In case we skipped rotation errors.
             if (m_trackedComps == "all" || m_trackedComps == "position") {
                 const auto& p = transform.p();
                 for (int i = 0; i < 3; ++i) {
-                    error[errIdx] = p(i) - 
-                        m_refsplines[12*refIdx + errIdx].calcValue(timeVec);
-                    ++errIdx;
+                    error[i+1] = (p(i) - 
+                        m_refsplines[7*refIdx + 4+i].calcValue(timeVec)) / 
+                        p.norm();
                 }
             }
 
@@ -236,7 +236,7 @@ private:
 
         // Append columns.
         model.initSystem();
-        SimTK::Matrix mat(indCol.size(), 12*compPaths.size());
+        SimTK::Matrix mat((int)indCol.size(), 7*(int)compPaths.size());
         std::vector<std::string> colLabels;
         for (int row = 0; row < statesTraj.getSize(); ++row) {
             auto state = statesTraj.get(row);
@@ -249,15 +249,14 @@ private:
                     model.getComponent(compPath)
                     .getOutputValue<SimTK::Transform>(state, "transform");
 
-                // Rotation matrix.
+                // Rotations.
                 const auto& R = transform.R();
-                for (int i = 0; i < 3; ++i) {
-                    for (int j = 0; j < 3; ++j) {
-                        mat.updElt(row, col++) = R(i)(j);
-                        if (!row) {
-                            colLabels.push_back(format("%s/transform_R%i%i",
-                                compPath, i + 1, j + 1));
-                        }
+                auto e = R.convertRotationToQuaternion();
+                for (int i = 0; i < 4; ++i) {
+                    mat.updElt(row, col++) = e[i];
+                    if (!row) {
+                        colLabels.push_back(format("%s/transform_e%i",
+                            compPath, i + 1));
                     }
                 }
                 // Position vector.
@@ -285,7 +284,8 @@ class MocoTrack : Object {
     OpenSim_DECLARE_CONCRETE_OBJECT(MocoTrack, Object);
 
 public:
-    OpenSim_DECLARE_PROPERTY(kinematics_file, std::string, "TODO");
+    OpenSim_DECLARE_PROPERTY(coordinates_file, std::string, "TODO");
+    OpenSim_DECLARE_PROPERTY(coordinate_weights, MocoWeightSet, "TODO");
     OpenSim_DECLARE_PROPERTY(markers_file, std::string, "TODO");
     OpenSim_DECLARE_PROPERTY(ik_setup_file, std::string, "TODO");
     OpenSim_DECLARE_PROPERTY(external_loads_file, std::string, "TODO");
@@ -297,9 +297,11 @@ public:
         "This overrides guesses set automatically from coordinates and/or "
         "force data.");
     OpenSim_DECLARE_PROPERTY(minimize_controls, double, "TODO");
+    OpenSim_DECLARE_PROPERTY(control_weights, MocoWeightSet, "TODO"); 
 
     MocoTrack() {
-        constructProperty_kinematics_file("");
+        constructProperty_coordinates_file("");
+        constructProperty_coordinate_weights(MocoWeightSet());
         constructProperty_markers_file("");
         constructProperty_ik_setup_file("");
         constructProperty_external_loads_file("");
@@ -308,12 +310,16 @@ public:
         constructProperty_guess_type("bounds");
         constructProperty_guess_file("");
         constructProperty_minimize_controls(-1);
+        constructProperty_control_weights(MocoWeightSet());
     }
 
     void setModel(Model model) { m_model = std::move(model); }
 
-    void setKinematicsFile(std::string fileName) {
-        set_kinematics_file(std::move(fileName));
+    void setCoordinatesFile(std::string fileName) {
+        set_coordinates_file(std::move(fileName));
+    }
+    void setCoordinatesWeightSet(MocoWeightSet weights) {
+        set_coordinate_weights(std::move(weights));
     }
     void setMarkersFile(std::string fileName) {
         set_markers_file(std::move(fileName));
@@ -330,8 +336,17 @@ public:
     void setEndTime(double endTime) {
         set_end_time(endTime);
     }
+    void setGuessType(std::string type) {
+        set_guess_type(std::move(type));
+    }
     void setGuessFile(std::string fileName) {
         set_guess_file(std::move(fileName));
+    }
+    void setMinimizeControls(double weight) {
+        set_minimize_controls(weight);
+    }
+    void setControlWeights(MocoWeightSet weights) {
+        set_control_weights(std::move(weights));
     }
 
     MocoTool initialize() {
@@ -352,7 +367,7 @@ public:
         m_end_time = get_end_time();
 
         // State tracking cost.
-        if (!get_kinematics_file().empty()) {
+        if (!get_coordinates_file().empty()) {
             configureStateTracking(problem, model);
         }
 
@@ -369,30 +384,28 @@ public:
         // Set the model again, in case it was changed while configuring costs.
         problem.setModelCopy(model);
         
+        // Control minimization.
+        // ---------------------
         if (get_minimize_controls() != -1) {
             auto* effort = problem.addCost<MocoControlCost>("control_effort");
             assert(get_minimize_controls() > 0);
             effort->set_weight(get_minimize_controls());
 
-            // TODO: detect these automatically
-            // Penalize pelvis residuals.
-            effort->setWeight("tau_pelvis_tilt", 10);
-            effort->setWeight("tau_pelvis_list", 10);
-            effort->setWeight("tau_pelvis_rotation", 10);
-            effort->setWeight("tau_pelvis_tx", 10);
-            effort->setWeight("tau_pelvis_ty", 10);
-            effort->setWeight("tau_pelvis_tz", 10);
-
-            // Don't penalize GRF controls.
-            for (int i = 0; i < 9; ++i) {
-                effort->setWeight("Left_GRF_" + std::to_string(i), 0);
-                effort->setWeight("Right_GRF_" + std::to_string(i), 0);
+            const auto& control_weights = get_control_weights();
+            for (int c = 0; c < control_weights.getSize(); ++c) {
+                const auto& control_weight = control_weights.get(c);
+                effort->setWeight(control_weight.getName(), 
+                    control_weight.getWeight());
             }
+        } else {
+            OPENSIM_THROW_IF(get_control_weights().getSize() != 0, Exception,
+                "Control weight set provided, but control minimization was not "
+                "specified by the user.");
         }
                     
         // Set the time range.
         // -------------------
-        // Set the time bounds based on the time range in the kinematics file.
+        // Set the time bounds based on the time range in the coordinates file.
         // Pad the beginning and end time points to allow room for finite 
         // difference calculations.
         // TODO: filter? Handle padding with filtering?
@@ -403,8 +416,8 @@ public:
         auto& solver = moco.initCasADiSolver();
         solver.set_num_mesh_points(25);
         solver.set_dynamics_mode("explicit");
-        solver.set_optim_convergence_tolerance(1e-3);
-        solver.set_optim_constraint_tolerance(1e-3);
+        solver.set_optim_convergence_tolerance(1e-4);
+        solver.set_optim_constraint_tolerance(1e-5);
         solver.set_enforce_constraint_derivatives(true);
         solver.set_transcription_scheme("hermite-simpson");
         solver.set_optim_finite_difference_scheme("forward");
@@ -421,10 +434,10 @@ public:
             solver.setGuessFile(get_guess_file());
         } else if (get_guess_type() == "from_data") {
             auto guess = solver.createGuess("bounds");
-            if (m_kinematics_from_file.getNumRows()) {
-                applyStatesToGuess(m_kinematics_from_file, model, guess);
-            } else if (m_kinematics_from_markers.getNumRows()) {
-                applyStatesToGuess(m_kinematics_from_markers, model, guess);
+            if (m_coordinates_from_file.getNumRows()) {
+                applyStatesToGuess(m_coordinates_from_file, model, guess);
+            } else if (m_coordinates_from_markers.getNumRows()) {
+                applyStatesToGuess(m_coordinates_from_markers, model, guess);
             }
             if (m_forces.getNumRows()) {
                 applyControlsToGuess(m_forces, guess);
@@ -451,84 +464,128 @@ private:
     Model m_model;
     double m_start_time;
     double m_end_time;
-    TimeSeriesTable m_kinematics_from_file;
-    TimeSeriesTable m_kinematics_from_markers;
+    TimeSeriesTable m_coordinates_from_file;
+    TimeSeriesTable m_coordinates_from_markers;
     TimeSeriesTable m_forces;
     int m_min_data_length;
 
     void configureStateTracking(MocoProblem& problem, Model& model) {
         
-        auto kinematics = STOFileAdapter::read(get_kinematics_file());
+        auto coordinatesRaw = STOFileAdapter::read(get_coordinates_file());
+        auto coordinates = filterLowpass(coordinatesRaw, 6, true);
+
+        auto time = coordinates.getIndependentColumn();
+        auto coordinateSplines = GCVSplineSet(coordinates,
+                coordinates.getColumnLabels());
 
         const auto& s = model.getWorkingState();
         MocoWeightSet weights;
+        MocoWeightSet user_weights = get_coordinate_weights();
         for (const auto& coord : model.getComponentList<Coordinate>()) {
             std::string path = coord.getAbsolutePathString();
-            for (int i = 0; i < kinematics.getNumColumns(); ++i) {
-                if (path.find(kinematics.getColumnLabel(i))
+            for (int i = 0; i < coordinates.getNumColumns(); ++i) {
+                if (path.find(coordinates.getColumnLabel(i))
                         != std::string::npos) {
-                    kinematics.setColumnLabel(i, path + "/value");
+                    coordinates.setColumnLabel(i, path + "/value");
+
+                    auto value = coordinates.getDependentColumnAtIndex(i);
+                    auto* valueSpline = coordinateSplines.getGCVSpline(i);
+                    SimTK::Vector speed((int)time.size());
+                    for (int j = 0; j < time.size(); ++j) {
+                        speed[j] = valueSpline->calcDerivative({0}, 
+                            SimTK::Vector(1, time[j]));
+                    }
+                    coordinates.appendColumn(path + "/speed", speed);
+                }
+                
+                bool valueWeightProvided = false;
+                bool speedWeightProvided = false;
+                for (int w = 0; w < user_weights.getSize(); ++w) {
+                    const auto& user_weight = user_weights.get(w);
+                    if (user_weight.getName() == (path + "/value")) {
+                        weights.cloneAndAppend(user_weight);
+                        valueWeightProvided = true;
+                    } else if(user_weight.getName() == (path + "/speed")) {
+                        weights.cloneAndAppend(user_weight);
+                        speedWeightProvided = true;
+                    } else {
+                        OPENSIM_THROW(Exception, format("Provided coordinate "
+                            "weight with name %s does not match any states in "
+                            "the current model."));
+                    }
                 }
 
                 // Don't track coordinates that are already constrained.
                 double weight = coord.isConstrained(s) ? 0 : 1;
-                weights.cloneAndAppend({path + "/value", weight});
+                if (!valueWeightProvided) {
+                    weights.cloneAndAppend({path + "/value", weight});
+                }
+                if (!speedWeightProvided) {
+                    weights.cloneAndAppend({path + "/speed", weight});
+                }
+
             }
         }
 
         auto* stateTracking =
                 problem.addCost<MocoStateTrackingCost>("state_tracking");
-        stateTracking->setReference(kinematics);
+        stateTracking->setReference(coordinates);
         stateTracking->setWeightSet(weights);
         stateTracking->setAllowUnusedReferences(true);
 
-        updateTimes(kinematics.getIndependentColumn().front(),
-                    kinematics.getIndependentColumn().back(), "kinematic");
+        updateTimes(coordinates.getIndependentColumn().front(),
+                    coordinates.getIndependentColumn().back(), "coordinate");
 
-        updateKinematicsLabelsAndUnits(model, kinematics);
-        STOFileAdapter::write(kinematics, "coordinates_new_labels.mot");
-        m_kinematics_from_file = kinematics;
+        updateCoordinatesLabelsAndUnits(model, coordinates);
+        STOFileAdapter::write(coordinates, "coordinates_new_labels.mot");
+        m_coordinates_from_file = coordinates;
         if (m_min_data_length == -1 ||
-            m_min_data_length > kinematics.getNumRows()) {
-            m_min_data_length = (int)kinematics.getNumRows();
+            m_min_data_length > coordinates.getNumRows()) {
+            m_min_data_length = (int)coordinates.getNumRows();
         }
     }
 
     void configureMarkerTracking(MocoProblem& problem, Model& model) {
-        MarkersReference markersRef;
-        markersRef.loadMarkersFile(get_markers_file());
+        MarkersReference markersRefFromFile;
+        markersRefFromFile.loadMarkersFile(get_markers_file());
 
-        auto* markerTracking =
-            problem.addCost<MocoMarkerTrackingCost>("marking_tracking");
-        markerTracking->setMarkersReference(markersRef);
-        markerTracking->setAllowUnusedReferences(true);
+        auto markersTableRaw = markersRefFromFile.getMarkerTable();
+        auto markersTable = filterLowpass(markersTableRaw.flatten(), 6, true);
+
+        MarkersReference markersRef(markersTable.pack<SimTK::Vec3>());
 
         // If the user provided an IK setup file, get the marker weights
         // from it and append it to the MarkersReference.
-        TimeSeriesTable kinematics;
+        TimeSeriesTable coordinates;
         if (!get_ik_setup_file().empty()) {
             InverseKinematicsTool iktool(get_ik_setup_file());
+            iktool.setModel(model);
             auto& iktasks = iktool.getIKTaskSet();
             Set<MarkerWeight> markerWeights;
             iktasks.createMarkerWeightSet(markerWeights);
 
             markersRef.setMarkerWeightSet(markerWeights);
 
-            iktool.run();
-            kinematics = STOFileAdapter::read(
-                iktool.getOutputMotionFileName());
+            // iktool.run();
+            //coordinates = STOFileAdapter::read(
+            //    iktool.getOutputMotionFileName());
         }
+
+        auto* markerTracking =
+            problem.addCost<MocoMarkerTrackingCost>("marking_tracking");
+        markerTracking->setMarkersReference(markersRef);
+        markerTracking->setAllowUnusedReferences(true);
 
         updateTimes(markersRef.getMarkerTable().getIndependentColumn().front(), 
                     markersRef.getMarkerTable().getIndependentColumn().back(), 
                     "marker");
 
-        updateKinematicsLabelsAndUnits(model, kinematics);
-        m_kinematics_from_markers = kinematics;
-        if (m_min_data_length == -1 ||
-            m_min_data_length > kinematics.getNumRows()) {
-            m_min_data_length = (int)kinematics.getNumRows();
-        }
+        //updateCoordinatesLabelsAndUnits(model, coordinates);
+        //m_coordinates_from_markers = coordinates;
+        //if (m_min_data_length == -1 ||
+        //    m_min_data_length > coordinates.getNumRows()) {
+        //    m_min_data_length = (int)coordinates.getNumRows();
+        //}
     }
 
     void configureForceTracking(MocoProblem& problem, Model& model) {
@@ -558,11 +615,11 @@ private:
 
                 // Points
                 std::string pointName =
-                        extForce.getName() + "_" + std::to_string(j + 3);
+                        extForce.getName() + "_" + std::to_string(j + 6);
                 forces.setColumnLabel(forces.getColumnIndex(
                         extForce.getPointIdentifier() + dirs[j]), pointName);
                 problem.setControlInfo("/" + extForce.getName(), j + 6,
-                        {-500, 500});
+                        {-10, 10});
             }
 
             FreePointBodyActuator* fpbAct = new FreePointBodyActuator();
@@ -592,21 +649,21 @@ private:
         }
     }
 
-    void updateKinematicsLabelsAndUnits(const Model& model,
-            TimeSeriesTable& kinematics) {
+    void updateCoordinatesLabelsAndUnits(const Model& model,
+            TimeSeriesTable& coordinates) {
         for (const auto& coord : model.getComponentList<Coordinate>()) {
             std::string path = coord.getAbsolutePathString();
-            for (int i = 0; i < kinematics.getNumColumns(); ++i) {
-                if (path.find(kinematics.getColumnLabel(i))
+            for (int i = 0; i < coordinates.getNumColumns(); ++i) {
+                if (path.find(coordinates.getColumnLabel(i))
                     != std::string::npos) {
-                    kinematics.setColumnLabel(i, path + "/value");
+                    coordinates.setColumnLabel(i, path + "/value");
                 }
             }
         }
 
-        if (kinematics.hasTableMetaDataKey("inDegrees") &&
-            kinematics.getTableMetaDataAsString("inDegrees") == "yes") {
-            model.getSimbodyEngine().convertDegreesToRadians(kinematics);
+        if (coordinates.hasTableMetaDataKey("inDegrees") &&
+            coordinates.getTableMetaDataAsString("inDegrees") == "yes") {
+            model.getSimbodyEngine().convertDegreesToRadians(coordinates);
         }
     }
 
@@ -694,6 +751,22 @@ void addCoordinateActuator(Model& model, std::string coordName,
     model.addComponent(actu);
 }
 
+void addActivationCoordinateActuator(Model& model, std::string coordName,
+    double optimalForce) {
+
+    auto& coordSet = model.updCoordinateSet();
+
+    auto* actu = new ActivationCoordinateActuator();
+    actu->setName("tau_" + coordName);
+    actu->setCoordinate(&coordSet.get(coordName));
+    actu->setOptimalForce(optimalForce);
+    actu->setMinControl(-1);
+    actu->setMaxControl(1);
+    actu->set_default_activation(0.0);
+    actu->set_activation_time_constant(0.005);
+    model.addComponent(actu);
+}
+
 int main() {
 
     Model model("subject_walk_rra_adjusted.osim");
@@ -709,53 +782,76 @@ int main() {
     replaceJointWithWeldJoint(model, "radius_hand_r");
 
     // lower body
-    addCoordinateActuator(model, "pelvis_tilt", 100);
-    addCoordinateActuator(model, "pelvis_list", 100);
-    addCoordinateActuator(model, "pelvis_rotation", 100);
-    addCoordinateActuator(model, "pelvis_tx", 100);
-    addCoordinateActuator(model, "pelvis_ty", 100);
-    addCoordinateActuator(model, "pelvis_tz", 100);
+    addCoordinateActuator(model, "pelvis_tilt", 10);
+    addCoordinateActuator(model, "pelvis_list", 10);
+    addCoordinateActuator(model, "pelvis_rotation", 10);
+    addCoordinateActuator(model, "pelvis_tx", 10);
+    addCoordinateActuator(model, "pelvis_ty", 10);
+    addCoordinateActuator(model, "pelvis_tz", 10);
     addCoordinateActuator(model, "hip_adduction_l", 100);
     addCoordinateActuator(model, "hip_adduction_r", 100);
     addCoordinateActuator(model, "hip_flexion_l", 100);
     addCoordinateActuator(model, "hip_flexion_r", 100);
-    addCoordinateActuator(model, "hip_rotation_l", 50);
-    addCoordinateActuator(model, "hip_rotation_r", 50);
+    addCoordinateActuator(model, "hip_rotation_l", 25);
+    addCoordinateActuator(model, "hip_rotation_r", 25);
     addCoordinateActuator(model, "knee_angle_l", 100);
     addCoordinateActuator(model, "knee_angle_r", 100);
-    addCoordinateActuator(model, "ankle_angle_l", 1000);
-    addCoordinateActuator(model, "ankle_angle_r", 1000);
+    addCoordinateActuator(model, "ankle_angle_l", 250);
+    addCoordinateActuator(model, "ankle_angle_r", 250);
     // upper body
-    addCoordinateActuator(model, "elbow_flex_l", 10);
-    addCoordinateActuator(model, "elbow_flex_r", 10);
-    addCoordinateActuator(model, "pro_sup_l", 1);
-    addCoordinateActuator(model, "pro_sup_r", 1);
-    addCoordinateActuator(model, "arm_add_l", 10);
-    addCoordinateActuator(model, "arm_add_r", 10);
-    addCoordinateActuator(model, "arm_rot_l", 10);
-    addCoordinateActuator(model, "arm_rot_r", 10);
+    addCoordinateActuator(model, "elbow_flex_l", 5);
+    addCoordinateActuator(model, "elbow_flex_r", 5);
+    addCoordinateActuator(model, "pro_sup_l", 0.1);
+    addCoordinateActuator(model, "pro_sup_r", 0.1);
+    addCoordinateActuator(model, "arm_add_l", 5);
+    addCoordinateActuator(model, "arm_add_r", 5);
+    addCoordinateActuator(model, "arm_rot_l", 5);
+    addCoordinateActuator(model, "arm_rot_r", 5);
     addCoordinateActuator(model, "arm_flex_l", 10);
     addCoordinateActuator(model, "arm_flex_r", 10);
-    addCoordinateActuator(model, "lumbar_bending", 10);
+    addCoordinateActuator(model, "lumbar_bending", 50);
     addCoordinateActuator(model, "lumbar_extension", 50);
-    addCoordinateActuator(model, "lumbar_rotation", 10);  
+    addCoordinateActuator(model, "lumbar_rotation", 50);  
 
     model.print("subject_walk_rra_adjusted_updated.osim");
 
     MocoTrack track;
     track.setModel(model);
-    track.setKinematicsFile("coordinates_rra_adjusted.sto");
-    //track.setMarkersFile("motion_capture_walk.trc");
-    //track.setIKSetupFile("ik_setup_walk.xml");
+    track.setCoordinatesFile("coordinates_rra_adjusted.sto");
+    track.setMarkersFile("motion_capture_walk.trc");
+    track.setIKSetupFile("ik_setup_walk_feet_only.xml");
     track.setExternalLoadsFile("grf_walk.xml");
-    track.setGuessFile("sandboxMocoTrack_solution.sto");
-    track.set_minimize_controls(0.1);
-    track.setStartTime(0.45);
+    track.setGuessType("from_file");
+    track.setGuessFile("sandboxMocoTrack_solution_trackingFeetMarkers.sto");
+    track.setStartTime(0.75);
     track.setEndTime(1.79);
+
+    // Control weights.
+    MocoWeightSet controlWeights;
+    // Penalize pelvis residuals.
+    controlWeights.cloneAndAppend({"tau_pelvis_tilt", 10});
+    controlWeights.cloneAndAppend({"tau_pelvis_list", 10});
+    controlWeights.cloneAndAppend({"tau_pelvis_rotation", 10});
+    controlWeights.cloneAndAppend({"tau_pelvis_tx", 10});
+    controlWeights.cloneAndAppend({"tau_pelvis_ty", 10});
+    controlWeights.cloneAndAppend({"tau_pelvis_tz", 10});
+    //std::vector<std::string> sides = {"l", "r"};
+    //for (const auto& side : sides) {
+    //    controlWeights.cloneAndAppend({"tau_hip_rotation_" + side, 10});
+    //    controlWeights.cloneAndAppend({"tau_hip_adduction_" + side, 10});
+    //}
+
+    // Don't penalize GRF controls.
+    for (int i = 0; i < 9; ++i) {
+        controlWeights.cloneAndAppend({"Left_GRF_" + std::to_string(i), 0});
+        controlWeights.cloneAndAppend({"Right_GRF_" + std::to_string(i), 0});
+    }
+    track.setMinimizeControls(0.01);
+    track.setControlWeights(controlWeights);
 
     MocoTool moco = track.initialize();
     MocoSolution solution = moco.solve().unseal();
-    solution.write("sandboxMocoTrack_solution.sto");
+    solution.write("sandboxMocoTrack_solution_trackingFeetMarkers.sto");
     moco.visualize(solution);
 
     return EXIT_SUCCESS;
