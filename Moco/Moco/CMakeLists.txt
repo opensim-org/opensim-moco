@@ -87,6 +87,8 @@ set(MOCO_SOURCES
         MocoCasADiSolver/CasOCIterate.h
         MocoInverse.h
         MocoInverse.cpp
+        MocoTrack.h
+        MocoTrack.cpp
         )
 if(MOCO_WITH_TROPTER)
     list(APPEND MOCO_SOURCES

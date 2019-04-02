@@ -45,8 +45,11 @@ public:
     /// Provide a valid model path for joint whose reaction loads will be
     /// minimized. 
     // TODO when using implicit dynamics, we will need to revisit this cost.
-    void setJointPath(const std::string& path) 
-    {   set_joint_path(path); }
+    void setJointPath(const std::string& jointPath) 
+    {   set_joint_path(jointPath); }
+    void setExpressedInFramePath(const std::string& framePath) {
+        set_expressed_in_frame_path(framePath);
+    }
     void setReactionComponent(int comp) {
         set_reaction_component(comp);
     }
@@ -58,12 +61,15 @@ protected:
 
 private:
     mutable SimTK::ReferencePtr<const Joint> m_joint;
+    mutable SimTK::ReferencePtr<const Frame> m_frame;
     mutable int m_vec;
     mutable int m_elt;
 
     void constructProperties();
     OpenSim_DECLARE_PROPERTY(joint_path, std::string, "The model path for the "
             "joint with minimized reaction loads.");
+    OpenSim_DECLARE_PROPERTY(expressed_in_frame_path, std::string, "The frame that "
+            "the minimized reaction force is expressed in.");
     OpenSim_DECLARE_PROPERTY(reaction_component, int, "TODO");
 };
 

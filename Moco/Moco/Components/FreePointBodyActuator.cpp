@@ -95,6 +95,13 @@ void FreePointBodyActuator::computeForce(const SimTK::State& s,
 
 }
 
+//SimTK::Vec3 FreePointBodyActuator::getPoint(const SimTK::State& s) const {
+//    const SimTK::Vector bodyForceAndPointVals = getControls(s);
+//    SimTK::Vec3 pointVec(bodyForceAndPointVals[6], bodyForceAndPointVals[7],
+//        bodyForceAndPointVals[8]);
+//    return pointVec;
+//}
+
 double FreePointBodyActuator::getPower(const SimTK::State& s) const {
     const Body& body = getBody();
 

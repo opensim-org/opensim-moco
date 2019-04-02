@@ -29,6 +29,7 @@ MocoJointReactionCost::MocoJointReactionCost() {
 void MocoJointReactionCost::constructProperties() {
     constructProperty_joint_path("");
     constructProperty_reaction_component(-1);
+    constructProperty_expressed_in_frame_path("");
 }
 
 void MocoJointReactionCost::initializeOnModelImpl(
@@ -41,6 +42,25 @@ void MocoJointReactionCost::initializeOnModelImpl(
         Exception,
         format("Joint at path %s not found in the model. "
                "Please provide a valid joint path.", get_joint_path()));
+
+    m_joint = &getModel().getComponent<Joint>(get_joint_path());
+
+    std::string expressedInFrame;
+    if (get_expressed_in_frame_path().empty()) {
+        expressedInFrame = m_joint->getChildFrame().getAbsolutePathString();
+    } else {
+        expressedInFrame = get_expressed_in_frame_path();
+    }
+
+    OPENSIM_THROW_IF_FRMOBJ(
+        !model.hasComponent<Frame>(expressedInFrame),
+        Exception,
+        format("Frame at path %s not found in the model. "
+            "Please provide a valid frame path.", 
+            expressedInFrame));
+
+    m_frame = &getModel().getComponent<Frame>(expressedInFrame);
+
     
     OPENSIM_THROW_IF_FRMOBJ(get_reaction_component() < -1 ||
                             get_reaction_component() > 5, Exception, 
@@ -54,19 +74,28 @@ void MocoJointReactionCost::initializeOnModelImpl(
         m_elt = get_reaction_component() - 3;
     }
 
-    m_joint = &getModel().getComponent<Joint>(get_joint_path());
 }
 
 void MocoJointReactionCost::calcIntegralCostImpl(const SimTK::State& state,
         double& integrand) const {
 
     getModel().realizeAcceleration(state);
-    double reaction;
+    const auto& ground = getModel().getGround();
+    SimTK::SpatialVec reactionInGround = 
+        m_joint->calcReactionOnChildExpressedInGround(state);
+
+    SimTK::Vec3 moment = ground.expressVectorInAnotherFrame(state,
+            reactionInGround[0], *m_frame);
+    SimTK::Vec3 force = ground.expressVectorInAnotherFrame(state,
+            reactionInGround[1], *m_frame);
+
+    SimTK::SpatialVec reaction(moment, force);
+
+    double cost;
     if (get_reaction_component() == -1) {
-        reaction = m_joint->calcReactionOnChildExpressedInGround(state).norm();
+        cost = reaction.norm();
     } else { 
-        reaction = 
-            m_joint->calcReactionOnChildExpressedInGround(state)[m_vec][m_elt];
+        cost = reaction[m_vec][m_elt];
     }
-    integrand = reaction * reaction;
+    integrand = cost * cost;
 }

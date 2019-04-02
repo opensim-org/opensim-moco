@@ -63,6 +63,8 @@ public:
     /// Set the body name to which this actuator applies spatial forces.
     void setBodyName(const std::string& name);
     const std::string& getBodyName() const;
+
+    //SimTK::Vec3 getPoint(const SimTK::State& s) const;
 private:
     void constructProperties();
 

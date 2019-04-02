@@ -161,17 +161,18 @@ public:
         model.initSystem();
 
         auto statesTraj = iterate.exportToStatesTrajectory(get_problem());
+
         for (int i = 0; i < statesTraj.getSize(); ++i) {
-            auto state = statesTraj.get(i);
+            auto state = statesTraj[i];
             model.getSystem().prescribe(state);
-            auto& osimControls = model.updControls(state);
-            auto controls = iterate.getControlsTrajectory().col(i);
-            std::copy_n(controls.getContiguousScalarData(), controls.size(),
-                osimControls.updContiguousScalarData());
+            SimTK::RowVector controlsRow = 
+                    iterate.getControlsTrajectory().row(i);
+            SimTK::Vector controls(controlsRow.size(), 
+                    controlsRow.getContiguousScalarData(), true);
             model.realizeVelocity(state);
-            model.setControls(state, osimControls);
-            model.realizeReport(state);
+            model.setControls(state, controls);
             
+            model.realizeReport(state);
         }
 
         return reporter->getTable();
