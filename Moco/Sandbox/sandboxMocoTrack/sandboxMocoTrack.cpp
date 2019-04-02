@@ -905,6 +905,42 @@ void addCoordinateActuator(Model& model, std::string coordName,
     model.addComponent(actu);
 }
 
+void transformReactionToBodyFrame(const MocoTool& moco, 
+        const MocoIterate& iterate, 
+        TimeSeriesTable_<SimTK::SpatialVec>& reactionTable) {
+    auto model = moco.getProblem().createRep().getModelBase();
+    model.initSystem();
+    const auto& ground = model.getGround();
+    auto statesTraj = iterate.exportToStatesTrajectory(moco.getProblem());
+    assert(statesTraj.getSize() == reactionTableMTG.getNumRows());
+
+    for (int irow = 0; irow < reactionTable.getNumRows(); ++irow) {
+        auto& row = reactionTable.updRowAtIndex(irow);
+        for (int ielt = 0; ielt < row.size(); ++ielt) {
+
+            const auto& state = statesTraj.get(irow);
+            const auto& label = reactionTable.getColumnLabel(ielt);
+            std::string frameName;
+            if (label.find("walker_knee_l") != std::string::npos) {
+                frameName = "/bodyset/tibia_l";
+            } else if (label.find("walker_knee_r") != std::string::npos) {
+                frameName = "/bodyset/tibia_r";
+            }
+            const auto& frame = model.getComponent<Frame>(frameName);
+
+            const auto& elt = row.getElt(0, ielt);
+            model.realizeAcceleration(state);
+            SimTK::Vec3 moment = ground.expressVectorInAnotherFrame(state,
+                elt[0], frame);
+            SimTK::Vec3 force = ground.expressVectorInAnotherFrame(state,
+                elt[1], frame);
+
+            SimTK::SpatialVec newElt(moment, force);
+            row.updElt(0, ielt) = newElt;
+        }
+    }
+}
+
 int main() {
 
     Model model("subject_walk_rra_adjusted.osim");
@@ -996,6 +1032,7 @@ int main() {
                 {"/jointset/walker_knee_l/reaction_on_child",
                  "/jointset/walker_knee_r/reaction_on_child"});
 
+    transformReactionToBodyFrame(moco, solutionPrev, reactionTable);
     TimeSeriesTable reactionTableFlat = reactionTable.flatten();    
     STOFileAdapter::write(reactionTableFlat, "knee_reactions.sto");
 
@@ -1039,7 +1076,7 @@ int main() {
     }
     track.setExternalLoadWeights(extLoadWeights);
     track.setGuessType("from_file");
-    track.setGuessFile("sandboxMocoTrack_solution_trackingFeetMarkers.sto");
+    track.setGuessFile("sandboxMocoTrack_solution_MTG.sto");
     track.setStartTime(0.75);
     track.setEndTime(1.79);
     MocoTool mocoMTG = track.initialize();
@@ -1106,10 +1143,12 @@ int main() {
     auto* kneeAdductionCost_l = 
         problemMTG.addCost<MocoJointReactionCost>("knee_adduction_cost_l", 1.5);
     kneeAdductionCost_l->setJointPath("/jointset/walker_knee_l");
+    kneeAdductionCost_l->setExpressedInFramePath("/bodyset/tibia_l");
     kneeAdductionCost_l->setReactionComponent(2);
     auto* kneeAdductionCost_r =
         problemMTG.addCost<MocoJointReactionCost>("knee_adduction_cost_r", 1.5);
     kneeAdductionCost_r->setJointPath("/jointset/walker_knee_r");
+    kneeAdductionCost_l->setExpressedInFramePath("/bodyset/tibia_r");
     kneeAdductionCost_r->setReactionComponent(2);
 
     auto& solver = mocoMTG.updSolver<MocoCasADiSolver>();
@@ -1120,11 +1159,14 @@ int main() {
     solutionMTG.write("sandboxMocoTrack_solution_MTG.sto");
     mocoMTG.visualize(solutionMTG);
 
+    //MocoSolution solutionMTG("sandboxMocoTrack_solution_MTG.sto");
+
     TimeSeriesTable_<SimTK::SpatialVec> reactionTableMTG = 
             mocoMTG.analyze<SimTK::SpatialVec>(solutionMTG,
                 {"/jointset/walker_knee_l/reaction_on_child",
                  "/jointset/walker_knee_r/reaction_on_child"});
 
+    transformReactionToBodyFrame(mocoMTG, solutionMTG, reactionTableMTG);
     TimeSeriesTable reactionTableFlatMTG = reactionTableMTG.flatten();
 
     STOFileAdapter::write(reactionTableFlatMTG, "knee_reactions_MTG.sto");
