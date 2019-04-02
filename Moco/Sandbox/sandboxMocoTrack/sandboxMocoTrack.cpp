@@ -1144,12 +1144,12 @@ int main() {
         problemMTG.addCost<MocoJointReactionCost>("knee_adduction_cost_l", 1.5);
     kneeAdductionCost_l->setJointPath("/jointset/walker_knee_l");
     kneeAdductionCost_l->setExpressedInFramePath("/bodyset/tibia_l");
-    kneeAdductionCost_l->setReactionComponent(2);
+    kneeAdductionCost_l->setReactionComponent(0);
     auto* kneeAdductionCost_r =
         problemMTG.addCost<MocoJointReactionCost>("knee_adduction_cost_r", 1.5);
     kneeAdductionCost_r->setJointPath("/jointset/walker_knee_r");
     kneeAdductionCost_l->setExpressedInFramePath("/bodyset/tibia_r");
-    kneeAdductionCost_r->setReactionComponent(2);
+    kneeAdductionCost_r->setReactionComponent(0);
 
     auto& solver = mocoMTG.updSolver<MocoCasADiSolver>();
     solver.set_optim_constraint_tolerance(1e-2);
