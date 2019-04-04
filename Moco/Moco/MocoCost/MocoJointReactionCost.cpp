@@ -91,7 +91,7 @@ void MocoJointReactionCost::calcIntegralCostImpl(const SimTK::State& state,
 
     SimTK::SpatialVec reaction(moment, force);
 
-    double cost;
+    double cost = 0;
     if (get_reaction_component() == -1) {
         cost = reaction.norm(); // TODO: how to normalize?
     } else { 
