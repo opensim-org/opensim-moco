@@ -19,7 +19,7 @@
  * -------------------------------------------------------------------------- */
 
 #include "MocoCost.h"
-#include "OpenSim\Simulation\SimbodyEngine\Joint.h"
+#include <OpenSim/Simulation/SimbodyEngine/Joint.h>
 
 namespace OpenSim {
 
