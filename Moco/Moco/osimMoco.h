@@ -23,6 +23,7 @@
 #include "MocoCost/MocoMarkerTrackingCost.h"
 #include "MocoCost/MocoMarkerEndpointCost.h"
 #include "MocoCost/MocoControlCost.h"
+#include "MocoCost/MocoControlTrackingCost.h"
 #include "MocoCost/MocoSumSquaredStateCost.h"
 #include "MocoCost/MocoJointReactionCost.h"
 #include "MocoIterate.h"
@@ -36,7 +37,7 @@
 #include "MocoConstraint.h"
 
 #include "MocoInverse.h"
-//#include "MocoTrack.h"
+#include "MocoTrack.h"
 
 #include "Components/PositionMotion.h"
 #include "Components/ActivationCoordinateActuator.h"
