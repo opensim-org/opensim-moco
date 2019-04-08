@@ -35,6 +35,7 @@
 #include "MocoCost/MocoSumSquaredStateCost.h"
 #include "MocoCost/MocoJointReactionCost.h"
 #include "MocoParameter.h"
+#include "MocoControlConstraint.h"
 
 #include "MocoInverse.h"
 #include "MocoTrack.h"
@@ -81,6 +82,7 @@ OSIMMOCO_API void RegisterTypes_osimMoco() {
         Object::registerType(MocoTool());
         Object::registerType(MocoTropterSolver());
         Object::registerType(MocoParameter());
+        Object::registerType(MocoControlConstraint());
 
         Object::registerType(MocoInverse());
         Object::registerType(MocoTrack());

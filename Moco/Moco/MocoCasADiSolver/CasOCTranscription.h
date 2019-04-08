@@ -131,6 +131,9 @@ private:
     std::vector<casadi::DM> m_constraintsLowerBounds;
     std::vector<casadi::DM> m_constraintsUpperBounds;
 
+    casadi::MX m_cmesh;
+    casadi::MX m_cmid;
+
 private:
     /// Override this function in your derived class to compute a vector of
     /// quadrature coeffecients (of length m_numGridPoints) required to set the
@@ -166,10 +169,19 @@ private:
     /// Convert the map of variables into a column vector, for passing onto
     /// nlpsol(), etc.
     template <typename T>
-    static T flatten(const CasOC::Variables<T>& vars) {
+    static T flatten(const CasOC::Variables<T>& vars, int numGridPoints) {
         std::vector<T> stdvec;
         for (const auto& key : getSortedVarKeys(vars)) {
+            //if (key == controls) {
+            //    const auto& var = vars.at(key);
+            //    const auto& cmesh = var(Slice(), Slice(0, numGridPoints, 2));
+            //    std::cout << "size1: " << cmesh.size1() << std::endl;
+            //    std::cout << "size2: " << cmesh.size2() << std::endl;
+            //    stdvec.push_back(cmesh);
+            //} else {
             stdvec.push_back(vars.at(key));
+            //}
+
         }
         return T::veccat(stdvec);
     }
@@ -179,12 +191,29 @@ private:
         using casadi::Slice;
         casadi_int offset = 0;
         for (const auto& key : getSortedVarKeys(m_vars)) {
+            //if (key == controls) {
+            //    const auto& value = m_cmesh;
+
+            //    casadi::DM c_out(m_problem.getNumControls(), m_numGridPoints);
+
+            //    c_out(Slice(), Slice(0, m_numGridPoints, 2)) =
+            //        casadi::DM::reshape(
+            //            x(Slice(offset, offset + value.numel())), value.rows(),
+            //            value.columns());
+            //    offset += value.numel();
+
+            //    c_out(Slice(), Slice(1, m_numGridPoints-1, 2)) =
+            //        casadi::DM(m_cmid);
+
+            //    out[key] = c_out;
+            //} else {
             const auto& value = m_vars.at(key);
             // Convert a portion of the column vector into a matrix.
             out[key] = casadi::DM::reshape(
-                    x(Slice(offset, offset + value.numel())), value.rows(),
-                    value.columns());
+                x(Slice(offset, offset + value.numel())), value.rows(),
+                value.columns());
             offset += value.numel();
+            //}
         }
         return out;
     }

@@ -67,14 +67,40 @@ void FreePointBodyActuator::computeForce(const SimTK::State& s,
 
     // get the control signals
     const SimTK::Vector bodyForceAndPointVals = getControls(s);
+    
+    int count = 0;
 
-    // Read spatialForces which should be in ground frame by default
-    SimTK::Vec3 torqueVec(bodyForceAndPointVals[0], bodyForceAndPointVals[1],
-        bodyForceAndPointVals[2]);
-    SimTK::Vec3 forceVec(bodyForceAndPointVals[3], bodyForceAndPointVals[4],
-        bodyForceAndPointVals[5]);
-    SimTK::Vec3 pointVec(bodyForceAndPointVals[6], bodyForceAndPointVals[7],
-        bodyForceAndPointVals[8]);
+    SimTK::Vec3 torqueVec;
+    for (int i = 0; i < 3; ++i) {
+        if (m_enabled_controls[i]) {
+            torqueVec[i] = m_control_max_vals[i] * bodyForceAndPointVals[count];
+            ++count;
+        } else {
+            torqueVec[i] = 0;
+        }
+    }
+
+    SimTK::Vec3 forceVec;
+    for (int i = 0; i < 3; ++i) {
+        if (m_enabled_controls[i + 3]) {
+            forceVec[i] = 
+                    m_control_max_vals[i + 3] * bodyForceAndPointVals[count];
+            ++count;
+        } else {
+            forceVec[i] = 0;
+        }
+    }
+
+    SimTK::Vec3 pointVec;
+    for (int i = 0; i < 3; ++i) {
+        if (m_enabled_controls[i + 6]) {
+            pointVec[i] = 
+                    m_control_max_vals[i + 6] * bodyForceAndPointVals[count];
+            ++count;
+        } else {
+            pointVec[i] = 0;
+        }
+    }
 
     // if the user has given the spatialForces in body frame, transform them to
     // global (ground) frame

@@ -35,6 +35,7 @@
 #include "MocoUtilities.h"
 #include "MocoParameter.h"
 #include "MocoConstraint.h"
+#include "MocoControlConstraint.h"
 
 #include "MocoInverse.h"
 #include "MocoTrack.h"

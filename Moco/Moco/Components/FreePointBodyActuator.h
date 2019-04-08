@@ -65,14 +65,30 @@ public:
     const std::string& getBodyName() const;
 
     //SimTK::Vec3 getPoint(const SimTK::State& s) const;
+    void setEnabledControls(std::vector<bool> enabledControls) {
+        m_enabled_controls = enabledControls;
+    }
+    void setControlMaxValues(std::vector<double> controlMaxVals) {
+        m_control_max_vals = std::move(controlMaxVals);
+    }
 private:
+    std::vector<double> m_control_max_vals = {1,1,1,1,1,1,1,1,1};
+    std::vector<bool> m_enabled_controls = {1,1,1,1,1,1,1,1,1};
     void constructProperties();
 
     void computeForce(const SimTK::State& state,
             SimTK::Vector_<SimTK::SpatialVec>& bodyForces,
             SimTK::Vector& mobilityForces) const override;
 
-    int numControls() const override { return 9; }
+    int numControls() const override { 
+        int numControls = 0;
+        for (const auto& enabledControl : m_enabled_controls) {
+            if (enabledControl) {
+                ++numControls;
+            }
+        }
+        return numControls;
+    }
     double getPower(const SimTK::State& s) const override;
 
 }; // class FreePointBodyActuator

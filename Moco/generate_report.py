@@ -195,6 +195,9 @@ def getVariable(type, path):
 
     return var
 
+def getIndexForNearestValue(vec, val):
+    return min(range(len(vec)), key=lambda i: abs(vec[i]-val))
+
 plots_per_page = 15.0
 num_cols = 3
 # Add an extra row to hold the legend and other infromation.
@@ -219,7 +222,10 @@ def plotVariables(var_type, var_dict, ls_dict, label_dict):
                 # slashes.
                 pathNoSlashes = path.replace('/', '')
                 if pathNoSlashes in ref.dtype.names:
-                    plt.plot(ref['time'], ref[pathNoSlashes], ls=ls, 
+                    init = getIndexForNearestValue(ref['time'], time[0])
+                    final = getIndexForNearestValue(ref['time'], time[-1])
+                    plt.plot(ref['time'][init:final], 
+                             ref[pathNoSlashes][init:final], ls=ls, 
                              color=cmap(cmap_samples[r]),
                              linewidth=2.5)
 

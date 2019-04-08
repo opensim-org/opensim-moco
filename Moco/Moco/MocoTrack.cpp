@@ -26,6 +26,7 @@
 #include "MocoCost/MocoMarkerTrackingCost.h"
 #include "MocoCasADiSolver/MocoCasADiSolver.h"
 #include "Components/FreePointBodyActuator.h"
+#include "MocoControlConstraint.h"
 
 #include <OpenSim/Common/FileAdapter.h>
 #include <OpenSim/Common/GCVSpline.h>
@@ -40,14 +41,17 @@ using namespace OpenSim;
 
 void MocoTrack::constructProperties() {
 
-    constructProperty_states_file("");
+    constructProperty_states_tracking_file("");
+    constructProperty_states_tracking_weight(1);
     constructProperty_state_weights(MocoWeightSet());
     constructProperty_track_state_reference_derivatives(false);
-    constructProperty_markers_file("");
+    constructProperty_markers_tracking_file("");
+    constructProperty_markers_tracking_weight(1);
     constructProperty_lowpass_cutoff_frequency_for_kinematics(-1);
     constructProperty_ik_setup_file("");
     constructProperty_external_loads_file("");
-    constructProperty_track_external_loads(false);
+    constructProperty_external_loads_mode("tracked");
+    constructProperty_external_loads_tracking_weight(1);
     constructProperty_external_load_weights(MocoWeightSet());
     constructProperty_lowpass_cutoff_frequency_for_forces(-1);
     constructProperty_initial_time(-1);
@@ -76,24 +80,28 @@ MocoTool MocoTrack::initialize() {
     m_final_time = get_final_time();
 
     // State tracking cost.
-    if (!get_states_file().empty()) {
+    if (!get_states_tracking_file().empty()) {
         configureStateTracking(problem, model);
     }
 
     // Marker tracking cost.
-    if (!get_markers_file().empty()) {
+    if (!get_markers_tracking_file().empty()) {
         configureMarkerTracking(problem, model);
     }
 
     // External load tracking cost.
     if (!get_external_loads_file().empty()) {
-        if (get_track_external_loads()) {
+        if (get_external_loads_mode() == "tracked") {
             configureForceTracking(problem, model);
-        } else {
+        } else if (get_external_loads_mode() == "applied") {
             InverseDynamicsTool idtool;
             idtool.createExternalLoads(get_external_loads_file(), model);
             model.initSystem();
             model.print(model.getName() + "_with_extloads.osim");
+        } else {
+            OPENSIM_THROW(Exception, format("The setting %s for the "
+                "'external_loads_mode' property not recognized.", 
+                get_external_loads_mode()));
         }
     }
 
@@ -132,8 +140,8 @@ MocoTool MocoTrack::initialize() {
     MocoCasADiSolver& solver = moco.initCasADiSolver();
     solver.set_num_mesh_points(25);
     solver.set_dynamics_mode("explicit");
-    solver.set_optim_convergence_tolerance(1e-4);
-    solver.set_optim_constraint_tolerance(1e-4);
+    solver.set_optim_convergence_tolerance(1e-2);
+    solver.set_optim_constraint_tolerance(1e-2);
     solver.set_enforce_constraint_derivatives(true);
     solver.set_transcription_scheme("hermite-simpson");
     solver.set_optim_finite_difference_scheme("forward");
@@ -147,7 +155,7 @@ MocoTool MocoTrack::initialize() {
             "Guess type set to 'from_file' but no guess file was provided.");
 
     if (get_guess_type() == "from_file") {
-        solver.setGuessFile(get_guess_file());
+        solver.setGuessFile(getFilePath(get_guess_file()));
     } else if (get_guess_type() == "from_data") {
         auto guess = solver.createGuess("bounds");
         if (m_states_from_file.getNumRows()) {
@@ -159,8 +167,7 @@ MocoTool MocoTrack::initialize() {
             applyControlsToGuess(m_forces, guess);
         }
         solver.setGuess(guess);
-    }
-    else {
+    } else {
         solver.setGuess("bounds");
     }
 
@@ -177,10 +184,7 @@ void MocoTrack::solve() {
     moco.visualize(solution);
 }
 
-// TODO: redundant with MocoInverse, move to a base class
-template <typename T>
-TimeSeriesTable_<T> MocoTrack::readTableFromFile(
-        const std::string& file) const {
+std::string MocoTrack::getFilePath(const std::string& file) const {
     using SimTK::Pathname;
     // Get the directory containing the setup file.
     std::string setupDir;
@@ -188,12 +192,22 @@ TimeSeriesTable_<T> MocoTrack::readTableFromFile(
         bool dontApplySearchPath;
         std::string fileName, extension;
         Pathname::deconstructPathname(getDocumentFileName(),
-                dontApplySearchPath, setupDir, fileName, extension);
+            dontApplySearchPath, setupDir, fileName, extension);
     }
 
-    std::string filepath = 
-            Pathname::getAbsolutePathnameUsingSpecifiedWorkingDirectory(
-                setupDir, file);
+    std::string filepath =
+        Pathname::getAbsolutePathnameUsingSpecifiedWorkingDirectory(
+            setupDir, file);
+
+    return filepath;
+}
+
+// TODO: redundant with MocoInverse, move to a base class
+template <typename T>
+TimeSeriesTable_<T> MocoTrack::readTableFromFile(
+        const std::string& file) const {
+    
+    auto filepath = getFilePath(file);
 
     FileAdapter::OutputTables tables = FileAdapter::readFile(filepath);
     // There should only be one table.
@@ -220,7 +234,8 @@ void MocoTrack::writeTableToFile(const TimeSeriesTable& table,
 void MocoTrack::configureStateTracking(MocoProblem& problem, Model& model) {
 
     // Read in the states reference data, filter, and spline.
-    TimeSeriesTable statesRaw = readTableFromFile<double>(get_states_file());
+    TimeSeriesTable statesRaw = 
+            readTableFromFile<double>(get_states_tracking_file());
     TimeSeriesTable states;
     if (get_lowpass_cutoff_frequency_for_kinematics() != -1) {
         states = filterLowpass(statesRaw,
@@ -316,7 +331,8 @@ void MocoTrack::configureStateTracking(MocoProblem& problem, Model& model) {
 
     // Add state tracking cost to the MocoProblem.
     auto* stateTracking =
-        problem.addCost<MocoStateTrackingCost>("state_tracking");
+        problem.addCost<MocoStateTrackingCost>("state_tracking", 
+            get_states_tracking_weight());
     stateTracking->setReference(states);
     stateTracking->setWeightSet(weights);
     stateTracking->setAllowUnusedReferences(true);
@@ -343,7 +359,7 @@ void MocoTrack::configureMarkerTracking(MocoProblem& problem, Model& model) {
 
     // Read in the markers reference data and filter.
     TimeSeriesTable_<SimTK::Vec3> markersRaw = 
-            readTableFromFile<SimTK::Vec3>(get_markers_file());
+            readTableFromFile<SimTK::Vec3>(get_markers_tracking_file());
     TimeSeriesTable markersRawFlat = markersRaw.flatten();
     TimeSeriesTable markersFlat;
     if (get_lowpass_cutoff_frequency_for_kinematics() != -1) {
@@ -392,7 +408,8 @@ void MocoTrack::configureMarkerTracking(MocoProblem& problem, Model& model) {
 
     // Add marker tracking cost to the MocoProblem.
     auto* markerTracking =
-            problem.addCost<MocoMarkerTrackingCost>("marking_tracking");
+            problem.addCost<MocoMarkerTrackingCost>("marking_tracking",
+                get_markers_tracking_weight());
     markerTracking->setMarkersReference(markersRef);
     markerTracking->setAllowUnusedReferences(true);
 
@@ -418,12 +435,18 @@ void MocoTrack::configureForceTracking(MocoProblem& problem, Model& model) {
     // specified.
     auto forcesRaw = readTableFromFile<double>(extLoads.getDataFileName());
     TimeSeriesTable forces;
-    if (get_lowpass_cutoff_frequency_for_kinematics() != -1) {
+    if (get_lowpass_cutoff_frequency_for_forces() != -1) {
         forces = filterLowpass(forcesRaw,
-            get_lowpass_cutoff_frequency_for_kinematics(), true);
+            get_lowpass_cutoff_frequency_for_forces(), true);
     } else {
         forces = forcesRaw;
     }
+
+    size_t initialRow = forces.getNearestRowIndexForTime(m_initial_time, true);
+    size_t finalRow = forces.getNearestRowIndexForTime(m_final_time, true);
+
+    auto forcesBlock = forces.getMatrixBlock(initialRow, 0, finalRow-initialRow,
+        forces.getNumColumns());
 
     // Loop through all the ExternalForce objects assoicated with the 
     // ExternalLoads file and create a corresponding actuator applied to the
@@ -436,48 +459,106 @@ void MocoTrack::configureForceTracking(MocoProblem& problem, Model& model) {
         // TODO: this is not ideal. Issues with a moving point under load 
         // (i.e. not workless). Replace with "hybrid" actuator that applies
         // the point of contact based on data but allows controls for moments
-        // and forces.
+        // and forces?
+        std::vector<double> controlMaxValues(9);
+        std::vector<bool> enabledControls(9);
         FreePointBodyActuator* actu = new FreePointBodyActuator();
         actu->setName(extForce.getName());
-        actu->setBodyName("/bodyset/" +
-            extForce.getAppliedToBodyName());
+        actu->setBodyName("/bodyset/" + extForce.getAppliedToBodyName());
         actu->setPointForceIsGlobal(
             extForce.getPointExpressedInBodyName() == "ground");
         actu->setSpatialForceIsGlobal(
             extForce.getForceExpressedInBodyName() == "ground");
-        model.addComponent(actu);
 
         // Add control infos to the MocoProblem corresponding to the moments,
         // forces, and points of application for this ExternalForce.
         std::vector<std::string> suffixes = {"x", "y", "z"};
+        int c = 0;
         for (int j = 0; j < suffixes.size(); ++j) {
             // Moment control infos.
-            std::string torqueName =
-                extForce.getName() + "_" + std::to_string(j);
-            forces.setColumnLabel(forces.getColumnIndex(
-                extForce.getTorqueIdentifier() + suffixes[j]), torqueName);
-            problem.setControlInfo("/" + extForce.getName(), j, {-250, 250});
-            // Force control infos.
-            std::string forceName =
-                extForce.getName() + "_" + std::to_string(j + 3);
-            forces.setColumnLabel(forces.getColumnIndex(
-                extForce.getForceIdentifier() + suffixes[j]), forceName);
-            problem.setControlInfo("/" + extForce.getName(), j + 3, 
-                {-1000, 1000});
-            // Point control infos.
-            std::string pointName =
-                extForce.getName() + "_" + std::to_string(j + 6);
-            forces.setColumnLabel(forces.getColumnIndex(
-                extForce.getPointIdentifier() + suffixes[j]), pointName);
-            problem.setControlInfo("/" + extForce.getName(), j + 6, {-10, 10});
+            size_t T_idx = forces.getColumnIndex(
+                extForce.getTorqueIdentifier() + suffixes[j]);
+            auto maxT = SimTK::max(SimTK::abs(forcesBlock.col(T_idx)));
+            if (maxT < 0.01) {
+                enabledControls[j] = false;
+            } else {
+                std::string torqueName =
+                    extForce.getName() + "_" + std::to_string(c);
+                forces.setColumnLabel(T_idx, torqueName);
+                controlMaxValues[j] = 1.2*maxT;
+                forces.updDependentColumn(torqueName) /= maxT;
+                enabledControls[j] = true;
+                problem.setControlInfo("/" + extForce.getName(), c, {-1, 1});
+                ++c;
+            }
         }
+
+        for (int j = 0; j < suffixes.size(); ++j) {
+            // Force control infos.
+            size_t F_idx = forces.getColumnIndex(
+                extForce.getForceIdentifier() + suffixes[j]);
+            auto maxF = SimTK::max(SimTK::abs(forcesBlock.col(F_idx)));
+            if (maxF < 0.01) {
+                enabledControls[j + 3] = false;
+            } else {
+                std::string forceName =
+                    extForce.getName() + "_" + std::to_string(c);
+                forces.setColumnLabel(F_idx, forceName);
+                controlMaxValues[j + 3] = 1.2*maxF;
+                forces.updDependentColumn(forceName) /= maxF;
+                enabledControls[j + 3] = true;
+                problem.setControlInfo("/" + extForce.getName(), c, {-1, 1});
+                ++c;
+            }
+        }
+
+        for (int j = 0; j < suffixes.size(); ++j) {
+            // Point control infos.
+            size_t P_idx = forces.getColumnIndex(
+                    extForce.getPointIdentifier() + suffixes[j]);
+            auto maxP = SimTK::max(SimTK::abs(forcesBlock.col(P_idx)));
+            if (maxP < 0.0001) {
+                enabledControls[j + 6] = false;
+            } else {
+                std::string pointName =
+                    extForce.getName() + "_" + std::to_string(c);
+                forces.setColumnLabel(P_idx, pointName);
+                controlMaxValues[j + 6] = 1.5*maxP;
+                forces.updDependentColumn(pointName) /= maxP;
+                enabledControls[j + 6] = true;
+                problem.setControlInfo("/" + extForce.getName(), c, {-1, 1});
+                ++c;
+            }
+        }
+
+        actu->setEnabledControls(enabledControls);
+        actu->setControlMaxValues(controlMaxValues);
+        model.addComponent(actu);
     }
 
-    // Add external load tracking cost to the MocoProblem.
-    auto* externalLoadTracking =
-        problem.addCost<MocoControlTrackingCost>("external_load_tracking", 1);
-    externalLoadTracking->setReference(forces);
-    externalLoadTracking->setWeightSet(get_external_load_weights());
+    if (get_external_loads_mode() == "tracked") {
+        auto* externalLoadTracking =
+            problem.addCost<MocoControlTrackingCost>("external_load_tracking",
+                get_external_loads_tracking_weight());
+        externalLoadTracking->setReference(forces);
+        externalLoadTracking->setWeightSet(get_external_load_weights());
+    } else if (get_external_loads_mode() == "applied") {
+        auto* externalLoadConstraint =
+            problem.addPathConstraint<MocoControlConstraint>();
+        externalLoadConstraint->setName("external_load_constraint");
+        externalLoadConstraint->setReference(forces);
+        
+        auto* externalLoadTracking =
+            problem.addCost<MocoControlTrackingCost>("external_load_tracking",
+                get_external_loads_tracking_weight());
+        externalLoadTracking->setReference(forces);
+        externalLoadTracking->setWeightSet(get_external_load_weights());
+
+    } else {
+        OPENSIM_THROW(Exception, format("The setting %s for the "
+            "'external_loads_mode' property not recognized.",
+            get_external_loads_mode()));
+    }
 
     // Write tracked forcess to file in case any label updates or filtering
     // occured.

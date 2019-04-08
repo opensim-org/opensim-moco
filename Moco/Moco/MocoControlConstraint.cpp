@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- *
- * OpenSim Moco: MocoControlTrackingCost.h                                    *
+ * OpenSim Moco: MocoControlConstraint.h                                      *
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2019 Stanford University and the Authors                     *
  *                                                                            *
@@ -16,16 +16,12 @@
  * limitations under the License.                                             *
  * -------------------------------------------------------------------------- */
 
-#include "MocoControlTrackingCost.h"
+#include "MocoControlConstraint.h"
 #include <OpenSim/Simulation/Model/Model.h>
 
 using namespace OpenSim;
 
-void MocoControlTrackingCost::constructProperties() {
-    constructProperty_control_weights(MocoWeightSet());
-}
-
-void MocoControlTrackingCost::initializeOnModelImpl(const Model& model) const {
+void MocoControlConstraint::initializeOnModelImpl(const Model& model) const {
     // Convert data table to splines.
     // auto controlsFiltered = filterLowpass(m_table, 6, true);
     auto allSplines = GCVSplineSet(m_table);
@@ -38,8 +34,7 @@ void MocoControlTrackingCost::initializeOnModelImpl(const Model& model) const {
             actu.getAbsolutePath().formRelativePath(modelPath).toString();
         if (actu.numControls() == 1) {
             controlNames.push_back(actuPath);
-        }
-        else {
+        } else {
             for (int i = 0; i < actu.numControls(); ++i) {
                 controlNames.push_back(actuPath + "_" + std::to_string(i));
             }
@@ -77,12 +72,6 @@ void MocoControlTrackingCost::initializeOnModelImpl(const Model& model) const {
     for (int iref = 0; iref < allSplines.getSize(); ++iref) {
         const auto& refName = allSplines[iref].getName();
 
-        double refWeight = 1.0;
-        if (get_control_weights().contains(refName)) {
-            refWeight = get_control_weights().get(refName).getWeight();
-        }
-        m_control_weights.push_back(refWeight);
-
         int i = 0;
         for (const auto& actu : model.getComponentList<Actuator>()) {
             std::string actuPath =
@@ -108,21 +97,23 @@ void MocoControlTrackingCost::initializeOnModelImpl(const Model& model) const {
             }
         }
     }
+
+    setNumEquations(m_refsplines.getSize());
 }
 
-void MocoControlTrackingCost::calcIntegralCostImpl(const SimTK::State& state,
-        double& integrand) const {
+void MocoControlConstraint::calcPathConstraintErrorsImpl(
+        const SimTK::State& state, SimTK::Vector& errors) const {
 
     const auto& time = state.getTime();
     SimTK::Vector timeVec(1, time);
+    getModel().realizeVelocity(state);
 
     const auto& controls = getModel().getControls(state);
-    integrand = 0;
     // TODO cache the reference coordinate values at the mesh points, 
     // rather than evaluating the spline.
     for (int iref = 0; iref < m_refsplines.getSize(); ++iref) {
         const auto& refValue = m_refsplines[iref].calcValue(timeVec);
-        integrand += m_control_weights[iref] *
+        errors[iref] = 
             pow(controls[m_controlIndices[iref]] - refValue, 2);
     }
 }
