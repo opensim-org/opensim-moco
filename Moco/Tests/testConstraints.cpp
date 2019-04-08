@@ -18,6 +18,7 @@
 
 #define CATCH_CONFIG_MAIN
 #include "Testing.h"
+using Catch::Contains;
 #include <Moco/osimMoco.h>
 
 #include <simbody/internal/Constraint.h>
@@ -1130,7 +1131,8 @@ TEST_CASE("Multipliers are correct", "") {
     std::cout.rdbuf(LogManager::cout.rdbuf());
     std::cerr.rdbuf(LogManager::cerr.rdbuf());
     SECTION("Body welded to ground") {
-        auto dynamics_mode = GENERATE(as<std::string>{}, "implicit", "explicit");
+        auto dynamics_mode =
+                GENERATE(as<std::string>{}, "implicit", "explicit");
 
         Model model;
         const double mass = 1.3169;
@@ -1144,7 +1146,6 @@ TEST_CASE("Multipliers are correct", "") {
                 SimTK::Transform(), *body, SimTK::Transform());
         model.addConstraint(constr);
         model.finalizeConnections();
-
 
         MocoTool moco;
         auto& problem = moco.updProblem();
@@ -1187,7 +1188,8 @@ TEST_CASE("Multipliers are correct", "") {
     // This test ensures that the multiplier has the correct value.
     SECTION("Planar point mass with CoordinateCouplerConstraint") {
 
-        auto dynamics_mode = GENERATE(as<std::string>{}, "implicit", "explicit");
+        auto dynamics_mode =
+                GENERATE(as<std::string>{}, "implicit", "explicit");
 
         Model model = ModelFactory::createPlanarPointMass();
         model.set_gravity(Vec3(0));
@@ -1273,4 +1275,113 @@ TEST_CASE("Prescribed kinematics with kinematic constraints", "") {
     const auto lambda = solution.getMultiplier("lambda_cid2_p0");
 
     OpenSim_CHECK_MATRIX_TOL(lambda, 0.5 * (Fx - Fy), 1e-5);
+}
+
+TEMPLATE_TEST_CASE(
+        "MocoControlBoundConstraint", "", MocoTropterSolver, MocoCasADiSolver) {
+    SECTION("Lower bound only") {
+        MocoTool moco;
+        auto& problem = moco.updProblem();
+        problem.setModelCopy(ModelFactory::createPendulum());
+        problem.setTimeBounds(0, 1);
+        problem.setStateInfo("/jointset/j0/q0/value", {-10, 10}, 0);
+        problem.setStateInfo("/jointset/j0/q0/speed", {-10, 10}, 0);
+        problem.setControlInfo("/tau0", {-5, 5});
+        problem.addCost<MocoControlCost>();
+        auto* constr = problem.addPathConstraint<MocoControlBoundConstraint>();
+        const double lowerBound = 0.1318;
+        constr->addControlPath("tau0");
+        constr->setLowerBound(Constant(lowerBound));
+
+        auto& solver = moco.initSolver<TestType>();
+        MocoSolution solution = moco.solve();
+        SimTK::Vector expected(solution.getNumTimes());
+        expected = lowerBound;
+        OpenSim_CHECK_MATRIX_ABSTOL(solution.getControlsTrajectory(), expected,
+                1e-4);
+    }
+
+    SECTION("Upper bound only") {
+        MocoTool moco;
+        auto& problem = moco.updProblem();
+        problem.setModelCopy(ModelFactory::createPendulum());
+        problem.setTimeBounds(0, {0.01, 10});
+        problem.setStateInfo("/jointset/j0/q0/value", {0, 10}, 0, 3);
+        problem.setStateInfo("/jointset/j0/q0/speed", {-10, 10}, 0, 0);
+        problem.setControlInfo("/tau0", {-5, 5});
+        problem.addCost<MocoFinalTimeCost>();
+        auto* constr = problem.addPathConstraint<MocoControlBoundConstraint>();
+        constr->addControlPath("/tau0");
+        const double upperBound = 4.31;
+        constr->setUpperBound(Constant(upperBound));
+
+        auto& solver = moco.initSolver<TestType>();
+        MocoSolution solution = moco.solve();
+        SimTK::Vector expected(solution.getNumTimes());
+        expected = upperBound;
+        CHECK(SimTK::max(solution.getControlsTrajectory())[0] == upperBound);
+        CHECK(SimTK::min(solution.getControlsTrajectory())[0] == -5);
+    }
+
+    SECTION("Upper and lower bounds are the same") {
+        MocoTool moco;
+        auto& problem = moco.updProblem();
+        problem.setModelCopy(ModelFactory::createPendulum());
+        problem.setTimeBounds(0, 1);
+        problem.setStateInfo("/jointset/j0/q0/value", {-10, 10}, 0);
+        problem.setStateInfo("/jointset/j0/q0/speed", {-10, 10}, 0);
+        problem.setControlInfo("/tau0", {-5, 5});
+        problem.addCost<MocoControlCost>();
+        PiecewiseLinearFunction bound;
+        bound.addPoint(0, 0);
+        bound.addPoint(0.2, 0.5316);
+        bound.addPoint(0.7, -0.3137);
+        bound.addPoint(1, .0319);
+        auto* constr = problem.addPathConstraint<MocoControlBoundConstraint>();
+        constr->addControlPath("/tau0");
+        constr->setLowerBound(bound);
+        constr->setEqualityWithLower(true);
+        auto& solver = moco.initSolver<TestType>();
+        MocoSolution solution = moco.solve();
+        SimTK::Vector expected(solution.getNumTimes());
+        for (int itime = 0; itime < expected.size(); ++itime) {
+            SimTK::Vector arg(1);
+            arg[0] = solution.getTime()[itime];
+            expected[itime] = bound.calcValue(arg);
+        }
+        OpenSim_CHECK_MATRIX(solution.getControlsTrajectory(), expected);
+    }
+
+    SECTION("Time range of bounds function is too small.") {
+        MocoTool moco;
+        auto& problem = moco.updProblem();
+        problem.setModelCopy(ModelFactory::createPendulum());
+        problem.setTimeBounds({-31, 0}, {1, 50});
+        problem.addCost<MocoControlCost>();
+        GCVSpline bound;
+        bound.addPoint(-30.9999, 0);
+        bound.addPoint(49.99999, .0319);
+        auto* constr = problem.addPathConstraint<MocoControlBoundConstraint>();
+        constr->addControlPath("/tau0");
+        constr->setLowerBound(bound);
+        auto& solver = moco.initSolver<TestType>();
+        CHECK_THROWS_WITH(moco.solve(),
+                Contains("MocoControlBoundConstraint bound function does not "
+                         "cover all possible times."));
+    }
+
+    SECTION("Can omit both bounds.") {
+        MocoTool moco;
+        auto& problem = moco.updProblem();
+        problem.setModelCopy(ModelFactory::createPendulum());
+        problem.setTimeBounds(0, 1);
+        problem.setStateInfo("/jointset/j0/q0/value", {-10, 10}, 0);
+        problem.setStateInfo("/jointset/j0/q0/speed", {-10, 10}, 0);
+        problem.setControlInfo("/tau0", {-5, 5});
+        problem.addCost<MocoControlCost>();
+        auto* constr = problem.addPathConstraint<MocoControlBoundConstraint>();
+        moco.solve();
+    }
+
+    // TODO: Check for exceptions.
 }

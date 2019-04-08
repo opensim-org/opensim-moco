@@ -34,6 +34,7 @@
 #include "MocoUtilities.h"
 #include "MocoParameter.h"
 #include "MocoConstraint.h"
+#include "MocoControlBoundConstraint.h"
 
 #include "MocoInverse.h"
 

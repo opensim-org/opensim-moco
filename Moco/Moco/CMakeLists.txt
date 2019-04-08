@@ -85,7 +85,7 @@ set(MOCO_SOURCES
         MocoCasADiSolver/CasOCIterate.h
         MocoInverse.h
         MocoInverse.cpp
-        )
+        MocoControlBoundConstraint.cpp MocoControlBoundConstraint.h)
 if(MOCO_WITH_TROPTER)
     list(APPEND MOCO_SOURCES
             tropter/TropterProblem.h

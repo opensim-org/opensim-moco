@@ -54,7 +54,7 @@ void MocoControlCost::initializeOnModelImpl(const Model& model) const {
     // the same order as actuators. However, the control indices are allocated
     // in the order in which addToSystem() is invoked (not necessarily the order
     // used by getComponentList()). So until we can be absolutely sure that the
-    // controls are in the asme order as actuators, we run the following check:
+    // controls are in the same order as actuators, we run the following check:
     // in order, set an actuator's control signal to NaN and ensure the i-th
     // control is NaN.
     {
