@@ -177,11 +177,9 @@ public:
         OPENSIM_THROW_IF(
                 cInfo.getNumEquations() != m_constraint_info.getNumEquations(),
                 Exception,
-                "Size of "
-                "properties in constraint info passed are not consistent with "
-                "the "
-                "number of scalar constraint equations in this multibody "
-                "constraint.");
+                "Size of properties in constraint info passed is not "
+                "consistent with the number of scalar constraint equations "
+                "in this multibody constraint.");
         m_constraint_info = cInfo;
     }
 
@@ -302,8 +300,7 @@ public:
 
 protected:
     OpenSim_DECLARE_UNNAMED_PROPERTY(MocoConstraintInfo,
-            "The bounds and "
-            "labels for this MocoPathConstraint.");
+            "The bounds and labels for this MocoPathConstraint.");
 
     /// Perform any caching.
     /// The number of scalar constraint equations this MocoPathConstraint
