@@ -29,6 +29,15 @@ namespace OpenSim {
 /// The best resource for learning about direct collocation is the Betts
 /// textbook.
 ///
+/// Path constraints on controls with Hermite-Simpson transcription
+/// ---------------------------------------------------------------
+/// For Hermite-Simpson transcription, the direct collocation solvers enforce
+/// the path constraints (e.g., MocoPathConstraint) at only the mesh points
+/// (not midpoints), but control signal variables exist at both mesh points
+/// and midpoints. Keep this in mind when using path constraints on controls
+/// (e.g., MocoControlBoundConstraint). The values of a control at midpoints may
+/// differ greatly from the values at nearby mesh points.
+///
 /// Dynamics mode
 /// -------------
 /// The `dynamics_mode` setting allows you to choose between expressing
