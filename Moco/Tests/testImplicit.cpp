@@ -173,7 +173,8 @@ TEMPLATE_TEST_CASE("Combining implicit dynamics mode with path constraints",
     std::cerr.rdbuf(LogManager::cerr.rdbuf());
     class MyPathConstraint : public MocoPathConstraint {
         OpenSim_DECLARE_CONCRETE_OBJECT(MyPathConstraint, MocoPathConstraint);
-        void initializeOnModelImpl(const Model& model) const override {
+        void initializeOnModelImpl(
+                const Model& model, const MocoProblemInfo&) const override {
             setNumEquations(model.getNumControls());
         }
         void calcPathConstraintErrorsImpl(const SimTK::State& state,

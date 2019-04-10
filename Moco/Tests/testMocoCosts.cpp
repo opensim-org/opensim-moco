@@ -140,7 +140,7 @@ void testMocoControlCost() {
         mp.setControlInfo("/actuator2", MocoBounds(-10, 10));
 
         auto effort = mp.addCost<MocoControlCost>();
-        effort->setWeight("actuator2", 2.0);
+        effort->setWeight("/actuator2", 2.0);
 
         auto& ms = moco.initSolver<SolverType>();
         ms.set_num_mesh_points(N);

@@ -17,24 +17,23 @@
  * -------------------------------------------------------------------------- */
 
 #include "MocoControlCost.h"
+
 #include <OpenSim/Simulation/Model/Model.h>
 
 using namespace OpenSim;
 
-MocoControlCost::MocoControlCost() {
-    constructProperties();
-}
+MocoControlCost::MocoControlCost() { constructProperties(); }
 
 void MocoControlCost::constructProperties() {
     constructProperty_control_weights(MocoWeightSet());
 }
 
 void MocoControlCost::setWeight(
-        const std::string& controlName, const double& weight) {
-    if (get_control_weights().contains(controlName)) {
-        upd_control_weights().get(controlName).setWeight(weight);
+        const std::string& controlPath, const double& weight) {
+    if (get_control_weights().contains(controlPath)) {
+        upd_control_weights().get(controlPath).setWeight(weight);
     } else {
-        upd_control_weights().cloneAndAppend({controlName, weight});
+        upd_control_weights().cloneAndAppend({controlPath, weight});
     }
 }
 
@@ -45,8 +44,7 @@ void MocoControlCost::initializeOnModelImpl(const Model& model) const {
     for (const auto& actu : model.getComponentList<Actuator>()) {
         OPENSIM_THROW_IF_FRMOBJ(actu.numControls() != 1, Exception,
                 "Currently, only ScalarActuators are supported.");
-        actuPaths.push_back(
-                actu.getAbsolutePath().formRelativePath(modelPath).toString());
+        actuPaths.push_back(actu.getAbsolutePathString());
     }
 
     // TODO this assumes controls are in the same order as actuators.
@@ -73,14 +71,14 @@ void MocoControlCost::initializeOnModelImpl(const Model& model) const {
             ++i;
         }
     }
-    
+
     // Make sure there are no weights for nonexistent controls.
     for (int i = 0; i < get_control_weights().getSize(); ++i) {
         const auto& thisName = get_control_weights()[i].getName();
         if (std::find(actuPaths.begin(), actuPaths.end(), thisName) ==
                 actuPaths.end()) {
-            OPENSIM_THROW_FRMOBJ(Exception,
-                    "Unrecognized control '" + thisName + "'.");
+            OPENSIM_THROW_FRMOBJ(
+                    Exception, "Unrecognized control '" + thisName + "'.");
         }
     }
 
@@ -96,8 +94,8 @@ void MocoControlCost::initializeOnModelImpl(const Model& model) const {
     }
 }
 
-void MocoControlCost::calcIntegralCostImpl(const SimTK::State& state,
-        double& integrand) const {
+void MocoControlCost::calcIntegralCostImpl(
+        const SimTK::State& state, double& integrand) const {
     getModel().realizeVelocity(state); // TODO would avoid this, ideally.
     const auto& controls = getModel().getControls(state);
     integrand = 0;

@@ -42,10 +42,10 @@ public:
         constructProperties();
     }
     /// Set the weight to use for the term in the cost associated with
-    /// `controlName` (the name or path of the corresponding actuator). If a
-    /// weight is already set for the requested state, then the provided
+    /// `controlPath` (the absolute path of the corresponding actuator). If a
+    /// weight is already set for the requested control, then the provided
     /// weight replaces the previous weight.
-    void setWeight(const std::string& controlName, const double& weight);
+    void setWeight(const std::string& controlPath, const double& weight);
 protected:
     void initializeOnModelImpl(const Model&) const override;
     void calcIntegralCostImpl(const SimTK::State& state,
