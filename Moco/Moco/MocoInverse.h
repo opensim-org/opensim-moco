@@ -19,6 +19,7 @@
  * -------------------------------------------------------------------------- */
 
 #include "MocoIterate.h"
+#include "MocoTool.h"
 #include "osimMocoDLL.h"
 
 #include <OpenSim/Common/Object.h>
@@ -182,7 +183,9 @@ public:
         set_external_loads_file(std::move(fileName));
     }
 
+    MocoTool initialize() const;
     MocoInverseSolution solve() const;
+
 
 private:
     void constructProperties();

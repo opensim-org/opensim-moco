@@ -54,7 +54,7 @@ void MocoInverse::writeTableToFile(
     FileAdapter::writeFile(tables, filepath);
 }
 
-MocoInverseSolution MocoInverse::solve() const {
+MocoTool MocoInverse::initialize() const {
     using SimTK::Pathname;
     // Get the directory containing the setup file.
     std::string setupDir;
@@ -186,6 +186,13 @@ MocoInverseSolution MocoInverse::solve() const {
     }
 
     solver.set_num_mesh_points(timeInfo.numMeshPoints);
+    
+    return moco;
+}
+
+MocoInverseSolution MocoInverse::solve() const {
+    MocoTool moco = initialize();
+
     MocoInverseSolution solution;
     solution.setMocoSolution(moco.solve().unseal());
 

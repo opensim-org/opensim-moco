@@ -19,6 +19,7 @@
  * -------------------------------------------------------------------------- */
 
 #include "osimMocoDLL.h"
+#include "MocoTool.h"
 
 #include <OpenSim/Common/Object.h>
 #include <OpenSim/Simulation/Model/Model.h>
@@ -150,8 +151,8 @@ public:
 
     void setModel(Model model) { m_model = std::move(model); }
 
-    MocoTool initialize(); // const?
-    void solve(); // const?
+    MocoTool initialize();
+    void solve();
 
 private:
     Model m_model;

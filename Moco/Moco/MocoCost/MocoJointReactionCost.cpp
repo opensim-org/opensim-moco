@@ -93,9 +93,9 @@ void MocoJointReactionCost::calcIntegralCostImpl(const SimTK::State& state,
 
     double cost = 0;
     if (get_reaction_component() == -1) {
-        cost = reaction.norm(); // TODO: how to normalize?
+        cost = reaction.norm() / getModel().getTotalMass(state);
     } else { 
-        cost = reaction[m_vec][m_elt] / reaction.norm();
+        cost = reaction[m_vec][m_elt] / getModel().getTotalMass(state);
     }
     integrand = cost * cost;
 }

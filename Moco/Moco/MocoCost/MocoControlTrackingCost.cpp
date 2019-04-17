@@ -87,6 +87,7 @@ void MocoControlTrackingCost::initializeOnModelImpl(const Model& model) const {
         for (const auto& actu : model.getComponentList<Actuator>()) {
             std::string actuPath =
                 actu.getAbsolutePath().formRelativePath(modelPath).toString();
+
             if (actu.numControls() == 1) {
                 if (refName == actuPath) {
                     m_refsplines.cloneAndAppend(allSplines[iref]);
