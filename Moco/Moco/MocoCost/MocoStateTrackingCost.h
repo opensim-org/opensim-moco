@@ -38,6 +38,9 @@ namespace OpenSim {
 /// other file types for which there is a FileAdapter), or programmatically
 /// as a TimeSeriesTable. If columns for rotational coordinates are in degrees,
 /// those columns will be converted to radians.
+/// Tracking problems in direct collocation perform best when tracking smooth
+/// data, so it is recommended to filter the data in the reference you provide
+/// to the cost.
 /// @ingroup mococost
 class OSIMMOCO_API MocoStateTrackingCost : public MocoCost {
 OpenSim_DECLARE_CONCRETE_OBJECT(MocoStateTrackingCost, MocoCost);

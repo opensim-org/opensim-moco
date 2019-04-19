@@ -26,21 +26,49 @@
 
 namespace OpenSim {
 
+/// The squared difference between a control variable value and a reference
+/// control variable value, summed over the control variables for which a
+/// reference is provided, and integrated over the phase. This can be used to
+/// track actuator controls, muscle excitations, etc.
+/// The reference can be provided as a file name to a STO or CSV file (or
+/// other file types for which there is a FileAdapter), or programmatically
+/// as a TimeSeriesTable.
+/// Tracking problems in direct collocation perform best when tracking smooth
+/// data, so it is recommended to filter the data in the reference you provide
+/// to the cost.
+/// @ingroup mococost
 class OSIMMOCO_API MocoControlTrackingCost : public MocoCost {
     OpenSim_DECLARE_CONCRETE_OBJECT(MocoControlTrackingCost, MocoCost);
 
 public:
-    OpenSim_DECLARE_PROPERTY(control_weights, MocoWeightSet,
-        "Set of weight objects to weight the tracking of individual "
-        "control variables in the cost.");
-
-    MocoControlTrackingCost() {}
+    MocoControlTrackingCost() { constructProperties(); };
+    MocoControlTrackingCost(std::string name) : MocoCost(std::move(name)) {
+        constructProperties();
+    }
     MocoControlTrackingCost(std::string name, double weight)
             : MocoCost(std::move(name), weight) {
         constructProperties();
     }
-
+    /// Provide the path to a data file containing reference values for the
+    /// controls you want to track. Each column label must be the path of a 
+    /// control variable, e.g., `/forceset/soleus_r`. If the column in the 
+    /// reference is for a control variable associated with an non-scalar 
+    /// actuator, the name of the variable in the path must include the index 
+    /// for the actuator control, e.g., '/forceset/body_actuator_0', where 
+    /// 'body_actuator' is the name of the actuator and '_0' specifies the 
+    /// control index. Calling this function clears the table provided via 
+    /// setReference(), if any. The file is not loaded until the MocoProblem 
+    /// is initialized.
+    // TODO path relative to working directory or setup file?
+    void setReferenceFile(const std::string& filepath) {
+        m_table = TimeSeriesTable();
+        set_reference_file(filepath);
+    }
+    /// Each column label must be the path of a valid control variable (see
+    /// setReferenceFile). Calling this function clears the `reference_file`
+    /// property.
     void setReference(const TimeSeriesTable& ref) {
+        set_reference_file("");
         m_table = ref;
     }
     /// Set the weight for an individual control variable. If a weight is
@@ -63,18 +91,46 @@ public:
         }
     }
 
+    /// If no reference file has been provided, this returns an empty string.
+    std::string getReferenceFile() const { return get_reference_file(); }
+
+    /// Specify whether or not extra columns in the reference are allowed.
+    /// If set true, the extra references will be ignored by the cost.
+    /// If false, extra reference will cause an Exception to be raised.
+    void setAllowUnusedReferences(bool tf) {
+        set_allow_unused_references(tf);
+    }
+
 protected:
+    // TODO check that the reference covers the entire possible time range.
     void initializeOnModelImpl(const Model& model) const override;
     void calcIntegralCostImpl(const SimTK::State& state,
             double& integrand) const override;
 
 private:
+    OpenSim_DECLARE_PROPERTY(reference_file, std::string,
+        "Path to file (.sto, .csv, ...) containing values of states "
+        "(coordinates, speeds, activation, etc.) to track. Column labels "
+        "should be state variable paths, e.g., 'knee/flexion/value'");
+
+    OpenSim_DECLARE_PROPERTY(allow_unused_references, bool,
+        "Flag to determine whether or not references contained in the "
+        "reference_file are allowed to be ignored by the cost.");
+
+    OpenSim_DECLARE_PROPERTY(control_weights, MocoWeightSet,
+        "Set of weight objects to weight the tracking of individual "
+        "control variables in the cost.");
+
+    void constructProperties() {
+        constructProperty_reference_file("");
+        constructProperty_allow_unused_references(false);
+        constructProperty_control_weights(MocoWeightSet());
+    }
+
     TimeSeriesTable m_table;
     mutable GCVSplineSet m_refsplines;
     mutable std::vector<int> m_controlIndices;
     mutable std::vector<double> m_control_weights;
-
-    void constructProperties();
 };
 
 } // namespace OpenSim

@@ -22,8 +22,8 @@
 
 namespace OpenSim {
 
-/// Bounds on continuous variables (states, controls). The name should
-/// correspond to path of a state variable or an actuator in the model.
+/// Bounds on continuous variables (states, multipliers, etc). For states, the 
+/// name should correspond to path of a state variable in the model.
 class OSIMMOCO_API MocoVariableInfo : public Object {
 OpenSim_DECLARE_CONCRETE_OBJECT(MocoVariableInfo, Object);
 public:
@@ -65,6 +65,8 @@ private:
 
 };
 
+/// Bounds and actuator information for continuous control variables. 
+// TODO remove this class when we support named controls in OpenSim
 class OSIMMOCO_API MocoControlInfo : public MocoVariableInfo {
 OpenSim_DECLARE_CONCRETE_OBJECT(MocoControlInfo, MocoVariableInfo);
 public:
@@ -74,16 +76,17 @@ public:
     MocoControlInfo(const std::string& actuatorName, int index,
         const MocoBounds&, const MocoInitialBounds&, const MocoFinalBounds&);
 
-    const std::string& getActuatorName() 
+    const std::string& getActuatorName() const
     {   return get_actuator_name(); }
-    int getControlIndex() 
+    int getControlIndex() const 
     {   return get_control_index(); }
 
 protected:
     OpenSim_DECLARE_PROPERTY(actuator_name, std::string, 
-        "TODO.");
+        "The name of the actuator associated with this control variable.");
     OpenSim_DECLARE_PROPERTY(control_index, int,
-        "TODO.");
+        "The index to this control variable in the associated actuator's "
+        "control vector.");
 
 private:
     void constructProperties();

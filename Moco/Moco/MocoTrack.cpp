@@ -97,7 +97,6 @@ MocoTool MocoTrack::initialize() {
             InverseDynamicsTool idtool;
             idtool.createExternalLoads(get_external_loads_file(), model);
             model.initSystem();
-            model.print(model.getName() + "_with_extloads.osim");
         } else {
             OPENSIM_THROW(Exception, format("The setting %s for the "
                 "'external_loads_mode' property not recognized.", 
@@ -536,29 +535,11 @@ void MocoTrack::configureForceTracking(MocoProblem& problem, Model& model) {
         model.addComponent(actu);
     }
 
-    if (get_external_loads_mode() == "tracked") {
-        auto* externalLoadTracking =
-            problem.addCost<MocoControlTrackingCost>("external_load_tracking",
-                get_external_loads_tracking_weight());
-        externalLoadTracking->setReference(forces);
-        externalLoadTracking->setWeightSet(get_external_load_weights());
-    } else if (get_external_loads_mode() == "applied") {
-        auto* externalLoadConstraint =
-            problem.addPathConstraint<MocoControlConstraint>();
-        externalLoadConstraint->setName("external_load_constraint");
-        externalLoadConstraint->setReference(forces);
-        
-        auto* externalLoadTracking =
-            problem.addCost<MocoControlTrackingCost>("external_load_tracking",
-                get_external_loads_tracking_weight());
-        externalLoadTracking->setReference(forces);
-        externalLoadTracking->setWeightSet(get_external_load_weights());
-
-    } else {
-        OPENSIM_THROW(Exception, format("The setting %s for the "
-            "'external_loads_mode' property not recognized.",
-            get_external_loads_mode()));
-    }
+    auto* externalLoadTracking =
+        problem.addCost<MocoControlTrackingCost>("external_load_tracking",
+            get_external_loads_tracking_weight());
+    externalLoadTracking->setReference(forces);
+    externalLoadTracking->setWeightSet(get_external_load_weights());
 
     // Write tracked forcess to file in case any label updates or filtering
     // occured.

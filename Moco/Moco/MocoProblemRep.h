@@ -281,8 +281,6 @@ private:
     int m_num_kinematic_constraint_equations = -1;
     std::vector<MocoKinematicConstraint> m_kinematic_constraints;
     std::map<std::string, std::vector<MocoVariableInfo>> m_multiplier_infos_map;
-
-    //std::map<std::string, std::vector<MocoVariableInfo>> m_control_infos_map;
 };
 
 } // namespace OpenSim

@@ -111,7 +111,14 @@ public:
     /// associated ScalarActuator (e.g., "/forceset/soleus_r").
     void setControlInfo(const std::string& name, const MocoBounds&,
             const MocoInitialBounds& = {}, const MocoFinalBounds& = {});
-    /// TODO
+    /// Set information about a single control variable associated with a 
+    /// non-scalar actuator in this phase. This differs from setControlInfo()
+    /// for ScalarActuators in that you provide the actuator name and the
+    /// index to the actuator's control vector for this variable. The control
+    /// name becomes the actuator name appended with the index, e.g.
+    /// "pelvis_residuals_2", where "pelvis_residuals" is the actuator name and
+    /// "_2" specifies the control index.
+    // TODO remove when we support named controls in OpenSim
     void setControlInfo(const std::string& actuName, int controlIndex,
             const MocoBounds&, const MocoInitialBounds& = {}, 
             const MocoFinalBounds& = {});

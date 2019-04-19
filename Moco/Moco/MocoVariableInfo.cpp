@@ -92,6 +92,7 @@ MocoControlInfo::MocoControlInfo(const std::string& actuatorName,
         MocoVariableInfo(actuatorName, bounds, initial, final) {
     constructProperties();
     set_actuator_name(actuatorName);
+    set_control_index(0);
 }
 
 MocoControlInfo::MocoControlInfo(const std::string& actuatorName, int index,

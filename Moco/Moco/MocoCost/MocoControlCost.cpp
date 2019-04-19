@@ -18,6 +18,7 @@
 
 #include "MocoControlCost.h"
 #include <OpenSim/Simulation/Model/Model.h>
+#include "../MocoUtilities.h"
 
 using namespace OpenSim;
 
@@ -40,48 +41,11 @@ void MocoControlCost::setWeight(
 
 void MocoControlCost::initializeOnModelImpl(const Model& model) const {
 
-    std::vector<std::string> controlNames;
-    const auto modelPath = model.getAbsolutePath();
-    for (const auto& actu : model.getComponentList<Actuator>()) {
-        std::string actuPath =
-                actu.getAbsolutePath().formRelativePath(modelPath).toString();
-        if (actu.numControls() == 1) {
-            controlNames.push_back(actuPath);
-        } else {
-            for (int i = 0; i < actu.numControls(); ++i) {
-                controlNames.push_back(actuPath + "_" + std::to_string(i));
-            }
-        }
-    }
+    // Get all expected control names.
+    auto controlNames = createControlNamesFromModel(model);
 
-    // TODO this assumes controls are in the same order as actuators.
-    // The loop that processes weights (two down) assumes that controls are in
-    // the same order as actuators. However, the control indices are allocated
-    // in the order in which addToSystem() is invoked (not necessarily the order
-    // used by getComponentList()). So until we can be absolutely sure that the
-    // controls are in the same order as actuators, we run the following check:
-    // in order, set an actuator's control signal(s) to NaN and ensure the i-th
-    // control is NaN.
-    {
-        const SimTK::State state = model.getWorkingState();
-        int i = 0;
-        auto modelControls = model.updControls(state);
-        for (const auto& actu : model.getComponentList<Actuator>()) {
-            int nc = actu.numControls();
-            SimTK::Vector origControls(nc);
-            SimTK::Vector nan(nc, SimTK::NaN);
-            actu.getControls(modelControls, origControls);
-            actu.setControls(nan, modelControls);
-            for (int j = 0; j < nc; ++j) {
-                OPENSIM_THROW_IF_FRMOBJ(!SimTK::isNaN(modelControls[i]), 
-                    Exception,
-                    "Internal error: actuators are not in the expected order. "
-                    "Submit a bug report.");
-                ++i;
-            }
-            actu.setControls(origControls, modelControls);
-        }
-    }
+    // Check that the model controls are in the correct order.
+    checkOrderSystemControls(model);
     
     // Make sure there are no weights for nonexistent controls.
     for (int i = 0; i < get_control_weights().getSize(); ++i) {

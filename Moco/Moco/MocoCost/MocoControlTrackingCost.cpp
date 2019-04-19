@@ -18,96 +18,75 @@
 
 #include "MocoControlTrackingCost.h"
 #include <OpenSim/Simulation/Model/Model.h>
+#include "../MocoUtilities.h"
 
 using namespace OpenSim;
 
-void MocoControlTrackingCost::constructProperties() {
-    constructProperty_control_weights(MocoWeightSet());
-}
-
 void MocoControlTrackingCost::initializeOnModelImpl(const Model& model) const {
-    // Convert data table to splines.
-    // auto controlsFiltered = filterLowpass(m_table, 6, true);
-    auto allSplines = GCVSplineSet(m_table);
+    
+    TimeSeriesTable tableToUse;
 
-    // Get all expected control names.
-    std::vector<std::string> controlNames;
-    const auto modelPath = model.getAbsolutePath();
-    for (const auto& actu : model.getComponentList<Actuator>()) {
-        std::string actuPath =
-            actu.getAbsolutePath().formRelativePath(modelPath).toString();
-        if (actu.numControls() == 1) {
-            controlNames.push_back(actuPath);
-        }
-        else {
-            for (int i = 0; i < actu.numControls(); ++i) {
-                controlNames.push_back(actuPath + "_" + std::to_string(i));
-            }
+    if (get_reference_file() != "") {
+        // Should not be able to supply both.
+        assert(m_table.getNumColumns() == 0);
+
+        auto tablesFromFile = FileAdapter::readFile(get_reference_file());
+        // There should only be one table.
+        OPENSIM_THROW_IF_FRMOBJ(tablesFromFile.size() != 1, Exception,
+            format("Expected reference file '%s' to contain 1 table, but "
+                "it contains %i tables.",
+                get_reference_file(), tablesFromFile.size()));
+        // Get the first table.
+        auto* firstTable =
+            dynamic_cast<TimeSeriesTable*>(
+                tablesFromFile.begin()->second.get());
+        OPENSIM_THROW_IF_FRMOBJ(!firstTable, Exception,
+            "Expected reference file to contain a (scalar) "
+            "TimeSeriesTable, but it contains a different type of table.");
+        tableToUse = *firstTable;
+    } else if (m_table.getNumColumns() != 0) {
+        tableToUse = m_table;
+    } else {
+        OPENSIM_THROW_FRMOBJ(Exception,
+            "Expected user to either provide a reference"
+            " file or to programmatically provide a reference table, but "
+            " the user supplied neither.");
+    }
+    
+    // Convert data table to spline set.
+    auto allSplines = GCVSplineSet(tableToUse);
+
+    // Get a map between control names and their indices in the model. This also
+    // checks that the model controls are in the correct order.
+    auto allControlIndices = createSystemControlIndexMap(model);
+
+    // Throw exception if a weight is specified for a nonexistent control.
+    for (int i = 0; i < get_control_weights().getSize(); ++i) {
+        const auto& weightName = get_control_weights().get(i).getName();
+        if (allControlIndices.count(weightName) == 0) {
+            OPENSIM_THROW_FRMOBJ(Exception,
+                "Weight provided with name '" + weightName + "' but this is "
+                "not a recognized control.");
         }
     }
 
-    // TODO this assumes controls are in the same order as actuators.
-    // The loop that processes weights (two down) assumes that controls are 
-    // in the same order as actuators. However, the control indices are 
-    // allocated in the order in which addToSystem() is invoked (not 
-    // necessarily the order used by getComponentList()). So until we can be 
-    // absolutely sure that the controls are in the same order as actuators, 
-    // we run the following check: in order, set an actuator's control 
-    // signal(s) to NaN and ensure the i-th control is NaN.
-    {
-        const SimTK::State state = model.getWorkingState();
-        int i = 0;
-        auto modelControls = model.updControls(state);
-        for (const auto& actu : model.getComponentList<Actuator>()) {
-            int nc = actu.numControls();
-            SimTK::Vector origControls(nc);
-            SimTK::Vector nan(nc, SimTK::NaN);
-            actu.getControls(modelControls, origControls);
-            actu.setControls(nan, modelControls);
-            for (int j = 0; j < nc; ++j) {
-                OPENSIM_THROW_IF_FRMOBJ(!SimTK::isNaN(modelControls[i]),
-                    Exception, "Internal error: actuators are not in the "
-                    "expected order. Submit a bug report.");
-                ++i;
-            }
-            actu.setControls(origControls, modelControls);
-        }
-    }
-
+    // Populate member variables need to compute cost. Unless the property
+    // allow_unused_references is set to true, an exception is thrown for
+    // names in the references that don't correspond to a control variable.
     for (int iref = 0; iref < allSplines.getSize(); ++iref) {
         const auto& refName = allSplines[iref].getName();
+        if (!get_allow_unused_references()) {
+            OPENSIM_THROW_IF_FRMOBJ(allControlIndices.count(refName) == 0,
+                Exception, "Control reference '" + refName + "' unrecognized.");  
+        }
 
+        m_controlIndices.push_back(allControlIndices[refName]);
         double refWeight = 1.0;
         if (get_control_weights().contains(refName)) {
             refWeight = get_control_weights().get(refName).getWeight();
         }
         m_control_weights.push_back(refWeight);
-
-        int i = 0;
-        for (const auto& actu : model.getComponentList<Actuator>()) {
-            std::string actuPath =
-                actu.getAbsolutePath().formRelativePath(modelPath).toString();
-
-            if (actu.numControls() == 1) {
-                if (refName == actuPath) {
-                    m_refsplines.cloneAndAppend(allSplines[iref]);
-                    m_controlIndices.push_back(i);
-                }
-
-                ++i;
-            } else {
-                for (int j = 0; j < actu.numControls(); ++j) {
-                    std::string controlName = actuPath + "_" +
-                        std::to_string(j);
-                    if (refName == controlName) {
-                        m_refsplines.cloneAndAppend(allSplines[iref]);
-                        m_controlIndices.push_back(i);
-                    }
-
-                    ++i;
-                }
-            }
-        }
+        m_refsplines.cloneAndAppend(allSplines[iref]);
     }
 }
 
@@ -116,14 +95,14 @@ void MocoControlTrackingCost::calcIntegralCostImpl(const SimTK::State& state,
 
     const auto& time = state.getTime();
     SimTK::Vector timeVec(1, time);
-
     const auto& controls = getModel().getControls(state);
-    integrand = 0;
+
     // TODO cache the reference coordinate values at the mesh points, 
     // rather than evaluating the spline.
+    integrand = 0;
     for (int iref = 0; iref < m_refsplines.getSize(); ++iref) {
+        const auto& modelValue = controls[m_controlIndices[iref]];
         const auto& refValue = m_refsplines[iref].calcValue(timeVec);
-        integrand += m_control_weights[iref] *
-            pow(controls[m_controlIndices[iref]] - refValue, 2);
+        integrand += m_control_weights[iref] * pow(modelValue - refValue, 2);
     }
 }

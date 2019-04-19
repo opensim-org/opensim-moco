@@ -56,24 +56,13 @@ MocoCasOCProblem::MocoCasOCProblem(const MocoCasADiSolver& mocoCasADiSolver,
                 convertBounds(info.getInitialBounds()),
                 convertBounds(info.getFinalBounds()));
     }
-    for (const auto& actu : model.getComponentList<Actuator>()) {
-        // TODO handle a variable number of control signals.
-        const auto& actuName = actu.getAbsolutePathString();
-        if (actu.numControls() == 1) {
-            const auto& info = problemRep.getControlInfo(actuName);
-            addControl(actuName, convertBounds(info.getBounds()),
-                    convertBounds(info.getInitialBounds()),
-                    convertBounds(info.getFinalBounds()));
-        } else {
-            for (int idx = 0; idx < actu.numControls(); ++idx) {
-                std::string controlName = actuName + "_" + std::to_string(idx);
-                const auto& info = problemRep.getControlInfo(controlName);
-                addControl(controlName,
-                        convertBounds(info.getBounds()),
-                        convertBounds(info.getInitialBounds()),
-                        convertBounds(info.getFinalBounds()));
-            }
-        }
+
+    auto controlNames = createControlNamesFromModel(model);
+    for (const auto& controlName : controlNames) {
+        const auto& info = problemRep.getControlInfo(controlName);
+        addControl(controlName, convertBounds(info.getBounds()),
+                convertBounds(info.getInitialBounds()),
+                convertBounds(info.getFinalBounds()));
     }
 
     // Add any scalar constraints associated with kinematic constraints in
