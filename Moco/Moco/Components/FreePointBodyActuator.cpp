@@ -63,7 +63,6 @@ void FreePointBodyActuator::computeForce(const SimTK::State& s,
     const bool spatialForceIsGlobal = getSpatialForceIsGlobal();
 
     const Body& body = getBody();
-    // const SimTK::MobilizedBody& body_mb = body.getMobilizedBody();
 
     // get the control signals
     const SimTK::Vector bodyForceAndPointVals = getControls(s);
@@ -121,34 +120,27 @@ void FreePointBodyActuator::computeForce(const SimTK::State& s,
 
 }
 
-//SimTK::Vec3 FreePointBodyActuator::getPoint(const SimTK::State& s) const {
+//double FreePointBodyActuator::getPower(const SimTK::State& s) const {
+//    const Body& body = getBody();
+//
+//    const SimTK::MobilizedBody& body_mb = body.getMobilizedBody();
+//    SimTK::SpatialVec bodySpatialVelocities = body_mb.getBodyVelocity(s);
+//
+//    SimTK::Vector bodyVelocityVec(6);
+//    bodyVelocityVec[0] = bodySpatialVelocities[0][0];
+//    bodyVelocityVec[1] = bodySpatialVelocities[0][1];
+//    bodyVelocityVec[2] = bodySpatialVelocities[0][2];
+//    bodyVelocityVec[3] = bodySpatialVelocities[1][0];
+//    bodyVelocityVec[4] = bodySpatialVelocities[1][1];
+//    bodyVelocityVec[5] = bodySpatialVelocities[1][2];
+//
 //    const SimTK::Vector bodyForceAndPointVals = getControls(s);
-//    SimTK::Vec3 pointVec(bodyForceAndPointVals[6], bodyForceAndPointVals[7],
-//        bodyForceAndPointVals[8]);
-//    return pointVec;
+//    const SimTK::Vector bodyForceVals(6, 
+//            bodyForceAndPointVals.getContiguousScalarData(), true);
+//
+//    // TODO: this is incorrect since the point can move along the body. How to
+//    // get the velocity of the point controls?
+//    double power = ~bodyForceVals * bodyVelocityVec;
+//
+//    return power;
 //}
-
-double FreePointBodyActuator::getPower(const SimTK::State& s) const {
-    const Body& body = getBody();
-
-    const SimTK::MobilizedBody& body_mb = body.getMobilizedBody();
-    SimTK::SpatialVec bodySpatialVelocities = body_mb.getBodyVelocity(s);
-
-    SimTK::Vector bodyVelocityVec(6);
-    bodyVelocityVec[0] = bodySpatialVelocities[0][0];
-    bodyVelocityVec[1] = bodySpatialVelocities[0][1];
-    bodyVelocityVec[2] = bodySpatialVelocities[0][2];
-    bodyVelocityVec[3] = bodySpatialVelocities[1][0];
-    bodyVelocityVec[4] = bodySpatialVelocities[1][1];
-    bodyVelocityVec[5] = bodySpatialVelocities[1][2];
-
-    const SimTK::Vector bodyForceAndPointVals = getControls(s);
-    const SimTK::Vector bodyForceVals(6, 
-            bodyForceAndPointVals.getContiguousScalarData(), true);
-
-    // TODO: this is incorrect since the point can move along the body. How to
-    // get the velocity of the point controls?
-    double power = ~bodyForceVals * bodyVelocityVec;
-
-    return power;
-}

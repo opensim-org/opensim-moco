@@ -64,7 +64,6 @@ public:
     void setBodyName(const std::string& name);
     const std::string& getBodyName() const;
 
-    //SimTK::Vec3 getPoint(const SimTK::State& s) const;
     void setEnabledControls(std::vector<bool> enabledControls) {
         m_enabled_controls = enabledControls;
     }
@@ -89,7 +88,7 @@ private:
         }
         return numControls;
     }
-    double getPower(const SimTK::State& s) const override;
+    //double getPower(const SimTK::State& s) const override;
 
 }; // class FreePointBodyActuator
 
