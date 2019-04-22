@@ -62,7 +62,9 @@ add_library(osimMoco SHARED
         MocoCasADiSolver/CasADiTrapezoidal.cpp
         MocoCasADiSolver/CasADiTrapezoidal.h
         MocoCasADiSolver/CasADiProblem.cpp
-        MocoCasADiSolver/CasADiProblem.h)
+        MocoCasADiSolver/CasADiProblem.h
+        MocoCost/MocoInertialMeasurementUnitTrackingCost.cpp
+        MocoCost/MocoInertialMeasurementUnitTrackingCost.h)
 target_link_libraries(osimMoco PUBLIC osimTools
                                PRIVATE tropter casadi)
 
