@@ -205,6 +205,19 @@ SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
         setStateInfo(name, this.convertArrayToMB(b),
                 this.convertArrayToMIB(ib), this.convertArrayToMFB(fb));
     }
+    public void setStateInfoPattern(String pattern, double[] b) throws Exception {
+            setStateInfo(pattern, this.convertArrayToMB(b));
+    }
+    public void setStateInfoPattern(String pattern, double[] b, double[] ib)
+    throws Exception {
+            setStateInfo(pattern, this.convertArrayToMB(b),
+                         this.convertArrayToMIB(ib));
+    }
+    public void setStateInfoPattern(String pattern, double[] b, double[] ib, double[] fb)
+    throws Exception {
+            setStateInfo(pattern, this.convertArrayToMB(b),
+                         this.convertArrayToMIB(ib), this.convertArrayToMFB(fb));
+    }
 
     public void setControlInfo(String name, double[] b) throws Exception {
         setControlInfo(name, this.convertArrayToMB(b));
@@ -257,6 +270,21 @@ SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
                 MocoPhase.convertArrayToMIB(ib), 
                 MocoPhase.convertArrayToMFB(fb));
     }
+    public void setStateInfoPattern(String pattern, double[] b)
+    throws Exception {
+            setStateInfoPattern(pattern, MocoPhase.convertArrayToMB(b));
+    }
+    public void setStateInfoPattern(String pattern, double[] b, double[] ib)
+    throws Exception {
+            setStateInfoPattern(pattern, MocoPhase.convertArrayToMB(b),
+                         MocoPhase.convertArrayToMIB(ib));
+    }
+    public void setStateInfoPattern(String pattern, double[] b, double[] ib, double[] fb)
+    throws Exception {
+            setStateInfoPattern(pattern, MocoPhase.convertArrayToMB(b),
+                         MocoPhase.convertArrayToMIB(ib),
+                         MocoPhase.convertArrayToMFB(fb));
+    }
 
     public void setControlInfo(String name, double[] b)
         throws Exception {
@@ -273,6 +301,23 @@ SWIG_JAVABODY_PROXY(public, public, SWIGTYPE)
         setControlInfo(name, MocoPhase.convertArrayToMB(b),
                 MocoPhase.convertArrayToMIB(ib), 
                 MocoPhase.convertArrayToMFB(fb));
+    }
+
+    public void setControlInfoPattern(String name, double[] b)
+    throws Exception {
+            setControlInfoPattern(name, MocoPhase.convertArrayToMB(b));
+    }
+    public void setControlInfoPattern(String name, double[] b, double[] ib)
+    throws Exception {
+            setControlInfoPattern(name, MocoPhase.convertArrayToMB(b),
+                           MocoPhase.convertArrayToMIB(ib));
+    }
+    public void setControlInfoPattern(String name, double[] b, double[] ib,
+                               double[] fb)
+    throws Exception {
+            setControlInfoPattern(name, MocoPhase.convertArrayToMB(b),
+                           MocoPhase.convertArrayToMIB(ib),
+                           MocoPhase.convertArrayToMFB(fb));
     }
 %}
 

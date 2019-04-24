@@ -22,6 +22,7 @@
 #include "Components/DiscreteForces.h"
 #include "MocoProblem.h"
 #include <unordered_set>
+#include <regex>
 
 using namespace OpenSim;
 
@@ -86,6 +87,17 @@ void MocoProblemRep::initialize() {
     }
 
     // TODO can only handle ScalarActuators?
+
+    for (int i = 0; i < ph0.getProperty_control_infos_pattern().size(); ++i) {
+        const auto& pattern = ph0.get_control_infos_pattern(i).getName();
+        for(int j = 0; j < actuNames.size(); ++j)
+        {
+            if (std::regex_match(actuNames[j], std::regex (pattern)))
+            {
+                m_control_infos[actuNames[j]] = ph0.get_control_infos_pattern(i);
+            }
+        }
+    }
     for (int i = 0; i < ph0.getProperty_control_infos().size(); ++i) {
         const auto& name = ph0.get_control_infos(i).getName();
         OPENSIM_THROW_IF(actuNames.findIndex(name) == -1, Exception,
@@ -95,6 +107,16 @@ void MocoProblemRep::initialize() {
 
     // Create internal record of state and control infos, automatically
     // populated from coordinates and actuators.
+    for (int i = 0; i < ph0.getProperty_state_infos_pattern().size(); ++i) {
+        const auto& pattern = ph0.get_state_infos_pattern(i).getName();
+        for(int j = 0; j < stateNames.size(); ++j)
+        {
+            if (std::regex_match(stateNames[j], std::regex (pattern)))
+            {
+                m_state_infos[stateNames[j]] = ph0.get_state_infos_pattern(i);
+            }
+        }
+    }
     for (int i = 0; i < ph0.getProperty_state_infos().size(); ++i) {
         const auto& name = ph0.get_state_infos(i).getName();
         m_state_infos[name] = ph0.get_state_infos(i);

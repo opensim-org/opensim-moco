@@ -35,7 +35,9 @@ void MocoPhase::constructProperties() {
     constructProperty_time_final_bounds(MocoFinalBounds());
     constructProperty_default_speed_bounds(MocoBounds(-50, 50));
     constructProperty_state_infos();
+    constructProperty_state_infos_pattern();
     constructProperty_control_infos();
+    constructProperty_control_infos_pattern();
     constructProperty_parameters();
     constructProperty_costs();
     constructProperty_path_constraints();
@@ -66,6 +68,16 @@ void MocoPhase::setStateInfo(const std::string& name, const MocoBounds& bounds,
     if (idx == -1) append_state_infos(info);
     else           upd_state_infos(idx) = info;
 }
+
+void MocoPhase::setStateInfoPattern(const std::string& pattern, const MocoBounds& bounds,
+                             const MocoInitialBounds& initial, const MocoFinalBounds& final) {
+    int idx = getProperty_state_infos_pattern().findIndexForName(pattern);
+
+    MocoVariableInfo info(pattern, bounds, initial, final);
+    if (idx == -1) append_state_infos_pattern(info);
+    else           upd_state_infos_pattern(idx) = info;
+}
+
 void MocoPhase::setControlInfo(const std::string& name,
         const MocoBounds& bounds,
         const MocoInitialBounds& initial, const MocoFinalBounds& final) {
@@ -75,6 +87,17 @@ void MocoPhase::setControlInfo(const std::string& name,
     if (idx == -1) append_control_infos(info);
     else           upd_control_infos(idx) = info;
 }
+
+void MocoPhase::setControlInfoPattern(const std::string& pattern,
+                                      const MocoBounds& bounds,
+                                      const MocoInitialBounds& initial, const MocoFinalBounds& final) {
+    int idx = getProperty_control_infos_pattern().findIndexForName(pattern);
+
+    MocoVariableInfo info(pattern, bounds, initial, final);
+    if (idx == -1) append_control_infos_pattern(info);
+    else           upd_control_infos_pattern(idx) = info;
+}
+
 MocoInitialBounds MocoPhase::getTimeInitialBounds() const {
     return get_time_initial_bounds();
 }
@@ -167,6 +190,7 @@ void MocoProblem::setStateInfo(const std::string& name,
         const MocoInitialBounds& initial, const MocoFinalBounds& final) {
     upd_phases(0).setStateInfo(name, bounds, initial, final);
 }
+
 void MocoProblem::setControlInfo(const std::string& name,
         const MocoBounds& bounds,
         const MocoInitialBounds& initial, const MocoFinalBounds& final) {
@@ -181,3 +205,19 @@ void MocoProblem::setMultiplierBounds(const MocoBounds& bounds) {
 void MocoProblem::constructProperties() {
     constructProperty_phases(Array<MocoPhase>(MocoPhase(), 1));
 }
+void MocoProblem::setStateInfoPattern(const std::string &pattern,
+        const MocoBounds& bounds, const MocoInitialBounds& initial,
+        const MocoFinalBounds & final)
+{
+    upd_phases(0).setStateInfoPattern(pattern, bounds, initial, final);
+
+}
+
+void MocoProblem::setControlInfoPattern(const std::string& pattern,
+                                        const MocoBounds& bounds,
+                                        const MocoInitialBounds& initial, const MocoFinalBounds& final)
+{
+    upd_phases(0).setControlInfoPattern(pattern, bounds, initial, final);
+
+}
+
