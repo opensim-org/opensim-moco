@@ -148,6 +148,10 @@ MocoSolution MocoTropterSolver::solveImpl() const {
 #ifdef MOCO_WITH_TROPTER
     const Stopwatch stopwatch;
 
+    OPENSIM_THROW_IF_FRMOBJ(getProblemRep().isPrescribedKinematics(), Exception,
+            "MocoTropterSolver does not support prescribed kinematics. "
+            "Try using prescribed motion constraints in the Coordinates.");
+
     auto ocp = createTropterProblem();
 
     // Apply settings/options.
@@ -326,14 +330,16 @@ MocoSolution MocoTropterSolver::solveImpl() const {
     }
 
     // TODO move this to convert():
+    const long long elapsed = stopwatch.getElapsedTimeInNs();
     MocoSolver::setSolutionStats(mocoSolution, tropSolution.success,
             tropSolution.objective,
-            tropSolution.status, tropSolution.num_iterations);
+            tropSolution.status, tropSolution.num_iterations,
+            SimTK::nsToSec(elapsed));
 
     if (get_verbosity()) {
         std::cout << std::string(79, '-') << "\n";
         std::cout << "Elapsed real time: "
-                << stopwatch.getElapsedTimeFormatted() << ".\n";
+                << stopwatch.formatNs(elapsed) << ".\n";
         if (mocoSolution) {
             std::cout << "MocoTropterSolver succeeded!\n";
         } else {

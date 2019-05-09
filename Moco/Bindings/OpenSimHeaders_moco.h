@@ -10,6 +10,7 @@
 #include <Moco/MocoCost/MocoMarkerTrackingCost.h>
 #include <Moco/MocoCost/MocoMarkerEndpointCost.h>
 #include <Moco/MocoCost/MocoControlCost.h>
+#include <Moco/MocoCost/MocoSumSquaredStateCost.h>
 #include <Moco/MocoCost/MocoJointReactionNormCost.h>
 #include <Moco/MocoBounds.h>
 #include <Moco/MocoProblem.h>
@@ -22,5 +23,6 @@
 #include <Moco/Components/ActivationCoordinateActuator.h>
 #include <Moco/Components/DeGrooteFregly2016Muscle.h>
 #include <Moco/MocoUtilities.h>
+#include <Moco/Components/ModelFactory.h>
 
 #endif // MOCO_OPENSIM_HEADERS_MOCO_H_

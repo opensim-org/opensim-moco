@@ -175,7 +175,8 @@ MocoCasOCProblem::MocoCasOCProblem(const MocoCasADiSolver& mocoCasADiSolver,
 
                     // Add velocity correction variables if enforcing
                     // constraint equation derivatives.
-                    if (enforceConstraintDerivs) {
+                    if (enforceConstraintDerivs &&
+                            !isPrescribedKinematics()) {
                         // TODO this naming convention assumes that the
                         // associated Lagrange multiplier name begins with
                         // "lambda", which may change in the future.
@@ -203,6 +204,7 @@ MocoCasOCProblem::MocoCasOCProblem(const MocoCasADiSolver& mocoCasADiSolver,
         setEnforceConstraintDerivatives(enforceConstraintDerivs);
         // The bounds are the same for all kinematic constraints in the
         // MocoProblem, so just grab the bounds from the first constraint.
+        // TODO: This behavior may be unexpected for users.
         const auto& kc = problemRep.getKinematicConstraint(kcNames.at(0));
         std::vector<MocoBounds> bounds = kc.getConstraintInfo().getBounds();
         setKinematicConstraintBounds(convertBounds(bounds.at(0)));

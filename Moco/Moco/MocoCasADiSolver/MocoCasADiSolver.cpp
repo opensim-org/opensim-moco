@@ -110,15 +110,16 @@ std::unique_ptr<MocoCasOCProblem> MocoCasADiSolver::createCasOCProblem() const {
     } else if (parallelEV != -1) {
         parallel = parallelEV;
     }
-    if (m_runningInPython && parallel) {
-        std::cout << "Warning: "
-                     "Cannot use parallelism in Python due to its "
-                     "Global Interpreter Lock. "
-                     "Set the environment variable OPENSIM_MOCO_PARALLEL or "
-                     "MocoCasADiSolver's 'parallel' property to 0, "
-                     "or use the command-line or Matlab interfaces."
-                << std::endl;
-    }
+    // Not an issue with Python 3?
+    // if (m_runningInPython && parallel) {
+    //     std::cout << "Warning: "
+    //                  "Cannot use parallelism in Python due to its "
+    //                  "Global Interpreter Lock. "
+    //                  "Set the environment variable OPENSIM_MOCO_PARALLEL or "
+    //                  "MocoCasADiSolver's 'parallel' property to 0, "
+    //                  "or use the command-line or Matlab interfaces."
+    //               << std::endl;
+    // }
     int numThreads;
     if (parallel == 0) {
         numThreads = 1;
@@ -140,7 +141,7 @@ std::unique_ptr<MocoCasOCProblem> MocoCasADiSolver::createCasOCProblem() const {
     OPENSIM_THROW_IF(!model.getMatterSubsystem().getUseEulerAngles(
             model.getWorkingState()),
             Exception, "Quaternions are not supported.");
-    return make_unique<MocoCasOCProblem>(*this, problemRep,
+    return OpenSim::make_unique<MocoCasOCProblem>(*this, problemRep,
             createProblemRepJar(numThreads),
             get_dynamics_mode());
 }
@@ -264,15 +265,17 @@ MocoSolution MocoCasADiSolver::solveImpl() const {
     }
     CasOC::Solution casSolution = casSolver->solve(casGuess);
     MocoSolution mocoSolution = convertToMocoIterate<MocoSolution>(casSolution);
+    const long long elapsed = stopwatch.getElapsedTimeInNs();
     setSolutionStats(mocoSolution, casSolution.stats.at("success"),
             casSolution.objective,
             casSolution.stats.at("return_status"),
-            casSolution.stats.at("iter_count"));
+            casSolution.stats.at("iter_count"),
+            SimTK::nsToSec(elapsed));
 
     if (get_verbosity()) {
         std::cout << std::string(79, '-') << "\n";
         std::cout << "Elapsed real time: "
-                  << stopwatch.getElapsedTimeFormatted() << ".\n";
+                << stopwatch.formatNs(elapsed) << ".\n";
         if (mocoSolution) {
             std::cout << "MocoCasADiSolver succeeded!\n";
         } else {

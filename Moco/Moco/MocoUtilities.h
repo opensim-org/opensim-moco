@@ -42,7 +42,7 @@ std::unique_ptr<T> make_unique(Args&&... args) {
 /// extended datetime format (%Y-%m-%dT%X))
 OSIMMOCO_API std::string getFormattedDateTime();
 
-/// Determine if `string` starts with the substring `ending`.
+/// Determine if `string` starts with the substring `start`.
 /// https://stackoverflow.com/questions/874134/find-if-string-ends-with-another-string-in-c
 inline bool startsWith(const std::string& string, const std::string& start) {
     if (string.length() >= start.length()) {
@@ -142,22 +142,29 @@ TimeSeriesTable resample(const TimeSeriesTable& in, const TimeVector& newTime) {
 
     const auto& time = in.getIndependentColumn();
 
-    OPENSIM_THROW_IF(newTime.size() < 2, Exception,
+    OPENSIM_THROW_IF(time.size() < 2, Exception,
             "Cannot resample if number of times is 0 or 1.");
-    OPENSIM_THROW_IF(newTime[0] < time[0], Exception,
-            format("New initial time (%f) cannot be less than existing initial "
-                   "time (%f)",
-                    newTime[0], time[0]));
-    OPENSIM_THROW_IF(newTime[newTime.size() - 1] > time[time.size() - 1],
-            Exception,
-            format("New final time (%f) cannot be less than existing final "
-                   "time (%f)",
-                    newTime[newTime.size() - 1], time[time.size() - 1]));
-    for (int itime = 1; itime < (int)newTime.size(); ++itime) {
-        OPENSIM_THROW_IF(newTime[itime] < newTime[itime - 1], Exception,
-                format("New times must be non-decreasing, but "
-                       "time[%i] < time[%i] (%f < %f).",
-                        itime, itime - 1, newTime[itime], newTime[itime - 1]));
+    if (newTime.size() > 0) {
+        OPENSIM_THROW_IF(time.size() < 2, Exception,
+                "Cannot resample if number of times is 0 or 1.");
+        OPENSIM_THROW_IF(newTime[0] < time[0], Exception,
+                format("New initial time (%f) cannot be less than existing "
+                       "initial "
+                       "time (%f)",
+                        newTime[0], time[0]));
+        OPENSIM_THROW_IF(newTime[newTime.size() - 1] > time[time.size() - 1],
+                Exception,
+                format("New final time (%f) cannot be greater than existing "
+                       "final "
+                       "time (%f)",
+                        newTime[newTime.size() - 1], time[time.size() - 1]));
+        for (int itime = 1; itime < (int)newTime.size(); ++itime) {
+            OPENSIM_THROW_IF(newTime[itime] < newTime[itime - 1], Exception,
+                    format("New times must be non-decreasing, but "
+                           "time[%i] < time[%i] (%f < %f).",
+                            itime, itime - 1, newTime[itime],
+                            newTime[itime - 1]));
+        }
     }
 
     // Copy over metadata.
@@ -165,6 +172,8 @@ TimeSeriesTable resample(const TimeSeriesTable& in, const TimeVector& newTime) {
     for (int irow = (int)out.getNumRows() - 1; irow >= 0; --irow) {
         out.removeRowAtIndex(irow);
     }
+
+    if (newTime.size() == 0) return out;
 
     const GCVSplineSet splines(in, {}, std::min((int)time.size() - 1, 5));
     SimTK::Vector curTime(1);
@@ -229,13 +238,6 @@ OSIMMOCO_API void replaceMusclesWithPathActuators(Model& model);
 /// Remove muscles from the model.
 /// @note This only removes muscles within the model's ForceSet.
 OSIMMOCO_API void removeMuscles(Model& model);
-
-/// Add CoordinateActuator%s for ech coordinate in the model, using the
-/// provided optimal force. Increasing the optimal force decreases the required
-/// control signal to generate a given actuation level. The actuators are added
-/// to the model's ForceSet and are named "reserve_<coordinate-path>" (with
-/// forward slashes converted to underscores).
-OSIMMOCO_API void createReserveActuators(Model& model, double optimalForce);
 
 /// Replace a joint in the model with a WeldJoint.
 /// @note This assumes the joint is in the JointSet and that the joint's

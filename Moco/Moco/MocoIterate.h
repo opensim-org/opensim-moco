@@ -76,6 +76,21 @@ time,<state-0-name>,...,<control-0-name>,...,<multiplier-0-name>,..., \
 @endsamplefile
 (If stored in a STO file, the delimiters are tabs, not commas.)
 
+Column labels starting with "lambda" are Lagrange multiplier, and columns
+starting with "gamma" are slack variables (probably velocity corrections at
+certain collocation points).
+
+@par Matlab and Python
+Many of the functions in this class have variants ending with "Mat" that
+provide convenient access to the data directly in Matlab or Python (NumPy).
+In Python, the constructors can also accept NumPy matrices in addition to
+arguments of type SimTK::Matrix.
+@code
+iterate.getStateMat("<state-name>")
+iterate.getStatesTrajectoryMat()
+@endcode
+
+
 
 @par Implicit dynamics model
 If the solver uses an implicit dynamics mode, then there are "control"
@@ -105,6 +120,7 @@ public:
             const SimTK::Matrix& multipliersTrajectory,
             const SimTK::Matrix& derivativesTrajectory,
             const SimTK::RowVector& parameters);
+#ifndef SWIG
     /// This constructor allows you to control which
     /// data you provide for the iterate. The possible keys for continuousVars
     /// are "states", "controls", "multipliers", and "derivatives". The names
@@ -115,6 +131,7 @@ public:
             const std::map<std::string, NamesAndData<SimTK::Matrix>>&
                     continuousVars,
             const NamesAndData<SimTK::RowVector>& parameters = {});
+#endif
     /// Read a MocoIterate from a data file (e.g., STO, CSV). See output of
     /// write() for the correct format.
     explicit MocoIterate(const std::string& filepath);
@@ -361,6 +378,7 @@ public:
     SimTK::VectorView_<double> getState(const std::string& name) const;
     SimTK::VectorView_<double> getControl(const std::string& name) const;
     SimTK::VectorView_<double> getMultiplier(const std::string& name) const;
+    SimTK::VectorView_<double> getDerivative(const std::string& name) const;
     const SimTK::Real& getParameter(const std::string& name) const;
     const SimTK::Matrix& getStatesTrajectory() const {
         ensureUnsealed();
@@ -584,6 +602,9 @@ public:
     /// Number of solver iterations at which this solution was obtained
     /// (-1 if not set).
     int getNumIterations() const { return m_numIterations; }
+    /// Get the amount of time (clock time, not CPU time) spent within solve().
+    /// Units: seconds.
+    double getSolverDuration() const { return m_solverDuration; }
 
     /// @name Access control
     /// @{
@@ -621,10 +642,12 @@ private:
     void setNumIterations(int numIterations) {
         m_numIterations = numIterations;
     };
+    void setSolverDuration(double duration) { m_solverDuration = duration; }
     bool m_success = true;
     double m_objective = -1;
     std::string m_status;
     int m_numIterations = -1;
+    double m_solverDuration = -1;
     // Allow solvers to set success, status, and construct a solution.
     friend class MocoSolver;
 };

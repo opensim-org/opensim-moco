@@ -21,20 +21,25 @@
 #include <OpenSim/Actuators/Millard2012EquilibriumMuscle.h>
 #include <OpenSim/Simulation/Model/Model.h>
 
+#include <OpenSim/Common/FileAdapter.h>
+
 using namespace OpenSim;
 
 const std::string DeGrooteFregly2016Muscle::STATE_ACTIVATION_NAME("activation");
-const std::string DeGrooteFregly2016Muscle::STATE_NORM_FIBER_LENGTH_NAME(
-        "norm_fiber_length");
+const std::string DeGrooteFregly2016Muscle::STATE_NORMALIZED_FIBER_LENGTH_NAME(
+        "normalized_fiber_length");
 
 void DeGrooteFregly2016Muscle::constructProperties() {
-    constructProperty_default_norm_fiber_length(1.0);
+    constructProperty_default_normalized_fiber_length(1.0);
     constructProperty_activation_time_constant(0.015);
     constructProperty_deactivation_time_constant(0.060);
     constructProperty_default_activation(0.5);
 
-    constructProperty_tendon_strain_at_one_norm_force(0.049);
+    constructProperty_active_force_width_scale(1.0);
     constructProperty_fiber_damping(0.01);
+    constructProperty_tendon_strain_at_one_norm_force(0.049);
+    
+    constructProperty_ignore_passive_fiber_force(false);
 }
 
 void DeGrooteFregly2016Muscle::extendFinalizeFromProperties() {
@@ -44,15 +49,15 @@ void DeGrooteFregly2016Muscle::extendFinalizeFromProperties() {
             "The optimal_force property is ignored for this Force; "
             "use max_isometric_force instead.");
 
-    SimTK_ERRCHK2_ALWAYS(get_default_norm_fiber_length() >= 0.2,
+    SimTK_ERRCHK2_ALWAYS(get_default_normalized_fiber_length() >= 0.2,
             "DeGrooteFregly2016Muscle::extendFinalizeFromProperties",
-            "%s: default_norm_fiber_length must be >= 0.2, but it is %g.",
-            getName().c_str(), get_default_norm_fiber_length());
+            "%s: default_normalized_fiber_length must be >= 0.2, but it is %g.",
+            getName().c_str(), get_default_normalized_fiber_length());
 
-    SimTK_ERRCHK2_ALWAYS(get_default_norm_fiber_length() <= 1.8,
+    SimTK_ERRCHK2_ALWAYS(get_default_normalized_fiber_length() <= 1.8,
             "DeGrooteFregly2016Muscle::extendFinalizeFromProperties",
-            "%s: default_norm_fiber_length must be <= 1.8, but it is %g.",
-            getName().c_str(), get_default_norm_fiber_length());
+            "%s: default_normalized_fiber_length must be <= 1.8, but it is %g.",
+            getName().c_str(), get_default_normalized_fiber_length());
 
     SimTK_ERRCHK2_ALWAYS(get_activation_time_constant() > 0,
             "DeGrooteFregly2016Muscle::extendFinalizeFromProperties",
@@ -71,6 +76,12 @@ void DeGrooteFregly2016Muscle::extendFinalizeFromProperties() {
             "%s: default_activation must be greater than zero, "
             "but it is %g.",
             getName().c_str(), get_default_activation());
+
+    SimTK_ERRCHK2_ALWAYS(get_active_force_width_scale() >= 1,
+            "DeGrooteFregly2016Muscle::extendFinalizeFromProperties",
+            "%s: active_force_width_scale must be greater than or equal to 1.0, "
+            "but it is %g.",
+            getName().c_str(), get_active_force_width_scale());
 
     SimTK_ERRCHK2_ALWAYS(get_fiber_damping() >= 0,
             "DeGrooteFregly2016Muscle::extendFinalizeFromProperties",
@@ -100,7 +111,7 @@ void DeGrooteFregly2016Muscle::extendAddToSystem(
         addStateVariable(STATE_ACTIVATION_NAME, SimTK::Stage::Dynamics);
     }
     if (!get_ignore_tendon_compliance()) {
-        addStateVariable(STATE_NORM_FIBER_LENGTH_NAME, SimTK::Stage::Position);
+        addStateVariable(STATE_NORMALIZED_FIBER_LENGTH_NAME, SimTK::Stage::Position);
     }
 }
 
@@ -112,8 +123,8 @@ void DeGrooteFregly2016Muscle::extendInitStateFromProperties(
                 s, STATE_ACTIVATION_NAME, get_default_activation());
     }
     if (!get_ignore_tendon_compliance()) {
-        setStateVariableValue(s, STATE_NORM_FIBER_LENGTH_NAME,
-                get_default_norm_fiber_length());
+        setStateVariableValue(s, STATE_NORMALIZED_FIBER_LENGTH_NAME,
+                get_default_normalized_fiber_length());
     }
 }
 
@@ -124,9 +135,15 @@ void DeGrooteFregly2016Muscle::extendSetPropertiesFromState(
         set_default_activation(getStateVariableValue(s, STATE_ACTIVATION_NAME));
     }
     if (!get_ignore_tendon_compliance()) {
-        set_default_norm_fiber_length(
-                getStateVariableValue(s, STATE_NORM_FIBER_LENGTH_NAME));
+        set_default_normalized_fiber_length(
+                getStateVariableValue(s, STATE_NORMALIZED_FIBER_LENGTH_NAME));
     }
+}
+
+void DeGrooteFregly2016Muscle::writeTableToFile(const TimeSeriesTable& table,
+        const std::string& filepath) const {
+    DataAdapter::InputTables tables = {{"table", &table}};
+    FileAdapter::writeFile(tables, filepath);
 }
 
 void DeGrooteFregly2016Muscle::computeStateVariableDerivatives(
@@ -154,9 +171,6 @@ void DeGrooteFregly2016Muscle::computeStateVariableDerivatives(
         const SimTK::Real timeConst =
                 tempAct * (f + 0.5) + tempDeact * (-f + 0.5);
         const SimTK::Real derivative = timeConst * (excitation - activation);
-        // std::cout << "DEBUG cSVD " << getName() << " " << excitation << " "
-        // << activation << " "
-        //           << derivative << std::endl;
         setStateVariableDerivativeValue(s, STATE_ACTIVATION_NAME, derivative);
     }
 
@@ -169,9 +183,6 @@ void DeGrooteFregly2016Muscle::computeStateVariableDerivatives(
         const SimTK::Real muscleTendonLength = getLength(s);
         const SimTK::Real normFiberLength = calcNormalizedFiberLength(s);
 
-        // TODO: this is inefficient because it's recalculating a lot of
-        // terms that don't actually vary with normFiberVelocity (actually,
-        // only one term depends on fiber velocity).
         const SimTK::Real activeForceLengthMult =
                 calcActiveForceLengthMultiplier(normFiberLength);
         const SimTK::Real cosPenn = 1.0; // TODO
@@ -205,7 +216,7 @@ void DeGrooteFregly2016Muscle::computeStateVariableDerivatives(
         try {
             equilNormFiberVelocity =
                     solveBisection(calcResidual, -velocityBound, velocityBound);
-        } catch (const Exception& e) {
+        } catch (const Exception& /*e*/) {
             std::cout << format("DEBUG computeStateVariableDerivatives"
                                 "\n\ttime: %g"
                                 "\n\tactivation: %g"
@@ -231,7 +242,7 @@ void DeGrooteFregly2016Muscle::computeStateVariableDerivatives(
         const SimTK::Real normFiberLengthDot =
                 get_max_contraction_velocity() * equilNormFiberVelocity;
         setStateVariableDerivativeValue(
-                s, STATE_NORM_FIBER_LENGTH_NAME, normFiberLengthDot);
+                s, STATE_NORMALIZED_FIBER_LENGTH_NAME, normFiberLengthDot);
     }
 }
 
@@ -287,7 +298,7 @@ void DeGrooteFregly2016Muscle::computeInitialFiberEquilibrium(
             calcResidual, m_minNormFiberLength, m_maxNormFiberLength);
 
     // TODO create setNormFiberLength().
-    setStateVariableValue(s, "norm_fiber_length", equilNormFiberLength);
+    setStateVariableValue(s, "normalized_fiber_length", equilNormFiberLength);
 }
 
 SimTK::Real DeGrooteFregly2016Muscle::solveBisection(
@@ -310,7 +321,7 @@ SimTK::Real DeGrooteFregly2016Muscle::solveBisection(
             row[0] = calcResidual(x[i]);
             table.appendRow(x[i], row);
         }
-        STOFileAdapter::write(table, "DEBUG_solveBisection_residual.sto");
+        writeTableToFile(table, "DEBUG_solveBisection_residual.sto");
     }
     OPENSIM_THROW_IF_FRMOBJ(sameSign, Exception,
             format("Function has same sign at bounds of %f and %f.", left,
@@ -447,16 +458,18 @@ void DeGrooteFregly2016Muscle::printCurvesToSTOFiles(
         const std::string& directory) const {
     std::string prefix =
             directory + SimTK::Pathname::getPathSeparator() + getName();
-    STOFileAdapter::write(exportFiberLengthCurvesToTable(),
+    writeTableToFile(exportFiberLengthCurvesToTable(),
             prefix + "_fiber_length_curves.sto");
-    STOFileAdapter::write(exportFiberVelocityMultiplierToTable(),
+    writeTableToFile(exportFiberVelocityMultiplierToTable(),
             prefix + "_fiber_velocity_multiplier.sto");
-    STOFileAdapter::write(exportTendonForceMultiplierToTable(),
+    writeTableToFile(exportTendonForceMultiplierToTable(),
             prefix + "_tendon_force_multiplier.sto");
 }
 
 void DeGrooteFregly2016Muscle::replaceMuscles(
         Model& model, bool allowUnsupportedMuscles) {
+
+    model.finalizeConnections();
 
     // Create path actuators from muscle properties and add to the model. Save
     // a list of pointers of the muscles to delete.
@@ -489,7 +502,7 @@ void DeGrooteFregly2016Muscle::replaceMuscles(
             // optimal fiber length.
             if (!SimTK::isNumericallyEqual(
                         musc->get_default_fiber_length(), 0.1)) {
-                actu->set_default_norm_fiber_length(
+                actu->set_default_normalized_fiber_length(
                         musc->get_default_fiber_length() /
                         musc->get_optimal_fiber_length());
             }
@@ -559,4 +572,5 @@ void DeGrooteFregly2016Muscle::replaceMuscles(
     }
 
     model.finalizeFromProperties();
+    model.finalizeConnections();
 }

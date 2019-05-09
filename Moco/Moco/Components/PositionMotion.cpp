@@ -39,16 +39,12 @@ public:
     }
     void calcPrescribedPosition(
             const SimTK::State& s, int nq, SimTK::Real* q) const override {
-        // std::cout << "DEBUG prescribedMotion " << nq << " " <<
-        // m_functions.size() << std::endl;
         if (m_functions.size()) {
             for (int i = 0; i < nq; ++i) {
                 m_funcArgs[0] = s.getTime();
                 q[i] = m_functions[i]->calcValue(m_funcArgs);
-                // std::cout << q[i] << " ";
             }
         }
-        // std::cout << std::endl;
     }
     void calcPrescribedPositionDot(
             const SimTK::State& s, int nq, SimTK::Real* qdot) const override {
@@ -105,6 +101,20 @@ void PositionMotion::setPositionForCoordinate(
     }
 }
 
+void PositionMotion::setEnabled(SimTK::State& state, bool enabled) const {
+    for (auto& motion : m_motions) {
+        if (enabled) {
+            motion.enable(state);
+        } else {
+            motion.disable(state);
+        }
+    }
+}
+bool PositionMotion::getEnabled(const SimTK::State& state) const {
+    if (m_motions.size() && !m_motions[0].isDisabled(state)) return true;
+    return false;
+}
+
 std::unique_ptr<PositionMotion> PositionMotion::createFromTable(
         const Model& model, const TimeSeriesTable& table,
         bool allowExtraColumns) {
@@ -137,6 +147,7 @@ void PositionMotion::extendAddToSystem(SimTK::MultibodySystem& system) const {
     for (int imb = 0; imb < matter.getNumBodies(); ++imb) {
         auto& mobod = matter.updMobilizedBody(SimTK::MobilizedBodyIndex(imb));
         m_motions.push_back(SimTKPositionMotion(mobod));
+        m_motions.back().setDisabledByDefault(!get_default_enabled());
     }
 }
 

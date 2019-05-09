@@ -68,6 +68,7 @@ MocoIterate::MocoIterate(const SimTK::Vector& time,
     } else {
         m_multipliers.resize(m_time.size(), 0);
     }
+    m_derivatives.resize(m_time.size(), 0);
     OPENSIM_THROW_IF((int)m_parameter_names.size() != m_parameters.nelt(),
             Exception, "Inconsistent number of parameters.");
 }
@@ -307,6 +308,15 @@ SimTK::VectorView MocoIterate::getMultiplier(const std::string& name) const {
     int index = (int)std::distance(m_multiplier_names.cbegin(), it);
     return m_multipliers.col(index);
 }
+SimTK::VectorView MocoIterate::getDerivative(const std::string& name) const {
+    ensureUnsealed();
+    auto it = std::find(
+            m_derivative_names.cbegin(), m_derivative_names.cend(), name);
+    OPENSIM_THROW_IF(it == m_derivative_names.cend(), Exception,
+            format("Cannot find derivative named %s.", name));
+    int index = (int)std::distance(m_derivative_names.cbegin(), it);
+    return m_derivatives.col(index);
+}
 SimTK::VectorView MocoIterate::getSlack(const std::string& name) const {
     ensureUnsealed();
     auto it = std::find(m_slack_names.cbegin(), m_slack_names.cend(), name);
@@ -403,7 +413,7 @@ void MocoIterate::resample(SimTK::Vector time) {
         for (int ideriv = 0; ideriv < numDerivatives; ++ideriv, ++icol)
             m_derivatives.updCol(ideriv).setTo(
                     table.getDependentColumnAtIndex(icol).getElt(0, 0));
-        for (int islack = 0; islack < numDerivatives; ++islack, ++icol)
+        for (int islack = 0; islack < numSlacks; ++islack, ++icol)
             m_slacks.updCol(islack).setTo(
                     table.getDependentColumnAtIndex(icol).getElt(0, 0));
 
@@ -519,24 +529,34 @@ MocoIterate::MocoIterate(const std::string& filepath) {
 
     if (numStates) {
         m_states = table->getMatrixBlock(0, 0, table->getNumRows(), numStates);
+    } else {
+        m_states.resize((int)table->getNumRows(), 0);
     }
     if (numControls) {
         m_controls = table->getMatrixBlock(
                 0, numStates, table->getNumRows(), numControls);
+    } else {
+        m_controls.resize((int)table->getNumRows(), 0);
     }
     if (numMultipliers) {
         m_multipliers = table->getMatrixBlock(0, numStates + numControls,
                 table->getNumRows(), numMultipliers);
+    } else {
+        m_multipliers.resize((int)table->getNumRows(), 0);
     }
     if (numDerivatives) {
         m_derivatives = table->getMatrixBlock(0,
                 numStates + numControls + numMultipliers, table->getNumRows(),
                 numDerivatives);
+    } else {
+        m_derivatives.resize((int)table->getNumRows(), 0);
     }
     if (numSlacks) {
         m_slacks = table->getMatrixBlock(0,
                 numStates + numControls + numMultipliers + numDerivatives,
                 table->getNumRows(), numSlacks);
+    } else {
+        m_slacks.resize((int)table->getNumRows(), 0);
     }
     if (numParameters) {
         m_parameters = table->getMatrixBlock(0,

@@ -25,6 +25,8 @@
 
 #include <simbody/internal/Visualizer_InputListener.h>
 
+#include <OpenSim/Actuators/CoordinateActuator.h>
+#include <OpenSim/Common/GCVSpline.h>
 #include <OpenSim/Common/PiecewiseLinearFunction.h>
 #include <OpenSim/Common/TimeSeriesTable.h>
 #include <OpenSim/Simulation/Manager/Manager.h>
@@ -32,11 +34,9 @@
 #include <OpenSim/Simulation/SimbodyEngine/WeldJoint.h>
 #include <OpenSim/Simulation/StatesTrajectory.h>
 #include <OpenSim/Simulation/StatesTrajectoryReporter.h>
-#include <OpenSim/Actuators/CoordinateActuator.h>
 #include <OpenSim/Simulation/SimbodyEngine/WeldJoint.h>
 #include <simbody/internal/Visualizer_InputListener.h>
 #include <OpenSim/Simulation/Control/PrescribedController.h>
-#include <OpenSim/Common/GCVSpline.h>
 
 using namespace OpenSim;
 
@@ -120,15 +120,17 @@ Storage OpenSim::convertTableToStorage(const TimeSeriesTable& table) {
         SimTK::Vector row(table.getRowAtIndex(i_time).transpose());
         // This is a hack to allow creating a Storage with 0 columns.
         double unused;
-        sto.append(times[i_time],
-                row.size(), row.size() ? row.getContiguousScalarData() :
-                &unused);
+        sto.append(times[i_time], row.size(),
+                row.size() ? row.getContiguousScalarData() : &unused);
     }
     return sto;
 }
 
 TimeSeriesTable OpenSim::filterLowpass(
         const TimeSeriesTable& table, double cutoffFreq, bool padData) {
+    OPENSIM_THROW_IF(cutoffFreq < 0, Exception,
+            format("Cutoff frequency must be non-negative; got %g.",
+                    cutoffFreq));
     auto storage = convertTableToStorage(table);
     if (padData) { storage.pad(storage.getSize() / 2); }
     storage.lowpassIIR(cutoffFreq);
@@ -355,7 +357,7 @@ MocoIterate OpenSim::simulateIterateWithTimeStepping(
     manager.initialize(state);
     state = manager.integrate(time[time.size() - 1]);
 
-    // Export results from states reporter to a TimeSeries Table
+    // Export results from states reporter to a TimeSeriesTable
     TimeSeriesTable states = statesRep->getStates().exportToTable(model);
 
     const auto& statesTimes = states.getIndependentColumn();
@@ -371,7 +373,8 @@ MocoIterate OpenSim::simulateIterateWithTimeStepping(
 
     auto forwardSolution = MocoIterate(timeVec,
             {{"states", {states.getColumnLabels(), states.getMatrix()}},
-             {"controls", {controls.getColumnLabels(), controls.getMatrix()}}});
+                    {"controls", {controls.getColumnLabels(),
+                                         controls.getMatrix()}}});
 
     return forwardSolution;
 }
@@ -439,41 +442,9 @@ void OpenSim::removeMuscles(Model& model) {
                         musc->getName()));
         model.updForceSet().remove(index);
     }
-}
 
-void OpenSim::createReserveActuators(Model& model, double optimalForce) {
-    OPENSIM_THROW_IF(optimalForce <= 0, Exception,
-            format("Invalid value (%g) for create_reserve_actuators; "
-                   "should be -1 or positive.",
-                    optimalForce));
-
-    std::cout << "Adding reserve actuators with an optimal force of "
-            << optimalForce << "..." << std::endl;
-
-    std::vector<std::string> coordPaths;
-    // Borrowed from
-    // CoordinateActuator::CreateForceSetOfCoordinateAct...
-    for (const auto& coord : model.getComponentList<Coordinate>()) {
-        auto* actu = new CoordinateActuator();
-        actu->setCoordinate(&const_cast<Coordinate&>(coord));
-        auto path = coord.getAbsolutePathString();
-        coordPaths.push_back(path);
-        // Get rid of model name.
-        // Get rid of slashes in the path; slashes not allowed in names.
-        std::replace(path.begin(), path.end(), '/', '_');
-        actu->setName("reserve_" + path);
-        actu->setOptimalForce(optimalForce);
-        model.addComponent(actu);
-    }
-    // Re-make the system, since there are new actuators.
+    model.finalizeConnections();
     model.initSystem();
-    std::cout << "Added " << coordPaths.size()
-            << " reserve actuator(s), "
-               "for each of the following coordinates:"
-            << std::endl;
-    for (const auto& name : coordPaths) {
-        std::cout << "  " << name << std::endl;
-    }
 }
 
 void OpenSim::replaceJointWithWeldJoint(

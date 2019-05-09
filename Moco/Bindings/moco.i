@@ -10,6 +10,7 @@ typedef SimTK::RowVector_<double> RowVector;
 %include <Moco/MocoCost/MocoMarkerTrackingCost.h>
 %include <Moco/MocoCost/MocoMarkerEndpointCost.h>
 %include <Moco/MocoCost/MocoControlCost.h>
+%include <Moco/MocoCost/MocoSumSquaredStateCost.h>
 %include <Moco/MocoCost/MocoJointReactionNormCost.h>
 
 
@@ -167,3 +168,5 @@ namespace OpenSim {
 %include <Moco/Components/ActivationCoordinateActuator.h>
 %include <Moco/Components/DeGrooteFregly2016Muscle.h>
 %include <Moco/MocoUtilities.h>
+
+%include <Moco/Components/ModelFactory.h>
