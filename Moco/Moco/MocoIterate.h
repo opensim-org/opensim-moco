@@ -334,6 +334,9 @@ public:
     // TODO handle rotational coordinates specified in degrees.
     void setStatesTrajectory(const TimeSeriesTable& states,
             bool allowMissingColumns = false, bool allowExtraColumns = false);
+
+    // Add additional columns
+    // void insertStatesTrajectory(const TimeSeriesTable& subsetOfStates);
     /// @}
 
     /// @name Accessors

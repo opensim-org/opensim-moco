@@ -68,6 +68,9 @@ MocoInverseSolution MocoInverse::solve() const {
 
     Model model(m_model);
     model.finalizeFromProperties();
+
+    // Alter muscle properties.
+    // ------------------------
     for (auto& muscle : model.updComponentList<Muscle>()) {
         if (get_ignore_activation_dynamics()) {
             muscle.set_ignore_activation_dynamics(true);
@@ -77,24 +80,8 @@ MocoInverseSolution MocoInverse::solve() const {
         }
     }
 
-    MocoTool moco;
-    auto& problem = moco.updProblem();
-
-    // TODO: Move this elsewhere!
-    for (const auto& muscle : model.getComponentList<Muscle>()) {
-        if (!muscle.get_ignore_activation_dynamics()) {
-            problem.setStateInfo(muscle.getAbsolutePathString() + "/activation",
-                    // TODO: Use the muscle's minimum_activation.
-                    {0.01, 1});
-        }
-        if (!muscle.get_ignore_tendon_compliance()) {
-            // TODO shouldn't be necessary.
-            problem.setStateInfo(
-                    muscle.getAbsolutePathString() + "/norm_fiber_length",
-                    {0.2, 1.8});
-        }
-    }
-
+    // ExternalLoads.
+    // --------------
     InverseDynamicsTool idTool;
     if (!get_external_loads_file().empty()) {
         idTool.createExternalLoads(get_external_loads_file(), model);
@@ -102,6 +89,8 @@ MocoInverseSolution MocoInverse::solve() const {
 
     model.initSystem();
 
+    // Load kinematics.
+    // ----------------
     std::string kinematicsFilePath =
             Pathname::getAbsolutePathnameUsingSpecifiedWorkingDirectory(
                     setupDir, get_kinematics_file());
@@ -144,8 +133,11 @@ MocoInverseSolution MocoInverse::solve() const {
     for (const auto& coord : coords) {
         coordSVNames.push_back(coord->getStateVariableNames()[0]);
     }
-    auto posmot = PositionMotion::createFromTable(
-            model, statesTraj.exportToTable(model, coordSVNames));
+    const auto statesTrajTable = statesTraj.exportToTable(model, coordSVNames);
+
+    // Create PositionMotion.
+    // ----------------------
+    auto posmot = PositionMotion::createFromTable(model, statesTrajTable);
     posmot->setName("position_motion");
     model.addComponent(posmot.release());
 
@@ -155,6 +147,25 @@ MocoInverseSolution MocoInverse::solve() const {
                 get_create_reserve_actuators());
     }
 
+    // Configure MocoStudy.
+    // --------------------
+    MocoTool moco;
+    auto& problem = moco.updProblem();
+
+    // TODO: Move this elsewhere!
+    for (const auto& muscle : model.getComponentList<Muscle>()) {
+        if (!muscle.get_ignore_activation_dynamics()) {
+            problem.setStateInfo(muscle.getAbsolutePathString() + "/activation",
+                    // TODO: Use the muscle's minimum_activation.
+                    {0.01, 1});
+        }
+        if (!muscle.get_ignore_tendon_compliance()) {
+            // TODO shouldn't be necessary.
+            problem.setStateInfo(
+                    muscle.getAbsolutePathString() + "/norm_fiber_length",
+                    {0.2, 1.8});
+        }
+    }
     problem.setModelCopy(model);
 
     const auto timeInfo = calcInitialAndFinalTimes(
@@ -188,8 +199,12 @@ MocoInverseSolution MocoInverse::solve() const {
     }
 
     solver.set_num_mesh_points(timeInfo.numMeshPoints);
+    MocoSolution mocoSolution = moco.solve().unseal();
+    // mocoSolution.insertStatesTrajectory(statesTrajTable);
+
+
     MocoInverseSolution solution;
-    solution.setMocoSolution(moco.solve().unseal());
+    solution.setMocoSolution(mocoSolution);
 
     if (getProperty_output_paths().size()) {
         std::vector<std::string> outputPaths;
