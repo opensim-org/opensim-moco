@@ -43,8 +43,27 @@ void Transcription::createVariablesAndSetBounds() {
     m_times = createTimes(m_vars[initial_time], m_vars[final_time]);
     m_vars[states] =
             MX::sym("states", m_problem.getNumStates(), m_numGridPoints);
+
+    //m_vars[controls] = casadi::MX(m_problem.getNumControls(), m_numGridPoints);
+    //m_cmesh = MX::sym("controls", m_problem.getNumControls(), m_numMeshPoints);
+    //m_cmid = 0.5*(m_cmesh(Slice(), Slice(0, m_numMeshPoints-1))
+    //            + m_cmesh(Slice(), Slice(1, m_numMeshPoints)));
+
+    //std::cout << "m_numMeshPoints: " << m_numMeshPoints << std::endl;
+    //std::cout << "m_numGridPoints: " << m_numGridPoints << std::endl;
+
+    //std::cout << "size2 : " << m_cmesh.size2() << std::endl;
+    //std::cout << "size2 : " << m_cmid.size2() << std::endl;
+
+    //std::cout << "size2 : " << m_vars[controls](Slice(), Slice(0, m_numGridPoints, 2)).size2() << std::endl;
+    //std::cout << "size2 : " << m_vars[controls](Slice(), Slice(1, m_numGridPoints-1, 2)).size2() << std::endl;
+
+    //m_vars[controls](Slice(), Slice(0, m_numGridPoints, 2)) = m_cmesh;
+    //m_vars[controls](Slice(), Slice(1, m_numGridPoints-1, 2)) = m_cmid;
+
     m_vars[controls] =
             MX::sym("controls", m_problem.getNumControls(), m_numGridPoints);
+
     m_vars[multipliers] = MX::sym(
             "multipliers", m_problem.getNumMultipliers(), m_numGridPoints);
     m_vars[derivatives] = MX::sym(
@@ -382,7 +401,7 @@ Solution Transcription::solve(const Iterate& guessOrig) {
     }
     // The inputs to nlpsol() are symbolic (casadi::MX).
     casadi::MXDict nlp;
-    nlp.emplace(std::make_pair("x", flatten(m_vars)));
+    nlp.emplace(std::make_pair("x", flatten(m_vars, m_numGridPoints)));
     // The m_objective symbolic variable holds an expression graph including
     // all the calculations performed on the variables x.
     nlp.emplace(std::make_pair("f", m_objective));
@@ -414,8 +433,9 @@ Solution Transcription::solve(const Iterate& guessOrig) {
     // --------------------------------------------------------
     // The inputs and outputs of nlpFunc are numeric (casadi::DM).
     const casadi::DMDict nlpResult = nlpFunc(casadi::DMDict{
-            {"x0", flatten(guess.variables)}, {"lbx", flatten(m_lowerBounds)},
-            {"ubx", flatten(m_upperBounds)},
+            {"x0", flatten(guess.variables, m_numGridPoints)}, 
+            {"lbx", flatten(m_lowerBounds, m_numGridPoints)},
+            {"ubx", flatten(m_upperBounds, m_numGridPoints)},
             {"lbg", casadi::DM::veccat(m_constraintsLowerBounds)},
             {"ubg", casadi::DM::veccat(m_constraintsUpperBounds)}});
 

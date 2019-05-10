@@ -616,7 +616,16 @@ TimeSeriesTable MocoIterate::convertToTable() const {
         startCol += numDerivatives;
     }
     if (numSlacks) {
-        data.updBlock(0, startCol, numTimes, numSlacks) = m_slacks;
+        SimTK::Matrix slacksNoNans(m_slacks);
+        for (int i = 0; i < numTimes; ++i) {
+            for (int j = 0; j < numSlacks; ++j) {
+                if (SimTK::isNaN(slacksNoNans.get(i, j))) {
+                    slacksNoNans.updElt(i, j) = 0;
+                }
+            }
+        }
+
+        data.updBlock(0, startCol, numTimes, numSlacks) = slacksNoNans;
         startCol += numSlacks;
     }
     if (numParameters) {

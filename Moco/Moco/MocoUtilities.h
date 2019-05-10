@@ -245,6 +245,10 @@ OSIMMOCO_API void removeMuscles(Model& model);
 OSIMMOCO_API void replaceJointWithWeldJoint(Model& model,
     const std::string& jointName);
 
+/// TODO
+OSIMMOCO_API void addCoordinateActuatorsToModel(Model& model, 
+        double optimalForce);
+
 /// The map provides the index of each state variable in
 /// SimTK::State::getY() from its each state variable path string.
 /// Empty slots in Y (e.g., for quaternions) are ignored.
@@ -265,6 +269,20 @@ std::vector<std::string> createStateVariableNamesInSystemOrder(
 OSIMMOCO_API
 std::unordered_map<std::string, int> createSystemYIndexMap(const Model& model);
 #endif
+
+/// Create a vector of control names based on the actuators in the model.
+OSIMMOCO_API 
+std::vector<std::string> createControlNamesFromModel(const Model& model);
+
+/// The map provides the index of each control variable in the SimTK::Vector
+/// return by OpenSim::Model::getControls() from its control name.
+OSIMMOCO_API
+std::unordered_map<std::string, int> createSystemControlIndexMap(
+    const Model& model);
+
+/// Check that the order of the controls in the model is the same as the
+/// order of the actuators in the model. 
+OSIMMOCO_API void checkOrderSystemControls(const Model& model);
 
 /// Throw an exception if the property's value is not in the provided set.
 /// We assume that `p` is a single-value property.

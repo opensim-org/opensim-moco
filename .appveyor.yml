@@ -17,7 +17,7 @@ skip_branch_with_pr: true
 
 environment:
   JAVA_DIR: "C:\\Program Files\\Java\\jdk1.8.0"
-  PYTHON_DIR: "C:\\Python27-x64"
+  PYTHON_DIR: "C:\\Python37-x64"
 
 init:
   - SET BTYPE=Release
@@ -80,7 +80,7 @@ install:
   # CMAKE_CXX_FLAGS.
   # https://msdn.microsoft.com/en-us/library/19z1t1wy.aspx
   # - set CXXFLAGS="/W0"
-  - cmake ..\opensim-moco\dependencies -G"Visual Studio 14 2015 Win64" -DCMAKE_INSTALL_PREFIX="C:\projects\opensim-moco_deps_install" -DCMAKE_CXX_FLAGS="/DWIN32 /D_WINDOWS /W0 /GR /EHsc" -DOPENSIM_JAVA_WRAPPING=ON -DOPENSIM_PYTHON_WRAPPING=ON
+  - cmake ..\opensim-moco\dependencies -G"Visual Studio 14 2015 Win64" -DCMAKE_INSTALL_PREFIX="C:\projects\opensim-moco_deps_install" -DCMAKE_CXX_FLAGS="/DWIN32 /D_WINDOWS /W0 /GR /EHsc" -DOPENSIM_JAVA_WRAPPING=ON -DOPENSIM_PYTHON_WRAPPING=ON -DOPENSIM_PYTHON_VERSION=3
 
   - IF NOT EXIST C:\projects\deps mkdir C:\projects\deps
   - dir C:\projects\
@@ -116,7 +116,7 @@ build_script:
   - mkdir ..\build
   - cd ..\build
   # Turn warnings into errors (/WX)
-  - cmake -E env CXXFLAGS="/WX" cmake ..\opensim-moco -G"Visual Studio 14 2015 Win64" -DCMAKE_INSTALL_PREFIX="C:\opensim-moco" -DADOLC_DIR="..\deps\adol-c" -DCMAKE_PREFIX_PATH="C:\projects\deps\eigen;C:\projects\deps\colpack;C:\projects\deps\opensim-core;C:\projects\deps\ipopt;C:\projects\deps\casadi" -DMOCO_PYTHON_BINDINGS=ON -DMOCO_JAVA_BINDINGS=ON
+  - cmake -E env CXXFLAGS="/WX" cmake ..\opensim-moco -G"Visual Studio 14 2015 Win64" -DCMAKE_INSTALL_PREFIX="C:\opensim-moco" -DADOLC_DIR="..\deps\adol-c" -DCMAKE_PREFIX_PATH="C:\projects\deps\eigen;C:\projects\deps\colpack;C:\projects\deps\opensim-core;C:\projects\deps\ipopt;C:\projects\deps\casadi" -DMOCO_PYTHON_BINDINGS=ON -DMOCO_PYTHON_VERSION=3 -DMOCO_JAVA_BINDINGS=ON
   #-DCMAKE_TOOLCHAIN_FILE="C:\Tools\vcpkg\scripts\buildsystems\vcpkg.cmake"
   - cmake --build . --config %BTYPE% -- /maxcpucount:4 /verbosity:minimal
 

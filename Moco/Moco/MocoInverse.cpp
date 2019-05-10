@@ -55,7 +55,7 @@ void MocoInverse::writeTableToFile(
     FileAdapter::writeFile(tables, filepath);
 }
 
-MocoInverseSolution MocoInverse::solve() const {
+MocoTool MocoInverse::initialize() const {
     using SimTK::Pathname;
     // Get the directory containing the setup file.
     std::string setupDir;
@@ -199,21 +199,27 @@ MocoInverseSolution MocoInverse::solve() const {
     }
 
     solver.set_num_mesh_points(timeInfo.numMeshPoints);
-    MocoSolution mocoSolution = moco.solve().unseal();
-    // mocoSolution.insertStatesTrajectory(statesTrajTable);
 
+    return moco;
+}
+
+MocoInverseSolution MocoInverse::solve() const {
+    MocoTool moco = initialize();
+
+    MocoSolution mocoSolution = moco.solve().unseal();
 
     MocoInverseSolution solution;
     solution.setMocoSolution(mocoSolution);
+    // mocoSolution.insertStatesTrajectory(statesTrajTable);
 
-    if (getProperty_output_paths().size()) {
-        std::vector<std::string> outputPaths;
-        for (int io = 0; io < getProperty_output_paths().size(); ++io) {
-            outputPaths.push_back(get_output_paths(io));
-        }
-        solution.setOutputs(
-                moco.analyze(solution.getMocoSolution(), outputPaths));
-    }
+    //if (getProperty_output_paths().size()) {
+    //    std::vector<std::string> outputPaths;
+    //    for (int io = 0; io < getProperty_output_paths().size(); ++io) {
+    //        outputPaths.push_back(get_output_paths(io));
+    //    }
+    //    solution.setOutputs(
+    //        moco.analyze<SimTK::Real>(solution.getMocoSolution(), outputPaths));
+    //}
     return solution;
 }
 

@@ -302,8 +302,8 @@ protected:
     /// the checks provided in initialize().
     virtual void initializeOnModelImpl(const Model&) const = 0;
     /// Set the number of scalar equations for this MocoPathConstraint. This 
-    /// must be set within initializeImpl(), otherwise an exception is thrown
-    /// during initialization.
+    /// must be set within initializeOnModelImpl(), otherwise an exception is 
+    /// thrown during initialization.
     void setNumEquations(int numEqs) const {
         // TODO avoid const_cast
         const_cast<MocoPathConstraint*>(this)

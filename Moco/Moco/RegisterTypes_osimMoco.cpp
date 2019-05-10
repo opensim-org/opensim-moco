@@ -31,17 +31,21 @@
 #include "MocoCost/MocoMarkerTrackingCost.h"
 #include "MocoCost/MocoMarkerEndpointCost.h"
 #include "MocoCost/MocoControlCost.h"
+#include "MocoCost/MocoControlTrackingCost.h"
 #include "MocoCost/MocoSumSquaredStateCost.h"
-#include "MocoCost/MocoJointReactionNormCost.h"
+#include "MocoCost/MocoJointReactionCost.h"
 #include "MocoParameter.h"
+#include "MocoControlConstraint.h"
 
 #include "MocoInverse.h"
+#include "MocoTrack.h"
 
 #include "MocoCasADiSolver/MocoCasADiSolver.h"
 
 #include "Components/ActivationCoordinateActuator.h"
 #include "Components/StationPlaneContactForce.h"
 #include "Components/DiscreteForces.h"
+#include "Components/FreePointBodyActuator.h"
 #include "Components/AccelerationMotion.h"
 #include "Components/PositionMotion.h"
 #include "Components/DeGrooteFregly2016Muscle.h"
@@ -65,19 +69,23 @@ OSIMMOCO_API void RegisterTypes_osimMoco() {
         Object::registerType(MocoMarkerTrackingCost());
         Object::registerType(MocoMarkerEndpointCost());
         Object::registerType(MocoControlCost());
+        Object::registerType(MocoControlTrackingCost());
         Object::registerType(MocoSumSquaredStateCost());
-        Object::registerType(MocoJointReactionNormCost());
+        Object::registerType(MocoJointReactionCost());
         Object::registerType(MocoBounds());
         Object::registerType(MocoInitialBounds());
         Object::registerType(MocoFinalBounds());
         Object::registerType(MocoPhase());
         Object::registerType(MocoVariableInfo());
+        Object::registerType(MocoControlInfo());
         Object::registerType(MocoProblem());
         Object::registerType(MocoTool());
         Object::registerType(MocoTropterSolver());
         Object::registerType(MocoParameter());
+        Object::registerType(MocoControlConstraint());
 
         Object::registerType(MocoInverse());
+        Object::registerType(MocoTrack());
 
         Object::registerType(MocoCasADiSolver());
 
@@ -92,6 +100,7 @@ OSIMMOCO_API void RegisterTypes_osimMoco() {
         Object::registerType(DeGrooteFregly2016Muscle());
 
         Object::registerType(DiscreteForces());
+        Object::registerType(FreePointBodyActuator());
         Object::registerType(AccelerationMotion());
 
         // TODO: Move to osimSimulation.

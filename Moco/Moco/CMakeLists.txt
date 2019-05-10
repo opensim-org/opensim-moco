@@ -29,8 +29,10 @@ set(MOCO_SOURCES
         MocoCost/MocoSumSquaredStateCost.cpp
         MocoCost/MocoControlCost.h
         MocoCost/MocoControlCost.cpp
-        MocoCost/MocoJointReactionNormCost.h
-        MocoCost/MocoJointReactionNormCost.cpp
+        MocoCost/MocoControlTrackingCost.h
+        MocoCost/MocoControlTrackingCost.cpp
+        MocoCost/MocoJointReactionCost.h
+        MocoCost/MocoJointReactionCost.cpp
         MocoSolver.h
         MocoSolver.cpp
         MocoDirectCollocationSolver.h
@@ -43,6 +45,8 @@ set(MOCO_SOURCES
         MocoParameter.cpp
         MocoConstraint.h
         MocoConstraint.cpp
+        MocoControlConstraint.h
+        MocoControlConstraint.cpp
         InverseMuscleSolver/InverseMuscleSolver.h
         InverseMuscleSolver/InverseMuscleSolver.cpp
         InverseMuscleSolver/GlobalStaticOptimization.h
@@ -64,6 +68,8 @@ set(MOCO_SOURCES
         Components/ModelFactory.cpp
         Components/DiscreteForces.h
         Components/DiscreteForces.cpp
+        Components/FreePointBodyActuator.h
+        Components/FreePointBodyActuator.cpp
         Components/AccelerationMotion.h
         Components/AccelerationMotion.cpp
         MocoCasADiSolver/MocoCasADiSolver.h
@@ -85,6 +91,8 @@ set(MOCO_SOURCES
         MocoCasADiSolver/CasOCIterate.h
         MocoInverse.h
         MocoInverse.cpp
+        MocoTrack.h
+        MocoTrack.cpp
         )
 if(MOCO_WITH_TROPTER)
     list(APPEND MOCO_SOURCES
