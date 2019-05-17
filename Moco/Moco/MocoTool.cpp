@@ -85,19 +85,18 @@ MocoSolution MocoTool::solve() const {
     if (get_write_setup() != "false") {
         OpenSim::IO::makeDir(get_write_setup());
         std::string prefix = getName().empty() ? "MocoTool" : getName();
-        const std::string filename = get_write_setup() +
-               SimTK::Pathname::getPathSeparator() + prefix + "_setup_"
-               + getFormattedDateTime() + ".omoco";
+        const std::string filename =
+                get_write_setup() + SimTK::Pathname::getPathSeparator() +
+                prefix + "_setup_" + getFormattedDateTime() + ".omoco";
         print(filename);
     }
     if (get_write_solution() != "false") {
         OpenSim::IO::makeDir(get_write_solution());
         std::string prefix = getName().empty() ? "MocoTool" : getName();
         solution.unseal();
-        const std::string filename = get_write_solution() +
-                                     SimTK::Pathname::getPathSeparator() +
-                                     prefix + "_solution_"
-                + getFormattedDateTime() + ".sto";
+        const std::string filename =
+                get_write_solution() + SimTK::Pathname::getPathSeparator() +
+                prefix + "_solution_" + getFormattedDateTime() + ".sto";
         try {
             solution.write(filename);
         } catch (const TimestampGreaterThanEqualToNext&) {
@@ -116,3 +115,54 @@ void MocoTool::visualize(const MocoIterate& it) const {
     const auto& model = get_problem().getPhase(0).getModel();
     OpenSim::visualize(model, it.exportToStatesStorage());
 }
+
+template <typename T>
+TimeSeriesTable_<T> MocoTool::analyze(
+        const MocoIterate& iterate, std::vector<std::string> outputPaths) {
+    auto model = get_problem().createRep().getModelBase();
+    model.initSystem();
+    // prescribeControlsToModel(iterate, model);
+
+    auto* reporter = new TableReporter_<T>();
+    for (const auto& comp : model.getComponentList()) {
+        for (const auto& outputName : comp.getOutputNames()) {
+            const auto& output = comp.getOutput(outputName);
+            if (output.getTypeName() ==
+                    OpenSim::Object_GetClassName<T>::name()) {
+                auto thisOutputPath = output.getPathName();
+                std::replace(
+                        thisOutputPath.begin(), thisOutputPath.end(), '|', '/');
+                for (const auto& outputPathArg : outputPaths) {
+                    if (std::regex_match(
+                                thisOutputPath, std::regex(outputPathArg))) {
+                        reporter->addToReport(output);
+                    }
+                }
+            }
+        }
+    }
+    model.addComponent(reporter);
+    model.initSystem();
+
+    auto statesTraj = iterate.exportToStatesTrajectory(get_problem());
+
+    for (int i = 0; i < (int)statesTraj.getSize(); ++i) {
+        auto state = statesTraj[i];
+        model.getSystem().prescribe(state);
+        SimTK::RowVector controlsRow = iterate.getControlsTrajectory().row(i);
+        SimTK::Vector controls(controlsRow.size(),
+                controlsRow.getContiguousScalarData(), true);
+        model.realizeVelocity(state);
+        model.setControls(state, controls);
+
+        model.realizeReport(state);
+    }
+
+    return reporter->getTable();
+}
+
+template TimeSeriesTable_<double> MocoTool::analyze(
+        const MocoIterate&, std::vector<std::string>);
+
+template TimeSeriesTable_<SimTK::Vec3> MocoTool::analyze(
+        const MocoIterate&, std::vector<std::string>);

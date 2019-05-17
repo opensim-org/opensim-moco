@@ -290,7 +290,7 @@ void MocoTrack::configureStateTracking(MocoProblem& problem, Model& model) {
             auto value = states.getDependentColumnAtIndex(valueIdx);
             auto* valueSpline = stateSplines.getGCVSpline(valueIdx);
             SimTK::Vector speed((int)time.size());
-            for (int j = 0; j < time.size(); ++j) {
+            for (int j = 0; j < (int)time.size(); ++j) {
                 speed[j] = valueSpline->calcDerivative({0},
                     SimTK::Vector(1, time[j]));
             }
@@ -349,7 +349,7 @@ void MocoTrack::configureStateTracking(MocoProblem& problem, Model& model) {
     writeTableToFile(states, getName() + "_tracked_states.mot");
     m_states_from_file = states;
     if (m_min_data_length == -1 ||
-        m_min_data_length > states.getNumRows()) {
+        m_min_data_length > (int)states.getNumRows()) {
         m_min_data_length = (int)states.getNumRows();
     }
 }
@@ -389,7 +389,7 @@ void MocoTrack::configureMarkerTracking(MocoProblem& problem, Model& model) {
             // Update state labels to full paths. 
             for (const auto& coord : model.getComponentList<Coordinate>()) {
                 std::string path = coord.getAbsolutePathString();
-                for (int i = 0; i < states.getNumColumns(); ++i) {
+                for (int i = 0; i < (int)states.getNumColumns(); ++i) {
                     if (path.find(states.getColumnLabel(i)) 
                             != std::string::npos) {
                         states.setColumnLabel(i, path + "/value");
@@ -420,7 +420,7 @@ void MocoTrack::configureMarkerTracking(MocoProblem& problem, Model& model) {
     writeTableToFile(markers.flatten(), getName() + "_tracked_markers.mot");
 
     if (m_min_data_length == -1 ||
-        m_min_data_length > markers.getNumRows()) {
+        m_min_data_length > (int)markers.getNumRows()) {
         m_min_data_length = (int)markers.getNumRows();
     }
 }
@@ -473,9 +473,9 @@ void MocoTrack::configureForceTracking(MocoProblem& problem, Model& model) {
         // forces, and points of application for this ExternalForce.
         std::vector<std::string> suffixes = {"x", "y", "z"};
         int c = 0;
-        for (int j = 0; j < suffixes.size(); ++j) {
+        for (int j = 0; j < (int)suffixes.size(); ++j) {
             // Moment control infos.
-            size_t T_idx = forces.getColumnIndex(
+            int T_idx = (int)forces.getColumnIndex(
                 extForce.getTorqueIdentifier() + suffixes[j]);
             auto maxT = SimTK::max(SimTK::abs(forcesBlock.col(T_idx)));
             if (maxT < 0.01) {
@@ -492,9 +492,9 @@ void MocoTrack::configureForceTracking(MocoProblem& problem, Model& model) {
             }
         }
 
-        for (int j = 0; j < suffixes.size(); ++j) {
+        for (int j = 0; j < (int)suffixes.size(); ++j) {
             // Force control infos.
-            size_t F_idx = forces.getColumnIndex(
+            int F_idx = (int)forces.getColumnIndex(
                 extForce.getForceIdentifier() + suffixes[j]);
             auto maxF = SimTK::max(SimTK::abs(forcesBlock.col(F_idx)));
             if (maxF < 0.01) {
@@ -511,9 +511,9 @@ void MocoTrack::configureForceTracking(MocoProblem& problem, Model& model) {
             }
         }
 
-        for (int j = 0; j < suffixes.size(); ++j) {
+        for (int j = 0; j < (int)suffixes.size(); ++j) {
             // Point control infos.
-            size_t P_idx = forces.getColumnIndex(
+            int P_idx = (int)forces.getColumnIndex(
                     extForce.getPointIdentifier() + suffixes[j]);
             auto maxP = SimTK::max(SimTK::abs(forcesBlock.col(P_idx)));
             if (maxP < 0.0001) {
@@ -550,7 +550,7 @@ void MocoTrack::configureForceTracking(MocoProblem& problem, Model& model) {
 
     m_forces = forces;
     if (m_min_data_length == -1 ||
-        m_min_data_length > forces.getNumRows()) {
+        m_min_data_length > (int)forces.getNumRows()) {
         m_min_data_length = (int)forces.getNumRows();
     }
 }
@@ -587,7 +587,7 @@ void MocoTrack::applyStatesToGuess(const TimeSeriesTable& states,
     SimTK::Vector speed(m_min_data_length);
     for (const auto& coord : model.getComponentList<Coordinate>()) {
         auto path = coord.getAbsolutePathString();
-        for (int i = 0; i < states.getNumColumns(); ++i) {
+        for (int i = 0; i < (int)states.getNumColumns(); ++i) {
             auto label = states.getColumnLabel(i);
             if (path.find(label) != std::string::npos) {
 

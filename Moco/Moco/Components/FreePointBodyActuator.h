@@ -88,7 +88,7 @@ private:
         }
         return numControls;
     }
-    //double getPower(const SimTK::State& s) const override;
+    double getPower(const SimTK::State& s) const override;
 
 }; // class FreePointBodyActuator
 
