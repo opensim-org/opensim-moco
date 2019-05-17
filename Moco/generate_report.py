@@ -48,7 +48,7 @@ parser.add_argument('--bilateral', action='store_true',
                          "together.")
 parser.add_argument('--refs', type=str, nargs='+',
                     help="Paths to reference data files.")
-parser.add_argument('--colormap', type=str, 
+parser.add_argument('--colormap', type=str,
                     help="Matplotlib colormap from which plot colors are "
                          "sampled from.")
 args = parser.parse_args()
@@ -130,7 +130,7 @@ def getLabelFromMotionType(motionTypeEnum, level):
     elif motionTypeEnum == 2:
         if level == 'value': label = 'position (m)'
         elif level == 'speed': label = 'velocity (m/s)'
-        elif level == 'accel': label = 'accel. (m/s^s)'  
+        elif level == 'accel': label = 'accel. (m/s^s)'
         else: label = 'translate'
         return label
     elif motionTypeEnum == 3:
@@ -138,7 +138,7 @@ def getLabelFromMotionType(motionTypeEnum, level):
     else:
         return 'undefined'
 
-# Given a state or control name with substring identifying either the left or 
+# Given a state or control name with substring identifying either the left or
 # right limb, remove the substring and return the updated name. This function
 # also takes the argument 'ls_dict', which is a dictionary of plot linestyles
 # corresponding to the right leg (solid line) or left leg (dashed line); it is
@@ -198,6 +198,17 @@ def getVariable(type, path):
 def getIndexForNearestValue(vec, val):
     return min(range(len(vec)), key=lambda i: abs(vec[i]-val))
 
+def truncate(string, max_length):
+    """https://www.xormedia.com/string-truncate-middle-with-ellipsis/"""
+    if len(string) <= max_length:
+        # string is already short-enough
+        return string
+    # half of the size, minus the 3 .'s
+    n_2 = int(max_length / 2 - 3)
+    # whatever's left
+    n_1 = max_length - n_2 - 3
+    return '{0}...{1}'.format(string[:n_1], string[-n_2:])
+
 plots_per_page = 15.0
 num_cols = 3
 # Add an extra row to hold the legend and other infromation.
@@ -213,8 +224,12 @@ def plotVariables(var_type, var_dict, ls_dict, label_dict):
 
         plt.subplot(num_rows, num_cols, p + 3)
         # Loop through all the state variable paths for this key.
+        ymin = np.inf
+        ymax = -np.inf
         for path, ls in zip(var_dict[key], ls_dict[key]):
             var = getVariable(var_type, path)
+            ymin = np.min(var)
+            ymax = np.max(var)
             # If any reference data was provided, that has columns matching
             # the current variable path, then plot them first.
             for r, ref in enumerate(refs):
@@ -224,10 +239,13 @@ def plotVariables(var_type, var_dict, ls_dict, label_dict):
                 if pathNoSlashes in ref.dtype.names:
                     init = getIndexForNearestValue(ref['time'], time[0])
                     final = getIndexForNearestValue(ref['time'], time[-1])
-                    plt.plot(ref['time'][init:final], 
-                             ref[pathNoSlashes][init:final], ls=ls, 
+                    y = ref[pathNoSlashes][init:final]
+                    plt.plot(ref['time'][init:final],
+                             y, ls=ls,
                              color=cmap(cmap_samples[r]),
                              linewidth=2.5)
+                    ymin = np.min(ymin, y)
+                    ymax = np.max(ymax, y)
 
             # Plot the variable values from the MocoIterate.
             plt.plot(time, var, ls=ls, color=cmap(
@@ -235,13 +253,16 @@ def plotVariables(var_type, var_dict, ls_dict, label_dict):
                      linewidth=1.5)
 
         # Plot labels and settings.
-        plt.title(key, fontsize=10)
-        plt.xlabel('time (s)', fontsize=8)                
+        plt.title(truncate(key, 38), fontsize=10)
+        plt.xlabel('time (s)', fontsize=8)
         plt.ylabel(label_dict[key], fontsize=8)
-        plt.xticks(timeticks, fontsize=6)
+        if timeticks:
+            plt.xticks(timeticks)
+        plt.xticks(fontsize=6)
         plt.yticks(fontsize=6)
         plt.xlim(time[0], time[-1])
-        # TODO plt.ylim()
+        if 0 <= ymin and ymax <= 1:
+            plt.ylim(0, 1)
         plt.ticklabel_format(axis='y', style='sci', scilimits=(-3, 3))
         ax = plt.gca()
         ax.get_yaxis().get_offset_text().set_position((-0.15,0))
@@ -249,17 +270,17 @@ def plotVariables(var_type, var_dict, ls_dict, label_dict):
         ax.tick_params(direction='in', gridOn=True)
         ax.xaxis.set_major_formatter(
             FormatStrFormatter('%.1f'))
-            
+
         # If we filled up the current figure or ran out of keys, add this
         # figure as a new page to the PDF. Otherwise, increment the plot
         # counter and keep going.
         if (p % plots_per_page == 0) or (i == len(var_dict.keys())-1):
             fig.tight_layout()
-            plt.figlegend(legend_handles, legend_labels, 
+            plt.figlegend(legend_handles, legend_labels,
                 loc='upper center', bbox_to_anchor=(0.5, 0.97),
-                fancybox=True, shadow=True) 
+                fancybox=True, shadow=True)
             pdf.savefig(fig)
-            plt.close() 
+            plt.close()
             p = 1
         else:
             p += 1
@@ -280,7 +301,10 @@ with PdfPages(iterate_fname + '_report.pdf') as pdf:
     # Create a conservative set of x-tick values based on the time vector.
     nexttime = math.ceil(time[0] * 10) / 10
     nexttolast = math.floor(time[-1] * 10) / 10
-    timeticks = np.arange(nexttime, nexttolast, 0.2)
+    if (nexttolast - nexttime) < 1.5:
+        timeticks = np.arange(nexttime, nexttolast, 0.2)
+    else:
+        timeticks = None
 
 	# States & Derivatives
     # --------------------
@@ -312,12 +336,12 @@ with PdfPages(iterate_fname + '_report.pdf') as pdf:
                 # substrings that indicate the body side and update the
                 # linestyle dict. 
                 valueName, state_ls_dict = bilateralize(valueName,
-                        state_ls_dict)      
-                speedName, state_ls_dict = bilateralize(speedName, 
+                        state_ls_dict)
+                speedName, state_ls_dict = bilateralize(speedName,
                         state_ls_dict)
                 if derivs:
                     accelName, derivative_ls_dict = bilateralize(accelName,
-                            derivative_ls_dict)      
+                            derivative_ls_dict)
 
             else:
                 state_ls_dict[valueName].append('-')
@@ -351,7 +375,7 @@ with PdfPages(iterate_fname + '_report.pdf') as pdf:
             plotVariables('derivative', derivative_dict, derivative_ls_dict,
                     derivative_label_dict)
 
-	# Controls 
+	# Controls
     # --------
     control_names = iterate.getControlNames()
     if len(control_names) > 0:
@@ -415,18 +439,18 @@ with PdfPages(iterate_fname + '_report.pdf') as pdf:
         cell_text.append(['%10.5f' % p for p in parameters])
 
         print('iterate name', iterate_fname)
-        plt.table(cellText=cell_text, rowLabels=parameter_names, 
+        plt.table(cellText=cell_text, rowLabels=parameter_names,
                   colLabels=[iterate_fname], loc='center')
         ax.axis('off')
         ax.axis('tight')
 
         plt.subplots_adjust(left=0.2, right=0.8)
 
-        plt.figlegend(legend_handles, legend_labels, 
+        plt.figlegend(legend_handles, legend_labels,
             loc='upper center', bbox_to_anchor=(0.5, 0.97),
-            fancybox=True, shadow=True) 
+            fancybox=True, shadow=True)
         pdf.savefig(fig)
-        plt.close() 
+        plt.close()
 
     # Slacks
     # ------
