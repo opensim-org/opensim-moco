@@ -366,7 +366,7 @@ with PdfPages(iterate_fname + '_report.pdf') as pdf:
                 # linestyle dict. 
                 title, ls_dict = bilateralize(title, ls_dict)
             else:
-                ls_dict[valueName].append('-')
+                ls_dict[title].append('-')
 
             if not title in control_dict:
                 control_dict[title] = list()
@@ -374,7 +374,6 @@ with PdfPages(iterate_fname + '_report.pdf') as pdf:
             # to a list containing paths for both sides of the model.
             control_dict[title].append(control_name)
             label_dict[title] = ''
-
         plotVariables('control', control_dict, ls_dict, label_dict)
 
 	# Multipliers
