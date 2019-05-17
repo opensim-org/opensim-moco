@@ -71,6 +71,7 @@ public:
     /// @note This fuction ignores the inDegrees header metadata.
     static std::unique_ptr<PositionMotion> createFromTable(const Model& model,
             const TimeSeriesTable& coords, bool allowExtraColumns = false);
+    TimeSeriesTable exportToTable(const std::vector<double>& time) const;
 
 private:
     void extendAddToSystem(SimTK::MultibodySystem& system) const override;

@@ -190,6 +190,7 @@ public:
 private:
     void constructProperties();
     void writeTableToFile(const TimeSeriesTable&, const std::string&) const;
+    std::pair<MocoTool, TimeSeriesTable> initializeInternal() const;
 
     struct TimeInfo {
         double initialTime;

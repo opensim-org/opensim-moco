@@ -335,8 +335,12 @@ public:
     void setStatesTrajectory(const TimeSeriesTable& states,
             bool allowMissingColumns = false, bool allowExtraColumns = false);
 
-    // Add additional columns
-    // void insertStatesTrajectory(const TimeSeriesTable& subsetOfStates);
+    /// Add additional state columns. The provided data are interpolated using
+    /// GCV splines to match the times in this iterate. By default, we do not
+    /// overwrite data for states that already exist in the iterate; you can
+    /// change this behavior with `overwrite`.
+    void insertStatesTrajectory(
+            const TimeSeriesTable& subsetOfStates, bool overwrite = false);
     /// @}
 
     /// @name Accessors
@@ -459,7 +463,8 @@ public:
     /// Both iterates must have at least 6 time nodes.
     /// If the number of columns to compare is 0, this returns 0.
     double compareContinuousVariablesRMS(const MocoIterate& other,
-            std::map<std::string, std::vector<std::string>> columnsToUse = {}) const;
+            std::map<std::string, std::vector<std::string>> columnsToUse = {})
+            const;
     /// Compute the root-mean-square error between the parameters in this
     /// iterate and another. The RMS is computed by dividing the the sum of the
     /// squared errors between corresponding parameters and then dividing by the
@@ -548,6 +553,10 @@ private:
             std::vector<std::string> controlNames = {},
             std::vector<std::string> multiplierNames = {},
             std::vector<std::string> derivativeNames = {}) const;
+    static std::vector<std::string>::const_iterator find(
+            const std::vector<std::string>& v, const std::string& elem) {
+        return std::find(v.cbegin(), v.cend(), elem);
+    }
     // TODO std::string m_name;
     SimTK::Vector m_time;
     std::vector<std::string> m_state_names;

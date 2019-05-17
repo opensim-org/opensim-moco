@@ -228,10 +228,6 @@ void MocoIterate::setStatesTrajectory(const TimeSeriesTable& states,
 
     const auto& labels = states.getColumnLabels();
 
-    auto find = [](const std::vector<std::string>& v, const std::string& elem) {
-        return std::find(v.cbegin(), v.cend(), elem);
-    };
-
     if (!allowMissingColumns) {
         for (const auto& iterate_state : m_state_names) {
             OPENSIM_THROW_IF(find(labels, iterate_state) == labels.end(),
@@ -244,8 +240,7 @@ void MocoIterate::setStatesTrajectory(const TimeSeriesTable& states,
 
     std::vector<std::string> labelsToUse;
     for (const auto& label : labels) {
-        if (std::find(m_state_names.begin(), m_state_names.end(), label) !=
-                m_state_names.end()) {
+        if (find(m_state_names, label) != m_state_names.end()) {
             labelsToUse.push_back(label);
         } else {
             if (!allowExtraColumns) {
@@ -262,6 +257,36 @@ void MocoIterate::setStatesTrajectory(const TimeSeriesTable& states,
 
     SimTK::Vector curTime(1, SimTK::NaN);
     for (const auto& label : labelsToUse) {
+        auto it = find(m_state_names, label);
+        int istate = (int)std::distance(m_state_names.cbegin(), it);
+        for (int itime = 0; itime < m_time.size(); ++itime) {
+            curTime[0] = m_time[itime];
+            m_states(itime, istate) = splines.get(label).calcValue(curTime);
+        }
+    }
+}
+
+void MocoIterate::insertStatesTrajectory(
+        const TimeSeriesTable& subsetOfStates, bool overwrite) {
+    ensureUnsealed();
+
+    const auto origStateNames = m_state_names;
+    const auto& labelsToInsert = subsetOfStates.getColumnLabels();
+    for (const auto& label : labelsToInsert) {
+        auto it = find(m_state_names, label);
+        if (it == m_state_names.cend()) { m_state_names.push_back(label); }
+    }
+
+    m_states.resizeKeep(getNumTimes(), (int)m_state_names.size());
+
+    const int numTimesTable = (int)subsetOfStates.getNumRows();
+
+    GCVSplineSet splines(subsetOfStates, {}, std::min(numTimesTable - 1, 5));
+    SimTK::Vector curTime(1, SimTK::NaN);
+    for (const auto& label : labelsToInsert) {
+        if (!overwrite && find(origStateNames, label) == origStateNames.cend()) {
+            continue;
+        }
         auto it = find(m_state_names, label);
         int istate = (int)std::distance(m_state_names.cbegin(), it);
         for (int itime = 0; itime < m_time.size(); ++itime) {
@@ -846,8 +871,7 @@ void checkContains(std::string type, VecStr a, VecStr b, VecStr c) {
 }
 
 double MocoIterate::compareContinuousVariablesRMSInternal(
-        const MocoIterate& other,
-        std::vector<std::string> stateNames,
+        const MocoIterate& other, std::vector<std::string> stateNames,
         std::vector<std::string> controlNames,
         std::vector<std::string> multiplierNames,
         std::vector<std::string> derivativeNames) const {
@@ -981,9 +1005,8 @@ double MocoIterate::compareContinuousVariablesRMSInternal(
 double MocoIterate::compareContinuousVariablesRMS(const MocoIterate& other,
         std::map<std::string, std::vector<std::string>> cols) const {
     ensureUnsealed();
-    std::vector<std::string> allowedKeys {
-        "states", "controls", "multipliers", "derivatives"
-    };
+    std::vector<std::string> allowedKeys{
+            "states", "controls", "multipliers", "derivatives"};
     for (auto kv : cols) {
         bool keyIsAllowed = false;
         for (auto allowedKey : allowedKeys) {
@@ -998,7 +1021,7 @@ double MocoIterate::compareContinuousVariablesRMS(const MocoIterate& other,
     if (cols.size() == 0) {
         return compareContinuousVariablesRMSInternal(other);
     }
-    static const std::vector<std::string> none {"none"};
+    static const std::vector<std::string> none{"none"};
     return compareContinuousVariablesRMSInternal(other,
             cols.count("states") ? cols.at("states") : none,
             cols.count("controls") ? cols.at("controls") : none,

@@ -18,8 +18,8 @@
 
 #include "MocoInverse.h"
 
-#include "Components/PositionMotion.h"
 #include "Components/ModelFactory.h"
+#include "Components/PositionMotion.h"
 #include "MocoCasADiSolver/MocoCasADiSolver.h"
 #include "MocoCost/MocoControlCost.h"
 #include "MocoCost/MocoSumSquaredStateCost.h"
@@ -55,7 +55,9 @@ void MocoInverse::writeTableToFile(
     FileAdapter::writeFile(tables, filepath);
 }
 
-MocoTool MocoInverse::initialize() const {
+MocoTool MocoInverse::initialize() const { return initializeInternal().first; }
+
+std::pair<MocoTool, TimeSeriesTable> MocoInverse::initializeInternal() const {
     using SimTK::Pathname;
     // Get the directory containing the setup file.
     std::string setupDir;
@@ -133,18 +135,19 @@ MocoTool MocoInverse::initialize() const {
     for (const auto& coord : coords) {
         coordSVNames.push_back(coord->getStateVariableNames()[0]);
     }
-    const auto statesTrajTable = statesTraj.exportToTable(model, coordSVNames);
 
     // Create PositionMotion.
     // ----------------------
-    auto posmot = PositionMotion::createFromTable(model, statesTrajTable);
+    auto posmot = PositionMotion::createFromTable(
+            model, statesTraj.exportToTable(model, coordSVNames));
     posmot->setName("position_motion");
+    const auto* posmotPtr = posmot.get();
     model.addComponent(posmot.release());
 
     model.initSystem();
     if (get_create_reserve_actuators() != -1) {
-        ModelFactory::createReserveActuators(model,
-                get_create_reserve_actuators());
+        ModelFactory::createReserveActuators(
+                model, get_create_reserve_actuators());
     }
 
     // Configure MocoStudy.
@@ -200,25 +203,29 @@ MocoTool MocoInverse::initialize() const {
 
     solver.set_num_mesh_points(timeInfo.numMeshPoints);
 
-    return moco;
+    return std::make_pair(
+            moco, posmotPtr->exportToTable(kinematics.getIndependentColumn()));
 }
 
 MocoInverseSolution MocoInverse::solve() const {
-    MocoTool moco = initialize();
+    std::pair<MocoTool, TimeSeriesTable> init = initializeInternal();
+    const auto& moco = init.first;
 
     MocoSolution mocoSolution = moco.solve().unseal();
 
+    const auto& statesTrajTable = init.second;
+    mocoSolution.insertStatesTrajectory(statesTrajTable);
     MocoInverseSolution solution;
     solution.setMocoSolution(mocoSolution);
-    // mocoSolution.insertStatesTrajectory(statesTrajTable);
 
-    //if (getProperty_output_paths().size()) {
+    // if (getProperty_output_paths().size()) {
     //    std::vector<std::string> outputPaths;
     //    for (int io = 0; io < getProperty_output_paths().size(); ++io) {
     //        outputPaths.push_back(get_output_paths(io));
     //    }
     //    solution.setOutputs(
-    //        moco.analyze<SimTK::Real>(solution.getMocoSolution(), outputPaths));
+    //        moco.analyze<SimTK::Real>(solution.getMocoSolution(),
+    //        outputPaths));
     //}
     return solution;
 }
