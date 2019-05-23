@@ -284,14 +284,13 @@ void MocoIterate::insertStatesTrajectory(
     GCVSplineSet splines(subsetOfStates, {}, std::min(numTimesTable - 1, 5));
     SimTK::Vector curTime(1, SimTK::NaN);
     for (const auto& label : labelsToInsert) {
-        if (!overwrite && find(origStateNames, label) == origStateNames.cend()) {
-            continue;
-        }
-        auto it = find(m_state_names, label);
-        int istate = (int)std::distance(m_state_names.cbegin(), it);
-        for (int itime = 0; itime < m_time.size(); ++itime) {
-            curTime[0] = m_time[itime];
-            m_states(itime, istate) = splines.get(label).calcValue(curTime);
+        if (find(origStateNames, label) == origStateNames.cend() || overwrite) {
+            auto it = find(m_state_names, label);
+            int istate = (int)std::distance(m_state_names.cbegin(), it);
+            for (int itime = 0; itime < m_time.size(); ++itime) {
+                curTime[0] = m_time[itime];
+                m_states(itime, istate) = splines.get(label).calcValue(curTime);
+            }
         }
     }
 }
