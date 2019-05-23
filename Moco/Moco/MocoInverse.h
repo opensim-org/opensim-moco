@@ -167,6 +167,9 @@ public:
     OpenSim_DECLARE_OPTIONAL_PROPERTY(tolerance, double,
             "The convergence and constraint tolerances (default: 1e-3).");
 
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(max_iterations, int,
+            "Maximum number of solver iterations (default: solver default).");
+
     OpenSim_DECLARE_LIST_PROPERTY(output_paths, std::string,
             "Outputs to compute after solving the problem."
             " Entries can be regular expressions (e.g., '.*activation').");

@@ -46,6 +46,7 @@ void MocoInverse::constructProperties() {
     constructProperty_create_reserve_actuators(-1);
     constructProperty_minimize_sum_squared_states(false);
     constructProperty_tolerance(1e-3);
+    constructProperty_max_iterations();
     constructProperty_output_paths();
 }
 
@@ -202,6 +203,9 @@ std::pair<MocoTool, TimeSeriesTable> MocoInverse::initializeInternal() const {
     }
 
     solver.set_num_mesh_points(timeInfo.numMeshPoints);
+    if (!getProperty_max_iterations().empty()) {
+        solver.set_optim_max_iterations(get_max_iterations());
+    }
 
     return std::make_pair(
             moco, posmotPtr->exportToTable(kinematics.getIndependentColumn()));
