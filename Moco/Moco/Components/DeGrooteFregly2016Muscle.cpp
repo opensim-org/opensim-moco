@@ -175,9 +175,9 @@ void DeGrooteFregly2016Muscle::calcMuscleLengthInfo(
     const auto& MTULength = getLength(s);
     if (MTULength < get_tendon_slack_length()) {
         // TODO: Refer to what Millard muscle does when buckling.
-        std::cout << "Warning: DeGrooteFregly2016Muscle '" << getName()
-                  << "' is buckling (length < tendon_slack_length) at time "
-                  << s.getTime() << " s." << std::endl;
+        //std::cout << "Warning: DeGrooteFregly2016Muscle '" << getName()
+        //          << "' is buckling (length < tendon_slack_length) at time "
+        //          << s.getTime() << " s." << std::endl;
     }
 
     // Tendon.

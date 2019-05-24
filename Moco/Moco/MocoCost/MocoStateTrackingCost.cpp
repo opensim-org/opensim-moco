@@ -65,6 +65,8 @@ void MocoStateTrackingCost::initializeOnModelImpl(const Model& model) const {
         if (!get_allow_unused_references()) {
             OPENSIM_THROW_IF_FRMOBJ(allSysYIndices.count(refName) == 0,
                 Exception, "State reference '" + refName + "' unrecognized.");
+        } else {
+            if (allSysYIndices.count(refName) == 0) continue;
         }
 
         m_sysYIndices.push_back(allSysYIndices[refName]);

@@ -218,13 +218,12 @@ Model createModel(bool removeMuscles = false, bool addAnkleExo = false) {
     ModelFactory::replaceJointWithWeldJoint(model, "radius_hand_l");
     ModelFactory::replaceJointWithWeldJoint(model, "radius_hand_r");
     // lower body
-    addCoordinateActuator(model, "pelvis_tilt", 10);
-    addCoordinateActuator(model, "pelvis_list", 10);
-    addCoordinateActuator(model, "pelvis_rotation", 10);
-    addCoordinateActuator(model, "pelvis_tx", 10);
-    addCoordinateActuator(model, "pelvis_ty", 10);
-    addCoordinateActuator(model, "pelvis_tz", 10);
-    // Leave subtalar angle coordinate actuators in, even if we have muscles.
+    addCoordinateActuator(model, "pelvis_tilt", 100);
+    addCoordinateActuator(model, "pelvis_list", 100);
+    addCoordinateActuator(model, "pelvis_rotation", 100);
+    addCoordinateActuator(model, "pelvis_tx", 100);
+    addCoordinateActuator(model, "pelvis_ty", 100);
+    addCoordinateActuator(model, "pelvis_tz", 100);
     addCoordinateActuator(model, "subtalar_angle_r", 100);
     addCoordinateActuator(model, "subtalar_angle_l", 100);
     if (removeMuscles) {
@@ -244,6 +243,9 @@ Model createModel(bool removeMuscles = false, bool addAnkleExo = false) {
         addCoordinateActuator(model, "ankle_angle_r", 250);
     }
     // upper body
+    addCoordinateActuator(model, "lumbar_bending", 100);
+    addCoordinateActuator(model, "lumbar_extension", 100);
+    addCoordinateActuator(model, "lumbar_rotation", 100);
     addCoordinateActuator(model, "elbow_flex_l", 5);
     addCoordinateActuator(model, "elbow_flex_r", 5);
     addCoordinateActuator(model, "pro_sup_l", 0.1);
@@ -254,14 +256,26 @@ Model createModel(bool removeMuscles = false, bool addAnkleExo = false) {
     addCoordinateActuator(model, "arm_rot_r", 5);
     addCoordinateActuator(model, "arm_flex_l", 10);
     addCoordinateActuator(model, "arm_flex_r", 10);
-    addCoordinateActuator(model, "lumbar_bending", 100);
-    addCoordinateActuator(model, "lumbar_extension", 100);
-    addCoordinateActuator(model, "lumbar_rotation", 100);
 
     if (removeMuscles) {
         model.print("subject_walk_rra_adjusted_updated.osim");
     } else {
-        model.print("subject_walk_rra_adjusted_updated_muscles.osim");
+        //auto* probe = new Umberger2010MuscleMetabolicsProbe();
+        //probe->set_activation_maintenance_rate_on(true);
+        //probe->set_shortening_rate_on(true);
+        //probe->set_basal_rate_on(true);
+        //probe->set_mechanical_work_rate_on(true);
+        //probe->set_include_negative_mechanical_work(false);
+        //probe->set_forbid_negative_total_power(false);
+        //probe->set_report_total_metabolics_only(false);
+        //probe->set_use_Bhargava_recruitment_model(false);
+
+        //for (const auto& musc : model.getComponentList<Muscle>()) {
+        //    
+        //}
+
+
+        model.print("subject_walk_rra_adjusted_armless_muscles.osim");
     }
 
     return model;
@@ -312,7 +326,7 @@ void smoothSolutionControls(std::string statesFile,
 }
 
 MocoSolution runBaselineProblem(bool removeMuscles, double controlWeight = 0.1,
-        std::string guessFile = "", double penalizeCoordActs = 0.0) {
+        std::string guessFile = "") {
     
     Model model = createModel(removeMuscles);
     if (!removeMuscles) {
@@ -334,25 +348,10 @@ MocoSolution runBaselineProblem(bool removeMuscles, double controlWeight = 0.1,
     track.set_final_time(1.65);
     track.set_minimize_controls(controlWeight);
 
-    if (penalizeCoordActs) {
-        MocoWeightSet controlWeights;
-        for (const auto& coordAct : 
-                model.getComponentList<CoordinateActuator>()) {
-            const auto& coordName = coordAct.getName();
-            if (coordName.find("hip") != std::string::npos ||
-                coordName.find("knee") != std::string::npos ||
-                coordName.find("ankle") != std::string::npos) {
-                   controlWeights.cloneAndAppend({"/" + coordName,
-                                           penalizeCoordActs});
-            }
-        }
-        track.set_control_weights(controlWeights);
-    }
-
     MocoStudy moco = track.initialize();
     auto& solver = moco.updSolver<MocoCasADiSolver>();
-    solver.set_optim_constraint_tolerance(1e-3);
-    solver.set_optim_convergence_tolerance(1e-3);
+    solver.set_optim_constraint_tolerance(1e-2);
+    solver.set_optim_convergence_tolerance(1e-2);
     if (guessFile != "") {
         solver.setGuessFile(guessFile);
     }
@@ -376,6 +375,8 @@ MocoSolution runBaselineProblem(bool removeMuscles, double controlWeight = 0.1,
     STOFileAdapter::write(reactionTable.flatten(),
         filename.replace(filename.end()-4, filename.end(), 
             "_reactions.sto"));
+
+    
     
     return solution;
 }
@@ -640,7 +641,7 @@ MocoSolution runExoskeletonProblem(const std::string& trackedIterateFile,
     // w4 from Fregly et al. 2007
     auto* footOrientationTracking =
         problem.addCost<MocoOrientationTrackingCost>(
-            "foot_orientation_tracking", 100);
+            "foot_orientation_tracking", 10);
     footOrientationTracking->setStatesReference(statesRef);
     footOrientationTracking->setFramePaths({"/bodyset/calcn_r",
         "/bodyset/calcn_l"});
@@ -648,7 +649,7 @@ MocoSolution runExoskeletonProblem(const std::string& trackedIterateFile,
     // w4 from Fregly et al. 2007
     auto* footTranslationTracking =
         problem.addCost<MocoTranslationTrackingCost>(
-            "foot_translation_tracking", 100);
+            "foot_translation_tracking", 10);
     footTranslationTracking->setStatesReference(statesRef);
     footTranslationTracking->setFramePaths({"/bodyset/calcn_r",
         "/bodyset/calcn_l"});
@@ -656,7 +657,7 @@ MocoSolution runExoskeletonProblem(const std::string& trackedIterateFile,
     // w5 from Fregly et al. 2007
     auto* torsoOrientationTracking =
         problem.addCost<MocoOrientationTrackingCost>(
-            "torso_orientation_tracking", 100);
+            "torso_orientation_tracking", 10);
     torsoOrientationTracking->setStatesReference(statesRef);
     torsoOrientationTracking->setFramePaths({"/bodyset/torso"});
 
@@ -680,7 +681,7 @@ int main() {
     std::cout.rdbuf(LogManager::cout.rdbuf());
     std::cerr.rdbuf(LogManager::cerr.rdbuf());
 
-    const double controlWeight = 0.001;
+    const double controlWeight = 0.01;
 
     // Baseline tracking problem w/o muscles.
     // --------------------------------------
@@ -688,7 +689,7 @@ int main() {
 
     // Baseline tracking problem w/ muscles.
     // -------------------------------------
-    //MocoSolution baselineWithMuscles = runBaselineProblem(false, controlWeight,
+    MocoSolution baselineWithMuscles = runBaselineProblem(false, controlWeight);
     //   "sandboxMocoTrack_solution_baseline_muscles.sto");
 
     // Knee adduction minimization w/o muscles.
@@ -698,8 +699,8 @@ int main() {
 
     // Minimize effort with exoskeleton device w/ muscles.
     // ---------------------------------------------------
-    runExoskeletonProblem("sandboxMocoTrack_solution_baseline_muscles.sto",
-        0.01, 1);
+    //runExoskeletonProblem("sandboxMocoTrack_solution_baseline_muscles.sto",
+    //    0.01, 1);
 
 
 
