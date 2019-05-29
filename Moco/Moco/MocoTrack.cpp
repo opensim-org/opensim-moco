@@ -18,7 +18,7 @@
 
 #include "MocoTrack.h"
 #include "MocoWeightSet.h"
-#include "MocoTool.h"
+#include "MocoStudy.h"
 #include "MocoProblem.h"
 #include "MocoCost/MocoControlCost.h"
 #include "MocoCost/MocoControlTrackingCost.h"

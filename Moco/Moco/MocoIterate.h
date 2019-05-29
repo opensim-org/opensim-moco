@@ -76,7 +76,7 @@ time,<state-0-name>,...,<control-0-name>,...,<multiplier-0-name>,..., \
 @endsamplefile
 (If stored in a STO file, the delimiters are tabs, not commas.)
 
-Column labels starting with "lambda" are Lagrange multiplier, and columns
+Column labels starting with "lambda" are Lagrange multipliers, and columns
 starting with "gamma" are slack variables (probably velocity corrections at
 certain collocation points).
 
@@ -89,8 +89,6 @@ arguments of type SimTK::Matrix.
 iterate.getStateMat("<state-name>")
 iterate.getStatesTrajectoryMat()
 @endcode
-
-
 
 @par Implicit dynamics model
 If the solver uses an implicit dynamics mode, then there are "control"
@@ -457,8 +455,8 @@ public:
     /// derivatives to compare as keys for `columnsToUse`.
     /// Values are an empty vector to compare all columns for that key,
     /// `{"none"}` (single-entry vector with value "none") to compare none of
-    /// the columns for that key, or a vector of column labels to compare all
-    /// all columns for that key. Leaving out a key means no columns for that
+    /// the columns for that key, or a vector of column labels to compare
+    /// for that key. Leaving out a key means no columns for that
     /// key are compared.
     /// Both iterates must have at least 6 time nodes.
     /// If the number of columns to compare is 0, this returns 0.
@@ -583,7 +581,7 @@ private:
     bool m_sealed = false;
 };
 
-/// Return type for MocoTool::solve(). Use success() to check if the solver
+/// Return type for MocoStudy::solve(). Use success() to check if the solver
 /// succeeded. You can also use this object as a boolean in an if-statement:
 /// @code
 /// auto solution = moco.solve();

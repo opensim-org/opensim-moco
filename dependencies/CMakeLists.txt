@@ -18,7 +18,7 @@ endif()
 
 option(OPENSIM_JAVA_WRAPPING "Build opensim-core Java/MATLAB interface." OFF)
 option(OPENSIM_PYTHON_WRAPPING "Build opensim-core Python interface." OFF)
-set(OPENSIM_PYTHON_VERSION 2 CACHE STRING
+set(OPENSIM_PYTHON_VERSION 3 CACHE STRING
     "The major Python version (2 or 3) for opensim-core.")
 # To create a drop-down in the CMake GUI:
 set_property(CACHE OPENSIM_PYTHON_VERSION PROPERTY STRINGS "2" "3")
@@ -177,6 +177,7 @@ endfunction()
 SetDefaultCMakeInstallPrefix()
 SetDefaultCMakeBuildType()
 
+
 ####################### Add dependencies below.
 
 AddDependency(NAME eigen
@@ -304,6 +305,10 @@ include(opensim-core.cmake)
 #######################
 
 RemoveDefaultInstallDirIfEmpty("${DEFAULT_CMAKE_INSTALL_PREFIX}")
+
+
+
+
 
 
 

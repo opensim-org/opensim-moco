@@ -19,7 +19,7 @@
  * -------------------------------------------------------------------------- */
 
 #include "MocoIterate.h"
-#include "MocoTool.h"
+#include "MocoStudy.h"
 #include "osimMocoDLL.h"
 
 #include <OpenSim/Common/Object.h>

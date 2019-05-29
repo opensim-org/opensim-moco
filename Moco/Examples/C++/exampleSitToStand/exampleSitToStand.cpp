@@ -42,7 +42,7 @@ Model createTorqueDrivenModel() {
 
     Model model("sitToStand_3dof9musc.osim");
 
-    removeMuscles(model);
+    ModelFactory::removeMuscles(model);
     addCoordinateActuator(model, "hip_flexion_r", 100);
     addCoordinateActuator(model, "knee_angle_r", 300);
     addCoordinateActuator(model, "ankle_angle_r", 100);

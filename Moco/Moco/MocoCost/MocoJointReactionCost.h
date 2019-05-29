@@ -3,7 +3,7 @@
 /* -------------------------------------------------------------------------- *
  * OpenSim Moco: MocoJointReactionCost.h                                      *
  * -------------------------------------------------------------------------- *
- * Copyright (c) 2017 Stanford University and the Authors                     *
+ * Copyright (c) 2019 Stanford University and the Authors                     *
  *                                                                            *
  * Author(s): Nicholas Bianco                                                 *
  *                                                                            *
@@ -19,21 +19,35 @@
  * -------------------------------------------------------------------------- */
 
 #include "MocoCost.h"
+#include "../MocoWeightSet.h"
+
 #include <OpenSim/Simulation/SimbodyEngine/Joint.h>
 
 namespace OpenSim {
 
-/// Minimize the reaction loads on the child body of a specified joint. 
-/// The norm of the reaction forces and moments integrated over the phase is 
-/// the specific quantity minimized.
+/// Minimize the sum of squares of specified reaction moment and force
+/// measures for a given joint, integrated over the phase.
+///
+/// In addition to specifying the joint and reaction measures, the user may
+/// also specify the frame the loads are computed from ("parent" or "child"),
+/// and the frame the loads are expressed in (any valid frame in the model).
+///
+/// Minimizing the y-direction reaction force on the child frame of the right
+/// knee joint expressed in the right tibia frame:
+/// @code
+/// auto* cost = problem.addCost<MocoJointReactionCost>();
+/// cost->setName("tibiofemoral_compressive_force");
+/// cost->setJointPath("/jointset/knee_r");
+/// cost->setLoadsFrame("child");
+/// cost->setExpressedInFramePath("/bodyset/tibia_r");
+/// cost->setReactionMeasures({"force-y"});
+/// @endcode
+///
 /// This cost requires realizing to the Acceleration stage.
 /// @ingroup mococost
-// TODO allow a list property of multiple joints?
-// TODO allow specification of either child or parent reaction loads to 
-//      to minimize.
 class OSIMMOCO_API MocoJointReactionCost : public MocoCost {
 OpenSim_DECLARE_CONCRETE_OBJECT(MocoJointReactionCost, MocoCost);
-public: 
+public:
     MocoJointReactionCost();
     MocoJointReactionCost(std::string name) : MocoCost(std::move(name)) {
         constructProperties();
@@ -42,16 +56,45 @@ public:
             : MocoCost(std::move(name), weight) {
         constructProperties();
     }
-    /// Provide a valid model path for joint whose reaction loads will be
-    /// minimized. 
-    // TODO when using implicit dynamics, we will need to revisit this cost.
-    void setJointPath(const std::string& jointPath) 
+
+    /// Set the model path to the joint whose reaction load(s) will be
+    /// minimized.
+    void setJointPath(const std::string& jointPath)
     {   set_joint_path(jointPath); }
-    void setExpressedInFramePath(const std::string& framePath) {
-        set_expressed_in_frame_path(framePath);
+    /// Set the frame from which the reaction loads are computed. Options:
+    /// "parent" or "child" (default: "parent").
+    void setLoadsFrame(const std::string& frame)
+    {   set_loads_frame(frame); }
+    /// Set the frame in which the minimized reaction load is expressed. By
+    /// default, it is set to the parent or child frame depending on the
+    /// 'loads_frame' property value.
+    void setExpressedInFramePath(const std::string& framePath)
+    {   set_expressed_in_frame_path(framePath); }
+    /// Set a specific set of reaction measures to be minimized. Options:
+    /// "moment-x", "moment-y", "moment-z", "force-x", "force-y", and "force-z".
+    /// All reaction measures are minimized by default.
+    /// Replaces the reaction measure set if it already exists.
+    void setReactionMeasures(const std::vector<std::string>& measures){
+        updProperty_reaction_measures().clear();
+        for (const auto& measure : measures) {
+            append_reaction_measures(measure);
+        }
     }
-    void setReactionComponent(int comp) {
-        set_reaction_component(comp);
+    /// Set the weight for an individual reaction measure. If a weight is
+    /// already set for the requested measure, then the provided weight
+    /// replaces the previous weight. An exception is thrown during
+    /// initialization if a weight for an unknown measure is provided.
+    void setWeight(const std::string& stateName, const double& weight) {
+        if (get_reaction_weights().contains(stateName)) {
+            upd_reaction_weights().get(stateName).setWeight(weight);
+        } else {
+            upd_reaction_weights().cloneAndAppend({stateName, weight});
+        }
+    }
+    /// Provide a MocoWeightSet to weight the reaction measures in the cost.
+    /// Replaces the weight set if it already exists.
+    void setWeightSet(const MocoWeightSet& weightSet) {
+        upd_reaction_weights() = weightSet;
     }
 
 protected:
@@ -60,17 +103,29 @@ protected:
             double& integrand) const override;
 
 private:
-    mutable SimTK::ReferencePtr<const Joint> m_joint;
-    mutable SimTK::ReferencePtr<const Frame> m_frame;
-    mutable int m_vec;
-    mutable int m_elt;
+    OpenSim_DECLARE_PROPERTY(joint_path, std::string,
+            "The model path to the joint whose reaction load(s) will be "
+            "minimized.");
+    OpenSim_DECLARE_PROPERTY(loads_frame, std::string,
+            "The frame from which the reaction loads are computed. Options: "
+            "'child' or 'parent' (default: 'parent').");
+    OpenSim_DECLARE_PROPERTY(expressed_in_frame_path, std::string,
+            "The frame in which the minimized reaction load is expressed.");
+    OpenSim_DECLARE_LIST_PROPERTY(reaction_measures, std::string,
+            "A specific set of reaction measures to be minimized. Options: "
+            "'moment-x', 'moment-y', 'moment-z', 'force-x', 'force-y', and "
+            "'force-z'. All reaction measures are minimized by default.");
+    OpenSim_DECLARE_PROPERTY(reaction_weights, MocoWeightSet,
+            "Set of weight objects to weight individual reaction measures in "
+            "the cost.");
 
     void constructProperties();
-    OpenSim_DECLARE_PROPERTY(joint_path, std::string, "The model path for the "
-            "joint with minimized reaction loads.");
-    OpenSim_DECLARE_PROPERTY(expressed_in_frame_path, std::string, "The frame that "
-            "the minimized reaction force is expressed in.");
-    OpenSim_DECLARE_PROPERTY(reaction_component, int, "TODO");
+
+    mutable SimTK::ReferencePtr<const Joint> m_joint;
+    mutable SimTK::ReferencePtr<const Frame> m_frame;
+    mutable std::vector<std::pair<int, int>> m_measureIndices;
+    mutable std::vector<double> m_measureWeights;
+    mutable bool m_isParentFrame;
 };
 
 } // namespace OpenSim

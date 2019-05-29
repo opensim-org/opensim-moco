@@ -41,12 +41,14 @@ class OSIMMOCO_API MocoControlTrackingCost : public MocoCost {
     OpenSim_DECLARE_CONCRETE_OBJECT(MocoControlTrackingCost, MocoCost);
 
 public:
-    MocoControlTrackingCost() { constructProperties(); };
+    MocoControlTrackingCost() {
+        constructProperties();
+    };
     MocoControlTrackingCost(std::string name) : MocoCost(std::move(name)) {
         constructProperties();
     }
     MocoControlTrackingCost(std::string name, double weight)
-            : MocoCost(std::move(name), weight) {
+        : MocoCost(std::move(name), weight) {
         constructProperties();
     }
     /// Provide the path to a data file containing reference values for the
@@ -54,8 +56,8 @@ public:
     /// control variable, e.g., `/forceset/soleus_r`. If the column in the 
     /// reference is for a control variable associated with an non-scalar 
     /// actuator, the name of the variable in the path must include the index 
-    /// for the actuator control, e.g., '/forceset/body_actuator_0', where 
-    /// 'body_actuator' is the name of the actuator and '_0' specifies the 
+    /// for the actuator control, e.g., `/forceset/body_actuator_0`, where 
+    /// 'body_actuator' is the name of the actuator and `_0` specifies the 
     /// control index. Calling this function clears the table provided via 
     /// setReference(), if any. The file is not loaded until the MocoProblem 
     /// is initialized.
@@ -74,7 +76,7 @@ public:
     /// Set the weight for an individual control variable. If a weight is
     /// already set for the requested control, then the provided weight
     /// replaces the previous weight. An exception is thrown if a weight
-    /// for an unknown state is provided.
+    /// for an unknown control is provided.
     void setWeight(const std::string& controlName, const double& weight) {
         if (get_control_weights().contains(controlName)) {
             upd_control_weights().get(controlName).setWeight(weight);
@@ -85,10 +87,7 @@ public:
     /// Provide a MocoWeightSet to weight the control variables in the cost.
     /// Replaces the weight set if it already exists.
     void setWeightSet(const MocoWeightSet& weightSet) {
-        for (int w = 0; w < weightSet.getSize(); ++w) {
-            const auto& weight = weightSet[w];
-            setWeight(weight.getName(), weight.getWeight());
-        }
+        upd_control_weights() = weightSet;
     }
 
     /// If no reference file has been provided, this returns an empty string.
@@ -96,7 +95,7 @@ public:
 
     /// Specify whether or not extra columns in the reference are allowed.
     /// If set true, the extra references will be ignored by the cost.
-    /// If false, extra reference will cause an Exception to be raised.
+    /// If false, extra references will cause an Exception to be raised.
     void setAllowUnusedReferences(bool tf) {
         set_allow_unused_references(tf);
     }
@@ -105,13 +104,13 @@ protected:
     // TODO check that the reference covers the entire possible time range.
     void initializeOnModelImpl(const Model& model) const override;
     void calcIntegralCostImpl(const SimTK::State& state,
-            double& integrand) const override;
+        double& integrand) const override;
 
 private:
     OpenSim_DECLARE_PROPERTY(reference_file, std::string,
-        "Path to file (.sto, .csv, ...) containing values of states "
-        "(coordinates, speeds, activation, etc.) to track. Column labels "
-        "should be state variable paths, e.g., 'knee/flexion/value'");
+        "Path to file (.sto, .csv, ...) containing values of controls "
+        "(joint moments, excitations, etc.) to track. Column labels "
+        "should be control variable paths, e.g., '/forceset/soleus_r'");
 
     OpenSim_DECLARE_PROPERTY(allow_unused_references, bool,
         "Flag to determine whether or not references contained in the "
@@ -128,8 +127,8 @@ private:
     }
 
     TimeSeriesTable m_table;
-    mutable GCVSplineSet m_refsplines;
-    mutable std::vector<int> m_controlIndices;
+    mutable GCVSplineSet m_ref_splines;
+    mutable std::vector<int> m_control_indices;
     mutable std::vector<double> m_control_weights;
 };
 

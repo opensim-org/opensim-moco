@@ -24,7 +24,7 @@
 #include "MocoCost/MocoControlCost.h"
 #include "MocoCost/MocoSumSquaredStateCost.h"
 #include "MocoProblem.h"
-#include "MocoTool.h"
+#include "MocoStudy.h"
 #include "MocoUtilities.h"
 
 #include <OpenSim/Common/FileAdapter.h>
