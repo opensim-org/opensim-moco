@@ -49,6 +49,8 @@ set(MOCO_SOURCES
         MocoParameter.cpp
         MocoConstraint.h
         MocoConstraint.cpp
+        MocoTrack.h
+        MocoTrack.cpp
         MocoControlConstraint.h
         MocoControlConstraint.cpp
         InverseMuscleSolver/InverseMuscleSolver.h
@@ -93,11 +95,12 @@ set(MOCO_SOURCES
         MocoCasADiSolver/CasOCHermiteSimpson.h
         MocoCasADiSolver/CasOCHermiteSimpson.cpp
         MocoCasADiSolver/CasOCIterate.h
-        MocoInverse.h
         MocoInverse.cpp
-        MocoTrack.h
-        MocoTrack.cpp
-        Common/TableProcessor.h)
+        MocoInverse.h
+        Common/TableProcessor.h
+        ModelProcessor.h
+        MocoTool.cpp
+        MocoTool.h)
 if(MOCO_WITH_TROPTER)
     list(APPEND MOCO_SOURCES
             tropter/TropterProblem.h

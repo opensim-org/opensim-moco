@@ -6,7 +6,7 @@ import org.opensim.modeling.*;
 %% Part 1: Torque-driven Predictive Problem
 % Part 1a: Get a pre-configured MocoTool and set a torque-driven model on
 % the underlying MocoProblem.
-moco = configureMocoTool();
+moco = configureMocoStudy();
 problem = moco.updProblem();
 problem.setModelCopy(getTorqueDrivenModel());
 
@@ -26,7 +26,7 @@ moco.visualize(predictSolution);
 %% Part 2: Torque-driven Tracking Problem
 % Part 2a: Get a fresh MocoTool and set the torque-driven model on the
 % problem.
-moco = configureMocoTool();
+moco = configureMocoStudy();
 problem = moco.updProblem();
 problem.setModelCopy(getTorqueDrivenModel());
 
@@ -100,7 +100,7 @@ compareInverseSolutions(inverseSolution, inverseDeviceSolution);
 
 end
 
-function [moco] = configureMocoTool()
+function [moco] = configureMocoStudy()
 
 import org.opensim.modeling.*;
 

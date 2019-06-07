@@ -69,10 +69,10 @@ Model createMuscleDrivenModel() {
     return model;
 }
 
-MocoTool configureMocoTool() {
+MocoStudy configureMocoStudy() {
 
     // Create a MocoTool instance.
-    MocoTool moco;
+    MocoStudy moco;
 
     // Get the empty MocoSolver (here MocoCasADiSolver) from the MocoTool.
     auto& solver = moco.initCasADiSolver();
@@ -108,7 +108,7 @@ MocoTool configureMocoTool() {
 
 int main() {
 
-    //MocoTool moco = configureMocoTool();
+    //MocoTool moco = configureMocoStudy();
     //auto& problem = moco.updProblem();
     //problem.setModelCopy(createTorqueDrivenModel());
     //problem.addCost<MocoControlCost>();
@@ -122,7 +122,7 @@ int main() {
     //moco.visualize(predictSolution);
 
 
-    //MocoTool mocoTracking = configureMocoTool();
+    //MocoTool mocoTracking = configureMocoStudy();
     //auto& problemTracking = mocoTracking.updProblem();
     //problemTracking.setModelCopy(createTorqueDrivenModel());
 
@@ -142,7 +142,7 @@ int main() {
     //mocoTracking.visualize(trackingSolution);
 
 
-    MocoTool mocoMusclePredict = configureMocoTool();
+    MocoStudy mocoMusclePredict = configureMocoStudy();
     auto& problemMusclePredict = mocoMusclePredict.updProblem();
     problemMusclePredict.setModelCopy(createMuscleDrivenModel());
 

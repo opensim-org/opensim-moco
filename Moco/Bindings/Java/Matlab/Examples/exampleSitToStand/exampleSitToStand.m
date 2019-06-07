@@ -45,7 +45,7 @@ compareInverseSolutions(inverseSolution, inverseDeviceSolution);
 
 end
 
-function [moco] = configureMocoTool()
+function [moco] = configureMocoStudy()
 
 import org.opensim.modeling.*;
 

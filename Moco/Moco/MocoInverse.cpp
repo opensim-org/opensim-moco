@@ -33,32 +33,17 @@
 using namespace OpenSim;
 
 void MocoInverse::constructProperties() {
-
-    constructProperty_initial_time();
-    constructProperty_final_time();
-    constructProperty_mesh_interval(0.02);
-    constructProperty_kinematics_file("");
+    constructProperty_kinematics(TableProcessor());
     constructProperty_kinematics_allow_extra_columns(false);
-    constructProperty_lowpass_cutoff_frequency_for_kinematics(-1);
-    constructProperty_external_loads_file("");
-    constructProperty_ignore_activation_dynamics(false);
-    constructProperty_ignore_tendon_compliance(false);
-    constructProperty_create_reserve_actuators(-1);
     constructProperty_minimize_sum_squared_states(false);
     constructProperty_tolerance(1e-3);
     constructProperty_max_iterations();
     constructProperty_output_paths();
 }
 
-void MocoInverse::writeTableToFile(
-        const TimeSeriesTable& table, const std::string& filepath) const {
-    DataAdapter::InputTables tables = {{"table", &table}};
-    FileAdapter::writeFile(tables, filepath);
-}
+MocoStudy MocoInverse::initialize() const { return initializeInternal().first; }
 
-MocoTool MocoInverse::initialize() const { return initializeInternal().first; }
-
-std::pair<MocoTool, TimeSeriesTable> MocoInverse::initializeInternal() const {
+std::pair<MocoStudy, TimeSeriesTable> MocoInverse::initializeInternal() const {
     using SimTK::Pathname;
     // Get the directory containing the setup file.
     std::string setupDir;
@@ -69,60 +54,11 @@ std::pair<MocoTool, TimeSeriesTable> MocoInverse::initializeInternal() const {
                 dontApplySearchPath, setupDir, fileName, extension);
     }
 
-    Model model(m_model);
-    model.finalizeFromProperties();
-
-    // Alter muscle properties.
-    // ------------------------
-    for (auto& muscle : model.updComponentList<Muscle>()) {
-        if (get_ignore_activation_dynamics()) {
-            muscle.set_ignore_activation_dynamics(true);
-        }
-        if (get_ignore_tendon_compliance()) {
-            muscle.set_ignore_tendon_compliance(true);
-        }
-    }
-
-    // ExternalLoads.
-    // --------------
-    InverseDynamicsTool idTool;
-    if (!get_external_loads_file().empty()) {
-        idTool.createExternalLoads(get_external_loads_file(), model);
-    }
+    Model model = get_model().process();
 
     model.initSystem();
 
-    // Load kinematics.
-    // ----------------
-    std::string kinematicsFilePath =
-            Pathname::getAbsolutePathnameUsingSpecifiedWorkingDirectory(
-                    setupDir, get_kinematics_file());
-
-    FileAdapter::OutputTables tables =
-            FileAdapter::readFile(kinematicsFilePath);
-    // There should only be one table.
-    OPENSIM_THROW_IF(tables.size() != 1, Exception,
-            format("Expected the kinematics file '%s' to contain 1 table, but "
-                   "it "
-                   "contains %i tables.",
-                    kinematicsFilePath, tables.size()));
-    // Get the first table.
-    auto* kinematicsRaw =
-            dynamic_cast<TimeSeriesTable*>(tables.begin()->second.get());
-    OPENSIM_THROW_IF(!kinematicsRaw, Exception,
-            "Expected the provided kinematics file to contain a (scalar) "
-            "TimeSeriesTable, but it contains a different type of table.");
-    if (kinematicsRaw->hasTableMetaDataKey("inDegrees") &&
-            kinematicsRaw->getTableMetaDataAsString("inDegrees") == "yes") {
-        model.getSimbodyEngine().convertDegreesToRadians(*kinematicsRaw);
-    }
-    TimeSeriesTable kinematics;
-    if (get_lowpass_cutoff_frequency_for_kinematics() != -1) {
-        kinematics = filterLowpass(*kinematicsRaw,
-                get_lowpass_cutoff_frequency_for_kinematics(), true);
-    } else {
-        kinematics = *kinematicsRaw;
-    }
+    TimeSeriesTable kinematics = get_kinematics().process(setupDir, &model);
 
     // allowMissingColumns = true: we only need kinematics.
     // allowExtraColumns = user-specified.
@@ -131,51 +67,26 @@ std::pair<MocoTool, TimeSeriesTable> MocoInverse::initializeInternal() const {
             convertTableToStorage(kinematics), true,
             get_kinematics_allow_extra_columns(), true);
 
-    const auto coords = model.getCoordinatesInMultibodyTreeOrder();
-    std::vector<std::string> coordSVNames;
-    for (const auto& coord : coords) {
-        coordSVNames.push_back(coord->getStateVariableNames()[0]);
-    }
-
-    // Create PositionMotion.
-    // ----------------------
-    auto posmot = PositionMotion::createFromTable(
-            model, statesTraj.exportToTable(model, coordSVNames));
+    auto posmot = PositionMotion::createFromStatesTrajectory(model, statesTraj);
     posmot->setName("position_motion");
     const auto* posmotPtr = posmot.get();
     model.addComponent(posmot.release());
 
     model.initSystem();
-    if (get_create_reserve_actuators() != -1) {
-        ModelFactory::createReserveActuators(
-                model, get_create_reserve_actuators());
-    }
 
     // Configure MocoStudy.
     // --------------------
-    MocoTool moco;
+    MocoStudy moco;
     auto& problem = moco.updProblem();
-
-    // TODO: Move this elsewhere!
-    for (const auto& muscle : model.getComponentList<Muscle>()) {
-        if (!muscle.get_ignore_activation_dynamics()) {
-            problem.setStateInfo(muscle.getAbsolutePathString() + "/activation",
-                    // TODO: Use the muscle's minimum_activation.
-                    {0.01, 1});
-        }
-        if (!muscle.get_ignore_tendon_compliance()) {
-            // TODO shouldn't be necessary.
-            problem.setStateInfo(
-                    muscle.getAbsolutePathString() + "/norm_fiber_length",
-                    {0.2, 1.8});
-        }
-    }
     problem.setModelCopy(model);
 
-    const auto timeInfo = calcInitialAndFinalTimes(
-            kinematicsRaw->getIndependentColumn(), {}, get_mesh_interval());
+    TimeInfo timeInfo;
+    updateTimeInfo("kinematics",
+            kinematics.getIndependentColumn().front(),
+            kinematics.getIndependentColumn().back(),
+            timeInfo);
     // const double spaceForFiniteDiff = 1e-3;
-    problem.setTimeBounds(timeInfo.initialTime, timeInfo.finalTime);
+    problem.setTimeBounds(timeInfo.initial, timeInfo.final);
 
     // TODO: Allow users to specify costs flexibly.
     problem.addCost<MocoControlCost>("excitation_effort");
@@ -194,10 +105,9 @@ std::pair<MocoTool, TimeSeriesTable> MocoInverse::initializeInternal() const {
     }
     // The sparsity detection works fine with DeGrooteFregly2016Muscle.
     solver.set_optim_sparsity_detection("random");
-    // solver.set_optim_hessian_approximation("exact");
     // Forward is 3x faster than central.
     solver.set_optim_finite_difference_scheme("forward");
-    solver.set_interpolate_control_midpoints(false);
+    solver.set_transcription_scheme("trapezoidal");
 
     solver.set_num_mesh_points(timeInfo.numMeshPoints);
     if (!getProperty_max_iterations().empty()) {
@@ -209,7 +119,7 @@ std::pair<MocoTool, TimeSeriesTable> MocoInverse::initializeInternal() const {
 }
 
 MocoInverseSolution MocoInverse::solve() const {
-    std::pair<MocoTool, TimeSeriesTable> init = initializeInternal();
+    std::pair<MocoStudy, TimeSeriesTable> init = initializeInternal();
     const auto& moco = init.first;
 
     MocoSolution mocoSolution = moco.solve().unseal();
@@ -217,6 +127,7 @@ MocoInverseSolution MocoInverse::solve() const {
     const auto& statesTrajTable = init.second;
     mocoSolution.insertStatesTrajectory(statesTrajTable);
     MocoInverseSolution solution;
+    solution.setMocoSolution(moco.solve().unseal());
     solution.setMocoSolution(mocoSolution);
 
     // if (getProperty_output_paths().size()) {
@@ -229,45 +140,4 @@ MocoInverseSolution MocoInverse::solve() const {
     //        outputPaths));
     //}
     return solution;
-}
-
-MocoInverse::TimeInfo MocoInverse::calcInitialAndFinalTimes(
-        const std::vector<double>& time0, const std::vector<double>& time1,
-        const double& meshInterval) const {
-
-    TimeInfo out;
-    double initialTimeFromData = time0.front();
-    double finalTimeFromData = time0.back();
-    if (time1.size()) {
-        initialTimeFromData = std::max(initialTimeFromData, time1.front());
-        finalTimeFromData = std::min(finalTimeFromData, time1.back());
-    }
-    if (!getProperty_initial_time().empty()) {
-        OPENSIM_THROW_IF_FRMOBJ(get_initial_time() < initialTimeFromData,
-                Exception,
-                format("Provided initial time of %g is less than what is "
-                       "available from data, %g.",
-                        get_initial_time(), initialTimeFromData));
-        out.initialTime = get_initial_time();
-    } else {
-        out.initialTime = initialTimeFromData;
-    }
-    if (!getProperty_final_time().empty()) {
-        OPENSIM_THROW_IF_FRMOBJ(get_final_time() > finalTimeFromData, Exception,
-                format("Provided final time of %g is greater than what "
-                       "is available from data, %g.",
-                        get_final_time(), finalTimeFromData));
-        out.finalTime = get_final_time();
-    } else {
-        out.finalTime = finalTimeFromData;
-    }
-    OPENSIM_THROW_IF_FRMOBJ(out.finalTime < out.initialTime, Exception,
-            format("Initial time of %g is greater than final time of %g.",
-                    out.initialTime, out.finalTime));
-
-    // We do not want to end up with a lower mesh frequency than requested.
-    out.numMeshPoints =
-            (int)std::ceil((out.finalTime - out.initialTime) / (meshInterval)) +
-            1;
-    return out;
 }

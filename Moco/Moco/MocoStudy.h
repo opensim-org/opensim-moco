@@ -148,7 +148,7 @@ public:
         set_solver(SolverType());
     }
 
-    /// @precondition If not using MucoTropterSolver or MucoCasADiSolver, you
+    /// @precondition If not using MocoTropterSolver or MocoCasADiSolver, you
     /// must invoke setCustomSolver() first.
     template <typename SolverType>
     SolverType& initSolver() {
@@ -177,8 +177,6 @@ OSIMMOCO_API MocoTropterSolver& MocoStudy::initSolver<MocoTropterSolver>();
 
 template <>
 OSIMMOCO_API MocoCasADiSolver& MocoStudy::initSolver<MocoCasADiSolver>();
-
-typedef MocoStudy MocoTool;
 
 } // namespace OpenSim
 

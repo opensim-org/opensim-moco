@@ -22,393 +22,6 @@
 
 #include <OpenSim/OpenSim.h>
 
-namespace OpenSim {
-
-//class ControlTrackingCost : public MocoCost {
-//    OpenSim_DECLARE_CONCRETE_OBJECT(ControlTrackingCost, MocoCost);
-//public:
-//    ControlTrackingCost() {}
-//    ControlTrackingCost(std::string name, double weight)
-//            : MocoCost(std::move(name), weight) {
-//        constructProperties();
-//    }
-//
-//    void setReference(const TimeSeriesTable& ref) {
-//        m_table = ref;
-//    }
-//    /// Set the weight for an individual control variable. If a weight is
-//    /// already set for the requested control, then the provided weight
-//    /// replaces the previous weight. An exception is thrown if a weight
-//    /// for an unknown state is provided.
-//    void setWeight(const std::string& controlName, const double& weight) {
-//        if (get_control_weights().contains(controlName)) {
-//            upd_control_weights().get(controlName).setWeight(weight);
-//        }
-//        else {
-//            upd_control_weights().cloneAndAppend({controlName, weight});
-//        }
-//    }
-//    /// Provide a MocoWeightSet to weight the control variables in the cost.
-//    /// Replaces the weight set if it already exists.
-//    void setWeightSet(const MocoWeightSet& weightSet) {
-//        for (int w = 0; w < weightSet.getSize(); ++w) {
-//            const auto& weight = weightSet[w];
-//            setWeight(weight.getName(), weight.getWeight());
-//        }
-//    }
-//
-//protected:
-//    void initializeOnModelImpl(const Model& model) const override {
-//        // Convert data table to splines.
-//        auto controlsFiltered = filterLowpass(m_table, 6, true);
-//
-//        auto allSplines = GCVSplineSet(controlsFiltered);
-//
-//        // Get all expected control names.
-//        std::vector<std::string> controlNames;
-//        const auto modelPath = model.getAbsolutePath();
-//        for (const auto& actu : model.getComponentList<Actuator>()) {
-//            std::string actuPath =
-//                actu.getAbsolutePath().formRelativePath(modelPath).toString();
-//            if (actu.numControls() == 1) {
-//                controlNames.push_back(actuPath);
-//            } else {
-//                for (int i = 0; i < actu.numControls(); ++i) {
-//                    controlNames.push_back(actuPath + "_" + std::to_string(i));
-//                }
-//            }
-//        }
-//
-//        // TODO this assumes controls are in the same order as actuators.
-//        // The loop that processes weights (two down) assumes that controls are 
-//        // in the same order as actuators. However, the control indices are 
-//        // allocated in the order in which addToSystem() is invoked (not 
-//        // necessarily the order used by getComponentList()). So until we can be 
-//        // absolutely sure that the controls are in the same order as actuators, 
-//        // we run the following check: in order, set an actuator's control 
-//        // signal(s) to NaN and ensure the i-th control is NaN.
-//        {
-//            const SimTK::State state = model.getWorkingState();
-//            int i = 0;
-//            auto modelControls = model.updControls(state);
-//            for (const auto& actu : model.getComponentList<Actuator>()) {
-//                int nc = actu.numControls();
-//                SimTK::Vector origControls(nc);
-//                SimTK::Vector nan(nc, SimTK::NaN);
-//                actu.getControls(modelControls, origControls);
-//                actu.setControls(nan, modelControls);
-//                for (int j = 0; j < nc; ++j) {
-//                    OPENSIM_THROW_IF_FRMOBJ(!SimTK::isNaN(modelControls[i]),
-//                        Exception, "Internal error: actuators are not in the "
-//                        "expected order. Submit a bug report.");
-//                    ++i;
-//                }
-//                actu.setControls(origControls, modelControls);
-//            }
-//        }
-//
-//        for (int iref = 0; iref < allSplines.getSize(); ++iref) {
-//            const auto& refName = allSplines[iref].getName();
-//
-//            double refWeight = 1.0;
-//            if (get_control_weights().contains(refName)) {
-//                refWeight = get_control_weights().get(refName).getWeight();
-//            }
-//            m_control_weights.push_back(refWeight);
-//
-//            int i = 0;
-//            for (const auto& actu : model.getComponentList<Actuator>()) {
-//                std::string actuPath =
-//                    actu.getAbsolutePath().formRelativePath(modelPath).toString();
-//                if (actu.numControls() == 1) {
-//                    if (refName == actuPath) {
-//                        m_refsplines.cloneAndAppend(allSplines[iref]);
-//                        m_controlIndices.push_back(i);
-//                    }
-//
-//                    ++i;
-//                } else {
-//                    for (int j = 0; j < actu.numControls(); ++j) {
-//                        std::string controlName = actuPath + "_" + 
-//                                std::to_string(j);
-//                        if (refName == controlName) {
-//                            m_refsplines.cloneAndAppend(allSplines[iref]);
-//                            m_controlIndices.push_back(i);
-//                        }
-//
-//                        ++i;
-//                    }
-//                }
-//            }
-//        }
-//    }
-//
-//    void calcIntegralCostImpl(const SimTK::State& state,
-//            double& integrand) const override {
-//
-//        const auto& time = state.getTime();
-//        SimTK::Vector timeVec(1, time);
-//        
-//        const auto& controls = getModel().getControls(state);
-//        integrand = 0;
-//        // TODO cache the reference coordinate values at the mesh points, 
-//        // rather than evaluating the spline.
-//        for (int iref = 0; iref < m_refsplines.getSize(); ++iref) {
-//            const auto& refValue = m_refsplines[iref].calcValue(timeVec);
-//            integrand += m_control_weights[iref] * 
-//                         pow(controls[m_controlIndices[iref]] - refValue, 2);
-//        }
-//    }
-//
-//private:
-//    OpenSim_DECLARE_PROPERTY(control_weights, MocoWeightSet,
-//        "Set of weight objects to weight the tracking of individual "
-//        "control variables in the cost.");
-//
-//    void constructProperties() {
-//        constructProperty_control_weights(MocoWeightSet());
-//    }
-//
-//    TimeSeriesTable m_table;
-//    mutable GCVSplineSet m_refsplines;
-//    mutable std::vector<int> m_controlIndices;
-//    mutable std::vector<double> m_control_weights;
-//
-//};
-
-
-class TransformTrackingCost : public MocoCost {
-    OpenSim_DECLARE_CONCRETE_OBJECT(TransformTrackingCost, MocoCost);
-public:
-    TransformTrackingCost() {}
-    TransformTrackingCost(std::string name, double weight)
-        : MocoCost(std::move(name), weight) {}
-
-    void setStatesTrajectory(const StatesTrajectory& statesTraj) {
-        m_statesTraj = statesTraj;
-    }
-    void setComponentPaths(const std::vector<std::string>& compPaths) {
-        m_compPaths = compPaths;
-    }
-    void setTrackedComponents(const std::string& trackedComps) {
-        m_trackedComps = trackedComps;
-    }
-    TimeSeriesTable getTable() {
-        return m_table;
-    }
-
-protected:
-    void initializeOnModelImpl(const Model& model) const override {
-
-        OPENSIM_THROW_IF(!(m_trackedComps == "all" ||
-                           m_trackedComps == "rotation" || 
-                           m_trackedComps == "position"), Exception,
-            format("Tracked component %s not recognized.", m_trackedComps));
-
-        m_table = getTransformTrajectories(model, m_statesTraj, 
-                m_compPaths);
-        m_refsplines = GCVSplineSet(m_table);
-
-        for (int i = 0; i < m_compPaths.size(); ++i) {
-            const auto& compPath = m_compPaths[i];
-            const auto& frame = model.getComponent<Frame>(compPath);
-            m_model_frames.emplace_back(&frame);
-        }
-
-    }
-    void calcIntegralCostImpl(const SimTK::State& state,
-        double& integrand) const override {
-        const auto& time = state.getTime();
-        getModel().realizePosition(state);
-        SimTK::Vector timeVec(1, time);
-
-        for (int iframe = 0; iframe < (int)m_model_frames.size(); ++iframe) {
-            const auto& transform = 
-                m_model_frames[iframe]->getTransformInGround(state);
-            SimTK::Vector error(4, 0.0);
-
-            // Rotation errors.
-            if (m_trackedComps == "all" || m_trackedComps == "rotation") {
-                const auto& R_GD = transform.R(); 
-                const SimTK::Quaternion e(
-                    m_refsplines[7*iframe].calcValue(timeVec),
-                    m_refsplines[7*iframe + 1].calcValue(timeVec),
-                    m_refsplines[7*iframe + 2].calcValue(timeVec),
-                    m_refsplines[7*iframe + 3].calcValue(timeVec));
-                const SimTK::Rotation R_GM(e);
-                const SimTK::Rotation R_DM = ~R_GD*R_GM;
-                const SimTK::Vec4 aa_DM = R_DM.convertRotationToAngleAxis();
-                error[0] = aa_DM[0];
-            }
-
-            // Position errors.
-            if (m_trackedComps == "all" || m_trackedComps == "position") {
-                const auto& p = transform.p();
-                for (int i = 0; i < 3; ++i) {
-                    error[i+1] = (p(i) - 
-                        m_refsplines[7*iframe + 4+i].calcValue(timeVec));
-                }
-            }
-
-            // Add this components transform error to the cost.
-            integrand += error.normSqr();
-        }
-    }
-
-
-private:
-    StatesTrajectory m_statesTraj;
-    std::vector<std::string> m_compPaths;
-    std::string m_trackedComps = "all";
-    mutable GCVSplineSet m_refsplines;
-    mutable std::vector<SimTK::ReferencePtr<const Frame>> m_model_frames;
-    mutable TimeSeriesTable m_table;
-
-    TimeSeriesTable getTransformTrajectories(Model model,
-            const StatesTrajectory& statesTraj, 
-            std::vector<std::string> compPaths) const {
-
-        // Create independent time vector and construct table.
-        std::vector<double> indCol;
-        for (const auto& state : statesTraj) {
-            indCol.push_back((double)state.getTime());
-        }
-        TimeSeriesTable table(indCol);
-
-        // Append columns.
-        model.initSystem();
-        SimTK::Matrix mat((int)indCol.size(), 7*(int)compPaths.size());
-        std::vector<std::string> colLabels;
-        for (int row = 0; row < statesTraj.getSize(); ++row) {
-            auto state = statesTraj.get(row);
-            model.getSystem().prescribe(state);
-            model.realizePosition(state);
-
-            int col = 0;
-            for (const auto& compPath : compPaths) {
-                SimTK::Transform transform =
-                    model.getComponent(compPath)
-                    .getOutputValue<SimTK::Transform>(state, "transform");
-
-                // Rotations.
-                const auto& R = transform.R();
-                auto e = R.convertRotationToQuaternion();
-                for (int i = 0; i < 4; ++i) {
-                    mat.updElt(row, col++) = e[i];
-                    if (!row) {
-                        colLabels.push_back(format("%s/transform_e%i",
-                            compPath, i + 1));
-                    }
-                }
-                // Position vector.
-                const auto& p = transform.p();
-                for (int i = 0; i < 3; ++i) {
-                    mat.updElt(row, col++) = p(i);
-                    if (!row) {
-                        colLabels.push_back(format("%s/transform_p%i", compPath,
-                            i + 1));
-                    }
-                }
-            }
-        }
-
-        table.updMatrix() = mat;
-        table.setColumnLabels(colLabels);
-
-        return table;
-    }
-};
-
-class COPTrackingCost : public MocoCost {
-    OpenSim_DECLARE_CONCRETE_OBJECT(COPTrackingCost, MocoCost);
-public:
-    COPTrackingCost() {}
-    COPTrackingCost(std::string name, double weight)
-        : MocoCost(std::move(name), weight) {}
-
-    void setReference(const TimeSeriesTable& ref) {
-        m_ref = ref;
-    }
-    void setExternalForceNames(const std::vector<std::string>& names) {
-        m_external_force_names = names;
-    }
-protected:
-    void initializeOnModelImpl(const Model& model) const override {
-
-        auto colLabels = m_ref.getColumnLabels();
-        m_refsplines = GCVSplineSet(m_ref, colLabels);
-        std::vector<std::string> suffixes = {"x", "y", "z"};
-
-        for (const auto& extForceName : m_external_force_names) {
-            const auto& extForce = 
-                    model.getComponent<ExternalForce>(extForceName);
-            m_model_ext_forces.emplace_back(&extForce);
-
-            // Find the reference data column labels that match the COP names
-            // and save their indices. 
-            for (int i = 0; i < colLabels.size(); ++i) {
-                for (const auto& suffix : suffixes) {
-                    if (colLabels[i] == 
-                            (extForce.getPointIdentifier() + suffix)) {
-                        m_refindices.push_back(i);
-                    }
-                }
-            }
-        }
-    }
-
-    void calcIntegralCostImpl(const SimTK::State& state,
-            double& integrand) const override {
-        const auto& time = state.getTime();
-        // Need to realize to velocity to get controls.
-        getModel().realizeDynamics(state);
-        SimTK::Vector timeVec(1, time);
-
-        for (int iforce = 0; iforce < m_model_ext_forces.size(); ++iforce) {
-            const auto& extforce = m_model_ext_forces[iforce];
-
-            int point_x_idx = m_refindices[3*iforce];
-            int point_y_idx = m_refindices[3*iforce + 1];
-            int point_z_idx = m_refindices[3*iforce + 2];
-
-            SimTK::Vec3 copRef(
-                    m_refsplines[point_x_idx].calcValue(timeVec),
-                    m_refsplines[point_y_idx].calcValue(timeVec),
-                    m_refsplines[point_z_idx].calcValue(timeVec));
-
-            SimTK::Vec3 copModel = extforce->getPointAtTime(time);
-            
-            // Convert points to body frame.
-            // TODO: this assumes that the data is in the same frame as the
-            // COP in the model actuator.
-            if (extforce->getPointExpressedInBodyName() == "ground") {
-
-                const auto& bodyName = extforce->getAppliedToBodyName();
-                const auto& body = 
-                        getModel().getComponent<Body>("/bodyset/" + bodyName);
-
-                copModel = getModel().getGround().
-                    findStationLocationInAnotherFrame(state, copModel,
-                        body);
-            }
-
-            integrand += (copModel - copRef).normSqr() / copRef.norm();
-
-        }
-    }
-
-private:
-    TimeSeriesTable m_ref;
-    mutable std::vector<int> m_refindices;
-    mutable GCVSplineSet m_refsplines;
-    std::vector<std::string> m_external_force_names;
-    mutable std::vector<SimTK::ReferencePtr<const ExternalForce>> 
-    m_model_ext_forces;
-
-};
-
-} // namespace OpenSim
-
 using namespace OpenSim;
 
 void addCoordinateActuator(Model& model, std::string coordName, 
@@ -421,11 +34,15 @@ void addCoordinateActuator(Model& model, std::string coordName,
     actu->setCoordinate(&coordSet.get(coordName));
     actu->setOptimalForce(optimalForce);
     actu->setMinControl(-1);
-    actu->setMaxControl(1);
+    if (coordName.find("ankle_angle") != std::string::npos) {
+        actu->setMaxControl(0);
+    } else {
+        actu->setMaxControl(1);
+    }
     model.addComponent(actu);
 }
 
-void transformReactionToBodyFrame(const MocoTool& moco, 
+void transformReactionToBodyFrame(const MocoStudy& moco, 
         const MocoIterate& iterate, 
         TimeSeriesTable_<SimTK::SpatialVec>& reactionTable) {
     auto model = moco.getProblem().createRep().getModelBase();
@@ -459,54 +76,6 @@ void transformReactionToBodyFrame(const MocoTool& moco,
             row.updElt(0, ielt) = newElt;
         }
     }
-}
-
-void transformExternalForceToBodyFrame(const MocoTool& moco,
-        const MocoIterate& iterate,
-        const std::string& extLoadsFile) {
-
-    auto model = moco.getProblem().createRep().getModelBase();
-    model.initSystem();
-
-    const auto& ground = model.getGround();
-
-    auto statesTraj = iterate.exportToStatesTrajectory(moco.getProblem());
-    std::vector<double> time;
-    for (const auto& state : statesTraj) {
-        time.push_back(state.getTime());
-    }
-    TimeSeriesTableVec3 table(time);
-    for (const auto& extForce : model.getComponentList<ExternalForce>()) {
-        const auto& bodyName = extForce.getAppliedToBodyName();
-        const auto& body = model.getComponent<Body>("/bodyset/" + bodyName);
-
-        SimTK::Vector_<SimTK::Vec3> moment(statesTraj.getSize());
-        SimTK::Vector_<SimTK::Vec3> force(statesTraj.getSize());
-        SimTK::Vector_<SimTK::Vec3> point(statesTraj.getSize());
-        for (int istate = 0; istate < time.size(); ++istate) {
-            const auto& state = statesTraj.get(istate);
-            model.realizeAcceleration(state);
-
-            auto time = state.getTime();
-            SimTK::Vec3 momentInGround = extForce.getTorqueAtTime(time);
-            SimTK::Vec3 forceInGround = extForce.getForceAtTime(time);
-            SimTK::Vec3 pointInGround = extForce.getPointAtTime(time);
-
-            moment[istate] = ground.expressVectorInAnotherFrame(state,
-                momentInGround, body);
-            force[istate] = ground.expressVectorInAnotherFrame(state,
-                forceInGround, body);
-            point[istate] = ground.expressVectorInAnotherFrame(state,
-                pointInGround, body);
-        }
-
-        table.appendColumn(extForce.getTorqueIdentifier(), moment);
-        table.appendColumn(extForce.getForceIdentifier(), force);
-        table.appendColumn(extForce.getPointIdentifier(), point);
-    }
-
-    TimeSeriesTable tableFlat = table.flatten({"x", "y", "z"});
-    STOFileAdapter::write(tableFlat, "forces_transformed_to_body.sto");
 }
 
 TimeSeriesTable getTransformTrajectories(Model model,
@@ -589,8 +158,8 @@ TimeSeriesTable computeTransformErrors(Model model,
     TimeSeriesTable errorTable;
     std::vector<std::string> errorLabels;
 
-    for (int i = 0; i < time.size(); ++i) {
-        SimTK::RowVector error(4*compPaths.size(), 0.0);
+    for (int i = 0; i < (int)time.size(); ++i) {
+        SimTK::RowVector error(4*(int)compPaths.size(), 0.0);
         SimTK::Vector timeVec(1, time[i]);
 
         for (int j = 0; j < compPaths.size(); ++j) {
@@ -633,71 +202,80 @@ TimeSeriesTable computeTransformErrors(Model model,
     return errorTable;
 }
 
-Model createModel(bool keepMuscles = false) {
+Model createModel(bool removeMuscles = false, bool addAnkleExo = false) {
 
-    Model model("subject_walk_rra_adjusted.osim");
-    if (!keepMuscles) model.updForceSet().clearAndDestroy();
+    Model model("subject_walk_rra_adjusted_armless.osim");
+    if (removeMuscles) {
+        model.updForceSet().clearAndDestroy();
+    } else {
+        for (auto& musc : model.updComponentList<Muscle>()) {
+            musc.set_ignore_tendon_compliance(true);
+            musc.set_ignore_activation_dynamics(false);
+            //musc.set_max_isometric_force(1.5musc.get_max_isometric_force());
+        }
+    }
     model.initSystem();
 
     // weld joints w/ locked coordinates
-    //replaceJointWithWeldJoint(model, "subtalar_l");
-    //replaceJointWithWeldJoint(model, "subtalar_r");
-    replaceJointWithWeldJoint(model, "mtp_l");
-    replaceJointWithWeldJoint(model, "mtp_r");
-    replaceJointWithWeldJoint(model, "radius_hand_l");
-    replaceJointWithWeldJoint(model, "radius_hand_r");
+    ModelFactory::replaceJointWithWeldJoint(model, "mtp_l");
+    ModelFactory::replaceJointWithWeldJoint(model, "mtp_r");
+    //ModelFactory::replaceJointWithWeldJoint(model, "radius_hand_l");
+    //ModelFactory::replaceJointWithWeldJoint(model, "radius_hand_r");
     // lower body
-    addCoordinateActuator(model, "pelvis_tilt", 10);
-    addCoordinateActuator(model, "pelvis_list", 10);
-    addCoordinateActuator(model, "pelvis_rotation", 10);
-    addCoordinateActuator(model, "pelvis_tx", 10);
-    addCoordinateActuator(model, "pelvis_ty", 10);
-    addCoordinateActuator(model, "pelvis_tz", 10);
-    if (!keepMuscles) {
-        addCoordinateActuator(model, "hip_adduction_l", 100);
-        addCoordinateActuator(model, "hip_adduction_r", 100);
-        addCoordinateActuator(model, "hip_flexion_l", 100);
-        addCoordinateActuator(model, "hip_flexion_r", 100);
-        addCoordinateActuator(model, "hip_rotation_l", 20);
-        addCoordinateActuator(model, "hip_rotation_r", 20);
-        addCoordinateActuator(model, "knee_angle_l", 100);
-        addCoordinateActuator(model, "knee_angle_r", 100);
-        addCoordinateActuator(model, "ankle_angle_l", 250);
-        addCoordinateActuator(model, "ankle_angle_r", 250);
-        addCoordinateActuator(model, "subtalar_angle_r", 100);
-        addCoordinateActuator(model, "subtalar_angle_l", 100);
-    }
+    addCoordinateActuator(model, "pelvis_tilt", 100);
+    addCoordinateActuator(model, "pelvis_list", 100);
+    addCoordinateActuator(model, "pelvis_rotation", 100);
+    addCoordinateActuator(model, "pelvis_tx", 1000);
+    addCoordinateActuator(model, "pelvis_ty", 5000);
+    addCoordinateActuator(model, "pelvis_tz", 1000);
+    // Leave subtalar angle coordinate actuators in, even if we have muscles.
+    addCoordinateActuator(model, "subtalar_angle_r", 100);
+    addCoordinateActuator(model, "subtalar_angle_l", 100);
+    //if (removeMuscles) {
+    addCoordinateActuator(model, "hip_adduction_l", 100);
+    addCoordinateActuator(model, "hip_adduction_r", 100);
+    addCoordinateActuator(model, "hip_flexion_l", 100);
+    addCoordinateActuator(model, "hip_flexion_r", 100);
+    addCoordinateActuator(model, "hip_rotation_l", 100);
+    addCoordinateActuator(model, "hip_rotation_r", 100);
+    addCoordinateActuator(model, "knee_angle_l", 100);
+    addCoordinateActuator(model, "knee_angle_r", 100);
+    addCoordinateActuator(model, "ankle_angle_l", 250);
+    addCoordinateActuator(model, "ankle_angle_r", 250);
+    //}
+    //if (addAnkleExo && !removeMuscles) {
+    //    addCoordinateActuator(model, "ankle_angle_l", 250);
+    //    addCoordinateActuator(model, "ankle_angle_r", 250);
+    //}
     // upper body
-    addCoordinateActuator(model, "elbow_flex_l", 5);
-    addCoordinateActuator(model, "elbow_flex_r", 5);
-    addCoordinateActuator(model, "pro_sup_l", 0.1);
-    addCoordinateActuator(model, "pro_sup_r", 0.1);
-    addCoordinateActuator(model, "arm_add_l", 5);
-    addCoordinateActuator(model, "arm_add_r", 5);
-    addCoordinateActuator(model, "arm_rot_l", 5);
-    addCoordinateActuator(model, "arm_rot_r", 5);
-    addCoordinateActuator(model, "arm_flex_l", 10);
-    addCoordinateActuator(model, "arm_flex_r", 10);
+    //addCoordinateActuator(model, "elbow_flex_l", 5);
+    //addCoordinateActuator(model, "elbow_flex_r", 5);
+    //addCoordinateActuator(model, "pro_sup_l", 0.1);
+    //addCoordinateActuator(model, "pro_sup_r", 0.1);
+    //addCoordinateActuator(model, "arm_add_l", 5);
+    //addCoordinateActuator(model, "arm_add_r", 5);
+    //addCoordinateActuator(model, "arm_rot_l", 5);
+    //addCoordinateActuator(model, "arm_rot_r", 5);
+    //addCoordinateActuator(model, "arm_flex_l", 10);
+    //addCoordinateActuator(model, "arm_flex_r", 10);
     addCoordinateActuator(model, "lumbar_bending", 100);
     addCoordinateActuator(model, "lumbar_extension", 100);
     addCoordinateActuator(model, "lumbar_rotation", 100);
 
-    if (keepMuscles) {
-        model.print("subject_walk_rra_adjusted_updated_muscles.osim");
+    if (removeMuscles) {
+        model.print("subject_walk_rra_adjusted_armless_updated.osim");
     } else {
-        model.print("subject_walk_rra_adjusted_updated.osim");
+        model.print("subject_walk_rra_adjusted_armless_updated_muscles.osim");
     }
 
     return model;
 }
 
-void smoothSolutionControls(std::string statesFile, 
+void smoothSolutionControls(Model model, std::string statesFile, 
         const std::string& guessFile) {
 
     std::cout.rdbuf(LogManager::cout.rdbuf());
     std::cerr.rdbuf(LogManager::cerr.rdbuf());
-
-    Model model = createModel();
 
     MocoTrack track;
     track.setName("smoothed");
@@ -705,15 +283,13 @@ void smoothSolutionControls(std::string statesFile,
     track.set_states_tracking_file(statesFile);
     track.set_lowpass_cutoff_frequency_for_kinematics(6);
     track.set_external_loads_file("grf_walk.xml");
-    track.set_external_loads_mode("applied");
     track.set_guess_type("from_file");
     track.set_guess_file(guessFile);
     track.set_initial_time(0.812);
     track.set_final_time(1.648);
-
     track.set_minimize_controls(0.05);
 
-    MocoTool moco = track.initialize();
+    MocoStudy moco = track.initialize();
 
     auto& solver = moco.updSolver<MocoCasADiSolver>();
     solver.set_optim_constraint_tolerance(1e-4);
@@ -727,149 +303,27 @@ void smoothSolutionControls(std::string statesFile,
     moco.visualize(solution);
 
     TimeSeriesTable_<SimTK::SpatialVec> reactionTable =
-        moco.analyze<SimTK::SpatialVec>(solution,
+        analyze<SimTK::SpatialVec>(model, solution,
         {"/jointset/walker_knee_l/reaction_on_child",
             "/jointset/walker_knee_r/reaction_on_child"});
 
     transformReactionToBodyFrame(moco, solution, reactionTable);
-    TimeSeriesTable reactionTableFlat = reactionTable.flatten();
-    STOFileAdapter::write(reactionTableFlat, 
+    STOFileAdapter::write(reactionTable.flatten(),
         statesFile.replace(statesFile.end() - 4, statesFile.end(),
             "_reactions.sto"));
 }
 
-void solveInverseProblem(std::string kinematicsFile, 
-        bool minimizeReactions = false) {
-
-    auto modelWithMuscles = createModel(true);
-    DeGrooteFregly2016Muscle::replaceMuscles(modelWithMuscles);
-    for (auto& musc : 
-            modelWithMuscles.updComponentList<DeGrooteFregly2016Muscle>()) {
-        musc.set_ignore_passive_fiber_force(true);
-        //musc.set_max_isometric_force(1000*musc.get_max_isometric_force());
-    }
-
-    MocoInverse inverse;
-    inverse.setModel(modelWithMuscles);
-    inverse.set_initial_time(0.815);
-    inverse.set_final_time(1.645);
-    inverse.set_kinematics_file(kinematicsFile);
-    inverse.set_lowpass_cutoff_frequency_for_kinematics(6);
-    inverse.set_kinematics_allow_extra_columns(true);
-    inverse.set_external_loads_file("grf_walk.xml");
-    inverse.set_ignore_tendon_compliance(true);
-    inverse.set_mesh_interval(0.05);
-    inverse.set_create_reserve_actuators(1);
-    inverse.set_minimize_sum_squared_states(true);
-    MocoTool moco = inverse.initialize();
-    if (minimizeReactions) {
-        auto& problem = moco.updProblem();
-        auto* kneeAdductionCost_l =
-            problem.addCost<MocoJointReactionCost>("knee_adduction_cost_l", 0.01);
-        kneeAdductionCost_l->setJointPath("/jointset/walker_knee_l");
-        kneeAdductionCost_l->setExpressedInFramePath("/bodyset/tibia_l");
-        kneeAdductionCost_l->setReactionComponent(0);
-        auto* kneeAdductionCost_r =
-            problem.addCost<MocoJointReactionCost>("knee_adduction_cost_r", 0.01);
-        kneeAdductionCost_r->setJointPath("/jointset/walker_knee_r");
-        kneeAdductionCost_r->setExpressedInFramePath("/bodyset/tibia_r");
-        kneeAdductionCost_r->setReactionComponent(0);
-        auto* kneeVerticalForceCost_l =
-            problem.addCost<MocoJointReactionCost>("knee_vertical_force_cost_l", 0.01);
-        kneeVerticalForceCost_l->setJointPath("/jointset/walker_knee_l");
-        kneeVerticalForceCost_l->setExpressedInFramePath("/bodyset/tibia_l");
-        kneeVerticalForceCost_l->setReactionComponent(4);
-        auto* kneeVerticalForceCost_r =
-            problem.addCost<MocoJointReactionCost>("knee_vertical_force_cost_r", 0.01);
-        kneeVerticalForceCost_r->setJointPath("/jointset/walker_knee_r");
-        kneeVerticalForceCost_r->setExpressedInFramePath("/bodyset/tibia_r");
-        kneeVerticalForceCost_r->setReactionComponent(4);
-    }
-    auto inverseSolution = moco.solve();
-
-    MocoIterate prevSol(kinematicsFile);
-    std::vector<double> time;
-    for (int i = 0; i < prevSol.getTime().size(); ++i) {
-        time.push_back(prevSol.getTime()[i]);
-    }
-
-    inverseSolution.write("temp_inverse_sol.sto");
-    auto inverseSol = STOFileAdapter::read("temp_inverse_sol.sto");
-    auto invInitTime = inverseSol.getIndependentColumn().at(0);
-    auto invFinalTime = inverseSol.getIndependentColumn().at(
-            inverseSol.getNumRows()-1);
-
-    GCVSplineSet inverseSplines(inverseSol);
-    TimeSeriesTable controls(time);
-    TimeSeriesTable states(time);
-    std::vector<std::string> controlLabels;
-    std::vector<std::string> stateLabels;
-    for (int i = 0; i < inverseSol.getNumColumns(); ++i) {
-        std::string label = inverseSol.getColumnLabel(i);
-        auto col = inverseSol.getDependentColumnAtIndex(i);
-        if (label.find("activation") != std::string::npos) {
-            stateLabels.push_back(label);
-            SimTK::Vector state(time.size());
-            for (int t = 0; t < time.size(); ++t) {
-                if (time[t] < invInitTime || time[t] > invFinalTime) {
-                    state[t] = 0.0;
-                } else {
-                    SimTK::Vector timeVec(1, time[t]);
-                    state[t] = inverseSplines.get(label).calcValue(timeVec);
-                }
-            }
-            states.appendColumn(label, state);
-        } else {
-            controlLabels.push_back(label);
-            SimTK::Vector control(time.size());
-            for (int t = 0; t < time.size(); ++t) {
-                if (time[t] < invInitTime || time[t] > invFinalTime) {
-                    control[t] = 0.0;
-                } else {
-                    SimTK::Vector timeVec(1, time[t]);
-                    control[t] = inverseSplines.get(label).calcValue(timeVec);
-                }
-            }
-            controls.appendColumn(label, control);
+MocoSolution runBaselineProblem(bool removeMuscles, double controlWeight = 0.1,
+        std::string guessFile = "", double penalizeCoordActs = 0.0) {
+    
+    Model model = createModel(removeMuscles);
+    if (!removeMuscles) {
+        DeGrooteFregly2016Muscle::replaceMuscles(model);
+        for (auto& musc : model.updComponentList<DeGrooteFregly2016Muscle>()) {
+            musc.set_ignore_passive_fiber_force(true);
+            musc.set_active_force_width_scale(1.5);
         }
     }
-
-    for (const auto& stateLabel : prevSol.getStateNames()) {
-        stateLabels.push_back(stateLabel);
-        states.appendColumn(stateLabel, prevSol.getState(stateLabel));
-    }
-
-
-    MocoIterate inverseIterate(prevSol.getTime(), stateLabels, controlLabels,
-        prevSol.getMultiplierNames(), {}, states.getMatrix(), 
-        controls.getMatrix(), prevSol.getMultipliersTrajectory(), {});
-
-
-    if (minimizeReactions) {
-        inverseIterate.write(kinematicsFile.replace(
-            kinematicsFile.end() - 4, kinematicsFile.end(),
-            "_inverse_min_reactions.sto"));
-    } else {
-        inverseIterate.write(kinematicsFile.replace(
-            kinematicsFile.end() - 4, kinematicsFile.end(), "_inverse.sto"));
-    }
-
-    TimeSeriesTable_<SimTK::SpatialVec> reactionTable = 
-            moco.analyze<SimTK::SpatialVec>(inverseIterate,
-                {"/jointset/walker_knee_l/reaction_on_child",
-                 "/jointset/walker_knee_r/reaction_on_child"});
-
-    transformReactionToBodyFrame(moco, inverseIterate, reactionTable);
-    TimeSeriesTable reactionTableFlat = reactionTable.flatten();
-
-    STOFileAdapter::write(reactionTableFlat, kinematicsFile.replace(
-        kinematicsFile.end() - 4, kinematicsFile.end(), "_reactions.sto"));
-
-}   
-
-int main() {
-
-    Model model = createModel();
 
     // Baseline tracking problem.
     // --------------------------
@@ -877,237 +331,401 @@ int main() {
     track.setName("baseline");
     track.setModel(model);
     track.set_states_tracking_file("coordinates_rra_adjusted.sto");
-    //MocoWeightSet stateWeights;
-    //MocoSolution prevSol("sandboxMocoTrack_solution.sto");
-    //for (const auto& stateName : prevSol.getStateNames()) {
-    //    if (stateName.find("pelvis") != std::string::npos) {
-    //        stateWeights.cloneAndAppend({stateName, 1});
-    //    } else if (stateName.find("lumbar") != std::string::npos) {
-    //        // From Fregly et al. 2007: unlock all back rotations.
-    //        stateWeights.cloneAndAppend({stateName, 1});
-    //    } else if (stateName.find("hip") != std::string::npos ||
-    //               stateName.find("knee") != std::string::npos ||
-    //               stateName.find("ankle") != std::string::npos) {
-    //        // From Fregly et al. 2007: unlock all hip, knee, and ankle 
-    //        // rotations.
-    //        stateWeights.cloneAndAppend({stateName, 1});
-    //    } else {
-    //        stateWeights.cloneAndAppend({stateName, 1});
-    //    }
-    //}
-    //track.set_state_weights(stateWeights);
     track.set_track_state_reference_derivatives(true);
-    //track.set_markers_tracking_file("motion_capture_walk.trc");
-    //track.set_ik_setup_file("ik_setup_walk_feet_only.xml");
     track.set_external_loads_file("grf_walk.xml");
-    track.set_external_loads_mode("applied");
     track.set_initial_time(0.81);
     track.set_final_time(1.65);
+    track.set_minimize_controls(controlWeight);
 
-    track.set_minimize_controls(0.05);
-    MocoWeightSet controlWeights;
-    controlWeights.cloneAndAppend({"tau_subtalar_angle_r", 10});
-    controlWeights.cloneAndAppend({"tau_subtalar_angle_l", 10});
-    track.set_control_weights(controlWeights);
+    if (penalizeCoordActs) {
+        MocoWeightSet controlWeights;
+        for (const auto& coordAct : 
+                model.getComponentList<CoordinateActuator>()) {
+            const auto& coordName = coordAct.getName();
+            if (coordName.find("hip") != std::string::npos ||
+                coordName.find("knee") != std::string::npos ||
+                coordName.find("ankle") != std::string::npos) {
+                   controlWeights.cloneAndAppend({"/" + coordName,
+                                           penalizeCoordActs});
+            }
+        }
+        track.set_control_weights(controlWeights);
+    }
 
-    MocoTool moco = track.initialize();
+    MocoStudy moco = track.initialize();
     auto& solver = moco.updSolver<MocoCasADiSolver>();
-    solver.set_optim_constraint_tolerance(1e-3);
-    solver.set_optim_convergence_tolerance(1e-3);
+    solver.set_optim_constraint_tolerance(1e-2);
+    solver.set_optim_convergence_tolerance(1e-2);
+    if (guessFile != "") {
+        solver.setGuessFile(guessFile);
+    }
 
-    MocoProblem problem = moco.getProblem();
-    //MocoSolution solution = moco.solve().unseal();
-    //solution.write("sandboxMocoTrack_solution_baseline.sto");
+    MocoSolution solution = moco.solve().unseal();
+    std::string filename;
+    if (removeMuscles) {
+        filename = "sandboxMocoTrack_solution_baseline.sto";
+    } else {
+        filename = "sandboxMocoTrack_solution_baseline_muscles.sto";
+    }
+    solution.write(filename);
     //moco.visualize(solution);
 
-    //TimeSeriesTable_<SimTK::SpatialVec> reactionTable =
-    //        moco.analyze<SimTK::SpatialVec>(solution,
-    //            {"/jointset/walker_knee_l/reaction_on_child",
-    //             "/jointset/walker_knee_r/reaction_on_child"});
+    TimeSeriesTable_<SimTK::SpatialVec> reactionTable =
+            analyze<SimTK::SpatialVec>(model, solution,
+                {"/jointset/walker_knee_l/reaction_on_child",
+                 "/jointset/walker_knee_r/reaction_on_child"});
 
-    //transformReactionToBodyFrame(moco, solution, reactionTable);
-    //TimeSeriesTable reactionTableFlat = reactionTable.flatten();    
-    //STOFileAdapter::write(reactionTableFlat, 
-    //    "sandboxMocoTrack_solution_baseline_reactions.sto");
-    MocoSolution solution("sandboxMocoTrack_solution_baseline.sto");
+    transformReactionToBodyFrame(moco, solution, reactionTable);
+    STOFileAdapter::write(reactionTable.flatten(),
+        filename.replace(filename.end()-4, filename.end(), 
+            "_reactions.sto"));
+    
+    return solution;
+}
 
-    // Medial thrust gait.
-    // -------------------
-    MocoTrack trackMTG;
-    trackMTG.setModel(model);
-    trackMTG.set_states_tracking_file("sandboxMocoTrack_solution_baseline.sto");
-    // Track 
-    MocoWeightSet coordinateWeights;
-    for (const auto& stateName : solution.getStateNames()) {
-        if (stateName.find("pelvis") != std::string::npos) {
-            if (stateName.find("pelvis_tx") != std::string::npos) {
-                coordinateWeights.cloneAndAppend({stateName, 1000});
-            } else if (stateName.find("pelvis_tz") != std::string::npos) {
-                coordinateWeights.cloneAndAppend({stateName, 10000});
-            } else if (stateName.find("pelvis_list") != std::string::npos) {
-                coordinateWeights.cloneAndAppend({stateName, 100});
-            } else if (stateName.find("pelvis_rotation") != std::string::npos) {
-                coordinateWeights.cloneAndAppend({stateName, 5});
-            } else {
-                // From Fregly et al. 2007: unlock superior/inferior translation
-                // and all pelvis rotations.
-                coordinateWeights.cloneAndAppend({stateName, 0.0});
-            }
-            //coordinateWeights.cloneAndAppend({stateName, 1000});
+MocoSolution runKneeReactionMinimizationProblem(bool removeMuscles, 
+        const std::string& trackedIterateFile) {
 
-        } else if (stateName.find("lumbar") != std::string::npos) {
-            // From Fregly et al. 2007: unlock all back rotations.
-            coordinateWeights.cloneAndAppend({stateName, 0.0});
-        } else if (stateName.find("hip") != std::string::npos ||
-                   stateName.find("knee") != std::string::npos ||
-                   stateName.find("ankle") != std::string::npos ||
-                   stateName.find("subtalar") != std::string::npos) {
-            // From Fregly et al. 2007: unlock all hip, knee, and ankle 
-            // rotations.
-            coordinateWeights.cloneAndAppend({stateName, 0.0});
-        } else {
-            coordinateWeights.cloneAndAppend({stateName, 1000});
+    Model model = createModel(removeMuscles);
+    if (!removeMuscles) {
+        DeGrooteFregly2016Muscle::replaceMuscles(model);
+        for (auto& musc : model.updComponentList<DeGrooteFregly2016Muscle>()) {
+            musc.set_ignore_passive_fiber_force(true);
         }
     }
-    trackMTG.set_state_weights(coordinateWeights);
-    trackMTG.set_external_loads_file("grf_walk.xml");
-    trackMTG.set_external_loads_mode("applied");
 
+    MocoTrack track;
+    track.setModel(model);
+    track.set_states_tracking_file(trackedIterateFile);
+
+    // Coordinate tracking weighting map.
+    std::map<std::string, double> coordWeightMap;
+    // Light tracking of pelvis coordinates (added by us)
+    coordWeightMap.insert(std::pair<std::string, double>("pelvis_tx", 1));
+    coordWeightMap.insert(std::pair<std::string, double>("pelvis_tz", 1));
+    coordWeightMap.insert(std::pair<std::string, double>("pelvis_list", 1));
+    coordWeightMap.insert(std::pair<std::string, double>("pelvis_rotation", 1));
+    // No tracking of any lower body or lumbar coordinates (Fregly et al. 2007)
+    coordWeightMap.insert(std::pair<std::string, double>("lumbar_bending", 0));
+    coordWeightMap.insert(std::pair<std::string, double>("lumbar_extension", 0));
+    coordWeightMap.insert(std::pair<std::string, double>("lumbar_rotation", 0));
+    coordWeightMap.insert(std::pair<std::string, double>("hip_adduction_l", 0));
+    coordWeightMap.insert(std::pair<std::string, double>("hip_adduction_r", 0));
+    coordWeightMap.insert(std::pair<std::string, double>("hip_flexion_l", 0));
+    coordWeightMap.insert(std::pair<std::string, double>("hip_flexion_r", 0));
+    coordWeightMap.insert(std::pair<std::string, double>("hip_rotation_l", 0));
+    coordWeightMap.insert(std::pair<std::string, double>("hip_rotation_r", 0));
+    coordWeightMap.insert(std::pair<std::string, double>("knee_angle_l", 0));
+    coordWeightMap.insert(std::pair<std::string, double>("knee_angle_r", 0));
+    coordWeightMap.insert(std::pair<std::string, double>("ankle_angle_l", 0));
+    coordWeightMap.insert(std::pair<std::string, double>("ankle_angle_r", 0));
+    coordWeightMap.insert(std::pair<std::string, double>("subtalar_angle_r", 0));
+    coordWeightMap.insert(std::pair<std::string, double>("subtalar_angle_l", 0));
+
+    // Set coordinate tracking weights.
+    MocoIterate trackedIterate(trackedIterateFile);
+    MocoWeightSet coordinateWeights;
+    for (const auto& statePath : trackedIterate.getStateNames()) {
+        for (auto elt : coordWeightMap) {
+            std::string name = elt.first;
+            double weight = elt.second;
+            if (statePath.find(name) != std::string::npos) {
+                coordinateWeights.cloneAndAppend({statePath, weight});
+            } else {
+                coordinateWeights.cloneAndAppend({statePath, 1000});
+            }
+        }
+    }
+    track.set_state_weights(coordinateWeights);
+    track.set_external_loads_file("grf_walk.xml");
     // Keep the low weighted control minimization term to help smooth controls.
-    //trackMTG.set_minimize_controls(0.001);
-    trackMTG.set_guess_type("from_file");
-    trackMTG.set_guess_file("sandboxMocoTrack_solution_baseline.sto");
-    trackMTG.set_initial_time(0.811);
-    trackMTG.set_final_time(1.649);
-    MocoTool mocoMTG = trackMTG.initialize();
-    auto& problemMTG = mocoMTG.updProblem();
+    track.set_minimize_controls(0.001);
+    track.set_guess_type("from_file");
+    track.set_guess_file(trackedIterateFile);
+    track.set_initial_time(0.811);
+    track.set_final_time(1.649);
 
-    // COP tracking (in the body frame).
-    // w3 from Fregly et al. 2007
-    //auto* copTracking = problemMTG.addCost<COPTrackingCost>("cop_tracking", 
-    //        10);
-    //copTracking->setReference(TimeSeriesTable("forces_new_labels.mot"));
-    //copTracking->setFreePointBodyActuatorNames({"Left_GRF", "Right_GRF"});
+    MocoStudy moco = track.initialize();
+    auto& problem = moco.updProblem();
 
     // Control tracking cost.
-    // Construct controls reference.
-    auto time = solution.getTime();
+    // ----------------------
+    // Control weighting map.
+    std::map<std::string, double> controlWeightMap;
+    // w6 from Fregly et al. 2007
+    controlWeightMap.insert(std::pair<std::string, double>("pelvis_tx", 10));
+    controlWeightMap.insert(std::pair<std::string, double>("pelvis_ty", 10));
+    controlWeightMap.insert(std::pair<std::string, double>("pelvis_tz", 10));
+    controlWeightMap.insert(std::pair<std::string, double>("pelvis_list", 10));
+    controlWeightMap.insert(std::pair<std::string, double>("pelvis_tilt", 10));
+    controlWeightMap.insert(std::pair<std::string, double>("pelvis_rotation", 10));
+    // w2 from Fregly et al. 2007
+    controlWeightMap.insert(std::pair<std::string, double>("hip_adduction_l", 0.5));
+    controlWeightMap.insert(std::pair<std::string, double>("hip_adduction_r", 0.5));
+    controlWeightMap.insert(std::pair<std::string, double>("hip_flexion_l", 0.5));
+    controlWeightMap.insert(std::pair<std::string, double>("hip_flexion_r", 0.5));
+    controlWeightMap.insert(std::pair<std::string, double>("hip_rotation_l", 0.5));
+    controlWeightMap.insert(std::pair<std::string, double>("hip_rotation_r", 0.5));
+    controlWeightMap.insert(std::pair<std::string, double>("knee_angle_l", 0.5));
+    controlWeightMap.insert(std::pair<std::string, double>("knee_angle_r", 0.5));
+    controlWeightMap.insert(std::pair<std::string, double>("ankle_angle_l", 0.5));
+    controlWeightMap.insert(std::pair<std::string, double>("ankle_angle_r", 0.5));
+    controlWeightMap.insert(std::pair<std::string, double>("subtalar_angle_r", 0.5));
+    controlWeightMap.insert(std::pair<std::string, double>("subtalar_angle_l", 0.5));
+
+    // Construct controls reference and weight set.
+    auto time = trackedIterate.getTime();
     std::vector<double> timeVec;
     for (int i = 0; i < time.size(); ++i) {
         timeVec.push_back(time[i]);
     }
     TimeSeriesTable controlsRef(timeVec);
-    // Control weights.
     MocoWeightSet controlTrackingWeights;
-    for (auto controlName : solution.getControlNames()) {
-        auto oldControlName = controlName;
-        auto newControlName = controlName.replace(0, 1, "");
-
-        if (controlName.find("pelvis") != std::string::npos) {
-            // w6 from Fregly et al. 2007
-            controlTrackingWeights.cloneAndAppend({newControlName, 1000});
-            controlsRef.appendColumn(newControlName,
-                solution.getControl(oldControlName));
-        } else if (controlName.find("hip") != std::string::npos ||
-                   controlName.find("knee") != std::string::npos ||
-                   controlName.find("ankle") != std::string::npos || 
-                   controlName.find("subtalar") != std::string::npos) {
-            // w2 from Fregly et al. 2007
-            controlTrackingWeights.cloneAndAppend({newControlName, 0.001});
-            controlsRef.appendColumn(newControlName,
-                solution.getControl(oldControlName));
+    for (auto controlPath : trackedIterate.getControlNames()) {
+        auto oldControlPath = controlPath;
+        auto newControlPath = controlPath.replace(0, 1, "");
+        for (auto elt : controlWeightMap) {
+            std::string name = elt.first;
+            double weight = elt.second;
+            if (controlPath.find(name) != std::string::npos) {
+                controlTrackingWeights.cloneAndAppend({newControlPath, weight});
+                controlsRef.appendColumn(newControlPath,
+                    trackedIterate.getControl(oldControlPath));
+            } 
         }
     }
+
     auto* controlTracking =
-            problemMTG.addCost<MocoControlTrackingCost>("control_tracking", 1);
+        problem.addCost<MocoControlTrackingCost>("control_tracking", 1);
     controlTracking->setReference(controlsRef);
     controlTracking->setWeightSet(controlTrackingWeights);
 
-    // Feet transform tracking cost.
-    auto statesTraj = solution.exportToStatesTrajectory(problem);
+    // Truck and foot global position tracking costs.
+    // ----------------------------------------------
+    auto statesRef = trackedIterate.exportToStatesTable();
+
+    // Foot orientation tracking cost.
     // w4 from Fregly et al. 2007
-    auto* footTransformTrackingRotation =
-            problemMTG.addCost<TransformTrackingCost>("foot_tracking_rotation", 2000);
-    footTransformTrackingRotation->setStatesTrajectory(statesTraj);
-    footTransformTrackingRotation->setComponentPaths({"/bodyset/calcn_r",
-            "/bodyset/calcn_l"});
-    footTransformTrackingRotation->setTrackedComponents("rotation");
-
-    auto* footTransformTrackingPosition =
-        problemMTG.addCost<TransformTrackingCost>("foot_tracking", 2000);
-    footTransformTrackingPosition->setStatesTrajectory(statesTraj);
-    footTransformTrackingPosition->setComponentPaths({"/bodyset/calcn_r",
-        "/bodyset/calcn_l"});
-    footTransformTrackingPosition->setTrackedComponents("position");
-
-    // Torso transform tracking cost.
+    auto* footOrientationTracking =
+        problem.addCost<MocoOrientationTrackingCost>(
+            "foot_orientation_tracking", 10);
+    footOrientationTracking->setStatesReference(statesRef);
+    footOrientationTracking->setFramePaths({"/bodyset/calcn_r",
+                                            "/bodyset/calcn_l"});
+    // Foot translation tracking cost.
+    // w4 from Fregly et al. 2007
+    auto* footTranslationTracking =
+        problem.addCost<MocoTranslationTrackingCost>(
+            "foot_translation_tracking", 10);
+    footTranslationTracking->setStatesReference(statesRef);
+    footTranslationTracking->setFramePaths({"/bodyset/calcn_r",
+                                            "/bodyset/calcn_l"});
+    // Torso orientation tracking cost.
     // w5 from Fregly et al. 2007
-    auto* torsoTransformTracking =
-        problemMTG.addCost<TransformTrackingCost>("torso_tracking", 2000);
-    torsoTransformTracking->setStatesTrajectory(statesTraj);
-    torsoTransformTracking->setComponentPaths({"/bodyset/torso"});
-    torsoTransformTracking->setTrackedComponents("rotation");
+    auto* torsoOrientationTracking =
+        problem.addCost<MocoOrientationTrackingCost>(
+            "torso_orientation_tracking", 10);
+    torsoOrientationTracking->setStatesReference(statesRef);
+    torsoOrientationTracking->setFramePaths({"/bodyset/torso"});
 
     // Knee adduction cost.
+    // --------------------
     // w1 from Fregly et al. 2007
-    auto* kneeAdductionCost_l = 
-        problemMTG.addCost<MocoJointReactionCost>("knee_adduction_cost_l", 100);
+    auto* kneeAdductionCost_l =
+        problem.addCost<MocoJointReactionCost>("knee_adduction_cost_l", 10);
     kneeAdductionCost_l->setJointPath("/jointset/walker_knee_l");
     kneeAdductionCost_l->setExpressedInFramePath("/bodyset/tibia_l");
-    kneeAdductionCost_l->setReactionComponent(0);
+    kneeAdductionCost_l->setReactionMeasures({"moment_x"});
     auto* kneeAdductionCost_r =
-        problemMTG.addCost<MocoJointReactionCost>("knee_adduction_cost_r", 10);
+        problem.addCost<MocoJointReactionCost>("knee_adduction_cost_r", 10);
     kneeAdductionCost_r->setJointPath("/jointset/walker_knee_r");
     kneeAdductionCost_r->setExpressedInFramePath("/bodyset/tibia_r");
-    kneeAdductionCost_r->setReactionComponent(0);
+    kneeAdductionCost_r->setReactionMeasures({"moment_x"});
 
-    auto& solverMTG = mocoMTG.updSolver<MocoCasADiSolver>();
-    solverMTG.set_optim_constraint_tolerance(1e-2);
-    solverMTG.set_optim_convergence_tolerance(1e-2);
+    // Configure solver.
+    // -----------------
+    auto& solver = moco.updSolver<MocoCasADiSolver>();
+    solver.set_optim_constraint_tolerance(1e-2);
+    solver.set_optim_convergence_tolerance(1e-2);
 
-    //MocoSolution solutionMTG = mocoMTG.solve().unseal();
-    //solutionMTG.write("sandboxMocoTrack_solution_MTG.sto");
-    //mocoMTG.visualize(solutionMTG);
-    ////MocoSolution solutionMTG("sandboxMocoTrack_solution_MTG.sto");
+    // Solve!
+    // ------
+    MocoSolution solution = moco.solve().unseal();
+    std::string baseline;
+    std::string filename;
+    if (removeMuscles) {
+        baseline = "sandboxMocoTrack_solution_baseline.sto";
+        filename = "sandboxMocoTrack_solution_minimize_knee_adduction.sto";
+    } else {
+        baseline = "sandboxMocoTrack_solution_baseline_muscles.sto";
+        filename = 
+            "sandboxMocoTrack_solution_minimize_knee_adduction_muscles.sto";
+    }
+    solution.write(filename);
+    moco.visualize(solution);
 
-    //TimeSeriesTable_<SimTK::SpatialVec> reactionTableMTG = 
-    //        mocoMTG.analyze<SimTK::SpatialVec>(solutionMTG,
-    //            {"/jointset/walker_knee_l/reaction_on_child",
-    //             "/jointset/walker_knee_r/reaction_on_child"});
+    // Compute reaction loads.
+    // -----------------------
+    TimeSeriesTable_<SimTK::SpatialVec> reactionTableMTG =
+            analyze<SimTK::SpatialVec>(model, solution,
+                {"/jointset/walker_knee_l/reaction_on_child",
+                 "/jointset/walker_knee_r/reaction_on_child"});
 
-    //transformReactionToBodyFrame(mocoMTG, solutionMTG, reactionTableMTG);
-    //TimeSeriesTable reactionTableFlatMTG = reactionTableMTG.flatten();
+    transformReactionToBodyFrame(moco, solution, reactionTableMTG);
+    STOFileAdapter::write(reactionTableMTG.flatten(),
+        filename.replace(filename.end()-4, filename.end(), "_reactions.sto"));
 
-    //STOFileAdapter::write(reactionTableFlatMTG, 
-    //        "sandboxMocoTrack_solution_MTG_reactions.sto");
+    // Get "smoothed" solution.
+    // ------------------------
+    smoothSolutionControls(model, filename, filename);
 
-    //smoothSolutionControls("sandboxMocoTrack_solution_MTG.sto",
-    //        "sandboxMocoTrack_solution_MTG.sto");
+    // Compute and print transform errors.
+    // -----------------------------------
+    auto transformErrors = computeTransformErrors(model, baseline, 
+            filename.replace(filename.end()-4, filename.end(), "_smoothed.sto"),
+            {"/bodyset/calcn_r", "/bodyset/calcn_l", "/bodyset/torso"});
+    STOFileAdapter::write(transformErrors, 
+        filename.replace(filename.end() - 4, filename.end(), 
+            "_transform_errors.sto"));
 
-    //auto transformErrors = computeTransformErrors(model, 
-    //    "sandboxMocoTrack_solution_baseline.sto",
-    //    "sandboxMocoTrack_solution_MTG_smoothed.sto", 
-    //    {"/bodyset/calcn_r", "/bodyset/calcn_l", "/bodyset/torso"});
+    for (int i = 0; i < transformErrors.getNumColumns(); ++i) {
+        std::cout << transformErrors.getColumnLabel(i) << ": ";
+        std::cout << transformErrors.getDependentColumnAtIndex(i).normRMS();
+        std::cout << std::endl;
+    }
 
-    //STOFileAdapter::write(transformErrors, 
-    //    "sandboxMocoTrack_transform_errors.sto");
+    return solution;
+}
 
-    //for (int i = 0; i < transformErrors.getNumColumns(); ++i) {
-    //    std::cout << transformErrors.getColumnLabel(i) << ": ";
-    //    std::cout << transformErrors.getDependentColumnAtIndex(i).normRMS(); 
-    //    std::cout << std::endl;
-    //}
+MocoSolution runExoskeletonProblem(const std::string& trackedIterateFile, 
+        double stateTrackingWeight, double controlEffortWeight) {
 
-    //std::cout << std::endl;
+    // Configure model.
+    // ----------------
+    Model model = createModel(false, true);
+    DeGrooteFregly2016Muscle::replaceMuscles(model);
+    for (auto& musc : model.updComponentList<DeGrooteFregly2016Muscle>()) {
+        musc.set_ignore_passive_fiber_force(true);
+        musc.set_active_force_width_scale(1.5);
+    }
+
+    // Configure tracking tool.
+    // ------------------------
+    MocoTrack track;
+    track.setModel(model);
+    track.set_states_tracking_file("coordinates_rra_adjusted.sto");
+    track.set_track_state_reference_derivatives(true);    
+    track.set_external_loads_file("grf_walk.xml");
+    track.set_guess_type("from_file");
+    track.set_guess_file("sandboxMocoTrack_solution_exoskeleton_muscles.sto");
+    track.set_initial_time(0.811);
+    track.set_final_time(1.649);
+
+    // Cost weights.
+    // -------------
+    track.set_states_tracking_weight(stateTrackingWeight);
+    track.set_minimize_controls(controlEffortWeight);
+    // Don't penalize exoskeleton.
+    MocoWeightSet controlWeights;
+    double coordActWeight = 10000;
+    controlWeights.cloneAndAppend({"/tau_ankle_angle_r", 0.001*controlEffortWeight});
+    controlWeights.cloneAndAppend({"/tau_ankle_angle_l", 0.001*controlEffortWeight});
+    controlWeights.cloneAndAppend({"/tau_subtalar_angle_r", 0.001*controlEffortWeight});
+    controlWeights.cloneAndAppend({"/tau_subtalar_angle_l", 0.001*controlEffortWeight});
+    controlWeights.cloneAndAppend({"/tau_lumbar_bending", 0.001*controlEffortWeight});
+    controlWeights.cloneAndAppend({"/tau_lumbar_extension", 0.001*controlEffortWeight});
+    controlWeights.cloneAndAppend({"/tau_lumbar_rotation", 0.001*controlEffortWeight});
+    controlWeights.cloneAndAppend({"/tau_pelvis_tx", coordActWeight*controlEffortWeight});
+    controlWeights.cloneAndAppend({"/tau_pelvis_ty", 0});
+    controlWeights.cloneAndAppend({"/tau_pelvis_tz", coordActWeight*controlEffortWeight});
+    controlWeights.cloneAndAppend({"/tau_pelvis_list", coordActWeight*controlEffortWeight});
+    controlWeights.cloneAndAppend({"/tau_pelvis_tilt", coordActWeight*controlEffortWeight});
+    controlWeights.cloneAndAppend({"/tau_pelvis_rotation", coordActWeight*controlEffortWeight});
+    controlWeights.cloneAndAppend({"/tau_hip_adduction_l", coordActWeight*controlEffortWeight});
+    controlWeights.cloneAndAppend({"/tau_hip_adduction_r", coordActWeight*controlEffortWeight});
+    controlWeights.cloneAndAppend({"/tau_hip_flexion_l", coordActWeight*controlEffortWeight});
+    controlWeights.cloneAndAppend({"/tau_hip_flexion_r", coordActWeight*controlEffortWeight});
+    controlWeights.cloneAndAppend({"/tau_hip_rotation_l", coordActWeight*controlEffortWeight});
+    controlWeights.cloneAndAppend({"/tau_hip_rotation_r", coordActWeight*controlEffortWeight});
+    controlWeights.cloneAndAppend({"/tau_knee_angle_l", coordActWeight*controlEffortWeight});
+    controlWeights.cloneAndAppend({"/tau_knee_angle_r", coordActWeight*controlEffortWeight});
+    track.set_control_weights(controlWeights);
+
+    // Initialize MocoStudy and grab problem.
+    // --------------------------------------
+    MocoStudy moco = track.initialize();
+    auto& problem = moco.updProblem();
+
+    // Truck and foot global position tracking costs.
+    // ----------------------------------------------
+    MocoIterate trackedIterate(trackedIterateFile);
+    auto statesRef = trackedIterate.exportToStatesTable();
+
+    // Foot orientation tracking cost.
+    // w4 from Fregly et al. 2007
+    auto* footOrientationTracking =
+        problem.addCost<MocoOrientationTrackingCost>(
+            "foot_orientation_tracking", 1e6);
+    footOrientationTracking->setStatesReference(statesRef);
+    footOrientationTracking->setFramePaths({"/bodyset/calcn_r",
+        "/bodyset/calcn_l"});
+    // Foot translation tracking cost.
+    // w4 from Fregly et al. 2007
+    auto* footTranslationTracking =
+        problem.addCost<MocoTranslationTrackingCost>(
+            "foot_translation_tracking", 1e6);
+    footTranslationTracking->setStatesReference(statesRef);
+    footTranslationTracking->setFramePaths({"/bodyset/calcn_r",
+        "/bodyset/calcn_l"});
+    // Torso orientation tracking cost.
+    // w5 from Fregly et al. 2007
+    auto* torsoOrientationTracking =
+        problem.addCost<MocoOrientationTrackingCost>(
+            "torso_orientation_tracking", 1e6);
+    torsoOrientationTracking->setStatesReference(statesRef);
+    torsoOrientationTracking->setFramePaths({"/bodyset/torso"});
+
+    // Configure solver.
+    // -----------------
+    auto& solver = moco.updSolver<MocoCasADiSolver>();
+    solver.set_optim_constraint_tolerance(1e-2);
+    solver.set_optim_convergence_tolerance(1e-2);
+
+    // Solve!
+    // ------
+    MocoSolution solution = moco.solve().unseal();
+    solution.write("sandboxMocoTrack_solution_exoskeleton_muscles.sto");
+    moco.visualize(solution);
+
+    return solution;
+}
+
+int main() {
+
+    std::cout.rdbuf(LogManager::cout.rdbuf());
+    std::cerr.rdbuf(LogManager::cerr.rdbuf());
+
+    const double controlWeight = 1;
+
+    // Baseline tracking problem w/o muscles.
+    // --------------------------------------
+    // MocoSolution baseline = runBaselineProblem(true, controlWeight);
+
+    // Baseline tracking problem w/ muscles.
+    // -------------------------------------
+    //MocoSolution baselineWithMuscles = runBaselineProblem(false, controlWeight,
+     //  "sandboxMocoTrack_solution_baseline_muscles.sto");
+
+    // Knee adduction minimization w/o muscles.
+    // ----------------------------------------
+    //MocoSolution kneeAdducMin = runKneeReactionMinimizationProblem(true, 
+    //    "sandboxMocoTrack_solution_baseline.sto");
+
+    // Minimize effort with exoskeleton device w/ muscles.
+    // ---------------------------------------------------
+    runExoskeletonProblem("sandboxMocoTrack_solution_baseline_muscles.sto",
+        0.1, controlWeight);
     
-    // Inverse problems.
-    solveInverseProblem("sandboxMocoTrack_solution_baseline.sto");
-    solveInverseProblem("sandboxMocoTrack_solution_baseline.sto", true);
-    solveInverseProblem("sandboxMocoTrack_solution_MTG_smoothed.sto");
-    solveInverseProblem("sandboxMocoTrack_solution_MTG_smoothed.sto", true);
-
-
-    std::cout << std::endl;
 
     return EXIT_SUCCESS;
 }

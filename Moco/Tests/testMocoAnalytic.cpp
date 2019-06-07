@@ -103,7 +103,7 @@ TEMPLATE_TEST_CASE("Second order linear min effort",
     model.addForce(actu);
     model.finalizeConnections();
 
-    MocoTool moco;
+    MocoStudy moco;
     auto& problem = moco.updProblem();
 
     problem.setModelCopy(model);
@@ -163,7 +163,7 @@ TEMPLATE_TEST_CASE("Brachistochrone", ""
 
     Model model = ModelFactory::createBrachistochrone();
 
-    MocoTool moco;
+    MocoStudy moco;
     auto& problem = moco.updProblem();
 
     problem.setModelCopy(model);
