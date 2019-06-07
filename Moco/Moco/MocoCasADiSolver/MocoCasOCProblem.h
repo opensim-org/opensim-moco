@@ -369,6 +369,11 @@ private:
 
         m_jar->leave(std::move(mocoProblemRep));
     }
+    void intermediateCallback(const CasOC::Iterate& iterate) const override {
+        std::string filename = format("MocoCasADiSolver_%s_iterate%06i.sto",
+                m_formattedTimeString, iterate.iteration);
+        convertToMocoIterate(iterate).write(filename);
+    }
 
 private:
     /// Apply parameters to properties in the models returned by
@@ -379,8 +384,8 @@ private:
         if (parameters.numel()) {
             SimTK::Vector simtkParams(
                     (int)parameters.size1(), parameters.ptr(), true);
-            mocoProblemRep.applyParametersToModelProperties(simtkParams,
-                    m_paramsRequireInitSystem);
+            mocoProblemRep.applyParametersToModelProperties(
+                    simtkParams, m_paramsRequireInitSystem);
         }
     }
     /// Copy values from `states` into `simtkState.updY()`, accounting for empty
@@ -405,13 +410,14 @@ private:
         model.getSystem().prescribe(simtkState);
     }
 
-    void convertToSimTKState(const double& time, const casadi::DM& states,
-            const casadi::DM& controls, const Model& model,
-            SimTK::State& simtkState) const {
+    void convertToSimTKState(const double& time,
+            const casadi::DM& states, const casadi::DM& controls,
+            const Model& model, SimTK::State& simtkState) const {
         convertToSimTKState(time, states, model, simtkState);
         auto& simtkControls = model.updControls(simtkState);
-        std::copy_n(controls.ptr(), simtkControls.size(),
-                simtkControls.updContiguousScalarData());
+        for (int ic = 0; ic < getNumControls(); ++ic) {
+           simtkControls[m_modelControlIndices[ic]] = *(controls.ptr() + ic);
+        }
         model.realizeVelocity(simtkState);
         model.setControls(simtkState, simtkControls);
     }
@@ -552,7 +558,9 @@ private:
 
     std::unique_ptr<ThreadsafeJar<const MocoProblemRep>> m_jar;
     bool m_paramsRequireInitSystem = true;
+    std::string m_formattedTimeString;
     std::unordered_map<int, int> m_yIndexMap;
+    std::vector<int> m_modelControlIndices;
     // Local memory to hold constraint forces.
     static thread_local SimTK::Vector_<SimTK::SpatialVec>
             m_constraintBodyForces;

@@ -16,6 +16,7 @@ if(MSVC AND NOT ${CMAKE_GENERATOR} MATCHES "Win64")
     message(FATAL_ERROR ${MSG})
 endif()
 
+
 option(OPENSIM_JAVA_WRAPPING "Build opensim-core Java/MATLAB interface." OFF)
 option(OPENSIM_PYTHON_WRAPPING "Build opensim-core Python interface." OFF)
 set(OPENSIM_PYTHON_VERSION 3 CACHE STRING
@@ -49,6 +50,7 @@ function(SetDefaultCMakeInstallPrefix)
             FORCE)
     endif()
 endfunction()
+
 
 # CMake doesn't clear prefix directories when user changes it. 
 # Remove it to avoid confusion.
@@ -209,6 +211,7 @@ if (WIN32)
             INSTALL_COMMAND ${ADOLC_INSTALL_CMD})
     endif()
 
+
     if(SUPERBUILD_ipopt)
     
         # Ipopt: Download pre-built binaries built by chrisdembia.
@@ -305,6 +308,7 @@ include(opensim-core.cmake)
 #######################
 
 RemoveDefaultInstallDirIfEmpty("${DEFAULT_CMAKE_INSTALL_PREFIX}")
+
 
 
 

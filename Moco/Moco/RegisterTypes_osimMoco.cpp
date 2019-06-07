@@ -42,6 +42,8 @@
 #include "MocoInverse.h"
 #include "MocoTrack.h"
 
+#include "Common/TableProcessor.h"
+
 #include "MocoCasADiSolver/MocoCasADiSolver.h"
 
 #include "Components/ActivationCoordinateActuator.h"
@@ -79,8 +81,9 @@ OSIMMOCO_API void RegisterTypes_osimMoco() {
         Object::registerType(MocoBounds());
         Object::registerType(MocoInitialBounds());
         Object::registerType(MocoFinalBounds());
-        Object::registerType(MocoPhase());
         Object::registerType(MocoVariableInfo());
+        Object::registerType(MocoParameter());
+        Object::registerType(MocoPhase());
         Object::registerType(MocoProblem());
         Object::registerType(MocoStudy());
         Object::registerType(MocoTropterSolver());
@@ -95,6 +98,9 @@ OSIMMOCO_API void RegisterTypes_osimMoco() {
         Object::registerType(ActivationCoordinateActuator());
         Object::registerType(GlobalStaticOptimization());
         Object::registerType(INDYGO());
+
+        Object::registerType(TableProcessor());
+        Object::registerType(TabOpLowPassFilter());
 
         Object::registerType(AckermannVanDenBogert2010Force());
         Object::registerType(MeyerFregly2016Force());

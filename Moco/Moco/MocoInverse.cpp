@@ -197,10 +197,7 @@ std::pair<MocoTool, TimeSeriesTable> MocoInverse::initializeInternal() const {
     // solver.set_optim_hessian_approximation("exact");
     // Forward is 3x faster than central.
     solver.set_optim_finite_difference_scheme("forward");
-    if (model.getWorkingState().getNMultipliers()) {
-        solver.set_transcription_scheme("hermite-simpson");
-        solver.set_enforce_constraint_derivatives(true);
-    }
+    solver.set_interpolate_control_midpoints(false);
 
     solver.set_num_mesh_points(timeInfo.numMeshPoints);
     if (!getProperty_max_iterations().empty()) {

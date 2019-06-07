@@ -97,7 +97,7 @@ set(MOCO_SOURCES
         MocoInverse.cpp
         MocoTrack.h
         MocoTrack.cpp
-        )
+        Common/TableProcessor.h)
 if(MOCO_WITH_TROPTER)
     list(APPEND MOCO_SOURCES
             tropter/TropterProblem.h

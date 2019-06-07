@@ -114,6 +114,21 @@ void printMessage(const std::string& formatString, Types... args) {
 
 /// @}
 
+/// This class stores the formatting of a stream and restores that format
+/// when the StreamFormat is destructed.
+class StreamFormat {
+public:
+    StreamFormat(std::ostream& stream) : m_stream(stream) {
+        m_format.copyfmt(stream);
+    }
+    ~StreamFormat() {
+        m_stream.copyfmt(m_format);
+    }
+private:
+    std::ostream& m_stream;
+    std::ios m_format {nullptr};
+}; // StreamFormat
+
 /// Create a SimTK::Vector with the provided length whose elements are
 /// linearly spaced between start and end.
 OSIMMOCO_API
@@ -317,9 +332,16 @@ std::unordered_map<std::string, int> createSystemYIndexMap(const Model& model);
 /// actuators with one control (e.g. ScalarActuator) the control name is simply
 /// the actuator name. For actuators with multiple controls, each control name
 /// is the actuator name appended by the control index (e.g. "/actuator_0");
+/// modelControlIndices has length equal to the number of controls associated
+/// with actuators that apply a force (appliesForce == True). Its elements are
+/// the indices of the controls in the Model::updControls() that are associated
+/// with actuators that apply a force.
+OSIMMOCO_API
+std::vector<std::string> createControlNamesFromModel(
+        const Model& model, std::vector<int>& modelControlIndices);
+//// Same as above, but when there is no mapping to the modelControlIndices.
 OSIMMOCO_API
 std::vector<std::string> createControlNamesFromModel(const Model& model);
-
 /// The map provides the index of each control variable in the SimTK::Vector
 /// return by OpenSim::Model::getControls() from its control name.
 OSIMMOCO_API
