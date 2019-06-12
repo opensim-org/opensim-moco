@@ -48,13 +48,16 @@
 #include "MocoUtilities.h"
 #include "MocoParameter.h"
 #include "MocoConstraint.h"
-#include "MocoControlConstraint.h"
+#include "MocoControlBoundConstraint.h"
 
 #include "MocoInverse.h"
 #include "MocoTrack.h"
 
 #include "Components/PositionMotion.h"
 #include "Common/TableProcessor.h"
+
+#include "ModelProcessor.h"
+#include "ModelOperators.h"
 
 #include "Components/ActivationCoordinateActuator.h"
 #include "Components/StationPlaneContactForce.h"

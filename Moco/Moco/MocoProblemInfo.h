@@ -1,11 +1,11 @@
-#ifndef MOCO_MOCOCONTROLCONSTRAINT_H
-#define MOCO_MOCOCONTROLCONSTRAINT_H
+#ifndef MOCO_MOCOPROBLEMINFO_H
+#define MOCO_MOCOPROBLEMINFO_H
 /* -------------------------------------------------------------------------- *
- * OpenSim Moco: MocoControlConstraint.h                                      *
+ * OpenSim Moco: MocoProblemInfo.h                                            *
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2019 Stanford University and the Authors                     *
  *                                                                            *
- * Author(s): Nicholas Bianco                                                 *
+ * Author(s): Christopher Dembia                                              *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may    *
  * not use this file except in compliance with the License. You may obtain a  *
@@ -18,35 +18,17 @@
  * limitations under the License.                                             *
  * -------------------------------------------------------------------------- */
 
-#include "MocoConstraint.h"
-
-#include <OpenSim/Common/TimeSeriesTable.h>
-#include <OpenSim/Common/GCVSplineSet.h>
-
 namespace OpenSim {
 
-class OSIMMOCO_API MocoControlConstraint : public MocoPathConstraint {
-    OpenSim_DECLARE_CONCRETE_OBJECT(MocoControlConstraint, MocoPathConstraint);
-
+/// This class is mostly for internal use for MocoProblemRep to pass select
+/// information about a problem to the MocoCost%s and MocoPathConstraint%s of
+/// the problem during initializeOnModel().
+class MocoProblemInfo {
 public:
-    MocoControlConstraint() {}
-
-    void setReference(const TimeSeriesTable& ref) {
-        m_table = ref;
-    }
-
-protected:
-    void initializeOnModelImpl(const Model& model) const override;
-    void calcPathConstraintErrorsImpl(const SimTK::State& state,
-        SimTK::Vector& errors) const override;
-
-private:
-    TimeSeriesTable m_table;
-    mutable GCVSplineSet m_refsplines;
-    mutable std::vector<int> m_controlIndices;
-
+    double minInitialTime;
+    double maxFinalTime;
 };
 
 } // namespace OpenSim
 
-#endif // MOCO_MOCOCONTROLCONSTRAINT_H
+#endif // MOCO_MOCOPROBLEMINFO_H

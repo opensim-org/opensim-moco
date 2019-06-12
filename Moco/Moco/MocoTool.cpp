@@ -17,6 +17,8 @@
  * -------------------------------------------------------------------------- */
 #include "MocoTool.h"
 
+#include "MocoUtilities.h"
+
 using namespace OpenSim;
 
 void MocoTool::constructProperties() {

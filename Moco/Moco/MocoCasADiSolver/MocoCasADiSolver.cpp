@@ -148,7 +148,7 @@ std::unique_ptr<MocoCasOCProblem> MocoCasADiSolver::createCasOCProblem() const {
 
 std::unique_ptr<CasOC::Solver> MocoCasADiSolver::createCasOCSolver(
         const MocoCasOCProblem& casProblem) const {
-    auto casSolver = make_unique<CasOC::Solver>(casProblem);
+    auto casSolver = OpenSim::make_unique<CasOC::Solver>(casProblem);
 
     // Set solver options.
     // -------------------

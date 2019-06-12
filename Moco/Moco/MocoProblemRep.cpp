@@ -22,6 +22,8 @@
 #include "Components/DiscreteForces.h"
 #include "Components/PositionMotion.h"
 #include "MocoProblem.h"
+#include "MocoProblemInfo.h"
+#include <regex>
 #include <unordered_set>
 
 using namespace OpenSim;
@@ -207,6 +209,16 @@ void MocoProblemRep::initialize() {
     // State infos.
     // ------------
     const auto stateNames = m_model_base.getStateVariableNames();
+    for (int i = 0; i < ph0.getProperty_state_infos_pattern().size(); ++i) {
+        const auto& pattern =
+                std::regex(ph0.get_state_infos_pattern(i).getName());
+        for (int j = 0; j < stateNames.size(); ++j) {
+            if (std::regex_match(stateNames[j], pattern)) {
+                m_state_infos[stateNames[j]] = ph0.get_state_infos_pattern(i);
+                m_state_infos[stateNames[j]].setName(stateNames[j]);
+            }
+        }
+    }
     for (int i = 0; i < ph0.getProperty_state_infos().size(); ++i) {
         const auto& name = ph0.get_state_infos(i).getName();
         OPENSIM_THROW_IF(stateNames.findIndex(name) == -1, Exception,
@@ -255,6 +267,17 @@ void MocoProblemRep::initialize() {
     // Control infos.
     // --------------
     auto controlNames = createControlNamesFromModel(m_model_base);
+    for (int i = 0; i < ph0.getProperty_control_infos_pattern().size(); ++i) {
+        const auto& pattern = ph0.get_control_infos_pattern(i).getName();
+        auto regexPattern = std::regex(pattern);
+        for (int j = 0; j < (int)controlNames.size(); ++j) {
+            if (std::regex_match(controlNames[j], regexPattern)) {
+                m_control_infos[controlNames[j]] =
+                        ph0.get_control_infos_pattern(i);
+                m_control_infos[controlNames[j]].setName(controlNames[j]);
+            }
+        }
+    }
     for (int i = 0; i < ph0.getProperty_control_infos().size(); ++i) {
         const auto& name = ph0.get_control_infos(i).getName();
         auto it = std::find(controlNames.begin(), controlNames.end(), name);
@@ -358,6 +381,10 @@ void MocoProblemRep::initialize() {
         m_costs[i]->initializeOnModel(m_model_disabled_constraints);
     }
 
+    MocoProblemInfo problemInfo;
+    problemInfo.minInitialTime = getTimeInitialBounds().getLower();
+    problemInfo.maxFinalTime = getTimeFinalBounds().getUpper();
+
     // Auxiliary path constraints.
     // ---------------------------
     m_num_path_constraint_equations = 0;
@@ -373,7 +400,8 @@ void MocoProblemRep::initialize() {
         pcNames.insert(pc.getName());
         m_path_constraints[i] = std::unique_ptr<MocoPathConstraint>(pc.clone());
         m_path_constraints[i]->initializeOnModel(
-                m_model_disabled_constraints, m_num_path_constraint_equations);
+                m_model_disabled_constraints, problemInfo,
+                m_num_path_constraint_equations);
         m_num_path_constraint_equations +=
                 m_path_constraints[i]->getConstraintInfo().getNumEquations();
     }
