@@ -257,7 +257,7 @@ def plotVariables(var_type, var_dict, ls_dict, label_dict):
         plt.title(truncate(key, 38), fontsize=10)
         plt.xlabel('time (s)', fontsize=8)
         plt.ylabel(label_dict[key], fontsize=8)
-        if timeticks.any():
+        if timeticks != None:
             plt.xticks(timeticks)
         plt.xticks(fontsize=6)
         plt.yticks(fontsize=6)
