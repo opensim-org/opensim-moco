@@ -17,12 +17,10 @@
  * -------------------------------------------------------------------------- */
 #include "MocoStudy.h"
 
-#include "Components/PositionMotion.h"
 #include "MocoCasADiSolver/MocoCasADiSolver.h"
 #include "MocoProblem.h"
 #include "MocoTropterSolver.h"
 #include "MocoUtilities.h"
-#include <regex>
 
 #include <OpenSim/Common/IO.h>
 #include <OpenSim/Common/Reporter.h>
@@ -108,6 +106,5 @@ void MocoStudy::visualize(const MocoIterate& it) const {
 
 TimeSeriesTable MocoStudy::analyze(const MocoIterate& iterate,
         std::vector<std::string> outputPaths) const {
-    return OpenSim::analyze<double>(get_problem().createRep().getModelBase(), 
-        iterate, outputPaths);
+    return OpenSim::analyze(get_problem(), iterate, outputPaths);
 }

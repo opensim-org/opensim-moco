@@ -387,8 +387,8 @@ void MocoIterate::resample(SimTK::Vector time) {
     int numDerivatives = (int)m_derivative_names.size();
     int numSlacks = (int)m_slack_names.size();
 
-    const TimeSeriesTable table = convertToTable();
-    const GCVSplineSet splines(table, {}, std::min(m_time.size() - 1, 5));
+    TimeSeriesTable table = convertToTable();
+    GCVSplineSet splines(table, {}, std::min(m_time.size() - 1, 5));
 
     m_time = std::move(time);
     const int numTimes = m_time.size();
@@ -437,7 +437,7 @@ void MocoIterate::resample(SimTK::Vector time) {
 }
 
 MocoIterate::MocoIterate(const std::string& filepath) {
-    TimeSeriesTable table = readTableFromFile(filepath);
+    TimeSeriesTable table = readTableFromFile<double>(filepath);
     const auto& metadata = table.getTableMetaData();
     // TODO: bug with file adapters.
     // auto numStates = metadata.getValueForKey("num_states").getValue<int>();
