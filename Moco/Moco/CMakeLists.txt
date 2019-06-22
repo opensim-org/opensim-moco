@@ -42,8 +42,8 @@ set(MOCO_SOURCES
         MocoSolver.cpp
         MocoDirectCollocationSolver.h
         MocoDirectCollocationSolver.cpp
-        MocoIterate.h
-        MocoIterate.cpp
+        MocoTrajectory.h
+        MocoTrajectory.cpp
         MocoTropterSolver.h
         MocoTropterSolver.cpp
         MocoParameter.h
@@ -52,8 +52,6 @@ set(MOCO_SOURCES
         MocoConstraint.cpp
         MocoControlBoundConstraint.cpp
         MocoControlBoundConstraint.h
-        MocoTrack.h
-        MocoTrack.cpp
         InverseMuscleSolver/InverseMuscleSolver.h
         InverseMuscleSolver/InverseMuscleSolver.cpp
         InverseMuscleSolver/GlobalStaticOptimization.h
@@ -96,15 +94,16 @@ set(MOCO_SOURCES
         MocoCasADiSolver/CasOCHermiteSimpson.h
         MocoCasADiSolver/CasOCHermiteSimpson.cpp
         MocoCasADiSolver/CasOCIterate.h
+        MocoInverse.cpp
+        MocoInverse.h
+        MocoTrack.h
+        MocoTrack.cpp
         Common/TableProcessor.h
         ModelProcessor.h
         ModelOperators.h
-        MocoInverse.cpp
-        MocoInverse.h
-        Common/TableProcessor.h
-        ModelProcessor.h
         MocoTool.cpp
-        MocoTool.h)
+        MocoTool.h
+        )
 if (MOCO_WITH_TROPTER)
     list(APPEND MOCO_SOURCES
             tropter/TropterProblem.h
@@ -127,26 +126,20 @@ if (MOCO_WITH_TROPTER)
     target_compile_definitions(osimMoco PUBLIC MOCO_WITH_TROPTER)
 endif ()
 
-if (MOCO_COPY_DEPENDENCIES)
-    if (APPLE)
-        set(rpath_macro "\@loader_path")
-    elseif (UNIX)
-        set(rpath_macro "\$ORIGIN")
-    endif ()
-    set_property(TARGET osimMoco APPEND PROPERTY
-            INSTALL_RPATH "${rpath_macro}/")
-endif ()
+MocoAddInstallRPATHSelf(TARGET osimMoco LOADER)
+MocoAddInstallRPATHSimbody(TARGET osimMoco LOADER
+        FROM "${CMAKE_INSTALL_LIBDIR}")
 
 if (WIN32)
     add_dependencies(osimMoco Copy_OpenSim_DLLs)
 endif ()
 
-install(TARGETS osimMoco EXPORT MocoTargets
+install(TARGETS osimMoco EXPORT OpenSimMocoTargets
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # TODO do not install InverseMuscleSolverMotionData.h b/c it uses Eigen.
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
-        DESTINATION ${MOCO_INSTALL_INCLUDEDIR}/Moco
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/Moco
         FILES_MATCHING PATTERN "*.h*")

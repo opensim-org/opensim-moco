@@ -180,6 +180,13 @@ protected:
     void addSlack(std::string name, Bounds bounds) {
         m_slackInfos.push_back({std::move(name), std::move(bounds)});
     }
+    /// Set if all kinematics are prescribed. In this case, do not add state
+    /// variables for coordinates or speeds. The number of multibody dynamics
+    /// equations is equal to the number of speeds in the original system. But
+    /// if kinematics are prescribed, you must provide the number of multibody
+    /// dynamics equations directly. This is because no speed state variables
+    /// are added and CasOCProblem can't obtain the number of multibody
+    /// equations by counting the number of speed state variables.
     void setPrescribedKinematics(bool tf, int numMultibodyDynamicsEquations) {
         m_prescribedKinematics = tf;
         m_numMultibodyDynamicsEquationsIfPrescribedKinematics =
@@ -245,7 +252,19 @@ public:
             const ContinuousInput& /*input*/,
             casadi::DM& /*path_constraint*/) const {}
 
-    virtual void intermediateCallback(const CasOC::Iterate&) const {}
+    virtual std::vector<std::string>
+    createKinematicConstraintEquationNamesImpl() const;
+
+    void intermediateCallback() const { intermediateCallbackImpl(); }
+    void intermediateCallbackWithIterate(const CasOC::Iterate& it) const {
+        intermediateCallbackWithIterateImpl(it);
+    }
+    /// This is invoked once for each iterate in the optimization process.
+    virtual void intermediateCallbackImpl() const {}
+    /// Process an intermediate iterate. The frequency with which this is
+    /// evaluated is governed by Solver::getOutputInterval().
+    virtual void intermediateCallbackWithIterateImpl(
+            const CasOC::Iterate&) const {}
     /// @}
 
 public:
@@ -391,48 +410,11 @@ public:
     }
     /// Create a vector of names for scalar kinematic constraint equations.
     /// The length of the vector is getNumKinematicConstraintEquations().
-    std::vector<std::string> createKinematicConstraintNames() const {
-        std::vector<std::string> names;
-        if (!m_enforceConstraintDerivatives) {
-            for (const auto& info : getMultiplierInfos()) {
-                names.push_back(info.name);
-            }
-            return names;
-        }
-
-        for (const auto& info : getMultiplierInfos()) {
-            if (info.level == KinematicLevel::Position) {
-                names.push_back(info.name + "_p");
-            }
-        }
-
-        for (const auto& info : getMultiplierInfos()) {
-            if (info.level == KinematicLevel::Position) {
-                names.push_back(info.name + "_dp");
-            }
-        }
-        for (const auto& info : getMultiplierInfos()) {
-            if (info.level == KinematicLevel::Velocity) {
-                names.push_back(info.name + "_v");
-            }
-        }
-
-        for (const auto& info : getMultiplierInfos()) {
-            if (info.level == KinematicLevel::Position) {
-                names.push_back(info.name + "_ddp");
-            }
-        }
-        for (const auto& info : getMultiplierInfos()) {
-            if (info.level == KinematicLevel::Velocity) {
-                names.push_back(info.name + "_dv");
-            }
-        }
-        for (const auto& info : getMultiplierInfos()) {
-            if (info.level == KinematicLevel::Acceleration) {
-                names.push_back(info.name + "_a");
-            }
-        }
-
+    /// `includeDerivatives` determines if names for derivatives of
+    /// position-level and velocity-level constraints should be included.
+    std::vector<std::string> createKinematicConstraintEquationNames() const {
+        std::vector<std::string> names =
+                createKinematicConstraintEquationNamesImpl();
         OPENSIM_THROW_IF(
                 (int)names.size() != getNumKinematicConstraintEquations(),
                 OpenSim::Exception, "Internal error.");

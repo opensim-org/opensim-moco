@@ -27,7 +27,6 @@
 #include "MocoStudy.h"
 #include "MocoUtilities.h"
 
-#include <OpenSim/Common/FileAdapter.h>
 #include <OpenSim/Tools/InverseDynamicsTool.h>
 
 using namespace OpenSim;
@@ -54,12 +53,16 @@ std::pair<MocoStudy, TimeSeriesTable> MocoInverse::initializeInternal() const {
                 dontApplySearchPath, setupDir, fileName, extension);
     }
 
+    // Process inputs.
+    // ----------------
     Model model = get_model().process();
 
     model.initSystem();
 
     TimeSeriesTable kinematics = get_kinematics().process(setupDir, &model);
 
+    // Prescribe the kinematics.
+    // -------------------------
     // allowMissingColumns = true: we only need kinematics.
     // allowExtraColumns = user-specified.
     // assemble = true: we must obey the kinematic constraints.
@@ -74,18 +77,20 @@ std::pair<MocoStudy, TimeSeriesTable> MocoInverse::initializeInternal() const {
 
     model.initSystem();
 
-    // Configure MocoStudy.
-    // --------------------
+    // Set up the MocoProblem.
+    // -----------------------
+
     MocoStudy moco;
     auto& problem = moco.updProblem();
     problem.setModelCopy(model);
 
     TimeInfo timeInfo;
-    updateTimeInfo("kinematics",
-            kinematics.getIndependentColumn().front(),
-            kinematics.getIndependentColumn().back(),
-            timeInfo);
-    // const double spaceForFiniteDiff = 1e-3;
+    updateTimeInfo("kinematics", kinematics.getIndependentColumn().front(),
+            kinematics.getIndependentColumn().back(), timeInfo);
+    if (get_clip_time_range()) {
+        timeInfo.initial += 1e-3;
+        timeInfo.final -= 1e-3;
+    }
     problem.setTimeBounds(timeInfo.initial, timeInfo.final);
 
     // TODO: Allow users to specify costs flexibly.
@@ -94,15 +99,14 @@ std::pair<MocoStudy, TimeSeriesTable> MocoInverse::initializeInternal() const {
         problem.addCost<MocoSumSquaredStateCost>("activation_effort");
     }
 
+    // Configure the MocoSolver.
+    // -------------------------
     auto& solver = moco.initCasADiSolver();
     solver.set_dynamics_mode("implicit");
-    if (getProperty_tolerance().size()) {
-        OPENSIM_THROW_IF_FRMOBJ(get_tolerance() <= 0, Exception,
-                format("Tolerance must be positive, but got %g.",
-                        get_tolerance()));
-        solver.set_optim_convergence_tolerance(get_tolerance());
-        solver.set_optim_constraint_tolerance(get_tolerance());
-    }
+    OPENSIM_THROW_IF_FRMOBJ(get_tolerance() <= 0, Exception,
+            format("Tolerance must be positive, but got %g.", get_tolerance()));
+    solver.set_optim_convergence_tolerance(get_tolerance());
+    solver.set_optim_constraint_tolerance(get_tolerance());
     // The sparsity detection works fine with DeGrooteFregly2016Muscle.
     solver.set_optim_sparsity_detection("random");
     // Forward is 3x faster than central.
@@ -130,14 +134,16 @@ MocoInverseSolution MocoInverse::solve() const {
     MocoInverseSolution solution;
     solution.setMocoSolution(mocoSolution);
 
-    // if (getProperty_output_paths().size()) {
-    //    std::vector<std::string> outputPaths;
-    //    for (int io = 0; io < getProperty_output_paths().size(); ++io) {
-    //        outputPaths.push_back(get_output_paths(io));
-    //    }
-    //    solution.setOutputs(
-    //        moco.analyze<SimTK::Real>(solution.getMocoSolution(),
-    //        outputPaths));
-    //}
+    if (getProperty_output_paths().size()) {
+        std::vector<std::string> outputPaths;
+        for (int io = 0; io < getProperty_output_paths().size(); ++io) {
+            outputPaths.push_back(get_output_paths(io));
+        }
+        solution.setOutputs(
+                moco.analyze(solution.getMocoSolution(), outputPaths));
+    }
+    if (!mocoSolution.success()) {
+        solution.m_mocoSolution.seal();
+    }
     return solution;
 }

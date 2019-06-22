@@ -51,11 +51,9 @@
 #include "ModelOperators.h"
 #include "osimMoco.h"
 
-// TODO: Move to osimSimulation.
 #include <exception>
 #include <iostream>
 
-#include <OpenSim/Common/Object.h>
 #include <OpenSim/Simulation/MarkersReference.h>
 
 using namespace OpenSim;
@@ -85,7 +83,6 @@ OSIMMOCO_API void RegisterTypes_osimMoco() {
         Object::registerType(MocoProblem());
         Object::registerType(MocoStudy());
         Object::registerType(MocoTropterSolver());
-        Object::registerType(MocoParameter());
 
         Object::registerType(MocoInverse());
         Object::registerType(MocoTrack());
@@ -99,6 +96,7 @@ OSIMMOCO_API void RegisterTypes_osimMoco() {
         Object::registerType(INDYGO());
 
         Object::registerType(TableProcessor());
+
         Object::registerType(TabOpLowPassFilter());
 
         Object::registerType(ModelProcessor());

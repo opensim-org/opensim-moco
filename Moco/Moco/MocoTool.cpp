@@ -16,6 +16,7 @@
  * limitations under the License.                                             *
  * -------------------------------------------------------------------------- */
 #include "MocoTool.h"
+#include "MocoUtilities.h"
 
 #include "MocoUtilities.h"
 
@@ -25,6 +26,7 @@ void MocoTool::constructProperties() {
     constructProperty_initial_time();
     constructProperty_final_time();
     constructProperty_mesh_interval(0.02);
+    constructProperty_clip_time_range(false);
     constructProperty_model(ModelProcessor());
 }
 
@@ -67,4 +69,21 @@ void MocoTool::updateTimeInfo(const std::string& dataLabel,
     info.numMeshPoints =
             (int)std::ceil((info.final - info.initial) / get_mesh_interval()) +
             1;
+}
+
+std::string MocoTool::getFilePath(const std::string& file) const {
+    using SimTK::Pathname;
+    std::string setupDir;
+    {
+        bool dontApplySearchPath;
+        std::string fileName, extension;
+        Pathname::deconstructPathname(getDocumentFileName(),
+            dontApplySearchPath, setupDir, fileName, extension);
+    }
+
+    std::string filepath =
+        Pathname::getAbsolutePathnameUsingSpecifiedWorkingDirectory(
+            setupDir, file);
+
+    return filepath;
 }

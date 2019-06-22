@@ -7,6 +7,7 @@
 #include <Moco/Components/ActivationCoordinateActuator.h>
 #include <Moco/Components/DeGrooteFregly2016Muscle.h>
 #include <Moco/Components/ModelFactory.h>
+#include <Moco/Components/PositionMotion.h>
 #include <Moco/MocoBounds.h>
 #include <Moco/MocoCasADiSolver/MocoCasADiSolver.h>
 #include <Moco/MocoControlBoundConstraint.h>
@@ -17,14 +18,13 @@
 #include <Moco/MocoCost/MocoMarkerTrackingCost.h>
 #include <Moco/MocoCost/MocoOrientationTrackingCost.h>
 #include <Moco/MocoCost/MocoStateTrackingCost.h>
-#include <Moco/MocoCost/MocoSumSquaredStateCost.h>
 #include <Moco/MocoCost/MocoTranslationTrackingCost.h>
 #include <Moco/MocoInverse.h>
-#include <Moco/MocoIterate.h>
 #include <Moco/MocoParameter.h>
 #include <Moco/MocoProblem.h>
 #include <Moco/MocoStudy.h>
 #include <Moco/MocoTrack.h>
+#include <Moco/MocoTrajectory.h>
 #include <Moco/MocoTropterSolver.h>
 #include <Moco/MocoUtilities.h>
 #include <Moco/MocoWeightSet.h>

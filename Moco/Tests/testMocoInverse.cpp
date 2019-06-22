@@ -16,9 +16,6 @@
  * limitations under the License.                                             *
  * -------------------------------------------------------------------------- */
 
-/// In this file, we attempt to solve
-/// This file contains a problem we hope to solve robustly in the future.
-/// It serves as a goal.
 #include <Moco/osimMoco.h>
 
 #include <OpenSim/Common/LogManager.h>
@@ -142,20 +139,8 @@ TEST_CASE("MocoInverse gait10dof18musc") {
             "testMocoInverseGait10dof18musc_solution.sto");
 
     const auto actual = solution.getMocoSolution().getControlsTrajectory();
-    MocoIterate std("std_testMocoInverseGait10dof18musc_solution.sto");
+    MocoTrajectory std("std_testMocoInverseGait10dof18musc_solution.sto");
     const auto expected = std.getControlsTrajectory();
     CHECK(std.compareContinuousVariablesRMS(
                   solution.getMocoSolution(), {{"controls", {}}}) < 1e-4);
-
-    // TODO: Implement cost minimization directly in CasADi.
-    //      -> evaluating the integral cost only takes up like 5% of the
-    //         computational time; the only benefit would be accurate
-    //         derivatives.
-    // TODO: Activation dynamics.: can solve but takes way longer.
-    //      Without, solves in 4 seconds.
-    // TODO parallelization is changing the number of iterations for a
-    // solution.
-    // TODO: are results reproducible?? stochasticity in Millard model?
-    // TODO: problem scaling.
-    // TODO: solve with toy problem (single muscle).
 }

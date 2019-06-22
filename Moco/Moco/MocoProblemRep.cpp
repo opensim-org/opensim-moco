@@ -51,7 +51,8 @@ void MocoProblemRep::initialize() {
     m_model_base.finalizeFromProperties();
     int countMotion = 0;
     for (const auto& comp : m_model_base.getComponentList<PositionMotion>()) {
-        comp.getName(); // Avoid "unused variable".
+        // Next line exists only to avoid an "unused variable" compiler warning.
+        comp.getName();
         if (comp.getDefaultEnabled()) {
             ++countMotion;
             OPENSIM_THROW_IF(countMotion > 1, Exception,
@@ -141,6 +142,9 @@ void MocoProblemRep::initialize() {
     const auto& state = m_model_base.getWorkingState();
     int mp, mv, ma;
     m_num_kinematic_constraint_equations = 0;
+    std::vector<std::string> kc_perr_names;
+    std::vector<std::string> kc_verr_names;
+    std::vector<std::string> kc_aerr_names;
     for (SimTK::ConstraintIndex cid(0); cid < NC; ++cid) {
         const SimTK::Constraint& constraint = matter.getConstraint(cid);
         SimTK::Constraint& constraintToDisable =
@@ -173,21 +177,24 @@ void MocoProblemRep::initialize() {
             // TODO how to name multiplier variables?
             std::vector<MocoVariableInfo> multInfos;
             for (int i = 0; i < mp; ++i) {
-                MocoVariableInfo info("lambda_cid" + std::to_string(cid) +
-                                              "_p" + std::to_string(i),
+                std::string name = format("cid%i_p%i", cid, i);
+                kc_perr_names.push_back(name);
+                MocoVariableInfo info("lambda_" + name,
                         multBounds, multInitBounds, multFinalBounds);
                 multInfos.push_back(info);
             }
             for (int i = 0; i < mv; ++i) {
-                MocoVariableInfo info("lambda_cid" + std::to_string(cid) +
-                                              "_v" + std::to_string(i),
+                std::string name = format("cid%i_v%i", cid, i);
+                MocoVariableInfo info("lambda_" + name,
                         multBounds, multInitBounds, multFinalBounds);
+                kc_verr_names.push_back(name);
                 multInfos.push_back(info);
             }
             for (int i = 0; i < ma; ++i) {
-                MocoVariableInfo info("lambda_cid" + std::to_string(cid) +
-                                              "_a" + std::to_string(i),
+                std::string name = format("cid%i_a%i", cid, i);
+                MocoVariableInfo info("lambda_" + name,
                         multBounds, multInitBounds, multFinalBounds);
+                kc_aerr_names.push_back(name);
                 multInfos.push_back(info);
             }
             m_multiplier_infos_map.insert({kcInfo.getName(), multInfos});
@@ -195,6 +202,29 @@ void MocoProblemRep::initialize() {
             // Disable this constraint in the copied model.
             constraintToDisable.disable(m_state_disabled_constraints);
         }
+    }
+
+    // Create kinematic constraint equation names.
+    for (const auto& name : kc_perr_names) {
+        m_kinematic_constraint_eq_names_without_derivatives.push_back(name);
+        m_kinematic_constraint_eq_names_with_derivatives.push_back(name);
+    }
+    for (const auto& name : kc_perr_names) {
+        m_kinematic_constraint_eq_names_with_derivatives.push_back(name + "d");
+    }
+    for (const auto& name : kc_verr_names) {
+        m_kinematic_constraint_eq_names_without_derivatives.push_back(name);
+        m_kinematic_constraint_eq_names_with_derivatives.push_back(name);
+    }
+    for (const auto& name : kc_perr_names) {
+        m_kinematic_constraint_eq_names_with_derivatives.push_back(name + "dd");
+    }
+    for (const auto& name : kc_verr_names) {
+        m_kinematic_constraint_eq_names_with_derivatives.push_back(name + "d");
+    }
+    for (const auto& name : kc_aerr_names) {
+        m_kinematic_constraint_eq_names_without_derivatives.push_back(name);
+        m_kinematic_constraint_eq_names_with_derivatives.push_back(name);
     }
 
     // Verify that the constraint error vectors in the state associated with the
@@ -403,12 +433,12 @@ void MocoProblemRep::initialize() {
                         pc.getName()));
         pcNames.insert(pc.getName());
         m_path_constraints[i] = std::unique_ptr<MocoPathConstraint>(pc.clone());
-        m_path_constraints[i]->initializeOnModel(
-                m_model_disabled_constraints, problemInfo,
-                m_num_path_constraint_equations);
+        m_path_constraints[i]->initializeOnModel(m_model_disabled_constraints,
+                problemInfo, m_num_path_constraint_equations);
         m_num_path_constraint_equations +=
                 m_path_constraints[i]->getConstraintInfo().getNumEquations();
     }
+
 }
 
 const std::string& MocoProblemRep::getName() const {
@@ -472,6 +502,12 @@ MocoProblemRep::createKinematicConstraintNames() const {
         names[i] = m_kinematic_constraints[i].getConstraintInfo().getName();
     }
     return names;
+}
+std::vector<std::string> MocoProblemRep::getKinematicConstraintEquationNames(
+        bool includeDerivatives) const {
+    if (includeDerivatives)
+        return m_kinematic_constraint_eq_names_with_derivatives;
+    return m_kinematic_constraint_eq_names_without_derivatives;
 }
 std::vector<std::string> MocoProblemRep::createParameterNames() const {
     std::vector<std::string> names(m_parameters.size());

@@ -19,8 +19,8 @@
  * -------------------------------------------------------------------------- */
 
 #include "Common/TableProcessor.h"
-#include "MocoIterate.h"
 #include "MocoTool.h"
+#include "MocoTrajectory.h"
 #include "MocoStudy.h"
 #include "osimMocoDLL.h"
 
@@ -30,7 +30,7 @@ namespace OpenSim {
 
 class MocoInverse;
 
-/// This class holds the solution from MocoInverseTool.
+/// This class holds the solution from MocoInverse.
 class MocoInverseSolution {
 public:
     const MocoSolution& getMocoSolution() const { return m_mocoSolution; }
@@ -60,8 +60,24 @@ private:
 /// are set to NaN.
 ///
 /// The provided trajectory is altered to satisfy any enabled kinematic
-/// constraints in the model. Filtering is performed before satisfying the
-/// constraints.
+/// constraints in the model.
+///
+/// Cost
+/// ----
+/// By default, MocoInverse minimizes the sum of squared controls. To customize
+/// the cost, invoke initialize(), add costs manually, and solve the problem
+/// using the solver directly. Note, however, that kinematic states are not
+/// included in the solution if you use the solver directly.
+///
+/// Default solver settings
+/// -----------------------
+/// - solver: MocoCasADiSolver
+/// - dynamics_mode: implicit
+/// - transcription_sceheme: trapezoidal
+/// - optim_convergence_tolerance: 1e-3
+/// - optim_constraint_tolerance: 1e-3
+/// - optim_sparsity_detection: random
+/// - optim_finite_difference_scheme: forward
 ///
 /// ### Cost
 ///
@@ -110,9 +126,7 @@ class OSIMMOCO_API MocoInverse : public MocoTool {
 public:
 
     OpenSim_DECLARE_PROPERTY(kinematics, TableProcessor,
-            "Path to a STO file containing generalized coordinates "
-            "to prescribe. The path can be absolute or relative to the setup "
-            "file.");
+            "Generalized coordinate values to prescribe.");
 
     OpenSim_DECLARE_PROPERTY(kinematics_allow_extra_columns, bool,
             "Allow the kinematics file to contain columns that do not name "
@@ -123,7 +137,7 @@ public:
             "Minimize the sum of squared states (e.g., activations). "
             "Do not use this if tendon compliance is enabled. Default: false.");
 
-    OpenSim_DECLARE_OPTIONAL_PROPERTY(tolerance, double,
+    OpenSim_DECLARE_PROPERTY(tolerance, double,
             "The convergence and constraint tolerances (default: 1e-3).");
 
     OpenSim_DECLARE_OPTIONAL_PROPERTY(max_iterations, int,
@@ -140,6 +154,8 @@ public:
     }
 
     MocoStudy initialize() const;
+    /// Solve the problem returned by initialize() and compute the outputs
+    /// listed in output_paths.
     MocoInverseSolution solve() const;
 
 private:

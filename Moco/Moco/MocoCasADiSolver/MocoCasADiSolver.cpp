@@ -43,7 +43,7 @@ void MocoCasADiSolver::constructProperties() {
     constructProperty_output_interval(0);
 }
 
-MocoIterate MocoCasADiSolver::createGuess(const std::string& type) const {
+MocoTrajectory MocoCasADiSolver::createGuess(const std::string& type) const {
     OPENSIM_THROW_IF_FRMOBJ(
             type != "bounds" && type != "random" && type != "time-stepping",
             Exception,
@@ -57,16 +57,17 @@ MocoIterate MocoCasADiSolver::createGuess(const std::string& type) const {
     auto casSolver = createCasOCSolver(*casProblem);
 
     if (type == "bounds") {
-        return convertToMocoIterate(casSolver->createInitialGuessFromBounds());
+        return convertToMocoTrajectory(
+                casSolver->createInitialGuessFromBounds());
     } else if (type == "random") {
-        return convertToMocoIterate(
+        return convertToMocoTrajectory(
                 casSolver->createRandomIterateWithinBounds());
     } else {
         OPENSIM_THROW(Exception, "Internal error.");
     }
 }
 
-void MocoCasADiSolver::setGuess(MocoIterate guess) {
+void MocoCasADiSolver::setGuess(MocoTrajectory guess) {
     // Ensure the guess is compatible with this solver/problem.
     guess.isCompatible(getProblemRep(), true);
     clearGuess();
@@ -77,19 +78,19 @@ void MocoCasADiSolver::setGuessFile(const std::string& file) {
     set_guess_file(file);
 }
 void MocoCasADiSolver::clearGuess() {
-    m_guessFromAPI = MocoIterate();
-    m_guessFromFile = MocoIterate();
+    m_guessFromAPI = MocoTrajectory();
+    m_guessFromFile = MocoTrajectory();
     set_guess_file("");
     m_guessToUse.reset();
 }
-const MocoIterate& MocoCasADiSolver::getGuess() const {
+const MocoTrajectory& MocoCasADiSolver::getGuess() const {
     if (!m_guessToUse) {
         if (get_guess_file() != "" && m_guessFromFile.empty()) {
             // The API should make it impossible for both guessFromFile and
             // guessFromAPI to be non-empty.
             assert(m_guessFromAPI.empty());
             // No need to load from file again if we've already loaded it.
-            MocoIterate guessFromFile(get_guess_file());
+            MocoTrajectory guessFromFile(get_guess_file());
             guessFromFile.isCompatible(getProblemRep(), true);
             m_guessFromFile = guessFromFile;
             m_guessToUse.reset(&m_guessFromFile);
@@ -243,7 +244,7 @@ std::unique_ptr<CasOC::Solver> MocoCasADiSolver::createCasOCSolver(
             {"central", "forward", "backward"});
     casSolver->setFiniteDifferenceScheme(get_optim_finite_difference_scheme());
 
-    casSolver->getCallbackInterval(get_output_interval());
+    casSolver->setCallbackInterval(get_output_interval());
 
     Dict pluginOptions;
     pluginOptions["verbose_init"] = true;
@@ -290,7 +291,7 @@ MocoSolution MocoCasADiSolver::solveImpl() const {
                   << std::endl;
     }
 
-    MocoIterate guess = getGuess();
+    MocoTrajectory guess = getGuess();
     CasOC::Iterate casGuess;
     if (guess.empty()) {
         casGuess = casSolver->createInitialGuessFromBounds();
@@ -298,7 +299,8 @@ MocoSolution MocoCasADiSolver::solveImpl() const {
         casGuess = convertToCasOCIterate(*m_guessToUse);
     }
     CasOC::Solution casSolution = casSolver->solve(casGuess);
-    MocoSolution mocoSolution = convertToMocoIterate<MocoSolution>(casSolution);
+    MocoSolution mocoSolution =
+            convertToMocoTrajectory<MocoSolution>(casSolution);
     const long long elapsed = stopwatch.getElapsedTimeInNs();
 
     // If enforcing model constraints and not minimizing Lagrange multipliers,
