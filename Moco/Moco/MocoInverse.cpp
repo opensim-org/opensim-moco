@@ -128,7 +128,6 @@ MocoInverseSolution MocoInverse::solve() const {
     const auto& statesTrajTable = init.second;
     mocoSolution.insertStatesTrajectory(statesTrajTable);
     MocoInverseSolution solution;
-    solution.setMocoSolution(moco.solve().unseal());
     solution.setMocoSolution(mocoSolution);
 
     // if (getProperty_output_paths().size()) {
