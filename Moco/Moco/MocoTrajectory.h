@@ -685,7 +685,6 @@ private:
     };
     void setSolverDuration(double duration) { m_solverDuration = duration; }
     void convertToTableImpl(TimeSeriesTable&) const override;
-    void setSolverDuration(double duration) { m_solverDuration = duration; }
     bool m_success = true;
     double m_objective = -1;
     std::string m_status;
