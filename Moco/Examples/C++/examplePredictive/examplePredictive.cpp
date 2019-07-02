@@ -30,14 +30,21 @@ using namespace OpenSim;
 class MocoAverageSpeedCost : public MocoCost {
 OpenSim_DECLARE_CONCRETE_OBJECT(MocoAverageSpeedCost, MocoCost);
 public:
-    //TODO
     OpenSim_DECLARE_PROPERTY(desired_speed, double,
             "The desired forward speed defined as the distance travelled by"
             "the pelvis in the forward direction divided by the final time.");
-    MocoAverageSpeedCost() = default;
-    MocoAverageSpeedCost(std::string name) : MocoCost(std::move(name)) {}
+    // TODO
+    //MocoAverageSpeedCost() = default;
+    MocoAverageSpeedCost() {
+        constructProperties();
+    }
+    MocoAverageSpeedCost(std::string name) : MocoCost(std::move(name)) {
+        constructProperties();
+    }
     MocoAverageSpeedCost(std::string name, double weight)
-            : MocoCost(std::move(name), weight) {}
+            : MocoCost(std::move(name), weight) {
+        constructProperties();
+    }
 protected:
     void calcEndpointCostImpl(const SimTK::State& finalState,
             SimTK::Real& cost) const override {
@@ -48,15 +55,17 @@ protected:
         auto pelvisTranslationCoord =
             model.getCoordinateSet().get("groundPelvis_q_tx");
         SimTK::Real position = pelvisTranslationCoord.getValue(finalState);
-         //cost = SimTK::square(1.2 - (position / time));
         cost = SimTK::square(get_desired_speed() - (position / time));
+    }
+private:
+    void constructProperties() {
+        constructProperty_desired_speed(double(0));
     }
 };
 
 /// This model is torque-actuated.
 std::unique_ptr<Model> createGait2D() {
     auto model = make_unique<Model>();
- //int main() {
     model->setName("gait_2D");
 
     using SimTK::Vec3;
@@ -132,8 +141,9 @@ std::unique_ptr<Model> createGait2D() {
         groundPelvis->updCoordinate(PlanarJoint::Coord::TranslationY);
     groundPelvis_q_ty.setName("groundPelvis_q_ty");
     model->addJoint(groundPelvis);
+
     // Hip left
-    SpatialTransform st_hip_l;
+    /*SpatialTransform st_hip_l;
     st_hip_l[2].setCoordinateNames(
         OpenSim::Array<std::string>("hip_flexion_l", 1, 1));
     st_hip_l[2].setFunction(new LinearFunction());
@@ -141,11 +151,19 @@ std::unique_ptr<Model> createGait2D() {
     auto* hip_l = new CustomJoint("hip_l", *pelvis, Vec3(-0.0682778001711179,
         -0.0638353973311301,-0.0823306940058688), Vec3(0), *femur_l, Vec3(0),
         Vec3(0), st_hip_l);
-    //auto& hip_q_l = hip_l->updCoordinate();
-    //hip_q_l.setName("hip_q_l");
     model->addJoint(hip_l);
+    hip_l->finalizeFromProperties();
+    auto& hip_q_l = hip_l->upd_coordinates(0);
+    hip_q_l.setName("hip_q_l");*/
+    auto* hip_l = new PinJoint("hip_l", *pelvis, Vec3(-0.0682778001711179,
+        -0.0638353973311301,-0.0823306940058688), Vec3(0), *femur_l, Vec3(0),
+        Vec3(0));
+    auto& hip_q_l = hip_l->updCoordinate();
+    hip_q_l.setName("hip_q_l");
+    model->addJoint(hip_l);
+
     // Hip right
-    SpatialTransform st_hip_r;
+    /*SpatialTransform st_hip_r;
     st_hip_r[2].setCoordinateNames(
         OpenSim::Array<std::string>("hip_flexion_r", 1, 1));
     st_hip_r[2].setFunction(new LinearFunction());
@@ -153,11 +171,19 @@ std::unique_ptr<Model> createGait2D() {
     auto* hip_r = new CustomJoint("hip_r", *pelvis, Vec3(-0.0682778001711179,
         -0.0638353973311301, 0.0823306940058688), Vec3(0), *femur_r, Vec3(0),
         Vec3(0), st_hip_r);
-    //auto& hip_q_r = hip_r->updCoordinate();
-    //hip_q_r.setName("hip_q_r");
     model->addJoint(hip_r);
+    hip_r->finalizeFromProperties();
+    auto& hip_q_r = hip_r->upd_coordinates(0);
+    hip_q_r.setName("hip_q_r");*/
+    auto* hip_r = new PinJoint("hip_r", *pelvis, Vec3(-0.0682778001711179,
+        -0.0638353973311301, 0.0823306940058688), Vec3(0), *femur_r, Vec3(0),
+        Vec3(0));
+    auto& hip_q_r = hip_r->updCoordinate();
+    hip_q_r.setName("hip_q_r");
+    model->addJoint(hip_r);
+
     // Knee left
-    SpatialTransform st_knee_l;
+    /*SpatialTransform st_knee_l;
     st_knee_l[2].setCoordinateNames(
         OpenSim::Array<std::string>("knee_angle_l", 1, 1));
     st_knee_l[2].setFunction(new LinearFunction());
@@ -165,11 +191,18 @@ std::unique_ptr<Model> createGait2D() {
     auto* knee_l = new CustomJoint("knee_l", *femur_l,
         Vec3(-0.00451221232146798, -0.396907245921447, 0), Vec3(0), *tibia_l,
         Vec3(0), Vec3(0), st_knee_l);
-    //auto& knee_q_l = knee_l->updCoordinate();
-    //knee_q_l.setName("knee_q_l");
     model->addJoint(knee_l);
+    knee_l->finalizeFromProperties();
+    auto& knee_q_l = knee_l->upd_coordinates(0);
+    knee_q_l.setName("knee_q_l");*/
+    auto* knee_l = new PinJoint("knee_l", *femur_l, Vec3(-0.00451221232146798,
+        -0.396907245921447, 0), Vec3(0), *tibia_l, Vec3(0), Vec3(0));
+    auto& knee_q_l = knee_l->updCoordinate();
+    knee_q_l.setName("knee_q_l");
+    model->addJoint(knee_l);
+
     // Knee right
-    SpatialTransform st_knee_r;
+    /*SpatialTransform st_knee_r;
     st_knee_r[2].setCoordinateNames(
         OpenSim::Array<std::string>("knee_angle_r", 1, 1));
     st_knee_r[2].setFunction(new LinearFunction());
@@ -177,34 +210,37 @@ std::unique_ptr<Model> createGait2D() {
     auto* knee_r = new CustomJoint("knee_r", *femur_r,
         Vec3(-0.00451221232146798, -0.396907245921447, 0), Vec3(0), *tibia_r,
         Vec3(0), Vec3(0), st_knee_r);
-    //auto& knee_q_r = knee_r->updCoordinate();
-    //knee_q_r.setName("knee_q_r");
     model->addJoint(knee_r);
+    knee_r->finalizeFromProperties();
+    auto& knee_q_r = knee_r->upd_coordinates(0);
+    knee_q_r.setName("knee_q_r");*/
+    auto* knee_r = new PinJoint("knee_r", *femur_r, Vec3(-0.00451221232146798,
+        -0.396907245921447, 0), Vec3(0), *tibia_r, Vec3(0), Vec3(0));
+    auto& knee_q_r = knee_r->updCoordinate();
+    knee_q_r.setName("knee_q_r");
+    model->addJoint(knee_r);
+
     // Ankle left
     auto* ankle_l = new PinJoint("ankle_l", *tibia_l,
         Vec3(0, -0.415694825374905, 0), Vec3(0), *talus_l, Vec3(0), Vec3(0));
-    //auto& ankle_q_l = ankle_l->updCoordinate();
-    //ankle_q_l.setName("ankle_q_l");
+    auto& ankle_q_l = ankle_l->updCoordinate();
+    ankle_q_l.setName("ankle_q_l");
     model->addJoint(ankle_l);
     // Ankle right
     auto* ankle_r = new PinJoint("ankle_r", *tibia_r,
         Vec3(0, -0.415694825374905, 0), Vec3(0), *talus_r, Vec3(0), Vec3(0));
-    //auto& ankle_q_r = ankle_r->updCoordinate();
-    //ankle_q_r.setName("ankle_q_r");
+    auto& ankle_q_r = ankle_r->updCoordinate();
+    ankle_q_r.setName("ankle_q_r");
     model->addJoint(ankle_r);
     // Subtalar left
     auto* subtalar_l = new WeldJoint("subtalar_l", *talus_l,
         Vec3(-0.0445720919117321, -0.0383391276542374, -0.00723828107321956),
         Vec3(0), *calcn_l, Vec3(0), Vec3(0));
-    //auto& subtalar_q_l = subtalar_l->updCoordinate();
-    //subtalar_q_l.setName("subtalar_q_l");
     model->addJoint(subtalar_l);
     // Subtalar right
     auto* subtalar_r = new WeldJoint("subtalar_r", *talus_r,
         Vec3(-0.0445720919117321, -0.0383391276542374, 0.00723828107321956),
         Vec3(0), *calcn_r, Vec3(0), Vec3(0));
-    //auto& subtalar_q_r = subtalar_r->updCoordinate();
-    //subtalar_q_r.setName("subtalar_q_r");
     model->addJoint(subtalar_r);
     // MTP left
     auto* mtp_l = new WeldJoint("mtp_l", *calcn_l,
@@ -220,8 +256,8 @@ std::unique_ptr<Model> createGait2D() {
     auto* lumbar = new PinJoint("lumbar", *pelvis,
         Vec3(-0.0972499926058214, 0.0787077894476112, 0), Vec3(0),
         *torso, Vec3(0), Vec3(0));
-    //auto& lumbar_q = lumbar->updCoordinate();
-    //lumbar_q.setName("lumbar_q");
+    auto& lumbar_q = lumbar->updCoordinate();
+    lumbar_q.setName("lumbar_q");
     model->addJoint(lumbar);
 
     ///////////////////////////////////////////////////////////////////////////
@@ -484,8 +520,6 @@ std::unique_ptr<Model> createGait2D() {
 
 int main() {
 
-
-
     MocoStudy moco;
     moco.setName("gait2D_Predictive");
 
@@ -497,12 +531,10 @@ int main() {
     // -----------------
     problem.setModel(createGait2D());
 
-
-
     // Bounds.
     // -------
 
-    // States: joint positions and velocoties
+    // States: joint positions and velocities
     // Ground pelvis
     problem.setStateInfo("/jointset/groundPelvis/groundPelvis_q_rz/value", {-10, 10});
     problem.setStateInfo("/jointset/groundPelvis/groundPelvis_q_rz/speed", {-10, 10});
@@ -550,50 +582,35 @@ int main() {
 
     //// Cost.
     //// -----
-
     // Minimize torque actuators squared
-    auto* controlCost = problem.addCost<MocoControlCost>();
-    controlCost->set_weight(1.);
+    auto* controlCost = problem.addCost<MocoControlCost>("ControlCost");
+    controlCost->set_weight(1);
 
-    // Impose symmetry
-
-    //// Impose average speed
-    auto* speedCost = problem.addCost<MocoAverageSpeedCost>();
+    // Impose average speed
+    auto* speedCost = problem.addCost<MocoAverageSpeedCost>("averageSpeedCost");
     speedCost->set_weight(1);
-    // TODO
     speedCost->set_desired_speed(1.2);
 
+    // Impose symmetry
+    // TODO
 
+    // Impose 1/d * squared controls
 
+    // Configure the solver.
+    // =====================
+    auto& solver = moco.initCasADiSolver();
+    solver.set_num_mesh_points(50);
+    solver.set_verbosity(2);
+    solver.set_optim_solver("ipopt");
 
+    moco.print("gait2D_Predictive.omoco");
 
-    //MocoStateTrackingCost tracking;
-    //TimeSeriesTable ref;
-    //ref.setColumnLabels({"/jointset/j0/q0/value", "/jointset/j1/q1/value"});
-    //for (double time = -0.05; time < finalTime + 0.05; time += 0.01) {
-    //    ref.appendRow(time, {
-    //            0.5 * SimTK::Pi * time,
-    //            0.25 * SimTK::Pi * time
-    //    });
-    //}
+    // Solve the problem.
+    // ==================
+    MocoSolution solution = moco.solve();
+    solution.write("gait2D_Predictive_solution.sto");
 
-    //tracking.setReference(ref);
-
-    //// Configure the solver.
-    //// =====================
-    //auto& solver = moco.initCasADiSolver();
-    //solver.set_num_mesh_points(50);
-    //solver.set_verbosity(2);
-    //solver.set_optim_solver("ipopt");
-
-    //moco.print("gait2D_Predictive.omoco");
-
-    //// Solve the problem.
-    //// ==================
-    //MocoSolution solution = moco.solve();
-    //solution.write("gait2D_Predictive_solution.sto");
-
-    //moco.visualize(solution);
+    moco.visualize(solution);
 
     return EXIT_SUCCESS;
 
