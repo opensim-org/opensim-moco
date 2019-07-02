@@ -16,9 +16,6 @@
  * limitations under the License.                                             *
  * -------------------------------------------------------------------------- */
 
-/// This example solves a basic coordinate tracking problem using a double
-/// pendulum.
-
 #include <OpenSim/Simulation/SimbodyEngine/PinJoint.h>
 #include <OpenSim/Actuators/CoordinateActuator.h>
 #include <OpenSim/Common/LinearFunction.h>
@@ -27,12 +24,39 @@
 
 using namespace OpenSim;
 
-///// This model is torque-actuated.
-//std::unique_ptr<Model> createGait2D() {
-//    auto model = make_unique<Model>();
+// This class defines a MocoCost that computes the average speed defined as the
+// distance travelled by the pelvis in the forward direction divided by the
+// final time
+class MocoAverageSpeedCost : public MocoCost {
+OpenSim_DECLARE_CONCRETE_OBJECT(MocoAverageSpeedCost, MocoCost);
+public:
+    //TODO
+    OpenSim_DECLARE_PROPERTY(desired_speed, double,
+            "The desired forward speed defined as the distance travelled by"
+            "the pelvis in the forward direction divided by the final time.");
+    MocoAverageSpeedCost() = default;
+    MocoAverageSpeedCost(std::string name) : MocoCost(std::move(name)) {}
+    MocoAverageSpeedCost(std::string name, double weight)
+            : MocoCost(std::move(name), weight) {}
+protected:
+    void calcEndpointCostImpl(const SimTK::State& finalState,
+            SimTK::Real& cost) const override {
+        // get final time
+        SimTK::Real time = finalState.getTime();
+        // get final pelvis forward position
+        const Model& model = getModel();
+        auto pelvisTranslationCoord =
+            model.getCoordinateSet().get("groundPelvis_q_tx");
+        SimTK::Real position = pelvisTranslationCoord.getValue(finalState);
+         //cost = SimTK::square(1.2 - (position / time));
+        cost = SimTK::square(get_desired_speed() - (position / time));
+    }
+};
 
- int main() {
-    Model* model = new Model();
+/// This model is torque-actuated.
+std::unique_ptr<Model> createGait2D() {
+    auto model = make_unique<Model>();
+ //int main() {
     model->setName("gait_2D");
 
     using SimTK::Vec3;
@@ -40,7 +64,9 @@ using namespace OpenSim;
     using SimTK::Transform;
 
     // Create model
+    ///////////////////////////////////////////////////////////////////////////
     // Add bodies
+    ///////////////////////////////////////////////////////////////////////////
     auto* pelvis = new OpenSim::Body("pelvis", 9.7143336091724,
         Vec3(-0.0682778,0,0), Inertia(0.0814928846050306,0.0814928846050306,
         0.0445427591530667,0,0,0));
@@ -90,7 +116,9 @@ using namespace OpenSim;
         0.593400919285897,1.14043571182129,0,0,0));
     model->addBody(torso);
 
+    ///////////////////////////////////////////////////////////////////////////
     // Add joints
+    ///////////////////////////////////////////////////////////////////////////
     // Ground pelvis
     auto* groundPelvis = new PlanarJoint("groundPelvis", model->getGround(),
         Vec3(0), Vec3(0), *pelvis, Vec3(0), Vec3(0));
@@ -196,8 +224,9 @@ using namespace OpenSim;
     //lumbar_q.setName("lumbar_q");
     model->addJoint(lumbar);
 
-    // Contact model should come here TODO
-
+    ///////////////////////////////////////////////////////////////////////////
+    //Add contact models
+    ///////////////////////////////////////////////////////////////////////////
     double contactSphereHeelRadius = 0.035;
     double contactSphereFrontRadius = 0.015;
     double contactSphereHeelStiffness = 3067776;
@@ -210,47 +239,53 @@ using namespace OpenSim;
     double cf = 1e-5;
     double bd = 300;
     double bv = 50;
-    Vec3 locSphere_heel_l(0.031307527581931796, 0.010435842527310599, 0);
-    Vec3 locSphere_front_l(0.1774093229642802, -0.015653763790965898,
+    Vec3 locSphereHeel_l(0.031307527581931796, 0.010435842527310599, 0);
+    Vec3 locSphereFront_l(0.1774093229642802, -0.015653763790965898,
         -0.005217921263655299);
-    Vec3 locSphere_heel_r(0.031307527581931796, 0.010435842527310599, 0);
-    Vec3 locSphere_front_r(0.1774093229642802, -0.015653763790965898,
+    Vec3 locSphereHeel_r(0.031307527581931796, 0.010435842527310599, 0);
+    Vec3 locSphereFront_r(0.1774093229642802, -0.015653763790965898,
         0.005217921263655299);
     Transform halfSpaceFrame(Rotation(0, SimTK::ZAxis), Vec3(0));
 
-    auto* HC_heel_r = new SmoothSphereHalfSpaceForce("contactSphereHeel_r", *calcn_r,
-        locSphere_heel_r,contactSphereHeelRadius,model->getGround(),
-        halfSpaceFrame,contactSphereHeelStiffness,dissipation,staticFriction,dynamicFriction,
-        viscousFriction,transitionVelocity,cf,bd,bv);
+    auto* HC_heel_r = new SmoothSphereHalfSpaceForce("contactSphereHeel_r",
+        *calcn_r, locSphereHeel_r,contactSphereHeelRadius,model->getGround(),
+        halfSpaceFrame,contactSphereHeelStiffness,dissipation,staticFriction,
+        dynamicFriction,viscousFriction,transitionVelocity,cf,bd,bv);
+    HC_heel_r->setName("contactSphereHeel_r");
     model->addComponent(HC_heel_r);
     HC_heel_r->connectSocket_body_contact_sphere(*calcn_r);
     HC_heel_r->connectSocket_body_contact_half_space(model->getGround());
 
-    auto* HC_heel_l = new SmoothSphereHalfSpaceForce("contactSphereHeel_l", *calcn_l,
-        locSphere_heel_l,contactSphereHeelRadius,model->getGround(),
-        halfSpaceFrame,contactSphereHeelStiffness,dissipation,staticFriction,dynamicFriction,
-        viscousFriction,transitionVelocity,cf,bd,bv);
+    auto* HC_heel_l = new SmoothSphereHalfSpaceForce("contactSphereHeel_l",
+        *calcn_l, locSphereHeel_l,contactSphereHeelRadius,model->getGround(),
+        halfSpaceFrame,contactSphereHeelStiffness,dissipation,staticFriction,
+        dynamicFriction,viscousFriction,transitionVelocity,cf,bd,bv);
+    HC_heel_l->setName("contactSphereHeel_l");
     model->addComponent(HC_heel_l);
     HC_heel_l->connectSocket_body_contact_sphere(*calcn_l);
     HC_heel_l->connectSocket_body_contact_half_space(model->getGround());
 
-    auto* HC_front_r = new SmoothSphereHalfSpaceForce("contactSphereFront_r", *calcn_r,
-        locSphere_front_r,contactSphereFrontRadius,model->getGround(),
-        halfSpaceFrame,contactSphereFrontStiffness,dissipation,staticFriction,dynamicFriction,
-        viscousFriction,transitionVelocity,cf,bd,bv);
+    auto* HC_front_r = new SmoothSphereHalfSpaceForce("contactSphereFront_r",
+        *calcn_r, locSphereFront_r,contactSphereFrontRadius,model->getGround(),
+        halfSpaceFrame,contactSphereFrontStiffness,dissipation,staticFriction,
+        dynamicFriction,viscousFriction,transitionVelocity,cf,bd,bv);
+    HC_front_r->setName("contactSphereFront_r");
     model->addComponent(HC_front_r);
     HC_front_r->connectSocket_body_contact_sphere(*calcn_r);
     HC_front_r->connectSocket_body_contact_half_space(model->getGround());
 
-    auto* HC_front_l = new SmoothSphereHalfSpaceForce("contactSphereFront_l", *calcn_l,
-        locSphere_front_l,contactSphereFrontRadius,model->getGround(),
-        halfSpaceFrame,contactSphereFrontStiffness,dissipation,staticFriction,dynamicFriction,
-        viscousFriction,transitionVelocity,cf,bd,bv);
+    auto* HC_front_l = new SmoothSphereHalfSpaceForce("contactSphereFront_l",
+        *calcn_l, locSphereFront_l,contactSphereFrontRadius,model->getGround(),
+        halfSpaceFrame,contactSphereFrontStiffness,dissipation,staticFriction,
+        dynamicFriction,viscousFriction,transitionVelocity,cf,bd,bv);
+    HC_front_l->setName("contactSphereFront_l");
     model->addComponent(HC_front_l);
     HC_front_l->connectSocket_body_contact_sphere(*calcn_l);
     HC_front_l->connectSocket_body_contact_half_space(model->getGround());
 
+    ///////////////////////////////////////////////////////////////////////////
     // Add coordinate actuators
+    ///////////////////////////////////////////////////////////////////////////
     // Ground pelvis
     // RotationZ
     auto* groundPelvisAct_rz = new CoordinateActuator();
@@ -298,7 +333,7 @@ using namespace OpenSim;
     hipAct_r->setMaxControl(150);
     model->addComponent(hipAct_r);
 
-    // Knee left TODO
+    // Knee left
     auto* kneeAct_l = new CoordinateActuator();
     kneeAct_l->setCoordinate(&knee_l->updCoordinate());
     kneeAct_l->setName("kneeAct_l");
@@ -345,214 +380,222 @@ using namespace OpenSim;
 
     model->finalizeConnections();
 
-    SimTK::State* state = new SimTK::State(model->initSystem());
+    //std::cout << model->getCoordinateSet()[1].getName() << std::endl;
 
-    int ndof = model->getNumStateVariables()/2;
-    SimTK::Vector QsUs(2*ndof);
-    QsUs.setToZero();
+    return model;
 
-    SimTK::Vector knownUdot(ndof);
-    knownUdot.setToZero();
+    //SimTK::State* state = new SimTK::State(model->initSystem());
 
-    model->setStateVariableValues(*state, QsUs);
-    model->realizeVelocity(*state);
+    //int ndof = model->getNumStateVariables()/2;
+    //SimTK::Vector QsUs(2*ndof);
+    //QsUs.setTo(-2.);
 
-    // Compute residual forces
-    /// appliedMobilityForces (# mobilities)
-    SimTK::Vector appliedMobilityForces(ndof);
-    appliedMobilityForces.setToZero();
-    /// appliedBodyForces (# bodies + ground)
-    SimTK::Vector_<SimTK::SpatialVec> appliedBodyForces;
-    int nbodies = model->getBodySet().getSize() + 1; // including ground
-    appliedBodyForces.resize(nbodies);
-    appliedBodyForces.setToZero();
-    /// gravity
-    Vec3 gravity(0);
-    gravity[1] = -9.81;
-    for (int i = 0; i < model->getBodySet().getSize(); ++i) {
-        model->getMatterSubsystem().addInStationForce(*state,
-            model->getBodySet().get(i).getMobilizedBodyIndex(),
-            model->getBodySet().get(i).getMassCenter(),
-            model->getBodySet().get(i).getMass()*gravity, appliedBodyForces);
-    }
-    /// contact forces
-    /// right
-    Array<double> Force_values_heel_r = HC_heel_r->getRecordValues(*state);
-    Array<double> Force_values_front_r = HC_front_r->getRecordValues(*state);
-    SimTK::SpatialVec GRF_heel_r;
-    /*GRF_heel_r[0] = Vec3(Force_values_heel_r[9], Force_values_heel_r[10], Force_values_heel_r[11]);
-    GRF_heel_r[1] = Vec3(Force_values_heel_r[6], Force_values_heel_r[7], Force_values_heel_r[8]);*/
-    GRF_heel_r[0] = Vec3(Force_values_heel_r[3], Force_values_heel_r[4], Force_values_heel_r[5]);
-    GRF_heel_r[1] = Vec3(Force_values_heel_r[0], Force_values_heel_r[1], Force_values_heel_r[2]);
-    SimTK::SpatialVec GRF_front_r;
-    /*GRF_front_r[0] = Vec3(Force_values_front_r[9], Force_values_front_r[10], Force_values_front_r[11]);
-    GRF_front_r[1] = Vec3(Force_values_front_r[6], Force_values_front_r[7], Force_values_front_r[8]);*/
-    GRF_front_r[0] = Vec3(Force_values_front_r[3], Force_values_front_r[4], Force_values_front_r[5]);
-    GRF_front_r[1] = Vec3(Force_values_front_r[0], Force_values_front_r[1], Force_values_front_r[2]);
-    int nfoot_r = model->getBodySet().get("calcn_r").getMobilizedBodyIndex();
-    appliedBodyForces[nfoot_r] = appliedBodyForces[nfoot_r] + GRF_heel_r + GRF_front_r;
-    /// left
-    Array<double> Force_values_heel_l = HC_heel_l->getRecordValues(*state);
-    Array<double> Force_values_front_l = HC_front_l->getRecordValues(*state);
-    SimTK::SpatialVec GRF_heel_l;
-    /*GRF_heel_l[0] = Vec3(Force_values_heel_l[9], Force_values_heel_l[10], Force_values_heel_l[11]);
-    GRF_heel_l[1] = Vec3(Force_values_heel_l[6], Force_values_heel_l[7], Force_values_heel_l[8]);*/
-    GRF_heel_l[0] = Vec3(Force_values_heel_l[3], Force_values_heel_l[4], Force_values_heel_l[5]);
-    GRF_heel_l[1] = Vec3(Force_values_heel_l[0], Force_values_heel_l[1], Force_values_heel_l[2]);
-    SimTK::SpatialVec GRF_front_l;
-   /* GRF_front_l[0] = Vec3(Force_values_front_l[9], Force_values_front_l[10], Force_values_front_l[11]);
-    GRF_front_l[1] = Vec3(Force_values_front_l[6], Force_values_front_l[7], Force_values_front_l[8]);*/
-    GRF_front_l[0] = Vec3(Force_values_front_l[3], Force_values_front_l[4], Force_values_front_l[5]);
-    GRF_front_l[1] = Vec3(Force_values_front_l[0], Force_values_front_l[1], Force_values_front_l[2]);
-    int nfoot_l = model->getBodySet().get("calcn_l").getMobilizedBodyIndex();
-    appliedBodyForces[nfoot_l] = appliedBodyForces[nfoot_l] + GRF_heel_l + GRF_front_l;
-    /// inverse dynamics
-    SimTK::Vector residualMobilityForces(ndof);
-    residualMobilityForces.setToZero();
-    model->getMatterSubsystem().calcResidualForceIgnoringConstraints(
-        *state, appliedMobilityForces, appliedBodyForces, knownUdot,
-        residualMobilityForces);
+    //SimTK::Vector knownUdot(ndof);
+    //knownUdot.setTo(-2.);
 
-    SimTK::SpatialVec GRF_r = GRF_heel_r + GRF_front_r;
-    SimTK::SpatialVec GRF_l = GRF_heel_l + GRF_front_l;
+    //model->setStateVariableValues(*state, QsUs);
+    //model->realizeVelocity(*state);
 
-    for (int i = 0; i < 5; ++i) {
-        std::cout << residualMobilityForces[i] << std::endl;
-    }
-    // Order adjusted since order Simbody is different than order OpenSim
-    std::cout << residualMobilityForces[6] << std::endl;
-    std::cout << residualMobilityForces[7] << std::endl;
-    std::cout << residualMobilityForces[8] << std::endl;
-    std::cout << residualMobilityForces[9] << std::endl;
-    std::cout << residualMobilityForces[5] << std::endl;
+    //// Compute residual forces
+    ///// appliedMobilityForces (# mobilities)
+    //SimTK::Vector appliedMobilityForces(ndof);
+    //appliedMobilityForces.setToZero();
+    ///// appliedBodyForces (# bodies + ground)
+    //SimTK::Vector_<SimTK::SpatialVec> appliedBodyForces;
+    //int nbodies = model->getBodySet().getSize() + 1; // including ground
+    //appliedBodyForces.resize(nbodies);
+    //appliedBodyForces.setToZero();
+    ///// gravity
+    //Vec3 gravity(0);
+    //gravity[1] = -9.81;
+    //for (int i = 0; i < model->getBodySet().getSize(); ++i) {
+    //    model->getMatterSubsystem().addInStationForce(*state,
+    //        model->getBodySet().get(i).getMobilizedBodyIndex(),
+    //        model->getBodySet().get(i).getMassCenter(),
+    //        model->getBodySet().get(i).getMass()*gravity, appliedBodyForces);
+    //}
+    ///// contact forces
+    ///// right
+    //Array<double> Force_values_heel_r = HC_heel_r->getRecordValues(*state);
+    //Array<double> Force_values_front_r = HC_front_r->getRecordValues(*state);
+    //SimTK::SpatialVec GRF_heel_r;
+    //GRF_heel_r[0] = Vec3(Force_values_heel_r[3], Force_values_heel_r[4],
+    //    Force_values_heel_r[5]);
+    //GRF_heel_r[1] = Vec3(Force_values_heel_r[0], Force_values_heel_r[1],
+    //    Force_values_heel_r[2]);
+    //SimTK::SpatialVec GRF_front_r;
+    //GRF_front_r[0] = Vec3(Force_values_front_r[3], Force_values_front_r[4],
+    //    Force_values_front_r[5]);
+    //GRF_front_r[1] = Vec3(Force_values_front_r[0], Force_values_front_r[1],
+    //    Force_values_front_r[2]);
+    //int nfoot_r = model->getBodySet().get("calcn_r").getMobilizedBodyIndex();
+    //appliedBodyForces[nfoot_r] =
+    //    appliedBodyForces[nfoot_r] + GRF_heel_r + GRF_front_r;
+    ///// left
+    //Array<double> Force_values_heel_l = HC_heel_l->getRecordValues(*state);
+    //Array<double> Force_values_front_l = HC_front_l->getRecordValues(*state);
+    //SimTK::SpatialVec GRF_heel_l;
+    //GRF_heel_l[0] = Vec3(Force_values_heel_l[3], Force_values_heel_l[4],
+    //    Force_values_heel_l[5]);
+    //GRF_heel_l[1] = Vec3(Force_values_heel_l[0], Force_values_heel_l[1],
+    //    Force_values_heel_l[2]);
+    //SimTK::SpatialVec GRF_front_l;
+    //GRF_front_l[0] = Vec3(Force_values_front_l[3], Force_values_front_l[4],
+    //    Force_values_front_l[5]);
+    //GRF_front_l[1] = Vec3(Force_values_front_l[0], Force_values_front_l[1],
+    //    Force_values_front_l[2]);
+    //int nfoot_l = model->getBodySet().get("calcn_l").getMobilizedBodyIndex();
+    //appliedBodyForces[nfoot_l] =
+    //    appliedBodyForces[nfoot_l] + GRF_heel_l + GRF_front_l;
+    ///// inverse dynamics
+    //SimTK::Vector residualMobilityForces(ndof);
+    //residualMobilityForces.setToZero();
+    //model->getMatterSubsystem().calcResidualForceIgnoringConstraints(
+    //    *state, appliedMobilityForces, appliedBodyForces, knownUdot,
+    //    residualMobilityForces);
 
-    std::cout << residualMobilityForces[7] << std::endl;
-    std::cout << residualMobilityForces[8] << std::endl;
-    std::cout << residualMobilityForces[9] << std::endl;
-    std::cout << residualMobilityForces[5] << std::endl;
+    //SimTK::SpatialVec GRF_r = GRF_heel_r + GRF_front_r;
+    //SimTK::SpatialVec GRF_l = GRF_heel_l + GRF_front_l;
 
-    for (int i = 0; i < 2; ++i) {
-        std::cout << GRF_r[1][i] << std::endl;
-    }
-    for (int i = 0; i < 2; ++i) {
-        std::cout << GRF_l[1][i] << std::endl;
-    }
+    //for (int i = 0; i < 5; ++i) {
+    //    std::cout << residualMobilityForces[i] << std::endl;
+    //}
+    //// Order adjusted since order Simbody is different than order OpenSim
+    //std::cout << residualMobilityForces[6] << std::endl;
+    //std::cout << residualMobilityForces[7] << std::endl;
+    //std::cout << residualMobilityForces[8] << std::endl;
+    //std::cout << residualMobilityForces[9] << std::endl;
+    //std::cout << residualMobilityForces[5] << std::endl;
 
-    return 0;
+    //std::cout << residualMobilityForces[7] << std::endl;
+    //std::cout << residualMobilityForces[8] << std::endl;
+    //std::cout << residualMobilityForces[9] << std::endl;
+    //std::cout << residualMobilityForces[5] << std::endl;
+
+    //for (int i = 0; i < 2; ++i) {
+    //    std::cout << GRF_r[1][i] << std::endl;
+    //}
+    //for (int i = 0; i < 2; ++i) {
+    //    std::cout << GRF_l[1][i] << std::endl;
+    //}
+
+    //return 0;
 }
 
-//int main() {
-//
-//    MocoStudy moco;
-//    moco.setName("gait2D_Predictive");
-//
-//    // Define the optimal control problem.
-//    // ===================================
-//    MocoProblem& problem = moco.updProblem();
-//
-//    // Model (dynamics).
-//    // -----------------
-//    problem.setModel(createGait2D());
-//
-//    // Bounds.
-//    // -------
-//
-//    // States: joint positions and velocoties
-//    // Ground pelvis
-//    problem.setStateInfo("/jointset/groundPelvis/groundPelvis_q_rz/value", {-10, 10});
-//    problem.setStateInfo("/jointset/groundPelvis/groundPelvis_q_rz/speed", {-10, 10});
-//    problem.setStateInfo("/jointset/groundPelvis/groundPelvis_q_tx/value", {-10, 10});
-//    problem.setStateInfo("/jointset/groundPelvis/groundPelvis_q_tx/speed", {-10, 10});
-//    problem.setStateInfo("/jointset/groundPelvis/groundPelvis_q_ty/value", {-10, 10});
-//    problem.setStateInfo("/jointset/groundPelvis/groundPelvis_q_ty/speed", {-10, 10});
-//    // Hip left
-//    problem.setStateInfo("/jointset/hip_l/hip_q_l/value", {-10, 10});
-//    problem.setStateInfo("/jointset/hip_l/hip_q_l/speed", {-10, 10});
-//    // Hip right
-//    problem.setStateInfo("/jointset/hip_r/hip_q_r/value", {-10, 10});
-//    problem.setStateInfo("/jointset/hip_r/hip_q_r/speed", {-10, 10});
-//    // Knee left
-//    problem.setStateInfo("/jointset/knee_l/knee_q_l/value", {-10, 10});
-//    problem.setStateInfo("/jointset/knee_l/knee_q_l/speed", {-10, 10});
-//    // Knee right
-//    problem.setStateInfo("/jointset/knee_r/knee_q_r/value", {-10, 10});
-//    problem.setStateInfo("/jointset/knee_r/knee_q_r/speed", {-10, 10});
-//    // Ankle left
-//    problem.setStateInfo("/jointset/ankle_l/ankle_q_l/value", {-10, 10});
-//    problem.setStateInfo("/jointset/ankle_l/ankle_q_l/speed", {-10, 10});
-//    // Ankle right
-//    problem.setStateInfo("/jointset/ankle_r/ankle_q_r/value", {-10, 10});
-//    problem.setStateInfo("/jointset/ankle_r/ankle_q_r/speed", {-10, 10});
-//    // Lumbar
-//    problem.setStateInfo("/jointset/lumbar/lumbar_q/value", {-10, 10});
-//    problem.setStateInfo("/jointset/lumbar/lumbar_q/speed", {-10, 10});
-//
-//    // Controls: joint accelerations and torque actuators TODO
-//    // Ground pelvis
-//    problem.setStateInfo("/jointset/groundPelvis/groundPelvis_q_rz/value", {-10, 10});
-//    problem.setStateInfo("/jointset/groundPelvis/groundPelvis_q_tx/value", {-10, 10});
-//    problem.setStateInfo("/jointset/groundPelvis/groundPelvis_q_ty/value", {-10, 10});
-//    // Hip left
-//    problem.setStateInfo("/jointset/hip_l/hip_q_l/value", {-10, 10});
-//    // Hip right
-//    problem.setStateInfo("/jointset/hip_r/hip_q_r/value", {-10, 10});
-//    // Knee left
-//    problem.setStateInfo("/jointset/knee_l/knee_q_l/value", {-10, 10});
-//    // Knee right
-//    problem.setStateInfo("/jointset/knee_r/knee_q_r/value", {-10, 10});
-//    // Ankle left
-//    problem.setStateInfo("/jointset/ankle_l/ankle_q_l/value", {-10, 10});
-//    // Ankle right
-//    problem.setStateInfo("/jointset/ankle_r/ankle_q_r/value", {-10, 10});
-//    // Lumbar
-//    problem.setStateInfo("/jointset/lumbar/lumbar_q/value", {-10, 10});
-//
-//    // Torque actuators
-//    problem.setControlInfo("/groundPelvisAct_rz", {-150, 150});
-//    problem.setControlInfo("/groundPelvisAct_tx", {-150, 150});
-//    problem.setControlInfo("/groundPelvisAct_ty", {-150, 150});
-//    problem.setControlInfo("/hipAct_l", {-150, 150});
-//    problem.setControlInfo("/hipAct_r", {-150, 150});
-//    problem.setControlInfo("/kneeAct_l", {-150, 150});
-//    problem.setControlInfo("/kneeAct_r", {-150, 150});
-//    problem.setControlInfo("/ankleAct_l", {-150, 150});
-//    problem.setControlInfo("/ankleAct_r", {-150, 150});
-//    problem.setControlInfo("/lumbarAct", {-150, 150});
-//
-//    // Static parameter: final time TODO
-//
-//    double finalTime = 1.0;
-//    problem.setTimeBounds(0, finalTime);
-//
-//    // Cost.
-//    // -----
-//    MocoStateTrackingCost tracking;
-//    TimeSeriesTable ref;
-//    ref.setColumnLabels({"/jointset/j0/q0/value", "/jointset/j1/q1/value"});
-//    for (double time = -0.05; time < finalTime + 0.05; time += 0.01) {
-//        ref.appendRow(time, {
-//                0.5 * SimTK::Pi * time,
-//                0.25 * SimTK::Pi * time
-//        });
-//    }
-//
-//    tracking.setReference(ref);
-//
-//    // Configure the solver.
-//    // =====================
-//    auto& solver = moco.initCasADiSolver();
-//    solver.set_num_mesh_points(50);
-//    solver.set_verbosity(2);
-//    solver.set_optim_solver("ipopt");
-//
-//    moco.print("gait2D_Predictive.omoco");
-//
-//    // Solve the problem.
-//    // ==================
-//    MocoSolution solution = moco.solve();
-//    solution.write("gait2D_Predictive_solution.sto");
-//
-//    moco.visualize(solution);
-//
-//    return EXIT_SUCCESS;
-//}
+int main() {
+
+
+
+    MocoStudy moco;
+    moco.setName("gait2D_Predictive");
+
+    // Define the optimal control problem.
+    // ===================================
+    MocoProblem& problem = moco.updProblem();
+
+    // Model (dynamics).
+    // -----------------
+    problem.setModel(createGait2D());
+
+
+
+    // Bounds.
+    // -------
+
+    // States: joint positions and velocoties
+    // Ground pelvis
+    problem.setStateInfo("/jointset/groundPelvis/groundPelvis_q_rz/value", {-10, 10});
+    problem.setStateInfo("/jointset/groundPelvis/groundPelvis_q_rz/speed", {-10, 10});
+    problem.setStateInfo("/jointset/groundPelvis/groundPelvis_q_tx/value", {0, 10},{0});
+    problem.setStateInfo("/jointset/groundPelvis/groundPelvis_q_tx/speed", {-10, 10});
+    problem.setStateInfo("/jointset/groundPelvis/groundPelvis_q_ty/value", {-10, 10});
+    problem.setStateInfo("/jointset/groundPelvis/groundPelvis_q_ty/speed", {-10, 10});
+    // Hip left
+    problem.setStateInfo("/jointset/hip_l/hip_q_l/value", {-10, 10});
+    problem.setStateInfo("/jointset/hip_l/hip_q_l/speed", {-10, 10});
+    // Hip right
+    problem.setStateInfo("/jointset/hip_r/hip_q_r/value", {-10, 10});
+    problem.setStateInfo("/jointset/hip_r/hip_q_r/speed", {-10, 10});
+    // Knee left
+    problem.setStateInfo("/jointset/knee_l/knee_q_l/value", {-10, 10});
+    problem.setStateInfo("/jointset/knee_l/knee_q_l/speed", {-10, 10});
+    // Knee right
+    problem.setStateInfo("/jointset/knee_r/knee_q_r/value", {-10, 10});
+    problem.setStateInfo("/jointset/knee_r/knee_q_r/speed", {-10, 10});
+    // Ankle left
+    problem.setStateInfo("/jointset/ankle_l/ankle_q_l/value", {-10, 10});
+    problem.setStateInfo("/jointset/ankle_l/ankle_q_l/speed", {-10, 10});
+    // Ankle right
+    problem.setStateInfo("/jointset/ankle_r/ankle_q_r/value", {-10, 10});
+    problem.setStateInfo("/jointset/ankle_r/ankle_q_r/speed", {-10, 10});
+    // Lumbar
+    problem.setStateInfo("/jointset/lumbar/lumbar_q/value", {-10, 10});
+    problem.setStateInfo("/jointset/lumbar/lumbar_q/speed", {-10, 10});
+
+    // Torque actuators
+    problem.setControlInfo("/groundPelvisAct_rz", {-150, 150});
+    problem.setControlInfo("/groundPelvisAct_tx", {-150, 150});
+    problem.setControlInfo("/groundPelvisAct_ty", {-150, 150});
+    problem.setControlInfo("/hipAct_l", {-150, 150});
+    problem.setControlInfo("/hipAct_r", {-150, 150});
+    problem.setControlInfo("/kneeAct_l", {-150, 150});
+    problem.setControlInfo("/kneeAct_r", {-150, 150});
+    problem.setControlInfo("/ankleAct_l", {-150, 150});
+    problem.setControlInfo("/ankleAct_r", {-150, 150});
+    problem.setControlInfo("/lumbarAct", {-150, 150});
+
+    // Static parameter: final time
+    double finalTime = 1.0;
+    problem.setTimeBounds(0, finalTime);
+
+    //// Cost.
+    //// -----
+
+    // Minimize torque actuators squared
+    auto* controlCost = problem.addCost<MocoControlCost>();
+    controlCost->set_weight(1.);
+
+    // Impose symmetry
+
+    //// Impose average speed
+    auto* speedCost = problem.addCost<MocoAverageSpeedCost>();
+    speedCost->set_weight(1);
+    // TODO
+    speedCost->set_desired_speed(1.2);
+
+
+
+
+
+    //MocoStateTrackingCost tracking;
+    //TimeSeriesTable ref;
+    //ref.setColumnLabels({"/jointset/j0/q0/value", "/jointset/j1/q1/value"});
+    //for (double time = -0.05; time < finalTime + 0.05; time += 0.01) {
+    //    ref.appendRow(time, {
+    //            0.5 * SimTK::Pi * time,
+    //            0.25 * SimTK::Pi * time
+    //    });
+    //}
+
+    //tracking.setReference(ref);
+
+    //// Configure the solver.
+    //// =====================
+    //auto& solver = moco.initCasADiSolver();
+    //solver.set_num_mesh_points(50);
+    //solver.set_verbosity(2);
+    //solver.set_optim_solver("ipopt");
+
+    //moco.print("gait2D_Predictive.omoco");
+
+    //// Solve the problem.
+    //// ==================
+    //MocoSolution solution = moco.solve();
+    //solution.write("gait2D_Predictive_solution.sto");
+
+    //moco.visualize(solution);
+
+    return EXIT_SUCCESS;
+
+return 0;
+}
