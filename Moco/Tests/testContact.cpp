@@ -353,7 +353,7 @@ SimTK::Real testSmoothSphereHalfSpaceForce_NormalForce()
         mp.setStateInfo("/groundBall/groundBall_coord_0/speed", {-10, 10}, 0);
         mp.setStateInfo("/groundBall/groundBall_coord_1/speed", {-10, 10}, 0);
         mp.setStateInfo("/groundBall/groundBall_coord_2/speed", {-10, 10}, 0);
-        
+
         auto& ms = moco.initCasADiSolver();
         ms.set_num_mesh_points(50);
         ms.set_verbosity(2);
@@ -363,9 +363,9 @@ SimTK::Real testSmoothSphereHalfSpaceForce_NormalForce()
 
         auto statesTraj = solution.exportToStatesTrajectory(mp);
         const auto& finalState = statesTraj.back();
-       model.realizeVelocity(finalState);
+        model.realizeVelocity(finalState);
 
-       auto& contactBallHalfSpace =
+        auto& contactBallHalfSpace =
            model.getComponent<SmoothSphereHalfSpaceForce>(
                "contactBallHalfSpace");
 
