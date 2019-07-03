@@ -33,8 +33,6 @@ public:
     OpenSim_DECLARE_PROPERTY(desired_speed, double,
             "The desired forward speed defined as the distance travelled by"
             "the pelvis in the forward direction divided by the final time.");
-    // TODO
-    //MocoAverageSpeedCost() = default;
     MocoAverageSpeedCost() {
         constructProperties();
     }
@@ -51,16 +49,17 @@ protected:
         // get final time
         SimTK::Real time = finalState.getTime();
         // get final pelvis forward position
-        const Model& model = getModel();
-        auto pelvisTranslationCoord =
-            model.getCoordinateSet().get("groundPelvis_q_tx");
-        SimTK::Real position = pelvisTranslationCoord.getValue(finalState);
+        SimTK::Real position =  m_coord->getValue(finalState);
         cost = SimTK::square(get_desired_speed() - (position / time));
+    }
+    void initializeOnModelImpl(const Model& model) const {
+        m_coord.reset(&model.getCoordinateSet().get("groundPelvis_q_tx"));
     }
 private:
     void constructProperties() {
-        constructProperty_desired_speed(double(0));
+        constructProperty_desired_speed(0.0);
     }
+    mutable SimTK::ReferencePtr<const Coordinate> m_coord;
 };
 
 /// This model is torque-actuated.
@@ -289,8 +288,8 @@ std::unique_ptr<Model> createGait2D() {
         dynamicFriction,viscousFriction,transitionVelocity,cf,bd,bv);
     HC_heel_r->setName("contactSphereHeel_r");
     model->addComponent(HC_heel_r);
-    HC_heel_r->connectSocket_body_contact_sphere(*calcn_r);
-    HC_heel_r->connectSocket_body_contact_half_space(model->getGround());
+    /*HC_heel_r->connectSocket_body_contact_sphere(*calcn_r);
+    HC_heel_r->connectSocket_body_contact_half_space(model->getGround());*/
 
     auto* HC_heel_l = new SmoothSphereHalfSpaceForce("contactSphereHeel_l",
         *calcn_l, locSphereHeel_l,contactSphereHeelRadius,model->getGround(),
@@ -298,8 +297,8 @@ std::unique_ptr<Model> createGait2D() {
         dynamicFriction,viscousFriction,transitionVelocity,cf,bd,bv);
     HC_heel_l->setName("contactSphereHeel_l");
     model->addComponent(HC_heel_l);
-    HC_heel_l->connectSocket_body_contact_sphere(*calcn_l);
-    HC_heel_l->connectSocket_body_contact_half_space(model->getGround());
+    /*HC_heel_l->connectSocket_body_contact_sphere(*calcn_l);
+    HC_heel_l->connectSocket_body_contact_half_space(model->getGround());*/
 
     auto* HC_front_r = new SmoothSphereHalfSpaceForce("contactSphereFront_r",
         *calcn_r, locSphereFront_r,contactSphereFrontRadius,model->getGround(),
@@ -307,8 +306,8 @@ std::unique_ptr<Model> createGait2D() {
         dynamicFriction,viscousFriction,transitionVelocity,cf,bd,bv);
     HC_front_r->setName("contactSphereFront_r");
     model->addComponent(HC_front_r);
-    HC_front_r->connectSocket_body_contact_sphere(*calcn_r);
-    HC_front_r->connectSocket_body_contact_half_space(model->getGround());
+    /*HC_front_r->connectSocket_body_contact_sphere(*calcn_r);
+    HC_front_r->connectSocket_body_contact_half_space(model->getGround());*/
 
     auto* HC_front_l = new SmoothSphereHalfSpaceForce("contactSphereFront_l",
         *calcn_l, locSphereFront_l,contactSphereFrontRadius,model->getGround(),
@@ -316,8 +315,8 @@ std::unique_ptr<Model> createGait2D() {
         dynamicFriction,viscousFriction,transitionVelocity,cf,bd,bv);
     HC_front_l->setName("contactSphereFront_l");
     model->addComponent(HC_front_l);
-    HC_front_l->connectSocket_body_contact_sphere(*calcn_l);
-    HC_front_l->connectSocket_body_contact_half_space(model->getGround());
+    /*HC_front_l->connectSocket_body_contact_sphere(*calcn_l);
+    HC_front_l->connectSocket_body_contact_half_space(model->getGround());*/
 
     ///////////////////////////////////////////////////////////////////////////
     // Add coordinate actuators
@@ -369,7 +368,7 @@ std::unique_ptr<Model> createGait2D() {
     hipAct_r->setMaxControl(150);
     model->addComponent(hipAct_r);
 
-    // Knee left
+    //// Knee left
     auto* kneeAct_l = new CoordinateActuator();
     kneeAct_l->setCoordinate(&knee_l->updCoordinate());
     kneeAct_l->setName("kneeAct_l");
@@ -414,9 +413,29 @@ std::unique_ptr<Model> createGait2D() {
     lumbarAct->setMaxControl(150);
     model->addComponent(lumbarAct);
 
+    //// Display geometry
+    Sphere bodyGeometry(0.01);
+    bodyGeometry.setColor(SimTK::Gray);
+    Sphere bodyGeometry1(0.01);
+    bodyGeometry1.setColor(SimTK::Blue);
+
+    pelvis->attachGeometry(bodyGeometry1.clone());
+    //femur_l->attachGeometry(bodyGeometry.clone());
+    //femur_r->attachGeometry(bodyGeometry.clone());
+    //tibia_l->attachGeometry(bodyGeometry.clone());
+    //tibia_r->attachGeometry(bodyGeometry.clone());
+    //talus_l->attachGeometry(bodyGeometry.clone());
+    //talus_r->attachGeometry(bodyGeometry.clone());
+    //calcn_l->attachGeometry(bodyGeometry.clone());
+    //calcn_r->attachGeometry(bodyGeometry.clone());
+    //toes_l->attachGeometry(bodyGeometry.clone());
+    //toes_r->attachGeometry(bodyGeometry.clone());
+    //torso->attachGeometry(bodyGeometry.clone());
+
+
     model->finalizeConnections();
 
-    //std::cout << model->getCoordinateSet()[1].getName() << std::endl;
+    model->print("gait_2D.osim");
 
     return model;
 
@@ -564,7 +583,7 @@ int main() {
     problem.setStateInfo("/jointset/lumbar/lumbar_q/value", {-10, 10});
     problem.setStateInfo("/jointset/lumbar/lumbar_q/speed", {-10, 10});
 
-    // Torque actuators
+    // Controls: torque actuators
     problem.setControlInfo("/groundPelvisAct_rz", {-150, 150});
     problem.setControlInfo("/groundPelvisAct_tx", {-150, 150});
     problem.setControlInfo("/groundPelvisAct_ty", {-150, 150});
@@ -583,11 +602,11 @@ int main() {
     //// Cost.
     //// -----
     // Minimize torque actuators squared
-    auto* controlCost = problem.addCost<MocoControlCost>("ControlCost");
+    auto* controlCost = problem.addCost<MocoControlCost>("controlCost");
     controlCost->set_weight(1);
 
     // Impose average speed
-    auto* speedCost = problem.addCost<MocoAverageSpeedCost>("averageSpeedCost");
+    auto* speedCost = problem.addCost<MocoAverageSpeedCost>("speedCost");
     speedCost->set_weight(1);
     speedCost->set_desired_speed(1.2);
 
