@@ -545,99 +545,97 @@ int main() {
 return 0;
 }
 
-//SimTK::State* state = new SimTK::State(model->initSystem());
+//int ndof = model->getNumStateVariables()/2;
+//SimTK::Vector QsUs(2*ndof);
+//QsUs.setTo(-2.);
 
-    //int ndof = model->getNumStateVariables()/2;
-    //SimTK::Vector QsUs(2*ndof);
-    //QsUs.setTo(-2.);
+//SimTK::Vector knownUdot(ndof);
+//knownUdot.setTo(-2.);
 
-    //SimTK::Vector knownUdot(ndof);
-    //knownUdot.setTo(-2.);
+//model->setStateVariableValues(*state, QsUs);
+//model->realizeVelocity(*state);
 
-    //model->setStateVariableValues(*state, QsUs);
-    //model->realizeVelocity(*state);
+//// Compute residual forces
+///// appliedMobilityForces (# mobilities)
+//SimTK::Vector appliedMobilityForces(ndof);
+//appliedMobilityForces.setToZero();
+///// appliedBodyForces (# bodies + ground)
+//SimTK::Vector_<SimTK::SpatialVec> appliedBodyForces;
+//int nbodies = model->getBodySet().getSize() + 1; // including ground
+//appliedBodyForces.resize(nbodies);
+//appliedBodyForces.setToZero();
+///// gravity
+//Vec3 gravity(0);
+//gravity[1] = -9.81;
+//for (int i = 0; i < model->getBodySet().getSize(); ++i) {
+//    model->getMatterSubsystem().addInStationForce(*state,
+//        model->getBodySet().get(i).getMobilizedBodyIndex(),
+//        model->getBodySet().get(i).getMassCenter(),
+//        model->getBodySet().get(i).getMass()*gravity, appliedBodyForces);
+//}
+///// contact forces
+///// right
+//Array<double> Force_values_heel_r = HC_heel_r->getRecordValues(*state);
+//Array<double> Force_values_front_r = HC_front_r->getRecordValues(*state);
+//SimTK::SpatialVec GRF_heel_r;
+//GRF_heel_r[0] = Vec3(Force_values_heel_r[3], Force_values_heel_r[4],
+//    Force_values_heel_r[5]);
+//GRF_heel_r[1] = Vec3(Force_values_heel_r[0], Force_values_heel_r[1],
+//    Force_values_heel_r[2]);
+//SimTK::SpatialVec GRF_front_r;
+//GRF_front_r[0] = Vec3(Force_values_front_r[3], Force_values_front_r[4],
+//    Force_values_front_r[5]);
+//GRF_front_r[1] = Vec3(Force_values_front_r[0], Force_values_front_r[1],
+//    Force_values_front_r[2]);
+//int nfoot_r = model->getBodySet().get("calcn_r").getMobilizedBodyIndex();
+//appliedBodyForces[nfoot_r] =
+//    appliedBodyForces[nfoot_r] + GRF_heel_r + GRF_front_r;
+///// left
+//Array<double> Force_values_heel_l = HC_heel_l->getRecordValues(*state);
+//Array<double> Force_values_front_l = HC_front_l->getRecordValues(*state);
+//SimTK::SpatialVec GRF_heel_l;
+//GRF_heel_l[0] = Vec3(Force_values_heel_l[3], Force_values_heel_l[4],
+//    Force_values_heel_l[5]);
+//GRF_heel_l[1] = Vec3(Force_values_heel_l[0], Force_values_heel_l[1],
+//    Force_values_heel_l[2]);
+//SimTK::SpatialVec GRF_front_l;
+//GRF_front_l[0] = Vec3(Force_values_front_l[3], Force_values_front_l[4],
+//    Force_values_front_l[5]);
+//GRF_front_l[1] = Vec3(Force_values_front_l[0], Force_values_front_l[1],
+//    Force_values_front_l[2]);
+//int nfoot_l = model->getBodySet().get("calcn_l").getMobilizedBodyIndex();
+//appliedBodyForces[nfoot_l] =
+//    appliedBodyForces[nfoot_l] + GRF_heel_l + GRF_front_l;
+///// inverse dynamics
+//SimTK::Vector residualMobilityForces(ndof);
+//residualMobilityForces.setToZero();
+//model->getMatterSubsystem().calcResidualForceIgnoringConstraints(
+//    *state, appliedMobilityForces, appliedBodyForces, knownUdot,
+//    residualMobilityForces);
 
-    //// Compute residual forces
-    ///// appliedMobilityForces (# mobilities)
-    //SimTK::Vector appliedMobilityForces(ndof);
-    //appliedMobilityForces.setToZero();
-    ///// appliedBodyForces (# bodies + ground)
-    //SimTK::Vector_<SimTK::SpatialVec> appliedBodyForces;
-    //int nbodies = model->getBodySet().getSize() + 1; // including ground
-    //appliedBodyForces.resize(nbodies);
-    //appliedBodyForces.setToZero();
-    ///// gravity
-    //Vec3 gravity(0);
-    //gravity[1] = -9.81;
-    //for (int i = 0; i < model->getBodySet().getSize(); ++i) {
-    //    model->getMatterSubsystem().addInStationForce(*state,
-    //        model->getBodySet().get(i).getMobilizedBodyIndex(),
-    //        model->getBodySet().get(i).getMassCenter(),
-    //        model->getBodySet().get(i).getMass()*gravity, appliedBodyForces);
-    //}
-    ///// contact forces
-    ///// right
-    //Array<double> Force_values_heel_r = HC_heel_r->getRecordValues(*state);
-    //Array<double> Force_values_front_r = HC_front_r->getRecordValues(*state);
-    //SimTK::SpatialVec GRF_heel_r;
-    //GRF_heel_r[0] = Vec3(Force_values_heel_r[3], Force_values_heel_r[4],
-    //    Force_values_heel_r[5]);
-    //GRF_heel_r[1] = Vec3(Force_values_heel_r[0], Force_values_heel_r[1],
-    //    Force_values_heel_r[2]);
-    //SimTK::SpatialVec GRF_front_r;
-    //GRF_front_r[0] = Vec3(Force_values_front_r[3], Force_values_front_r[4],
-    //    Force_values_front_r[5]);
-    //GRF_front_r[1] = Vec3(Force_values_front_r[0], Force_values_front_r[1],
-    //    Force_values_front_r[2]);
-    //int nfoot_r = model->getBodySet().get("calcn_r").getMobilizedBodyIndex();
-    //appliedBodyForces[nfoot_r] =
-    //    appliedBodyForces[nfoot_r] + GRF_heel_r + GRF_front_r;
-    ///// left
-    //Array<double> Force_values_heel_l = HC_heel_l->getRecordValues(*state);
-    //Array<double> Force_values_front_l = HC_front_l->getRecordValues(*state);
-    //SimTK::SpatialVec GRF_heel_l;
-    //GRF_heel_l[0] = Vec3(Force_values_heel_l[3], Force_values_heel_l[4],
-    //    Force_values_heel_l[5]);
-    //GRF_heel_l[1] = Vec3(Force_values_heel_l[0], Force_values_heel_l[1],
-    //    Force_values_heel_l[2]);
-    //SimTK::SpatialVec GRF_front_l;
-    //GRF_front_l[0] = Vec3(Force_values_front_l[3], Force_values_front_l[4],
-    //    Force_values_front_l[5]);
-    //GRF_front_l[1] = Vec3(Force_values_front_l[0], Force_values_front_l[1],
-    //    Force_values_front_l[2]);
-    //int nfoot_l = model->getBodySet().get("calcn_l").getMobilizedBodyIndex();
-    //appliedBodyForces[nfoot_l] =
-    //    appliedBodyForces[nfoot_l] + GRF_heel_l + GRF_front_l;
-    ///// inverse dynamics
-    //SimTK::Vector residualMobilityForces(ndof);
-    //residualMobilityForces.setToZero();
-    //model->getMatterSubsystem().calcResidualForceIgnoringConstraints(
-    //    *state, appliedMobilityForces, appliedBodyForces, knownUdot,
-    //    residualMobilityForces);
+//SimTK::SpatialVec GRF_r = GRF_heel_r + GRF_front_r;
+//SimTK::SpatialVec GRF_l = GRF_heel_l + GRF_front_l;
 
-    //SimTK::SpatialVec GRF_r = GRF_heel_r + GRF_front_r;
-    //SimTK::SpatialVec GRF_l = GRF_heel_l + GRF_front_l;
+//for (int i = 0; i < 5; ++i) {
+//    std::cout << residualMobilityForces[i] << std::endl;
+//}
+//// Order adjusted since order Simbody is different than order OpenSim
+//std::cout << residualMobilityForces[6] << std::endl;
+//std::cout << residualMobilityForces[7] << std::endl;
+//std::cout << residualMobilityForces[8] << std::endl;
+//std::cout << residualMobilityForces[9] << std::endl;
+//std::cout << residualMobilityForces[5] << std::endl;
 
-    //for (int i = 0; i < 5; ++i) {
-    //    std::cout << residualMobilityForces[i] << std::endl;
-    //}
-    //// Order adjusted since order Simbody is different than order OpenSim
-    //std::cout << residualMobilityForces[6] << std::endl;
-    //std::cout << residualMobilityForces[7] << std::endl;
-    //std::cout << residualMobilityForces[8] << std::endl;
-    //std::cout << residualMobilityForces[9] << std::endl;
-    //std::cout << residualMobilityForces[5] << std::endl;
+//std::cout << residualMobilityForces[7] << std::endl;
+//std::cout << residualMobilityForces[8] << std::endl;
+//std::cout << residualMobilityForces[9] << std::endl;
+//std::cout << residualMobilityForces[5] << std::endl;
 
-    //std::cout << residualMobilityForces[7] << std::endl;
-    //std::cout << residualMobilityForces[8] << std::endl;
-    //std::cout << residualMobilityForces[9] << std::endl;
-    //std::cout << residualMobilityForces[5] << std::endl;
+//for (int i = 0; i < 2; ++i) {
+//    std::cout << GRF_r[1][i] << std::endl;
+//}
+//for (int i = 0; i < 2; ++i) {
+//    std::cout << GRF_l[1][i] << std::endl;
+//}
 
-    //for (int i = 0; i < 2; ++i) {
-    //    std::cout << GRF_r[1][i] << std::endl;
-    //}
-    //for (int i = 0; i < 2; ++i) {
-    //    std::cout << GRF_l[1][i] << std::endl;
-    //}
-
-    //return 0;
+//return 0;
