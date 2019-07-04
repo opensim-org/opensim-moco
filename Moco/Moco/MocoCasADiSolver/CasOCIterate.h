@@ -39,6 +39,8 @@ enum Var {
     derivatives, // TODO: Rename to accelerations?
     /// Constant in time.
     parameters,
+    /// The result of quadratures, for use in costs.
+    integrals,
     /// For internal use (never actually a key for Variables).
     multibody_states = 100
 };
@@ -61,6 +63,7 @@ struct Iterate {
     std::vector<std::string> slack_names;
     std::vector<std::string> derivative_names;
     std::vector<std::string> parameter_names;
+    std::vector<std::string> integral_names;
     int iteration = -1;
     /// Return a new iterate in which the data is resampled at the times in
     /// newTimes.

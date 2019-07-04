@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- *
- * OpenSim Moco: MocoTrajectory.cpp                                              *
+ * OpenSim Moco: MocoTrajectory.cpp                                           *
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2017 Stanford University and the Authors                     *
  *                                                                            *
@@ -79,11 +79,12 @@ MocoTrajectory::MocoTrajectory(const SimTK::Vector& time,
         std::vector<std::string> multiplier_names,
         std::vector<std::string> derivative_names,
         std::vector<std::string> parameter_names,
+        std::vector<std::string> integral_names,
         const SimTK::Matrix& statesTrajectory,
         const SimTK::Matrix& controlsTrajectory,
         const SimTK::Matrix& multipliersTrajectory,
         const SimTK::Matrix& derivativesTrajectory,
-        const SimTK::RowVector& parameters)
+        const SimTK::RowVector& parameters, const SimTK::RowVector& integrals)
         : MocoTrajectory(time, state_names, control_names, multiplier_names,
                   parameter_names, statesTrajectory, controlsTrajectory,
                   multipliersTrajectory, parameters) {
@@ -97,11 +98,17 @@ MocoTrajectory::MocoTrajectory(const SimTK::Vector& time,
     } else {
         m_derivatives.resize(m_time.size(), 0);
     }
+
+    OPENSIM_THROW_IF((int)m_integral_names.size() != m_integrals.nelt(),
+            Exception, "Inconsistent number of integrals.");
+    m_integral_names = integral_names;
+    m_integrals = integrals;
 }
 
 MocoTrajectory::MocoTrajectory(const SimTK::Vector& time,
         const std::map<std::string, NamesAndData<SimTK::Matrix>>& conVars,
-        const NamesAndData<SimTK::RowVector>& parameters)
+        const NamesAndData<SimTK::RowVector>& parameters,
+        const NamesAndData<SimTK::RowVector>& integrals)
         : MocoTrajectory(time,
                   conVars.count("states") ? conVars.at("states").first
                                           : std::vector<std::string>(),
@@ -111,7 +118,7 @@ MocoTrajectory::MocoTrajectory(const SimTK::Vector& time,
                                                : std::vector<std::string>(),
                   conVars.count("derivatives") ? conVars.at("derivatives").first
                                                : std::vector<std::string>(),
-                  parameters.first,
+                  parameters.first, integrals.first,
                   conVars.count("states") ? conVars.at("states").second
                                           : SimTK::Matrix(),
                   conVars.count("controls") ? conVars.at("controls").second
@@ -122,7 +129,7 @@ MocoTrajectory::MocoTrajectory(const SimTK::Vector& time,
                   conVars.count("derivatives")
                           ? conVars.at("derivatives").second
                           : SimTK::Matrix(),
-                  parameters.second) {}
+                  parameters.second, integrals.second) {}
 
 void MocoTrajectory::setTime(const SimTK::Vector& time) {
     ensureUnsealed();
@@ -358,6 +365,15 @@ const SimTK::Real& MocoTrajectory::getParameter(const std::string& name) const {
     int index = (int)std::distance(m_parameter_names.cbegin(), it);
     return m_parameters.getElt(0, index);
 }
+const SimTK::Real& MocoTrajectory::getIntegral(const std::string& name) const {
+    ensureUnsealed();
+    auto it =
+            std::find(m_integral_names.cbegin(), m_integral_names.cend(), name);
+    OPENSIM_THROW_IF(it == m_integral_names.cend(), Exception,
+            format("Cannot find integral named %s.", name));
+    int index = (int)std::distance(m_integral_names.cbegin(), it);
+    return m_integrals.getElt(0, index);
+}
 
 double MocoTrajectory::resampleWithNumTimes(int numTimes) {
     ensureUnsealed();
@@ -495,12 +511,17 @@ MocoTrajectory::MocoTrajectory(const std::string& filepath) {
     SimTK::convertStringTo(
             metadata.getValueForKey("num_parameters").getValue<std::string>(),
             numParameters);
+    int numIntegrals;
+    SimTK::convertStringTo(
+            metadata.getValueForKey("num_integrals").getValue<std::string>(),
+            numIntegrals);
     OPENSIM_THROW_IF(numStates < 0, Exception, "Invalid num_states.");
     OPENSIM_THROW_IF(numControls < 0, Exception, "Invalid num_controls.");
     OPENSIM_THROW_IF(numMultipliers < 0, Exception, "Invalid num_multipliers.");
     OPENSIM_THROW_IF(numDerivatives < 0, Exception, "Invalid num_derivatives.");
     OPENSIM_THROW_IF(numSlacks < 0, Exception, "Invalid num_slacks.");
     OPENSIM_THROW_IF(numParameters < 0, Exception, "Invalid num_parameters.");
+    OPENSIM_THROW_IF(numIntegrals < 0, Exception, "Invalid num_integrals.");
 
     const auto& labels = table.getColumnLabels();
     int offset = 0;
@@ -521,9 +542,12 @@ MocoTrajectory::MocoTrajectory(const std::string& filepath) {
     offset += numSlacks;
     m_parameter_names.insert(
             m_parameter_names.end(), labels.begin() + offset, labels.end());
+    offset += numParameters;
+    m_integral_names.insert(
+            m_integral_names.end(), labels.begin() + offset, labels.end());
 
     OPENSIM_THROW_IF(numStates + numControls + numMultipliers + numDerivatives +
-                                     numSlacks + numParameters !=
+                                     numSlacks + numParameters + numIntegrals !=
                              (int)table.getNumColumns(),
             Exception,
             format("Expected num_states + num_controls + num_multipliers + "
@@ -531,9 +555,10 @@ MocoTrajectory::MocoTrajectory(const std::string& filepath) {
                    "number of columns, but "
                    "num_states=%i, num_controls=%i, "
                    "num_multipliers=%i, num_derivatives=%i, num_slacks=%i, "
-                   "num_parameters=%i, number of columns=%i.",
+                   "num_parameters=%i, num_integrals=%i, number of columns=%i.",
                     numStates, numControls, numMultipliers, numDerivatives,
-                    numSlacks, numParameters, table.getNumColumns()));
+                    numSlacks, numParameters, numIntegrals,
+                    table.getNumColumns()));
 
     const auto& time = table.getIndependentColumn();
     m_time = SimTK::Vector((int)time.size(), time.data());
@@ -576,6 +601,14 @@ MocoTrajectory::MocoTrajectory(const std::string& filepath) {
                                     1, numParameters)
                                .getAsRowVectorBase();
     }
+    if (numIntegrals) {
+        m_integrals =
+                table.getMatrixBlock(0,
+                             numStates + numControls + numMultipliers +
+                                     numDerivatives + numSlacks + numParameters,
+                             1, numIntegrals)
+                        .getAsRowVectorBase();
+    }
 }
 
 void MocoTrajectory::write(const std::string& filepath) const {
@@ -600,6 +633,8 @@ TimeSeriesTable MocoTrajectory::convertToTable() const {
     labels.insert(labels.end(), m_slack_names.begin(), m_slack_names.end());
     labels.insert(
             labels.end(), m_parameter_names.begin(), m_parameter_names.end());
+    labels.insert(
+            labels.end(), m_integral_names.begin(), m_integral_names.end());
     int numTimes = (int)m_time.size();
     int numStates = (int)m_state_names.size();
     int numControls = (int)m_control_names.size();
@@ -607,6 +642,7 @@ TimeSeriesTable MocoTrajectory::convertToTable() const {
     int numDerivatives = (int)m_derivative_names.size();
     int numSlacks = (int)m_slack_names.size();
     int numParameters = (int)m_parameter_names.size();
+    int numIntegrals = (int)m_integral_names.size();
 
     SimTK::Matrix data(numTimes, (int)labels.size());
     int startCol = 0;
@@ -639,6 +675,17 @@ TimeSeriesTable MocoTrajectory::convertToTable() const {
         parameter_nan_rows.setToNaN();
         data.updBlock(1, startCol, numTimes - 1, numParameters) =
                 parameter_nan_rows;
+        startCol += numParameters;
+    }
+    if (numIntegrals) {
+        // First row of table contains integral values.
+        data.updBlock(0, startCol, 1, numIntegrals) = m_integrals;
+        // Remaining rows of table contain NaNs in integral columns.
+        SimTK::Matrix integral_nan_rows(
+                numTimes - 1, (int)m_integral_names.size());
+        integral_nan_rows.setToNaN();
+        data.updBlock(1, startCol, numTimes - 1, numIntegrals) =
+                integral_nan_rows;
     }
     TimeSeriesTable table;
     try {
@@ -672,6 +719,8 @@ TimeSeriesTable MocoTrajectory::convertToTable() const {
             "num_slacks", std::to_string(numSlacks));
     table.updTableMetaData().setValueForKey(
             "num_parameters", std::to_string(numParameters));
+    table.updTableMetaData().setValueForKey(
+            "num_integrals", std::to_string(numIntegrals));
     convertToTableImpl(table);
     return table;
 }
@@ -721,6 +770,7 @@ void MocoTrajectory::randomize(bool add, const SimTK::Random& randGen) {
     randomizeMatrix(add, randGen, m_derivatives);
     randomizeMatrix(add, randGen, m_slacks);
     randomizeMatrix(add, randGen, m_parameters);
+    randomizeMatrix(add, randGen, m_integrals);
 }
 
 /*static*/ MocoTrajectory MocoTrajectory::createFromStatesControlsTables(
@@ -750,21 +800,21 @@ void MocoTrajectory::randomize(bool add, const SimTK::Random& randGen) {
     // The "true" means to not copy the data.
     SimTK::Vector time((int)statesTimes.size(), statesTimes.data(), true);
 
-    // TODO MocoProblem should be able to produce a MocoTrajectory template; it's
-    // what knows the state, control, and parameter names.
+    // TODO MocoProblem should be able to produce a MocoTrajectory template;
+    // it's what knows the state, control, and parameter names.
     return MocoTrajectory(time, statesTrajectory.getColumnLabels(),
             controlsTrajectory.getColumnLabels(), {}, // TODO (multiplier_names)
             {},                                       // TODO (parameter_names)
             statesTrajectory.getMatrix(), controlsTrajectory.getMatrix(),
             SimTK::Matrix(0, 0),  // TODO (multipliersTrajectory)
-            SimTK::RowVector(0)); // TODO (parameters)
+            SimTK::RowVector(0));  // TODO (parameters)
 }
 
 bool MocoTrajectory::isCompatible(
         const MocoProblemRep& mp, bool throwOnError) const {
     ensureUnsealed();
-    // Slack variables might be solver dependent, so we can't check for
-    // compatibility on the problem.
+    // Slack and integral variables and might be solver dependent, so we can't
+    // check for compatibility on the problem.
 
     auto mpsn = mp.createStateInfoNames();
     std::sort(mpsn.begin(), mpsn.end());
@@ -835,7 +885,9 @@ bool MocoTrajectory::isNumericallyEqual(
            // TODO include slack variables?
            //&& SimTK::Test::numericallyEqual(m_slacks, other.m_slacks, 1, tol)
            && SimTK::Test::numericallyEqual(
-                      m_parameters, other.m_parameters, 1, tol);
+                      m_parameters, other.m_parameters, 1, tol) &&
+           SimTK::Test::numericallyEqual(
+                   m_integrals, other.m_integrals, 1, tol);
 }
 
 using VecStr = std::vector<std::string>;
@@ -1009,7 +1061,8 @@ double MocoTrajectory::compareContinuousVariablesRMSInternal(
     return sqrt(ISS / (finalTime - initialTime) / numColumns);
 }
 
-double MocoTrajectory::compareContinuousVariablesRMS(const MocoTrajectory& other,
+double MocoTrajectory::compareContinuousVariablesRMS(
+        const MocoTrajectory& other,
         std::map<std::string, std::vector<std::string>> cols) const {
     ensureUnsealed();
     std::vector<std::string> allowedKeys{
@@ -1036,6 +1089,7 @@ double MocoTrajectory::compareContinuousVariablesRMS(const MocoTrajectory& other
             cols.count("derivatives") ? cols.at("derivatives") : none);
 }
 
+// TODO: compareIntegralsRMS().
 double MocoTrajectory::compareParametersRMS(const MocoTrajectory& other,
         std::vector<std::string> parameterNames) const {
     ensureUnsealed();

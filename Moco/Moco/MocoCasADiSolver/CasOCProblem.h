@@ -319,6 +319,8 @@ public:
         }
         for (const auto& info : m_paramInfos)
             it.parameter_names.push_back(info.name);
+        for (const auto& info : m_integralInfos)
+            it.integral_names.push_back(info.name);
         return it;
     }
 

@@ -1,7 +1,7 @@
 #ifndef MOCO_MOCOTRAJECTORY_H
 #define MOCO_MOCOTRAJECTORY_H
 /* -------------------------------------------------------------------------- *
- * OpenSim Moco: MocoTrajectory.h                                                *
+ * OpenSim Moco: MocoTrajectory.h                                             *
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2017 Stanford University and the Authors                     *
  *                                                                            *
@@ -68,11 +68,12 @@ num_parameters=<number-of-parameter-variables>
 num_slacks=<number-of-slack-variables>
 num_states=<number-of-state-variables>
 time,<state-0-name>,...,<control-0-name>,...,<multiplier-0-name>,..., \
-        <derivative-0-name>,...,<slack-0-name>,...,<parameter-0-name>,...
-<#>,<#>,...,<#>,...,<#>,...,<#>,...,<#-or-NaN>,...,<#>  ,...
-<#>,<#>,...,<#>,...,<#>,...,<#>,...,<#-or-NaN>,...,<NaN>,...
- : , : ,..., : ,..., : ,..., : ,...,    :     ,...,  :  ,...
-<#>,<#>,...,<#>,...,<#>,...,<#>,...,<#-or-NaN>,...,<NaN>,...
+        <derivative-0-name>,...,<slack-0-name>,...,<parameter-0-name>,... \
+        <integral-0-name>,...
+<#>,<#>,...,<#>,...,<#>,...,<#>,...,<#-or-NaN>,...,<#>  ,...,<#>  ,...
+<#>,<#>,...,<#>,...,<#>,...,<#>,...,<#-or-NaN>,...,<NaN>,...,<NaN>,...
+ : , : ,..., : ,..., : ,..., : ,...,    :     ,...,  :  ,...,  :  ,...
+<#>,<#>,...,<#>,...,<#>,...,<#>,...,<#-or-NaN>,...,<NaN>,...,<NaN>,...
 @endsamplefile
 (If stored in a STO file, the delimiters are tabs, not commas.)
 
@@ -113,11 +114,13 @@ public:
             std::vector<std::string> multiplier_names,
             std::vector<std::string> derivative_names,
             std::vector<std::string> parameter_names,
+            std::vector<std::string> integral_names,
             const SimTK::Matrix& statesTrajectory,
             const SimTK::Matrix& controlsTrajectory,
             const SimTK::Matrix& multipliersTrajectory,
             const SimTK::Matrix& derivativesTrajectory,
-            const SimTK::RowVector& parameters);
+            const SimTK::RowVector& parameters,
+            const SimTK::RowVector& integrals);
 #ifndef SWIG
     /// This constructor allows you to control which
     /// data you provide for the iterate. The possible keys for continuousVars
@@ -128,7 +131,8 @@ public:
     MocoTrajectory(const SimTK::Vector& time,
             const std::map<std::string, NamesAndData<SimTK::Matrix>>&
                     continuousVars,
-            const NamesAndData<SimTK::RowVector>& parameters = {});
+            const NamesAndData<SimTK::RowVector>& parameters = {},
+            const NamesAndData<SimTK::RowVector>& integrals = {});
 #endif
     /// Read a MocoTrajectory from a data file (e.g., STO, CSV). See output of
     /// write() for the correct format.
@@ -146,9 +150,11 @@ public:
         return !(m_time.size() || m_states.nelt() || m_controls.nelt() ||
                  m_multipliers.nelt() || m_derivatives.nelt() ||
                  m_slacks.nelt() || m_parameters.nelt() ||
+                 m_integrals.nelt() ||
                  m_state_names.size() || m_control_names.size() ||
                  m_multiplier_names.size() || m_derivative_names.size() ||
-                 m_slack_names.size() || m_parameter_names.size());
+                 m_slack_names.size() || m_parameter_names.size() ||
+                 m_integral_names.size()) ;
     }
 
     /// @name Change the length of the trajectory
@@ -380,11 +386,16 @@ public:
         ensureUnsealed();
         return m_parameter_names;
     }
+    const std::vector<std::string>& getIntegralNames() const {
+        ensureUnsealed();
+        return m_integral_names;
+    }
     SimTK::VectorView_<double> getState(const std::string& name) const;
     SimTK::VectorView_<double> getControl(const std::string& name) const;
     SimTK::VectorView_<double> getMultiplier(const std::string& name) const;
     SimTK::VectorView_<double> getDerivative(const std::string& name) const;
     const SimTK::Real& getParameter(const std::string& name) const;
+    const SimTK::Real& getIntegral(const std::string& name) const;
     const SimTK::Matrix& getStatesTrajectory() const {
         ensureUnsealed();
         return m_states;
@@ -404,6 +415,10 @@ public:
     const SimTK::RowVector& getParameters() const {
         ensureUnsealed();
         return m_parameters;
+    }
+    const SimTK::RowVector& getIntegrals() const {
+        ensureUnsealed();
+        return m_integrals;
     }
 
     /// @}
@@ -590,6 +605,7 @@ private:
     std::vector<std::string> m_derivative_names;
     std::vector<std::string> m_slack_names;
     std::vector<std::string> m_parameter_names;
+    std::vector<std::string> m_integral_names;
     // Dimensions: time x states
     SimTK::Matrix m_states;
     // Dimensions: time x controls
@@ -602,6 +618,8 @@ private:
     SimTK::Matrix m_slacks;
     // Dimensions: 1 x parameters
     SimTK::RowVector m_parameters;
+    // Dimensions: 1 x integrals
+    SimTK::RowVector m_integrals;
 
     // We use "seal" instead of "lock" because locks have a specific meaning
     // with threading (e.g., std::unique_lock()).
@@ -670,7 +688,6 @@ public:
     bool isSealed() const { return MocoTrajectory::isSealed(); }
     /// @}
 
-    // TODO num_iterations
     // TODO store the optimizer settings that were used.
 private:
     using MocoTrajectory::MocoTrajectory;

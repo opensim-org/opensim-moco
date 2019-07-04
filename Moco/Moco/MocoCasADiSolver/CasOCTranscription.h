@@ -102,6 +102,7 @@ protected:
         T residuals;
         T kinematic;
         std::vector<T> path;
+        T integrals;
         T interp_controls;
     };
     void printConstraintValues(const Iterate& it,
@@ -227,25 +228,30 @@ private:
 
         // Trapezidal sparsity pattern for mesh intervals 0, 1 and 2:
         //                   0    1    2    3
-        //    path_0         x
+        //    integral       x    x    x    x
         //    kinematic_0    x
+        //    path_0         x
         //    residual_0     x
         //    defect_0       x    x
+        //    integral_1          x
         //    kinematic_1         x
         //    path_1              x
         //    residual_1          x
         //    defect_1            x    x
+        //    integral_2               x
         //    kinematic_2              x
         //    path_2                   x
         //    residual_2               x
+        //    integral_3                    x
         //    kinematic_3                   x
         //    path_3                        x
         //    residual_3                    x
 
         // Hermite-Simpson sparsity pattern for mesh intervals 0, 1 and 2:
         //                   0    0.5    1    1.5    2    2.5    3
-        //    path_0         x
+        //    integral       x     x     x     x     x     x     x
         //    kinematic_0    x
+        //    path_0         x
         //    residual_0     x
         //    residual_0.5         x
         //    defect_0       x     x     x
@@ -267,6 +273,7 @@ private:
         //    residual_3                                         x
         //                   0    0.5    1    1.5    2    2.5    3
 
+        copyColumn(constraints.integrals, 0);
         int igrid = 0;
         // Index for pointsForInterpControls.
         int icon = 0;
@@ -318,6 +325,7 @@ private:
         }
         out.interp_controls = init(m_problem.getNumControls(),
                 (int)m_pointsForInterpControls.numel());
+        out.integrals = init(m_problem.getNumIntegrals(), 1);
 
         int iflat = 0;
         auto copyColumn = [&flat, &iflat](T& matrix, int columnIndex) {
@@ -329,6 +337,7 @@ private:
             }
         };
 
+        copyColumn(out.integrals, 0);
         int igrid = 0;
         // Index for pointsForInterpControls.
         int icon = 0;

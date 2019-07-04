@@ -21,6 +21,7 @@ using casadi::DM;
 using casadi::MX;
 using casadi::MXVector;
 using casadi::Slice;
+using casadi::Sparsity;
 
 namespace CasOC {
 
@@ -81,7 +82,8 @@ private:
 };
 
 void Transcription::createVariablesAndSetBounds(const casadi::DM& grid,
-        int numDefectsPerMeshInterval, const casadi::DM& pointsForInterpControls) {
+        int numDefectsPerMeshInterval,
+        const casadi::DM& pointsForInterpControls) {
     // Set the grid.
     // -------------
     // The grid for a transcription scheme includes both mesh points (i.e.
@@ -101,7 +103,8 @@ void Transcription::createVariablesAndSetBounds(const casadi::DM& grid,
             m_numDefectsPerMeshInterval * m_numMeshIntervals +
             m_numResiduals * m_numGridPoints +
             m_problem.getNumKinematicConstraintEquations() * m_numMeshPoints +
-            m_problem.getNumControls() * (int)pointsForInterpControls.numel();
+            m_problem.getNumControls() * (int)pointsForInterpControls.numel() +
+            m_problem.getNumIntegrals();
     m_constraints.path.resize(m_problem.getPathConstraintInfos().size());
     for (int ipc = 0; ipc < (int)m_constraints.path.size(); ++ipc) {
         const auto& info = m_problem.getPathConstraintInfos()[ipc];
@@ -128,6 +131,8 @@ void Transcription::createVariablesAndSetBounds(const casadi::DM& grid,
     m_vars[slacks] = MX::sym(
             "slacks", m_problem.getNumSlacks(), m_numPointsIgnoringConstraints);
     m_vars[parameters] = MX::sym("parameters", m_problem.getNumParameters(), 1);
+
+    m_vars[integrals] = MX::sym("integrals", m_problem.getNumIntegrals());
 
     m_paramsTrajGrid = MX::repmat(m_vars[parameters], 1, m_numGridPoints);
     m_paramsTraj = MX::repmat(m_vars[parameters], 1, m_numMeshPoints);
@@ -216,19 +221,23 @@ void Transcription::createVariablesAndSetBounds(const casadi::DM& grid,
         }
     }
     {
-        const auto& slackInfos = m_problem.getSlackInfos();
         int isl = 0;
-        for (const auto& info : slackInfos) {
+        for (const auto& info : m_problem.getSlackInfos()) {
             setVariableBounds(slacks, isl, Slice(), info.bounds);
             ++isl;
         }
     }
     {
-        const auto& paramInfos = m_problem.getParameterInfos();
         int ip = 0;
-        for (const auto& info : paramInfos) {
+        for (const auto& info : m_problem.getParameterInfos()) {
             setVariableBounds(parameters, ip, 0, info.bounds);
             ++ip;
+        }
+    }
+    {
+        int ii = 0;
+        for (const auto& info : m_problem.getIntegralInfos()) {
+            setVariableBounds(integrals, ii, 0, info.bounds);
         }
     }
 }
@@ -397,10 +406,32 @@ void Transcription::transcribe() {
                 casadi::DM::repmat(info.upperBounds, 1, m_numMeshPoints);
     }
 
+    // Integrals.
+    // ----------
+    m_constraints.integrals =
+            MX(Sparsity::dense(m_problem.getNumIntegrals(), 1));
+    const auto boundsOnIntegrals = DM::zeros(m_problem.getNumIntegrals(), 1);
+    m_constraintsLowerBounds.integrals = boundsOnIntegrals;
+    m_constraintsUpperBounds.integrals = boundsOnIntegrals;
+    DM quadCoeffs = this->createQuadratureCoefficients();
+    for (int iint = 0; iint < m_problem.getNumIntegrals(); ++iint) {
+        const auto& info = m_problem.getIntegralInfos()[iint];
+        // TODO: Move this comment to a better place.
+        // Here, we include evaluations of the integrands into the symbolic
+        // expression graph for the integrand constraints. We are *not*
+        // numerically evaluating the integrand here--that occurs when the
+        // function by casadi::nlpsol() is evaluated.
+        MX integrandTraj = evalOnTrajectory(*info.function,
+                {states, controls, multipliers, derivatives}, m_gridIndices)
+                                   .at(0);
+        MX integral = m_duration * dot(quadCoeffs.T(), integrandTraj);
+        m_constraints.integrals(iint) = m_vars[integrals](iint) - integral;
+    }
+
     // Interpolating controls.
     // -----------------------
     m_constraints.interp_controls =
-            casadi::DM(casadi::Sparsity::dense(m_problem.getNumControls(),
+            casadi::MX(casadi::Sparsity::dense(m_problem.getNumControls(),
                     (int)m_pointsForInterpControls.numel()));
     const auto boundsOnInterpControls = casadi::DM::zeros(
             m_problem.getNumControls(), (int)m_pointsForInterpControls.numel());
@@ -411,18 +442,10 @@ void Transcription::transcribe() {
 }
 
 void Transcription::setObjective() {
+
+    m_objective = 0;
+
     DM quadCoeffs = this->createQuadratureCoefficients();
-    MX integrandTraj;
-    {
-        // Here, we include evaluations of the integral cost
-        // integrand into the symbolic expression graph for the integral
-        // cost. We are *not* numerically evaluating the integral cost
-        // integrand here--that occurs when the function by casadi::nlpsol()
-        // is evaluated.
-        integrandTraj = evalOnTrajectory(m_problem.getIntegralCostIntegrand(),
-                {states, controls, multipliers, derivatives}, m_gridIndices)
-                                .at(0);
-    }
 
     // Minimize Lagrange multipliers if specified by the solver.
     if (m_solver.getMinimizeLagrangeMultipliers() &&
@@ -430,20 +453,27 @@ void Transcription::setObjective() {
         const auto mults = m_vars[multipliers];
         const double multiplierWeight = m_solver.getLagrangeMultiplierWeight();
         // Sum across constraints of each multiplier element squared.
-        integrandTraj += multiplierWeight * MX::sum1(MX::sq(mults));
+        MX integrandTraj = multiplierWeight * MX::sum1(MX::sq(mults));
+        m_objective += m_duration * dot(quadCoeffs.T(), integrandTraj);
     }
-    MX integralCost = m_duration * dot(quadCoeffs.T(), integrandTraj);
 
-    MXVector endpointCostOut;
-    m_problem.getEndpointCost().call(
-            {m_vars[final_time], m_vars[states](Slice(), -1),
-                    m_vars[controls](Slice(), -1),
-                    m_vars[multipliers](Slice(), -1),
-                    m_vars[derivatives](Slice(), -1), m_vars[parameters]},
-            endpointCostOut);
-    const auto endpointCost = endpointCostOut.at(0);
-
-    m_objective = integralCost + endpointCost;
+    std::cout << "DEBUG setObj nc " << m_problem.getNumCosts() << std::endl;
+    for (int ic = 0; ic < m_problem.getNumCosts(); ++ic) {
+        const auto& info = m_problem.getCostInfos()[ic];
+        MXVector costOut;
+        info.function->call(
+                {m_vars[initial_time], m_vars[states](Slice(), 0),
+                        m_vars[controls](Slice(), 0),
+                        m_vars[multipliers](Slice(), 0),
+                        m_vars[derivatives](Slice(), 0), m_vars[final_time],
+                        m_vars[states](Slice(), -1),
+                        m_vars[controls](Slice(), -1),
+                        m_vars[multipliers](Slice(), -1),
+                        m_vars[derivatives](Slice(), -1), m_vars[parameters],
+                        m_vars[integrals]},
+                costOut);
+        m_objective += costOut.at(0);
+    }
 }
 
 Solution Transcription::solve(const Iterate& guessOrig) {
@@ -566,8 +596,8 @@ Solution Transcription::solve(const Iterate& guessOrig) {
     return solution;
 }
 
-void Transcription::printConstraintValues(
-        const Iterate& it, const Constraints<casadi::DM>& constraints,
+void Transcription::printConstraintValues(const Iterate& it,
+        const Constraints<casadi::DM>& constraints,
         std::ostream& stream) const {
 
     // We want to be able to restore the stream's original formatting.
@@ -702,73 +732,74 @@ void Transcription::printConstraintValues(
            << std::endl;
     stream << "The case of lower==upper==value is ignored." << std::endl;
 
-    auto printParameterBounds = [&stream, maxNameLength](
-                                        const std::string& description,
-                                        const std::vector<std::string>& names,
-                                        const casadi::DM& values,
-                                        const casadi::DM& lower,
-                                        const casadi::DM& upper) {
-        stream << "\n" << description << ": ";
+    auto printTimeInvariantVariableBounds =
+            [&stream, maxNameLength](const std::string& description,
+                    const std::vector<std::string>& names,
+                    const casadi::DM& values, const casadi::DM& lower,
+                    const casadi::DM& upper) {
+                stream << "\n" << description << ": ";
 
-        bool boundsActive = false;
-        bool boundsViolated = false;
-        for (casadi_int ivar = 0; ivar < values.rows(); ++ivar) {
-            const auto& L = lower(ivar).scalar();
-            const auto& V = values(ivar).scalar();
-            const auto& U = upper(ivar).scalar();
-            if (V <= L || V >= U) {
-                if (V == L && L == U) continue;
-                boundsActive = true;
-                if (V < L || V > U) {
-                    boundsViolated = true;
-                    break;
+                bool boundsActive = false;
+                bool boundsViolated = false;
+                for (casadi_int ivar = 0; ivar < values.rows(); ++ivar) {
+                    const auto& L = lower(ivar).scalar();
+                    const auto& V = values(ivar).scalar();
+                    const auto& U = upper(ivar).scalar();
+                    if (V <= L || V >= U) {
+                        if (V == L && L == U) continue;
+                        boundsActive = true;
+                        if (V < L || V > U) {
+                            boundsViolated = true;
+                            break;
+                        }
+                    }
                 }
-            }
-        }
 
-        if (!boundsActive && !boundsViolated) {
-            stream << "no bounds active or violated" << std::endl;
-            return;
-        }
+                if (!boundsActive && !boundsViolated) {
+                    stream << "no bounds active or violated" << std::endl;
+                    return;
+                }
 
-        if (!boundsViolated) {
-            stream << "some bounds active but no bounds violated";
-        } else {
-            stream << "some bounds active or violated";
-        }
+                if (!boundsViolated) {
+                    stream << "some bounds active but no bounds violated";
+                } else {
+                    stream << "some bounds active or violated";
+                }
 
-        stream << "\n"
-               << std::setw(maxNameLength) << "  " << std::setw(9) << "lower"
-               << "    " << std::setw(9) << "value"
-               << "    " << std::setw(9) << "upper"
-               << " " << std::endl;
+                stream << "\n"
+                       << std::setw(maxNameLength) << "  " << std::setw(9)
+                       << "lower"
+                       << "    " << std::setw(9) << "value"
+                       << "    " << std::setw(9) << "upper"
+                       << " " << std::endl;
 
-        for (casadi_int ivar = 0; ivar < values.rows(); ++ivar) {
-            const auto& L = lower(ivar).scalar();
-            const auto& V = values(ivar).scalar();
-            const auto& U = upper(ivar).scalar();
-            if (V <= L || V >= U) {
-                // In the case where lower==upper==value, there is no
-                // issue; ignore.
-                if (V == L && L == U) continue;
-                stream << std::setw(maxNameLength) << names[ivar] << "  "
-                       << std::setprecision(2) << std::scientific
-                       << std::setw(9) << L << " <= " << std::setw(9) << V
-                       << " <= " << std::setw(9) << U << " ";
-                // Show if the constraint is violated.
-                if (V <= L)
-                    stream << "L";
-                else
-                    stream << " ";
-                if (V >= U)
-                    stream << "U";
-                else
-                    stream << " ";
-                if (V < L || V > U) stream << "*";
-                stream << std::endl;
-            }
-        }
-    };
+                for (casadi_int ivar = 0; ivar < values.rows(); ++ivar) {
+                    const auto& L = lower(ivar).scalar();
+                    const auto& V = values(ivar).scalar();
+                    const auto& U = upper(ivar).scalar();
+                    if (V <= L || V >= U) {
+                        // In the case where lower==upper==value, there is no
+                        // issue; ignore.
+                        if (V == L && L == U) continue;
+                        stream << std::setw(maxNameLength) << names[ivar]
+                               << "  " << std::setprecision(2)
+                               << std::scientific << std::setw(9) << L
+                               << " <= " << std::setw(9) << V
+                               << " <= " << std::setw(9) << U << " ";
+                        // Show if the constraint is violated.
+                        if (V <= L)
+                            stream << "L";
+                        else
+                            stream << " ";
+                        if (V >= U)
+                            stream << "U";
+                        else
+                            stream << " ";
+                        if (V < L || V > U) stream << "*";
+                        stream << std::endl;
+                    }
+                }
+            };
     casadi::DM timeValues(2, 1);
     timeValues(0) = vars.at(initial_time);
     timeValues(1) = vars.at(final_time);
@@ -781,10 +812,12 @@ void Transcription::printConstraintValues(
     timeUpper(0) = upper.at(initial_time);
     timeUpper(1) = upper.at(final_time);
 
-    printParameterBounds(
+    printTimeInvariantVariableBounds(
             "Time bounds", time_names, timeValues, timeLower, timeUpper);
-    printParameterBounds("Parameter bounds", it.parameter_names,
+    printTimeInvariantVariableBounds("Parameter bounds", it.parameter_names,
             vars.at(parameters), lower.at(parameters), upper.at(parameters));
+    printTimeInvariantVariableBounds("Integral bounds", it.integral_names,
+            vars.at(integrals), lower.at(integrals), upper.at(integrals));
 
     // Constraints.
     // ============

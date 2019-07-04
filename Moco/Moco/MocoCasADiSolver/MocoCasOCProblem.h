@@ -89,6 +89,8 @@ inline CasOC::Iterate convertToCasOCIterate(const MocoTrajectory& mocoIt) {
     }
     casVars[Var::parameters] =
             convertToCasADiDMTranspose(mocoIt.getParameters());
+    casVars[Var::integrals] =
+            convertToCasADiDMTranspose(mocoIt.getIntegrals());
     casIt.times = convertToCasADiDMTranspose(mocoIt.getTime());
     casIt.state_names = mocoIt.getStateNames();
     casIt.control_names = mocoIt.getControlNames();
@@ -96,6 +98,7 @@ inline CasOC::Iterate convertToCasOCIterate(const MocoTrajectory& mocoIt) {
     casIt.slack_names = mocoIt.getSlackNames();
     casIt.derivative_names = mocoIt.getDerivativeNames();
     casIt.parameter_names = mocoIt.getParameterNames();
+    casIt.integral_names = mocoIt.getIntegralNames();
     return casIt;
 }
 
@@ -161,12 +164,18 @@ TOut convertToMocoTrajectory(const CasOC::Iterate& casIt) {
         const auto paramsValue = casVars.at(Var::parameters);
         simtkParameters = convertToSimTKVector<SimTK::RowVector>(paramsValue);
     }
+    SimTK::RowVector simtkIntegrals;
+    if (!casIt.integral_names.empty()) {
+        const auto integralsValue = casVars.at(Var::integrals);
+        simtkIntegrals = convertToSimTKVector<SimTK::RowVector>(integralsValue);
+    }
     SimTK::Vector simtkTimes = convertToSimTKVector(casIt.times);
 
     TOut mocoTraj(simtkTimes, casIt.state_names, casIt.control_names,
             casIt.multiplier_names, derivativeNames, casIt.parameter_names,
+            casIt.integral_names,
             simtkStates, simtkControls, simtkMultipliers, simtkDerivatives,
-            simtkParameters);
+            simtkParameters, simtkIntegrals);
 
     // Append slack variables. MocoTrajectory requires the slack variables to be
     // the same length as its time vector, but it will not be if the
