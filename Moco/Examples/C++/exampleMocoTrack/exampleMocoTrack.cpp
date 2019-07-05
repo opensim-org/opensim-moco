@@ -17,29 +17,29 @@
  * -------------------------------------------------------------------------- */
 
 /// This example features two different tracking problems solved using the
-/// MocoTrack tool. 
+/// MocoTrack tool.
 ///  - The first problem demonstrates the basic usage of the tool interface
-///    to solve a torque-driven marker tracking problem. 
-///  - The second problem shows how to customize a muscle-driven state tracking 
+///    to solve a torque-driven marker tracking problem.
+///  - The second problem shows how to customize a muscle-driven state tracking
 ///    problem using more advanced features of the tool interface.
-/// 
+///
 /// Data and model source: https://simtk.org/projects/full_body
-/// 
+///
 /// Model
 /// -----
 /// The model described in the file 'subject_walk_armless.osim' included in this
-/// file is a modified version of the Rajagopoal et al. 2016 musculoskeletal 
+/// file is a modified version of the Rajagopoal et al. 2016 musculoskeletal
 /// model. The lumbar, subtalar, and mtp coordinates have been replaced with
 /// WeldJoint%s and residual actuators have been added to the pelvis (1 N-m for
 /// rotational coordinates and 10 N for translational coordinates). Finally, the
 /// arms and all associated components have been removed for simplicity.
-/// 
+///
 /// Data
 /// ----
-/// The coordinate and marker data included in the 'coordinates.sto' and 
+/// The coordinate and marker data included in the 'coordinates.sto' and
 /// 'marker_trajectories.trc' files also come from the Rajagopal et al. 2016
 /// model distribution. The coordinates were computed using inverse kinematics
-/// and modified via the Residual Reduction Algorithm (RRA). 
+/// and modified via the Residual Reduction Algorithm (RRA).
 
 #include <Moco/osimMoco.h>
 #include <Actuators/CoordinateActuator.h>
@@ -55,7 +55,7 @@ void torqueDrivenMarkerTracking() {
     // Construct a ModelProcessor and add it to the tool. ModelProcessors
     // accept a base model and allow you to easily modify the model by appending
     // ModelOperators. Operations are performed in the order that they are
-    // appended to the model. In C++, you may use the pipe operator '|' to 
+    // appended to the model. In C++, you may use the pipe operator '|' to
     // append ModelOperators.
     track.setModel(
             // Create the base Model by passing in the model file.
@@ -66,7 +66,7 @@ void torqueDrivenMarkerTracking() {
             // Remove all the muscles in the model's ForceSet.
             ModOpRemoveMuscles() |
             // Add CoordinateActuators to the model degrees-of-freedom. This
-            // ignores the pelvis coordinates which already have residual 
+            // ignores the pelvis coordinates which already have residual
             // CoordinateActuators.
             ModOpAddReserves(250));
 
@@ -84,7 +84,7 @@ void torqueDrivenMarkerTracking() {
     // associated with the internal MocoMarkerTrackingCost term.
     track.set_markers_global_tracking_weight(10);
 
-    // Increase the tracking weights for individual markers in the data set 
+    // Increase the tracking weights for individual markers in the data set
     // placed on bony landmarks compared to markers located on soft tissue.
     MocoWeightSet markerWeights;
     markerWeights.cloneAndAppend({"R.ASIS", 20});
@@ -133,7 +133,7 @@ void muscleDrivenStateTracking() {
             ModOpScaleActiveFiberForceCurveWidthDGF(1.5);
     track.setModel(modelProcessor);
 
-    // Construct a TableProcessor of the coordinate data and pass it to the 
+    // Construct a TableProcessor of the coordinate data and pass it to the
     // tracking tool. TableProcessors can be used in the same way as
     // ModelProcessors by appending TableOperators to modify the base table.
     // A TableProcessor with no operators, as we have here, simply returns the
@@ -160,8 +160,8 @@ void muscleDrivenStateTracking() {
     // problem beyond the MocoTrack interface.
     MocoStudy moco = track.initialize();
 
-    // By default, the MocoTrack tool uses explicit dynamics for the model 
-    // defect constraints. Here, get a reference to the MocoSolver and set the 
+    // By default, the MocoTrack tool uses explicit dynamics for the model
+    // defect constraints. Here, get a reference to the MocoSolver and set the
     // dynamics mode to "implicit" instead.
     MocoCasADiSolver& solver = moco.updSolver<MocoCasADiSolver>();
     solver.set_dynamics_mode("implicit");
@@ -182,7 +182,7 @@ void muscleDrivenStateTracking() {
             effort.setWeight(coordPath, 10);
         }
     }
-    
+    model.print("testModel.osim");
     // Solve and visualize.
     MocoSolution solution = moco.solve();
     moco.visualize(solution);
@@ -192,10 +192,10 @@ int main() {
 
     // Solve the torque-driven marker tracking problem.
     // This problem takes a few minutes to solve.
-    torqueDrivenMarkerTracking();
+    //torqueDrivenMarkerTracking();
 
     // Solve the muscle-driven state tracking problem.
-    // This problem could take an hour or more to solve, depending on the 
+    // This problem could take an hour or more to solve, depending on the
     // number of processor cores available for parallelization. With 12 cores,
     // it takes around 25 minutes.
     muscleDrivenStateTracking();
