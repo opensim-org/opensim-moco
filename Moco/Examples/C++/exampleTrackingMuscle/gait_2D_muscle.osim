@@ -1269,15 +1269,15 @@
 					<!--Compute muscle dynamics ignoring activation dynamics. Activation is equivalent to excitation.-->
 					<ignore_activation_dynamics>false</ignore_activation_dynamics>
 					<!--Smaller value means activation can change more rapidly (units: seconds).-->
-					<activation_time_constant>0.01</activation_time_constant>
+					<activation_time_constant>0.015</activation_time_constant>
 					<!--Smaller value means activation can decrease more rapidly (units: seconds).-->
-					<deactivation_time_constant>0.040000000000000001</deactivation_time_constant>
+					<deactivation_time_constant>0.060</deactivation_time_constant>
 					<!--Value of activation in the default state returned by initSystem().-->
 					<default_activation>0.01</default_activation>
 					<!--Scale factor for the width of the active force-length curve. Larger values make the curve wider. (default: 1.0).-->
-					<active_force_width_scale>1.5</active_force_width_scale>
+					<active_force_width_scale>1.0</active_force_width_scale>
 					<!--The linear damping of the fiber (default: 0.01).-->
-					<fiber_damping>0</fiber_damping>
+					<fiber_damping>0.01</fiber_damping>
 					<!--Tendon strain at a tension of 1 normalized force.-->
 					<tendon_strain_at_one_norm_force>0.049000000000000002</tendon_strain_at_one_norm_force>
 					<!--Make the passive fiber force 0 (default: false).-->
@@ -1335,15 +1335,15 @@
 					<!--Compute muscle dynamics ignoring activation dynamics. Activation is equivalent to excitation.-->
 					<ignore_activation_dynamics>false</ignore_activation_dynamics>
 					<!--Smaller value means activation can change more rapidly (units: seconds).-->
-					<activation_time_constant>0.01</activation_time_constant>
+					<activation_time_constant>0.015</activation_time_constant>
 					<!--Smaller value means activation can decrease more rapidly (units: seconds).-->
-					<deactivation_time_constant>0.040000000000000001</deactivation_time_constant>
+					<deactivation_time_constant>0.060</deactivation_time_constant>
 					<!--Value of activation in the default state returned by initSystem().-->
 					<default_activation>0.01</default_activation>
 					<!--Scale factor for the width of the active force-length curve. Larger values make the curve wider. (default: 1.0).-->
-					<active_force_width_scale>1.5</active_force_width_scale>
+					<active_force_width_scale>1.0</active_force_width_scale>
 					<!--The linear damping of the fiber (default: 0.01).-->
-					<fiber_damping>0</fiber_damping>
+					<fiber_damping>0.01</fiber_damping>
 					<!--Tendon strain at a tension of 1 normalized force.-->
 					<tendon_strain_at_one_norm_force>0.049000000000000002</tendon_strain_at_one_norm_force>
 					<!--Make the passive fiber force 0 (default: false).-->
@@ -1407,15 +1407,15 @@
 					<!--Compute muscle dynamics ignoring activation dynamics. Activation is equivalent to excitation.-->
 					<ignore_activation_dynamics>false</ignore_activation_dynamics>
 					<!--Smaller value means activation can change more rapidly (units: seconds).-->
-					<activation_time_constant>0.01</activation_time_constant>
+					<activation_time_constant>0.015</activation_time_constant>
 					<!--Smaller value means activation can decrease more rapidly (units: seconds).-->
-					<deactivation_time_constant>0.040000000000000001</deactivation_time_constant>
+					<deactivation_time_constant>0.060</deactivation_time_constant>
 					<!--Value of activation in the default state returned by initSystem().-->
 					<default_activation>0.01</default_activation>
 					<!--Scale factor for the width of the active force-length curve. Larger values make the curve wider. (default: 1.0).-->
-					<active_force_width_scale>1.5</active_force_width_scale>
+					<active_force_width_scale>1.0</active_force_width_scale>
 					<!--The linear damping of the fiber (default: 0.01).-->
-					<fiber_damping>0</fiber_damping>
+					<fiber_damping>0.01</fiber_damping>
 					<!--Tendon strain at a tension of 1 normalized force.-->
 					<tendon_strain_at_one_norm_force>0.049000000000000002</tendon_strain_at_one_norm_force>
 					<!--Make the passive fiber force 0 (default: false).-->
@@ -1487,15 +1487,15 @@
 					<!--Compute muscle dynamics ignoring activation dynamics. Activation is equivalent to excitation.-->
 					<ignore_activation_dynamics>false</ignore_activation_dynamics>
 					<!--Smaller value means activation can change more rapidly (units: seconds).-->
-					<activation_time_constant>0.01</activation_time_constant>
+					<activation_time_constant>0.015</activation_time_constant>
 					<!--Smaller value means activation can decrease more rapidly (units: seconds).-->
-					<deactivation_time_constant>0.040000000000000001</deactivation_time_constant>
+					<deactivation_time_constant>0.060</deactivation_time_constant>
 					<!--Value of activation in the default state returned by initSystem().-->
 					<default_activation>0.01</default_activation>
 					<!--Scale factor for the width of the active force-length curve. Larger values make the curve wider. (default: 1.0).-->
-					<active_force_width_scale>1.5</active_force_width_scale>
+					<active_force_width_scale>1.0</active_force_width_scale>
 					<!--The linear damping of the fiber (default: 0.01).-->
-					<fiber_damping>0</fiber_damping>
+					<fiber_damping>0.01</fiber_damping>
 					<!--Tendon strain at a tension of 1 normalized force.-->
 					<tendon_strain_at_one_norm_force>0.049000000000000002</tendon_strain_at_one_norm_force>
 					<!--Make the passive fiber force 0 (default: false).-->
@@ -1591,15 +1591,15 @@
 					<!--Compute muscle dynamics ignoring activation dynamics. Activation is equivalent to excitation.-->
 					<ignore_activation_dynamics>false</ignore_activation_dynamics>
 					<!--Smaller value means activation can change more rapidly (units: seconds).-->
-					<activation_time_constant>0.01</activation_time_constant>
+					<activation_time_constant>0.015</activation_time_constant>
 					<!--Smaller value means activation can decrease more rapidly (units: seconds).-->
-					<deactivation_time_constant>0.040000000000000001</deactivation_time_constant>
+					<deactivation_time_constant>0.060</deactivation_time_constant>
 					<!--Value of activation in the default state returned by initSystem().-->
 					<default_activation>0.01</default_activation>
 					<!--Scale factor for the width of the active force-length curve. Larger values make the curve wider. (default: 1.0).-->
-					<active_force_width_scale>1.5</active_force_width_scale>
+					<active_force_width_scale>1.0</active_force_width_scale>
 					<!--The linear damping of the fiber (default: 0.01).-->
-					<fiber_damping>0</fiber_damping>
+					<fiber_damping>0.01</fiber_damping>
 					<!--Tendon strain at a tension of 1 normalized force.-->
 					<tendon_strain_at_one_norm_force>0.049000000000000002</tendon_strain_at_one_norm_force>
 					<!--Make the passive fiber force 0 (default: false).-->
@@ -1701,15 +1701,15 @@
 					<!--Compute muscle dynamics ignoring activation dynamics. Activation is equivalent to excitation.-->
 					<ignore_activation_dynamics>false</ignore_activation_dynamics>
 					<!--Smaller value means activation can change more rapidly (units: seconds).-->
-					<activation_time_constant>0.01</activation_time_constant>
+					<activation_time_constant>0.015</activation_time_constant>
 					<!--Smaller value means activation can decrease more rapidly (units: seconds).-->
-					<deactivation_time_constant>0.040000000000000001</deactivation_time_constant>
+					<deactivation_time_constant>0.060</deactivation_time_constant>
 					<!--Value of activation in the default state returned by initSystem().-->
 					<default_activation>0.01</default_activation>
 					<!--Scale factor for the width of the active force-length curve. Larger values make the curve wider. (default: 1.0).-->
-					<active_force_width_scale>1.5</active_force_width_scale>
+					<active_force_width_scale>1.0</active_force_width_scale>
 					<!--The linear damping of the fiber (default: 0.01).-->
-					<fiber_damping>0</fiber_damping>
+					<fiber_damping>0.01</fiber_damping>
 					<!--Tendon strain at a tension of 1 normalized force.-->
 					<tendon_strain_at_one_norm_force>0.049000000000000002</tendon_strain_at_one_norm_force>
 					<!--Make the passive fiber force 0 (default: false).-->
@@ -1769,15 +1769,15 @@
 					<!--Compute muscle dynamics ignoring activation dynamics. Activation is equivalent to excitation.-->
 					<ignore_activation_dynamics>false</ignore_activation_dynamics>
 					<!--Smaller value means activation can change more rapidly (units: seconds).-->
-					<activation_time_constant>0.01</activation_time_constant>
+					<activation_time_constant>0.015</activation_time_constant>
 					<!--Smaller value means activation can decrease more rapidly (units: seconds).-->
-					<deactivation_time_constant>0.040000000000000001</deactivation_time_constant>
+					<deactivation_time_constant>0.060</deactivation_time_constant>
 					<!--Value of activation in the default state returned by initSystem().-->
 					<default_activation>0.01</default_activation>
 					<!--Scale factor for the width of the active force-length curve. Larger values make the curve wider. (default: 1.0).-->
-					<active_force_width_scale>1.5</active_force_width_scale>
+					<active_force_width_scale>1.0</active_force_width_scale>
 					<!--The linear damping of the fiber (default: 0.01).-->
-					<fiber_damping>0</fiber_damping>
+					<fiber_damping>0.01</fiber_damping>
 					<!--Tendon strain at a tension of 1 normalized force.-->
 					<tendon_strain_at_one_norm_force>0.049000000000000002</tendon_strain_at_one_norm_force>
 					<!--Make the passive fiber force 0 (default: false).-->
@@ -1829,15 +1829,15 @@
 					<!--Compute muscle dynamics ignoring activation dynamics. Activation is equivalent to excitation.-->
 					<ignore_activation_dynamics>false</ignore_activation_dynamics>
 					<!--Smaller value means activation can change more rapidly (units: seconds).-->
-					<activation_time_constant>0.01</activation_time_constant>
+					<activation_time_constant>0.015</activation_time_constant>
 					<!--Smaller value means activation can decrease more rapidly (units: seconds).-->
-					<deactivation_time_constant>0.040000000000000001</deactivation_time_constant>
+					<deactivation_time_constant>0.060</deactivation_time_constant>
 					<!--Value of activation in the default state returned by initSystem().-->
 					<default_activation>0.01</default_activation>
 					<!--Scale factor for the width of the active force-length curve. Larger values make the curve wider. (default: 1.0).-->
-					<active_force_width_scale>1.5</active_force_width_scale>
+					<active_force_width_scale>1.0</active_force_width_scale>
 					<!--The linear damping of the fiber (default: 0.01).-->
-					<fiber_damping>0</fiber_damping>
+					<fiber_damping>0.01</fiber_damping>
 					<!--Tendon strain at a tension of 1 normalized force.-->
 					<tendon_strain_at_one_norm_force>0.049000000000000002</tendon_strain_at_one_norm_force>
 					<!--Make the passive fiber force 0 (default: false).-->
@@ -1895,15 +1895,15 @@
 					<!--Compute muscle dynamics ignoring activation dynamics. Activation is equivalent to excitation.-->
 					<ignore_activation_dynamics>false</ignore_activation_dynamics>
 					<!--Smaller value means activation can change more rapidly (units: seconds).-->
-					<activation_time_constant>0.01</activation_time_constant>
+					<activation_time_constant>0.015</activation_time_constant>
 					<!--Smaller value means activation can decrease more rapidly (units: seconds).-->
-					<deactivation_time_constant>0.040000000000000001</deactivation_time_constant>
+					<deactivation_time_constant>0.060</deactivation_time_constant>
 					<!--Value of activation in the default state returned by initSystem().-->
 					<default_activation>0.01</default_activation>
 					<!--Scale factor for the width of the active force-length curve. Larger values make the curve wider. (default: 1.0).-->
-					<active_force_width_scale>1.5</active_force_width_scale>
+					<active_force_width_scale>1.0</active_force_width_scale>
 					<!--The linear damping of the fiber (default: 0.01).-->
-					<fiber_damping>0</fiber_damping>
+					<fiber_damping>0.01</fiber_damping>
 					<!--Tendon strain at a tension of 1 normalized force.-->
 					<tendon_strain_at_one_norm_force>0.049000000000000002</tendon_strain_at_one_norm_force>
 					<!--Make the passive fiber force 0 (default: false).-->
@@ -1961,15 +1961,15 @@
 					<!--Compute muscle dynamics ignoring activation dynamics. Activation is equivalent to excitation.-->
 					<ignore_activation_dynamics>false</ignore_activation_dynamics>
 					<!--Smaller value means activation can change more rapidly (units: seconds).-->
-					<activation_time_constant>0.01</activation_time_constant>
+					<activation_time_constant>0.015</activation_time_constant>
 					<!--Smaller value means activation can decrease more rapidly (units: seconds).-->
-					<deactivation_time_constant>0.040000000000000001</deactivation_time_constant>
+					<deactivation_time_constant>0.060</deactivation_time_constant>
 					<!--Value of activation in the default state returned by initSystem().-->
 					<default_activation>0.01</default_activation>
 					<!--Scale factor for the width of the active force-length curve. Larger values make the curve wider. (default: 1.0).-->
-					<active_force_width_scale>1.5</active_force_width_scale>
+					<active_force_width_scale>1.0</active_force_width_scale>
 					<!--The linear damping of the fiber (default: 0.01).-->
-					<fiber_damping>0</fiber_damping>
+					<fiber_damping>0.01</fiber_damping>
 					<!--Tendon strain at a tension of 1 normalized force.-->
 					<tendon_strain_at_one_norm_force>0.049000000000000002</tendon_strain_at_one_norm_force>
 					<!--Make the passive fiber force 0 (default: false).-->
@@ -2027,15 +2027,15 @@
 					<!--Compute muscle dynamics ignoring activation dynamics. Activation is equivalent to excitation.-->
 					<ignore_activation_dynamics>false</ignore_activation_dynamics>
 					<!--Smaller value means activation can change more rapidly (units: seconds).-->
-					<activation_time_constant>0.01</activation_time_constant>
+					<activation_time_constant>0.015</activation_time_constant>
 					<!--Smaller value means activation can decrease more rapidly (units: seconds).-->
-					<deactivation_time_constant>0.040000000000000001</deactivation_time_constant>
+					<deactivation_time_constant>0.060</deactivation_time_constant>
 					<!--Value of activation in the default state returned by initSystem().-->
 					<default_activation>0.01</default_activation>
 					<!--Scale factor for the width of the active force-length curve. Larger values make the curve wider. (default: 1.0).-->
-					<active_force_width_scale>1.5</active_force_width_scale>
+					<active_force_width_scale>1.0</active_force_width_scale>
 					<!--The linear damping of the fiber (default: 0.01).-->
-					<fiber_damping>0</fiber_damping>
+					<fiber_damping>0.01</fiber_damping>
 					<!--Tendon strain at a tension of 1 normalized force.-->
 					<tendon_strain_at_one_norm_force>0.049000000000000002</tendon_strain_at_one_norm_force>
 					<!--Make the passive fiber force 0 (default: false).-->
@@ -2099,15 +2099,15 @@
 					<!--Compute muscle dynamics ignoring activation dynamics. Activation is equivalent to excitation.-->
 					<ignore_activation_dynamics>false</ignore_activation_dynamics>
 					<!--Smaller value means activation can change more rapidly (units: seconds).-->
-					<activation_time_constant>0.01</activation_time_constant>
+					<activation_time_constant>0.015</activation_time_constant>
 					<!--Smaller value means activation can decrease more rapidly (units: seconds).-->
-					<deactivation_time_constant>0.040000000000000001</deactivation_time_constant>
+					<deactivation_time_constant>0.060</deactivation_time_constant>
 					<!--Value of activation in the default state returned by initSystem().-->
 					<default_activation>0.01</default_activation>
 					<!--Scale factor for the width of the active force-length curve. Larger values make the curve wider. (default: 1.0).-->
-					<active_force_width_scale>1.5</active_force_width_scale>
+					<active_force_width_scale>1.0</active_force_width_scale>
 					<!--The linear damping of the fiber (default: 0.01).-->
-					<fiber_damping>0</fiber_damping>
+					<fiber_damping>0.01</fiber_damping>
 					<!--Tendon strain at a tension of 1 normalized force.-->
 					<tendon_strain_at_one_norm_force>0.049000000000000002</tendon_strain_at_one_norm_force>
 					<!--Make the passive fiber force 0 (default: false).-->
@@ -2179,15 +2179,15 @@
 					<!--Compute muscle dynamics ignoring activation dynamics. Activation is equivalent to excitation.-->
 					<ignore_activation_dynamics>false</ignore_activation_dynamics>
 					<!--Smaller value means activation can change more rapidly (units: seconds).-->
-					<activation_time_constant>0.01</activation_time_constant>
+					<activation_time_constant>0.015</activation_time_constant>
 					<!--Smaller value means activation can decrease more rapidly (units: seconds).-->
-					<deactivation_time_constant>0.040000000000000001</deactivation_time_constant>
+					<deactivation_time_constant>0.060</deactivation_time_constant>
 					<!--Value of activation in the default state returned by initSystem().-->
 					<default_activation>0.01</default_activation>
 					<!--Scale factor for the width of the active force-length curve. Larger values make the curve wider. (default: 1.0).-->
-					<active_force_width_scale>1.5</active_force_width_scale>
+					<active_force_width_scale>1.0</active_force_width_scale>
 					<!--The linear damping of the fiber (default: 0.01).-->
-					<fiber_damping>0</fiber_damping>
+					<fiber_damping>0.01</fiber_damping>
 					<!--Tendon strain at a tension of 1 normalized force.-->
 					<tendon_strain_at_one_norm_force>0.049000000000000002</tendon_strain_at_one_norm_force>
 					<!--Make the passive fiber force 0 (default: false).-->
@@ -2283,15 +2283,15 @@
 					<!--Compute muscle dynamics ignoring activation dynamics. Activation is equivalent to excitation.-->
 					<ignore_activation_dynamics>false</ignore_activation_dynamics>
 					<!--Smaller value means activation can change more rapidly (units: seconds).-->
-					<activation_time_constant>0.01</activation_time_constant>
+					<activation_time_constant>0.015</activation_time_constant>
 					<!--Smaller value means activation can decrease more rapidly (units: seconds).-->
-					<deactivation_time_constant>0.040000000000000001</deactivation_time_constant>
+					<deactivation_time_constant>0.060</deactivation_time_constant>
 					<!--Value of activation in the default state returned by initSystem().-->
 					<default_activation>0.01</default_activation>
 					<!--Scale factor for the width of the active force-length curve. Larger values make the curve wider. (default: 1.0).-->
-					<active_force_width_scale>1.5</active_force_width_scale>
+					<active_force_width_scale>1.0</active_force_width_scale>
 					<!--The linear damping of the fiber (default: 0.01).-->
-					<fiber_damping>0</fiber_damping>
+					<fiber_damping>0.01</fiber_damping>
 					<!--Tendon strain at a tension of 1 normalized force.-->
 					<tendon_strain_at_one_norm_force>0.049000000000000002</tendon_strain_at_one_norm_force>
 					<!--Make the passive fiber force 0 (default: false).-->
@@ -2393,15 +2393,15 @@
 					<!--Compute muscle dynamics ignoring activation dynamics. Activation is equivalent to excitation.-->
 					<ignore_activation_dynamics>false</ignore_activation_dynamics>
 					<!--Smaller value means activation can change more rapidly (units: seconds).-->
-					<activation_time_constant>0.01</activation_time_constant>
+					<activation_time_constant>0.015</activation_time_constant>
 					<!--Smaller value means activation can decrease more rapidly (units: seconds).-->
-					<deactivation_time_constant>0.040000000000000001</deactivation_time_constant>
+					<deactivation_time_constant>0.060</deactivation_time_constant>
 					<!--Value of activation in the default state returned by initSystem().-->
 					<default_activation>0.01</default_activation>
 					<!--Scale factor for the width of the active force-length curve. Larger values make the curve wider. (default: 1.0).-->
-					<active_force_width_scale>1.5</active_force_width_scale>
+					<active_force_width_scale>1.0</active_force_width_scale>
 					<!--The linear damping of the fiber (default: 0.01).-->
-					<fiber_damping>0</fiber_damping>
+					<fiber_damping>0.01</fiber_damping>
 					<!--Tendon strain at a tension of 1 normalized force.-->
 					<tendon_strain_at_one_norm_force>0.049000000000000002</tendon_strain_at_one_norm_force>
 					<!--Make the passive fiber force 0 (default: false).-->
@@ -2461,15 +2461,15 @@
 					<!--Compute muscle dynamics ignoring activation dynamics. Activation is equivalent to excitation.-->
 					<ignore_activation_dynamics>false</ignore_activation_dynamics>
 					<!--Smaller value means activation can change more rapidly (units: seconds).-->
-					<activation_time_constant>0.01</activation_time_constant>
+					<activation_time_constant>0.015</activation_time_constant>
 					<!--Smaller value means activation can decrease more rapidly (units: seconds).-->
-					<deactivation_time_constant>0.040000000000000001</deactivation_time_constant>
+					<deactivation_time_constant>0.060</deactivation_time_constant>
 					<!--Value of activation in the default state returned by initSystem().-->
 					<default_activation>0.01</default_activation>
 					<!--Scale factor for the width of the active force-length curve. Larger values make the curve wider. (default: 1.0).-->
-					<active_force_width_scale>1.5</active_force_width_scale>
+					<active_force_width_scale>1.0</active_force_width_scale>
 					<!--The linear damping of the fiber (default: 0.01).-->
-					<fiber_damping>0</fiber_damping>
+					<fiber_damping>0.01</fiber_damping>
 					<!--Tendon strain at a tension of 1 normalized force.-->
 					<tendon_strain_at_one_norm_force>0.049000000000000002</tendon_strain_at_one_norm_force>
 					<!--Make the passive fiber force 0 (default: false).-->
@@ -2521,15 +2521,15 @@
 					<!--Compute muscle dynamics ignoring activation dynamics. Activation is equivalent to excitation.-->
 					<ignore_activation_dynamics>false</ignore_activation_dynamics>
 					<!--Smaller value means activation can change more rapidly (units: seconds).-->
-					<activation_time_constant>0.01</activation_time_constant>
+					<activation_time_constant>0.015</activation_time_constant>
 					<!--Smaller value means activation can decrease more rapidly (units: seconds).-->
-					<deactivation_time_constant>0.040000000000000001</deactivation_time_constant>
+					<deactivation_time_constant>0.060</deactivation_time_constant>
 					<!--Value of activation in the default state returned by initSystem().-->
 					<default_activation>0.01</default_activation>
 					<!--Scale factor for the width of the active force-length curve. Larger values make the curve wider. (default: 1.0).-->
-					<active_force_width_scale>1.5</active_force_width_scale>
+					<active_force_width_scale>1.0</active_force_width_scale>
 					<!--The linear damping of the fiber (default: 0.01).-->
-					<fiber_damping>0</fiber_damping>
+					<fiber_damping>0.01</fiber_damping>
 					<!--Tendon strain at a tension of 1 normalized force.-->
 					<tendon_strain_at_one_norm_force>0.049000000000000002</tendon_strain_at_one_norm_force>
 					<!--Make the passive fiber force 0 (default: false).-->
@@ -2587,15 +2587,15 @@
 					<!--Compute muscle dynamics ignoring activation dynamics. Activation is equivalent to excitation.-->
 					<ignore_activation_dynamics>false</ignore_activation_dynamics>
 					<!--Smaller value means activation can change more rapidly (units: seconds).-->
-					<activation_time_constant>0.01</activation_time_constant>
+					<activation_time_constant>0.015</activation_time_constant>
 					<!--Smaller value means activation can decrease more rapidly (units: seconds).-->
-					<deactivation_time_constant>0.040000000000000001</deactivation_time_constant>
+					<deactivation_time_constant>0.060</deactivation_time_constant>
 					<!--Value of activation in the default state returned by initSystem().-->
 					<default_activation>0.01</default_activation>
 					<!--Scale factor for the width of the active force-length curve. Larger values make the curve wider. (default: 1.0).-->
-					<active_force_width_scale>1.5</active_force_width_scale>
+					<active_force_width_scale>1.0</active_force_width_scale>
 					<!--The linear damping of the fiber (default: 0.01).-->
-					<fiber_damping>0</fiber_damping>
+					<fiber_damping>0.01</fiber_damping>
 					<!--Tendon strain at a tension of 1 normalized force.-->
 					<tendon_strain_at_one_norm_force>0.049000000000000002</tendon_strain_at_one_norm_force>
 					<!--Make the passive fiber force 0 (default: false).-->
