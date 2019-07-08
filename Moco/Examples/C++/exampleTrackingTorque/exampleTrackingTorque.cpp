@@ -116,7 +116,8 @@ std::unique_ptr<Model> createGait2D() {
 
 
 /*Use MocoTrack*/
-int main() {
+//int main() {
+void testTracking(){
 
     MocoTrack track;
     track.setName("gait2D_TrackingTorque");
@@ -129,8 +130,48 @@ int main() {
     track.set_states_global_tracking_weight(10.0);
     track.set_allow_unused_references(true);
     track.set_track_reference_position_derivatives(true);
-    /*track.set_guess_file("IK_reference_guess.sto");*/
-    track.set_apply_tracked_states_to_guess(true);
+    //track.set_apply_tracked_states_to_guess(true);
+
+    TimeSeriesTable IGTable = TimeSeriesTable("IK_reference_guess.sto");
+    //std::cout << IGTable.getRow(0) << std::endl;
+    MocoTrajectory IG;
+    IG.setStatesTrajectory(IGTable,true,true);
+    IG.write("test_MocoTrajectory_IG.sto");
+    //track.set_guess_file(IG); // STO or mocoTrajectory?
+
+    //MocoTrajectory IG;
+    //IG.setStatesTrajectory(IGTable,true,true);
+    ////IG.write("IK_reference_guess_write.sto");
+    //track.set_guess_file(IG);
+    //track.set_apply_tracked_states_to_guess(true);
+
+    //std::cout << IGTable.getColumnLabel(0) << std::endl;
+    //std::cout << IGTable.getRow(0) << std::endl;
+
+    /*TimeSeriesTable ref;
+    ref.setColumnLabels({"/jointset/groundPelvis/groundPelvis_q_rz/value",
+        "/jointset/groundPelvis/groundPelvis_q_tx/value",
+        "/jointset/groundPelvis/groundPelvis_q_ty/value",
+        "/jointset/hip_l/hip_q_l/value", "/jointset/hip_r/hip_q_r/value",
+        "/jointset/knee_l/knee_q_l/value", "/jointset/knee_r/knee_q_r/value",
+        "/jointset/ankle_l/ankle_q_l/value",
+        "/jointset/ankle_r/ankle_q_r/value",
+        "/jointset/lumbar/lumbar_q/value",
+        "/jointset/groundPelvis/groundPelvis_q_rz/speed",
+        "/jointset/groundPelvis/groundPelvis_q_tx/speed",
+        "/jointset/groundPelvis/groundPelvis_q_ty/speed",
+        "/jointset/hip_l/hip_q_l/speed", "/jointset/hip_r/hip_q_r/speed",
+        "/jointset/knee_l/knee_q_l/speed", "/jointset/knee_r/knee_q_r/speed",
+        "/jointset/ankle_l/ankle_q_l/speed",
+        "/jointset/ankle_r/ankle_q_r/speed",
+        "/jointset/lumbar/lumbar_q/speed"});
+    ref.appendRow(0.0,{-15.12042338, 0, 0.88365423, 0.94361719, 38.0573941,
+        -16.23119179, -10.56684797, 5.78097847, 13.83724009, 9.61940188, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0});
+    ref.appendRow(0.00959366,{-15.08237687, 0.01477811, 0.88286864, 0.8499583,
+        37.57263532, -17.72505032, -9.96145335, 4.58050531, 13.38888806,
+        9.71629935, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});*/
+
     track.set_initial_time(0.0);
     track.set_final_time(0.47008941);
     MocoStudy moco = track.initialize();
@@ -142,9 +183,15 @@ int main() {
     solver.set_optim_convergence_tolerance(4);
     solver.set_optim_constraint_tolerance(4);
 
-
     MocoSolution solution = moco.solve();
     moco.visualize(solution);
-
 }
 
+int main()  {
+    try { testTracking(); }
+    catch (const OpenSim::Exception& e) {
+        e.print(std::cerr);
+        return 1;
+    }
+    return 0;
+}

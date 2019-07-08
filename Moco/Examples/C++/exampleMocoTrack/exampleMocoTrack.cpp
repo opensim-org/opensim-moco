@@ -182,7 +182,7 @@ void muscleDrivenStateTracking() {
             effort.setWeight(coordPath, 10);
         }
     }
-    model.print("testModel.osim");
+
     // Solve and visualize.
     MocoSolution solution = moco.solve();
     moco.visualize(solution);
@@ -192,7 +192,7 @@ int main() {
 
     // Solve the torque-driven marker tracking problem.
     // This problem takes a few minutes to solve.
-    //torqueDrivenMarkerTracking();
+    torqueDrivenMarkerTracking();
 
     // Solve the muscle-driven state tracking problem.
     // This problem could take an hour or more to solve, depending on the
