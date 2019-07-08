@@ -335,6 +335,7 @@ public:
                 integralInfo.function->constructFunction(this,
                         "integrand_" + integralInfo.name, index,
                         finiteDiffScheme, pointsForSparsityDetection);
+                ++index;
             }
         }
         {
@@ -343,6 +344,7 @@ public:
                 costInfo.function->constructFunction(this,
                         "cost_" + costInfo.name, index, finiteDiffScheme,
                         pointsForSparsityDetection);
+                ++index;
             }
         }
         {
