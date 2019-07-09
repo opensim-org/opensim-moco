@@ -130,14 +130,14 @@ void testTracking(){
     track.set_states_global_tracking_weight(10.0);
     track.set_allow_unused_references(true);
     track.set_track_reference_position_derivatives(true);
-    //track.set_apply_tracked_states_to_guess(true);
+    track.set_apply_tracked_states_to_guess(true);
 
-    TimeSeriesTable IGTable = TimeSeriesTable("IK_reference_guess.sto");
-    //std::cout << IGTable.getRow(0) << std::endl;
-    MocoTrajectory IG;
-    IG.setStatesTrajectory(IGTable,true,true);
-    IG.write("test_MocoTrajectory_IG.sto");
-    //track.set_guess_file(IG); // STO or mocoTrajectory?
+    //TimeSeriesTable IGTable = TimeSeriesTable("IK_reference_guess.sto");
+    ////std::cout << IGTable.getRow(0) << std::endl;
+    //MocoTrajectory IG;
+    //IG.setStatesTrajectory(IGTable,true,true);
+    //IG.write("test_MocoTrajectory_IG.sto");
+    ////track.set_guess_file(IG); // STO or mocoTrajectory?
 
     //MocoTrajectory IG;
     //IG.setStatesTrajectory(IGTable,true,true);
@@ -176,7 +176,7 @@ void testTracking(){
     track.set_final_time(0.47008941);
     MocoStudy moco = track.initialize();
     MocoCasADiSolver& solver = moco.updSolver<MocoCasADiSolver>();
-    solver.set_dynamics_mode("implicit");
+    //solver.set_dynamics_mode("implicit");
     solver.set_num_mesh_points(50);
     solver.set_verbosity(2);
     solver.set_optim_solver("ipopt");

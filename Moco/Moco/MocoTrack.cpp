@@ -26,7 +26,6 @@
 #include "MocoCost/MocoMarkerTrackingCost.h"
 #include "MocoCasADiSolver/MocoCasADiSolver.h"
 #include "MocoUtilities.h"
-#include "MocoTropterSolver.h"
 
 #include <OpenSim/Common/FileAdapter.h>
 #include <OpenSim/Common/GCVSpline.h>
@@ -104,7 +103,6 @@ MocoStudy MocoTrack::initialize() {
     // Configure solver.
     // -----------------
     MocoCasADiSolver& solver = moco.initCasADiSolver();
-    //MocoTropterSolver& solver = moco.initTropterSolver();
     solver.set_num_mesh_points(m_timeInfo.numMeshPoints);
     solver.set_dynamics_mode("explicit");
     solver.set_optim_convergence_tolerance(1e-2);
@@ -114,17 +112,10 @@ MocoStudy MocoTrack::initialize() {
     // Set the problem guess.
     // ----------------------
     // If the user provided a guess file, use that guess in the solver.
-    //if (!get_guess_file().empty()) {
-    //    solver.setGuessFile(getFilePath(get_guess_file()));
-    //}
-
     if (!get_guess_file().empty()) {
         solver.setGuessFile(getFilePath(get_guess_file()));
     } else {
         solver.setGuess("bounds");
-    }
-    else {
-        solver.setGuess(solver.createGuess("random"));
     }
 
     // Apply states from the reference data the to solver guess if specified by
@@ -287,7 +278,7 @@ void MocoTrack::applyStatesToGuess(const TimeSeriesTable& states,
         if (std::find(names.begin(), names.end(), label) != names.end()) {
             guess.setState(label, col);
         } else {
-            OPENSIM_THROW_IF(!get_allow_unused_references(), Exception, 
+            OPENSIM_THROW_IF(!get_allow_unused_references(), Exception,
                 format("Tried to apply data for state '%s' to guess, but this "
                     "state does not exist in the model.", label));
         }
