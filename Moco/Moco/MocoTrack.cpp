@@ -67,6 +67,10 @@ MocoStudy MocoTrack::initialize() {
     TimeSeriesTable tracked_states;
     if (!get_states_reference().empty()) {
         tracked_states = configureStateTracking(problem, model);
+    } else {
+        OPENSIM_THROW_IF(get_apply_tracked_states_to_guess(), Exception,
+                "Property 'apply_tracked_states_to_guess' was enabled, but no "
+                "states reference data was provided.")
     }
 
     // Marker tracking cost.
@@ -116,6 +120,8 @@ MocoStudy MocoTrack::initialize() {
 
     if (!get_guess_file().empty()) {
         solver.setGuessFile(getFilePath(get_guess_file()));
+    } else {
+        solver.setGuess("bounds");
     }
     else {
         solver.setGuess(solver.createGuess("random"));
@@ -125,10 +131,7 @@ MocoStudy MocoTrack::initialize() {
     // the user.
     if (get_apply_tracked_states_to_guess()) {
         auto guess = solver.getGuess();
-        OPENSIM_THROW_IF(!tracked_states.getNumRows(), Exception,
-            "Property 'apply_tracked_states_to_guess' was enabled, but no "
-            "states reference data was provided.")
-            applyStatesToGuess(tracked_states, model, guess);
+        applyStatesToGuess(tracked_states, model, guess);
         solver.setGuess(guess);
     }
 
@@ -276,11 +279,18 @@ void MocoTrack::applyStatesToGuess(const TimeSeriesTable& states,
         const Model& model, MocoTrajectory& guess) {
 
     guess.resampleWithNumTimes((int)states.getNumRows());
+    std::vector<std::string> names = guess.getStateNames();
     for (int i = 0; i < (int)states.getNumColumns(); ++i) {
         const auto& label = states.getColumnLabel(i);
         const auto& col = states.getDependentColumnAtIndex(i);
 
-        guess.setState(label, col);
+        if (std::find(names.begin(), names.end(), label) != names.end()) {
+            guess.setState(label, col);
+        } else {
+            OPENSIM_THROW_IF(!get_allow_unused_references(), Exception, 
+                format("Tried to apply data for state '%s' to guess, but this "
+                    "state does not exist in the model.", label));
+        }
     }
 }
 
