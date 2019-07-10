@@ -25,8 +25,10 @@
 #include "Components/DiscreteForces.h"
 #include "Components/PositionMotion.h"
 #include "Components/StationPlaneContactForce.h"
+#ifdef MOCO_WITH_TROPTER
 #include "InverseMuscleSolver/GlobalStaticOptimization.h"
 #include "InverseMuscleSolver/INDYGO.h"
+#endif
 #include "MocoBounds.h"
 #include "MocoCasADiSolver/MocoCasADiSolver.h"
 #include "MocoControlBoundConstraint.h"
@@ -91,8 +93,11 @@ OSIMMOCO_API void RegisterTypes_osimMoco() {
         Object::registerType(MocoCasADiSolver());
 
         Object::registerType(ActivationCoordinateActuator());
+
+#ifdef MOCO_WITH_TROPTER
         Object::registerType(GlobalStaticOptimization());
         Object::registerType(INDYGO());
+#endif
 
         Object::registerType(TableProcessor());
 
