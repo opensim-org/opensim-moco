@@ -16,9 +16,10 @@
 // limitations under the License.
 // ----------------------------------------------------------------------------
 
-#include <tropter/common.h>
-#include <tropter/Exception.h>
 #include <memory>
+
+#include <tropter/Exception.h>
+#include <tropter/common.h>
 
 namespace tropter {
 
@@ -31,22 +32,37 @@ class ProblemDecorator;
 /// @ingroup optimization
 class AbstractProblem {
 public:
-
     AbstractProblem() = default;
     AbstractProblem(unsigned num_variables, unsigned num_constraints)
-            :m_num_variables(num_variables),
-             m_num_constraints(num_constraints) { }
+            : m_num_variables(num_variables),
+              m_num_constraints(num_constraints) {}
     virtual ~AbstractProblem() = default;
     unsigned get_num_variables() const { return m_num_variables; }
     unsigned get_num_constraints() const { return m_num_constraints; }
-    const Eigen::VectorXd&
-    get_variable_lower_bounds() const { return m_variable_lower_bounds; }
-    const Eigen::VectorXd&
-    get_variable_upper_bounds() const { return m_variable_upper_bounds; }
-    const Eigen::VectorXd&
-    get_constraint_lower_bounds() const { return m_constraint_lower_bounds; }
-    const Eigen::VectorXd&
-    get_constraint_upper_bounds() const { return m_constraint_upper_bounds; }
+    const Eigen::VectorXd& get_variable_lower_bounds() const {
+        return m_variable_lower_bounds;
+    }
+    const Eigen::VectorXd& get_variable_upper_bounds() const {
+        return m_variable_upper_bounds;
+    }
+
+    bool has_variable_scaling() const {
+        return m_variable_scaling_shift.size() &&
+               m_variable_scaling_scale.size();
+    }
+    const Eigen::VectorXd& get_variable_scaling_shift() const {
+        return m_variable_scaling_shift;
+    }
+    const Eigen::VectorXd& get_variable_scaling_scale() const {
+        return m_variable_scaling_scale;
+    }
+
+    const Eigen::VectorXd& get_constraint_lower_bounds() const {
+        return m_constraint_lower_bounds;
+    }
+    const Eigen::VectorXd& get_constraint_upper_bounds() const {
+        return m_constraint_upper_bounds;
+    }
 
     /// Get a vector of names of all variables in the optimization problem,
     /// in the correct order.
@@ -80,14 +96,16 @@ public:
     /// implementing calc_sparsity_hessian_lagrangian())? If false, then we
     /// assume the Hessian is dense, which will have a very negative impact
     /// on performance.
-    bool get_use_supplied_sparsity_hessian_lagrangian() const
-    {   return m_use_supplied_sparsity_hessian_lagrangian; }
+    bool get_use_supplied_sparsity_hessian_lagrangian() const {
+        return m_use_supplied_sparsity_hessian_lagrangian;
+    }
     /// @copydoc get_use_supplied_sparsity_hessian_lagrangian()
     /// If this is true and calc_sparsity_hessian_lagrangian() is not
     /// implemented, an exception is thrown.
     /// This must be false if using automatic differentiation.
-    void set_use_supplied_sparsity_hessian_lagrangian(bool value)
-    {   m_use_supplied_sparsity_hessian_lagrangian = value; }
+    void set_use_supplied_sparsity_hessian_lagrangian(bool value) {
+        m_use_supplied_sparsity_hessian_lagrangian = value;
+    }
     /// If using finite differences (double) with a Newton method (exact
     /// Hessian in IPOPT), then we require the sparsity pattern of the
     /// Hessian of the Lagrangian. By default, we estimate the Hessian's
@@ -111,11 +129,9 @@ public:
 
     class CalcSparsityHessianLagrangianNotImplemented : public Exception {};
 
-    virtual std::unique_ptr<ProblemDecorator>
-    make_decorator() const = 0;
+    virtual std::unique_ptr<ProblemDecorator> make_decorator() const = 0;
 
 protected:
-
     void set_num_variables(unsigned num_variables) {
         // TODO if set, invalidate variable bounds.
         m_num_variables = num_variables;
@@ -123,8 +139,8 @@ protected:
     void set_num_constraints(unsigned num_constraints) {
         m_num_constraints = num_constraints;
     }
-    void set_variable_bounds(const Eigen::VectorXd& lower,
-            const Eigen::VectorXd& upper) {
+    void set_variable_bounds(
+            const Eigen::VectorXd& lower, const Eigen::VectorXd& upper) {
         // TODO make sure num_variables has been set.
         // TODO can only call this if m_num_variables etc are already set.
         assert(lower.size() == m_num_variables);
@@ -135,8 +151,33 @@ protected:
         m_variable_lower_bounds = lower;
         m_variable_upper_bounds = upper;
     }
-    void set_constraint_bounds(const Eigen::VectorXd& lower,
-            const Eigen::VectorXd& upper) {
+
+    void set_variable_scaling_from_range(
+            const Eigen::VectorXd& lower, const Eigen::VectorXd& upper) {
+        // Betts 2010 page 167.
+        set_variable_scaling(1.0 / (upper.array() - lower.array()),
+                0.5 - upper.array() / (upper.array() - lower.array()));
+    }
+    // TODO must have already called set_variable_bounds().
+    void set_variable_scaling_from_bounds() {
+        TROPTER_THROW_IF((m_variable_lower_bounds.size() == 0 ||
+                                 m_variable_upper_bounds.size() == 0) &&
+                                 m_num_variables,
+                "To set variable scaling from bounds, bounds must be set.");
+        set_variable_scaling_from_range(
+                m_variable_lower_bounds, m_variable_upper_bounds);
+    }
+    // TODO
+    void set_variable_scaling(
+            const Eigen::VectorXd& shift, const Eigen::VectorXd& scale) {
+        assert(shift.size() == m_num_variables);
+        assert(scale.size() == m_num_variables);
+        assert((scale.array() > 0).all());
+        m_variable_scaling_shift = shift;
+        m_variable_scaling_scale = scale;
+    }
+    void set_constraint_bounds(
+            const Eigen::VectorXd& lower, const Eigen::VectorXd& upper) {
         assert(lower.size() == m_num_constraints);
         assert(upper.size() == m_num_constraints);
         // TODO assert(lower <= upper);
@@ -153,17 +194,17 @@ private:
     Eigen::VectorXd m_variable_upper_bounds;
     Eigen::VectorXd m_constraint_lower_bounds;
     Eigen::VectorXd m_constraint_upper_bounds;
+
+    Eigen::VectorXd m_variable_scaling_shift;
+    Eigen::VectorXd m_variable_scaling_scale;
 };
 
 inline void AbstractProblem::calc_sparsity_hessian_lagrangian(
-        const Eigen::VectorXd&,
-        SymmetricSparsityPattern&,
+        const Eigen::VectorXd&, SymmetricSparsityPattern&,
         SymmetricSparsityPattern&) const {
     throw CalcSparsityHessianLagrangianNotImplemented();
 }
-inline Eigen::VectorXd
-AbstractProblem::make_initial_guess_from_bounds() const
-{
+inline Eigen::VectorXd AbstractProblem::make_initial_guess_from_bounds() const {
     const auto& lower = get_variable_lower_bounds();
     const auto& upper = get_variable_upper_bounds();
     assert(lower.size() == upper.size());
@@ -172,10 +213,12 @@ AbstractProblem::make_initial_guess_from_bounds() const
     for (Eigen::Index i = 0; i < lower.size(); ++i) {
         if (lower[i] != -inf && upper[i] != inf) {
             guess[i] = 0.5 * (upper[i] + lower[i]);
-        }
-        else if (lower[i] != -inf) guess[i] = lower[i];
-        else if (upper[i] != inf) guess[i] = upper[i];
-        else guess[i] = 0;
+        } else if (lower[i] != -inf)
+            guess[i] = lower[i];
+        else if (upper[i] != inf)
+            guess[i] = upper[i];
+        else
+            guess[i] = 0;
     }
     return guess;
 }

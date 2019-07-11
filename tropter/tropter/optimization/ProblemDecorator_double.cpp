@@ -55,13 +55,14 @@ Problem<double>::Decorator::Decorator(
         ProblemDecorator(problem), m_problem(problem) {}
 
 void Problem<double>::Decorator::
-calc_sparsity(const Eigen::VectorXd& variables,
+calc_sparsity(const Eigen::VectorXd& scaled_variables,
         SparsityCoordinates& jacobian_sparsity_coordinates,
         bool provide_hessian_sparsity,
         SparsityCoordinates& hessian_sparsity_coordinates) const
 {
     const auto num_vars = get_num_variables();
-    m_x_working = VectorXd::Zero(num_vars);
+    m_x_working.resize(num_vars);
+    unscale_variables(scaled_variables.data(), m_x_working.data());
 
     // Gradient.
     // =========
@@ -74,7 +75,7 @@ calc_sparsity(const Eigen::VectorXd& variables,
                 return obj_value;
             };
     SparsityPattern gradient_sparsity =
-            calc_gradient_sparsity_with_perturbation(variables,
+            calc_gradient_sparsity_with_perturbation(m_x_working,
                     calc_objective);
     m_gradient_nonzero_indices =
             gradient_sparsity.convert_to_CompressedRowSparsity()[0];
@@ -95,7 +96,7 @@ calc_sparsity(const Eigen::VectorXd& variables,
     const auto var_names = m_problem.get_variable_names();
     const auto constr_names = m_problem.get_constraint_names();
     SparsityPattern jacobian_sparsity =
-            calc_jacobian_sparsity_with_perturbation(variables,
+            calc_jacobian_sparsity_with_perturbation(m_x_working,
                     num_jac_rows, calc_constraints, constr_names, var_names);
 
     m_jacobian_coloring.reset(new JacobianColoring(jacobian_sparsity));
@@ -112,7 +113,7 @@ calc_sparsity(const Eigen::VectorXd& variables,
     // Hessian.
     // ========
     if (provide_hessian_sparsity) {
-        calc_sparsity_hessian_lagrangian(variables,
+        calc_sparsity_hessian_lagrangian(m_x_working,
                 hessian_sparsity_coordinates);
 
         // TODO produce a more informative number/description.
@@ -132,6 +133,7 @@ calc_sparsity(const Eigen::VectorXd& variables,
 void Problem<double>::Decorator::
 calc_sparsity_hessian_lagrangian(const VectorXd& x,
         SparsityCoordinates& hessian_sparsity_coordinates) const {
+    // TODO scale?
     const int num_vars = (int)m_problem.get_num_variables();
 
     SymmetricSparsityPattern hescon_sparsity(num_vars);
@@ -199,9 +201,10 @@ calc_objective(unsigned num_variables, const double* variables,
         double& obj_value) const
 {
     obj_value = 0.0;
-    // TODO avoid copy.
-    const VectorXd xvec = Eigen::Map<const VectorXd>(variables, num_variables);
-    m_problem.calc_objective(xvec, obj_value);
+    // TODO: Use working memory.
+    VectorXd unscaled_variables(num_variables);
+    unscale_variables(variables, unscaled_variables.data());
+    m_problem.calc_objective(unscaled_variables, obj_value);
 }
 
 void Problem<double>::Decorator::
@@ -209,8 +212,8 @@ calc_constraints(unsigned num_variables, const double* variables,
         bool /*new_variables*/,
         unsigned num_constraints, double* constr) const
 {
-    // TODO avoid copy.
-    m_x_working = Eigen::Map<const VectorXd>(variables, num_variables);
+    m_x_working.resize(num_variables);
+    unscale_variables(variables, m_x_working.data());
     VectorXd constrvec(num_constraints); // TODO avoid copy.
     // TODO at least keep constrvec as working memory.
     m_problem.calc_constraints(m_x_working, constrvec);
@@ -279,9 +282,11 @@ calc_jacobian(unsigned num_variables, const double* variables, bool /*new_x*/,
     for (Eigen::Index iseed = 0; iseed < num_seeds; ++iseed) {
         const auto direction = seed.col(iseed);
         // Perturb x in the positive direction.
-        m_problem.calc_constraints(x0 + eps * direction, m_constr_pos);
+        m_problem.calc_constraints(
+                unscale_variables(x0 + eps * direction), m_constr_pos);
         // Perturb x in the negative direction.
-        m_problem.calc_constraints(x0 - eps * direction, m_constr_neg);
+        m_problem.calc_constraints(
+                unscale_variables(x0 - eps * direction), m_constr_neg);
         // Compute central difference.
         m_jacobian_compressed.col(iseed) =
                 (m_constr_pos - m_constr_neg) / two_eps;

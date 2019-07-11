@@ -47,7 +47,7 @@ public:
     // TODO cannot use temporary.
     static void print_available_options();
 protected:
-    Solution optimize_impl(const Eigen::VectorXd& guess) const override;
+    Solution optimize_impl(const Eigen::VectorXd& scaled_guess) const override;
     void get_available_options(
             std::vector<std::string>&, std::vector<std::string>&,
             std::vector<std::string>&) const override;
