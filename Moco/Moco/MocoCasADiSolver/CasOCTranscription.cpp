@@ -81,7 +81,8 @@ private:
 };
 
 void Transcription::createVariablesAndSetBounds(const casadi::DM& grid,
-        int numDefectsPerMeshInterval, const casadi::DM& pointsForInterpControls) {
+        int numDefectsPerMeshInterval,
+        const casadi::DM& pointsForInterpControls) {
     // Set the grid.
     // -------------
     // The grid for a transcription scheme includes both mesh points (i.e.
@@ -111,28 +112,22 @@ void Transcription::createVariablesAndSetBounds(const casadi::DM& grid,
 
     // Create variables.
     // -----------------
-    m_vars[initial_time] = MX::sym("initial_time");
-    m_vars[final_time] = MX::sym("final_time");
-    m_duration = m_vars[final_time] - m_vars[initial_time];
-    m_times = createTimes(m_vars[initial_time], m_vars[final_time]);
-    m_vars[states] =
+    m_scaledVars[initial_time] = MX::sym("initial_time");
+    m_scaledVars[final_time] = MX::sym("final_time");
+    m_scaledVars[states] =
             MX::sym("states", m_problem.getNumStates(), m_numGridPoints);
-    m_vars[controls] =
+    m_scaledVars[controls] =
             MX::sym("controls", m_problem.getNumControls(), m_numGridPoints);
-    m_vars[multipliers] = MX::sym(
+    m_scaledVars[multipliers] = MX::sym(
             "multipliers", m_problem.getNumMultipliers(), m_numGridPoints);
-    m_vars[derivatives] = MX::sym(
+    m_scaledVars[derivatives] = MX::sym(
             "derivatives", m_problem.getNumDerivatives(), m_numGridPoints);
     // TODO: This assumes that slack variables are applied at all
     // collocation points on the mesh interval interior.
-    m_vars[slacks] = MX::sym(
+    m_scaledVars[slacks] = MX::sym(
             "slacks", m_problem.getNumSlacks(), m_numPointsIgnoringConstraints);
-    m_vars[parameters] = MX::sym("parameters", m_problem.getNumParameters(), 1);
-
-    m_paramsTrajGrid = MX::repmat(m_vars[parameters], 1, m_numGridPoints);
-    m_paramsTraj = MX::repmat(m_vars[parameters], 1, m_numMeshPoints);
-    m_paramsTrajIgnoringConstraints =
-            MX::repmat(m_vars[parameters], 1, m_numPointsIgnoringConstraints);
+    m_scaledVars[parameters] =
+            MX::sym("parameters", m_problem.getNumParameters(), 1);
 
     m_kinematicConstraintIndices = createKinematicConstraintIndices();
     std::vector<int> daeIndicesVector;
@@ -161,13 +156,13 @@ void Transcription::createVariablesAndSetBounds(const casadi::DM& grid,
 
     // Set variable bounds.
     // --------------------
-    auto initializeBounds = [&](VariablesDM& bounds) {
-        for (auto& kv : m_vars) {
+    auto initializeVariablesDM = [&](VariablesDM& bounds) {
+        for (auto& kv : m_scaledVars) {
             bounds[kv.first] = DM(kv.second.rows(), kv.second.columns());
         }
     };
-    initializeBounds(m_lowerBounds);
-    initializeBounds(m_upperBounds);
+    initializeVariablesDM(m_lowerBounds);
+    initializeVariablesDM(m_upperBounds);
 
     setVariableBounds(initial_time, 0, 0, m_problem.getTimeInitialBounds());
     setVariableBounds(final_time, 0, 0, m_problem.getTimeFinalBounds());
@@ -231,6 +226,54 @@ void Transcription::createVariablesAndSetBounds(const casadi::DM& grid,
             ++ip;
         }
     }
+
+    // Handle scaling of variables.
+    // ----------------------------
+    initializeVariablesDM(m_shift);
+    initializeVariablesDM(m_scale);
+
+    for (const auto& kv : m_scaledVars) {
+        const auto& key = kv.first;
+        // TODO: do NOT use initial/final bounds for scaling; always use phase
+        // bounds.
+        if (m_solver.getScaleVariablesUsingBounds()) {
+            const auto& L = m_lowerBounds.at(key);
+            const auto& U = m_upperBounds.at(key);
+            for (int irow = 0; irow < kv.second.rows(); ++irow) {
+                for (int icol = 0; icol < kv.second.columns(); ++icol) {
+                    const double upper = U(irow, icol).scalar();
+                    const double lower = L(irow, icol).scalar();
+                    double range = upper - lower;
+                    double midpoint;
+                    if (std::isinf(range)) {
+                        range = 1;
+                        midpoint = 0;
+                    } else if (range == 0) {
+                        range = 1;
+                        midpoint = upper;
+                    } else {
+                        midpoint = -0.5 * (upper + lower);
+                    }
+                    m_scale.at(key)(irow, icol) = range;
+                    m_shift.at(key)(irow, icol) = midpoint;
+                }
+            }
+        } else {
+            m_scale.at(key) = 1;
+            m_shift.at(key) = 0;
+        }
+    }
+
+    m_unscaledVars = unscaleVariables(m_scaledVars);
+
+    m_duration = m_unscaledVars[final_time] - m_unscaledVars[initial_time];
+    m_times = createTimes(
+            m_unscaledVars[initial_time], m_unscaledVars[final_time]);
+    m_paramsTrajGrid =
+            MX::repmat(m_unscaledVars[parameters], 1, m_numGridPoints);
+    m_paramsTraj = MX::repmat(m_unscaledVars[parameters], 1, m_numMeshPoints);
+    m_paramsTrajIgnoringConstraints = MX::repmat(
+            m_unscaledVars[parameters], 1, m_numPointsIgnoringConstraints);
 }
 
 void Transcription::transcribe() {
@@ -285,7 +328,7 @@ void Transcription::transcribe() {
 
     // qdot
     // ----
-    const MX u = m_vars[states](Slice(NQ, NQ + NU), Slice());
+    const MX u = m_unscaledVars[states](Slice(NQ, NQ + NU), Slice());
     m_xdot(Slice(0, NQ), Slice()) = u;
 
     if (m_problem.getEnforceConstraintDerivatives() &&
@@ -311,7 +354,7 @@ void Transcription::transcribe() {
     if (m_solver.isDynamicsModeImplicit()) {
 
         // udot.
-        const MX w = m_vars[derivatives];
+        const MX w = m_unscaledVars[derivatives];
         m_xdot(Slice(NQ, NQ + NU), Slice()) = w;
 
         std::vector<Var> inputs{states, controls, multipliers, derivatives};
@@ -427,7 +470,7 @@ void Transcription::setObjective() {
     // Minimize Lagrange multipliers if specified by the solver.
     if (m_solver.getMinimizeLagrangeMultipliers() &&
             m_problem.getNumMultipliers()) {
-        const auto mults = m_vars[multipliers];
+        const auto mults = m_unscaledVars[multipliers];
         const double multiplierWeight = m_solver.getLagrangeMultiplierWeight();
         // Sum across constraints of each multiplier element squared.
         integrandTraj += multiplierWeight * MX::sum1(MX::sq(mults));
@@ -436,10 +479,11 @@ void Transcription::setObjective() {
 
     MXVector endpointCostOut;
     m_problem.getEndpointCost().call(
-            {m_vars[final_time], m_vars[states](Slice(), -1),
-                    m_vars[controls](Slice(), -1),
-                    m_vars[multipliers](Slice(), -1),
-                    m_vars[derivatives](Slice(), -1), m_vars[parameters]},
+            {m_unscaledVars[final_time], m_unscaledVars[states](Slice(), -1),
+                    m_unscaledVars[controls](Slice(), -1),
+                    m_unscaledVars[multipliers](Slice(), -1),
+                    m_unscaledVars[derivatives](Slice(), -1),
+                    m_unscaledVars[parameters]},
             endpointCostOut);
     const auto endpointCost = endpointCostOut.at(0);
 
@@ -447,6 +491,7 @@ void Transcription::setObjective() {
 }
 
 Solution Transcription::solve(const Iterate& guessOrig) {
+    // TODO scale guess!
 
     // Define the NLP.
     // ---------------
@@ -497,7 +542,7 @@ Solution Transcription::solve(const Iterate& guessOrig) {
         options[m_solver.getOptimSolver()] = m_solver.getSolverOptions();
     }
 
-    auto x = flattenVariables(m_vars);
+    auto x = flattenVariables(m_scaledVars);
     casadi_int numVariables = x.numel();
 
     // The m_constraints symbolic vector holds all of the expressions for
@@ -539,18 +584,18 @@ Solution Transcription::solve(const Iterate& guessOrig) {
     // Run the optimization (evaluate the CasADi NLP function).
     // --------------------------------------------------------
     // The inputs and outputs of nlpFunc are numeric (casadi::DM).
-    const casadi::DMDict nlpResult =
-            nlpFunc(casadi::DMDict{{"x0", flattenVariables(guess.variables)},
-                    {"lbx", flattenVariables(m_lowerBounds)},
-                    {"ubx", flattenVariables(m_upperBounds)},
-                    {"lbg", flattenConstraints(m_constraintsLowerBounds)},
-                    {"ubg", flattenConstraints(m_constraintsUpperBounds)}});
+    const casadi::DMDict nlpResult = nlpFunc(casadi::DMDict{
+            {"x0", flattenVariables(scaleVariables(guess.variables))},
+            {"lbx", flattenVariables(scaleVariables(m_lowerBounds))},
+            {"ubx", flattenVariables(scaleVariables(m_upperBounds))},
+            {"lbg", flattenConstraints(m_constraintsLowerBounds)},
+            {"ubg", flattenConstraints(m_constraintsUpperBounds)}});
 
     // Create a CasOC::Solution.
     // -------------------------
     Solution solution = m_problem.createIterate<Solution>();
     const auto finalVariables = nlpResult.at("x");
-    solution.variables = expandVariables(finalVariables);
+    solution.variables = unscaleVariables(expandVariables(finalVariables));
     solution.objective = nlpResult.at("f").scalar();
     solution.times = createTimes(
             solution.variables[initial_time], solution.variables[final_time]);
@@ -566,8 +611,8 @@ Solution Transcription::solve(const Iterate& guessOrig) {
     return solution;
 }
 
-void Transcription::printConstraintValues(
-        const Iterate& it, const Constraints<casadi::DM>& constraints,
+void Transcription::printConstraintValues(const Iterate& it,
+        const Constraints<casadi::DM>& constraints,
         std::ostream& stream) const {
 
     // We want to be able to restore the stream's original formatting.
@@ -1015,11 +1060,12 @@ casadi::MXVector Transcription::evalOnTrajectory(
         if (inputs[i] == multibody_states) {
             const auto NQ = m_problem.getNumCoordinates();
             const auto NU = m_problem.getNumSpeeds();
-            mxIn[i + 1] = m_vars.at(states)(Slice(0, NQ + NU), timeIndices);
+            mxIn[i + 1] =
+                    m_unscaledVars.at(states)(Slice(0, NQ + NU), timeIndices);
         } else if (inputs[i] == slacks) {
-            mxIn[i + 1] = m_vars.at(inputs[i]);
+            mxIn[i + 1] = m_unscaledVars.at(inputs[i]);
         } else {
-            mxIn[i + 1] = m_vars.at(inputs[i])(Slice(), timeIndices);
+            mxIn[i + 1] = m_unscaledVars.at(inputs[i])(Slice(), timeIndices);
         }
     }
     if (&timeIndices == &m_gridIndices) {

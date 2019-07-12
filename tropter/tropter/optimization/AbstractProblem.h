@@ -152,8 +152,10 @@ protected:
         m_variable_upper_bounds = upper;
     }
 
+
     void set_variable_scaling_from_range(
             const Eigen::VectorXd& lower, const Eigen::VectorXd& upper) {
+        // TODO special handling if upper == lower!!!
         // Betts 2010 page 167.
         set_variable_scaling(1.0 / (upper.array() - lower.array()),
                 0.5 - upper.array() / (upper.array() - lower.array()));

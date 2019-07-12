@@ -30,7 +30,7 @@ void MocoPhase::constructProperties() {
     constructProperty_model(ModelProcessor(Model{}));
     constructProperty_time_initial_bounds(MocoInitialBounds());
     constructProperty_time_final_bounds(MocoFinalBounds());
-    constructProperty_default_speed_bounds(MocoBounds(-50, 50));
+    constructProperty_default_speed_bounds(MocoBounds(-20, 20));
     constructProperty_bound_activation_from_excitation(true);
     constructProperty_state_infos();
     constructProperty_state_infos_pattern();
