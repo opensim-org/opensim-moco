@@ -17,32 +17,32 @@
  * -------------------------------------------------------------------------- */
 
 /// This example features two different tracking problems solved using the
-/// MocoTrack tool. 
+/// MocoTrack tool.
 ///  - The first problem demonstrates the basic usage of the tool interface
-///    to solve a torque-driven marker tracking problem. 
-///  - The second problem shows how to customize a muscle-driven state tracking 
+///    to solve a torque-driven marker tracking problem.
+///  - The second problem shows how to customize a muscle-driven state tracking
 ///    problem using more advanced features of the tool interface.
-/// 
+///
 /// Data and model source: https://simtk.org/projects/full_body
-/// 
+///
 /// Model
 /// -----
 /// The model described in the file 'subject_walk_armless.osim' included in this
-/// file is a modified version of the Rajagopoal et al. 2016 musculoskeletal 
+/// file is a modified version of the Rajagopoal et al. 2016 musculoskeletal
 /// model. The lumbar, subtalar, and mtp coordinates have been replaced with
 /// WeldJoint%s and residual actuators have been added to the pelvis (1 N-m for
 /// rotational coordinates and 10 N for translational coordinates). Finally, the
 /// arms and all associated components have been removed for simplicity.
-/// 
+///
 /// Data
 /// ----
-/// The coordinate and marker data included in the 'coordinates.sto' and 
+/// The coordinate and marker data included in the 'coordinates.sto' and
 /// 'marker_trajectories.trc' files also come from the Rajagopal et al. 2016
 /// model distribution. The coordinates were computed using inverse kinematics
-/// and modified via the Residual Reduction Algorithm (RRA). 
+/// and modified via the Residual Reduction Algorithm (RRA).
 
-#include <Moco/osimMoco.h>
 #include <Actuators/CoordinateActuator.h>
+#include <Moco/osimMoco.h>
 
 using namespace OpenSim;
 
@@ -55,7 +55,7 @@ void torqueDrivenMarkerTracking() {
     // Construct a ModelProcessor and add it to the tool. ModelProcessors
     // accept a base model and allow you to easily modify the model by appending
     // ModelOperators. Operations are performed in the order that they are
-    // appended to the model. In C++, you may use the pipe operator '|' to 
+    // appended to the model. In C++, you may use the pipe operator '|' to
     // append ModelOperators.
     track.setModel(
             // Create the base Model by passing in the model file.
@@ -66,7 +66,7 @@ void torqueDrivenMarkerTracking() {
             // Remove all the muscles in the model's ForceSet.
             ModOpRemoveMuscles() |
             // Add CoordinateActuators to the model degrees-of-freedom. This
-            // ignores the pelvis coordinates which already have residual 
+            // ignores the pelvis coordinates which already have residual
             // CoordinateActuators.
             ModOpAddReserves(250));
 
@@ -84,7 +84,7 @@ void torqueDrivenMarkerTracking() {
     // associated with the internal MocoMarkerTrackingCost term.
     track.set_markers_global_tracking_weight(10);
 
-    // Increase the tracking weights for individual markers in the data set 
+    // Increase the tracking weights for individual markers in the data set
     // placed on bony landmarks compared to markers located on soft tissue.
     MocoWeightSet markerWeights;
     markerWeights.cloneAndAppend({"R.ASIS", 20});
@@ -133,12 +133,13 @@ void muscleDrivenStateTracking() {
             ModOpScaleActiveFiberForceCurveWidthDGF(1.5);
     track.setModel(modelProcessor);
 
-    // Construct a TableProcessor of the coordinate data and pass it to the 
+    // Construct a TableProcessor of the coordinate data and pass it to the
     // tracking tool. TableProcessors can be used in the same way as
     // ModelProcessors by appending TableOperators to modify the base table.
     // A TableProcessor with no operators, as we have here, simply returns the
     // base table.
-    track.setStatesReference(TableProcessor("coordinates.sto"));
+    track.setStatesReference(TableProcessor("coordinates.sto") |
+            TabOpLowPassFilter(6));
     track.set_states_global_tracking_weight(10);
 
     // This setting allows extra data columns contained in the states
@@ -153,7 +154,9 @@ void muscleDrivenStateTracking() {
     // Initial time, final time, and mesh interval.
     track.set_initial_time(0.81);
     track.set_final_time(1.65);
-    track.set_mesh_interval(0.08);
+    track.set_mesh_interval(0.02);
+
+    track.set_guess_file("muscle_driven_state_tracking_solution.sto");
 
     // Instead of calling solve(), call initialize() to receive a pre-configured
     // MocoStudy object based on the settings above. Use this to customize the
@@ -164,21 +167,32 @@ void muscleDrivenStateTracking() {
     // problem by default.
     MocoProblem& problem = moco.updProblem();
     MocoControlCost& effort =
-        dynamic_cast<MocoControlCost&>(problem.updCost("control_effort"));
+            dynamic_cast<MocoControlCost&>(problem.updCost("control_effort"));
 
     // Put a large weight on the pelvis CoordinateActuators, which act as the
     // residual, or 'hand-of-god', forces which we would like to keep as small
     // as possible.
-     Model model = modelProcessor.process();
-     for (const auto& coordAct : model.getComponentList<CoordinateActuator>()) {
+    Model model = modelProcessor.process();
+    for (const auto& coordAct : model.getComponentList<CoordinateActuator>()) {
         auto coordPath = coordAct.getAbsolutePathString();
         if (coordPath.find("pelvis") != std::string::npos) {
             effort.setWeight(coordPath, 10);
         }
     }
-    
+
+    // TODO: Tighten speed bounds to [-10, 10].
+
     // Solve and visualize.
+    auto& solver = moco.updSolver<MocoCasADiSolver>();
+    solver.set_optim_convergence_tolerance(1e-4);
+    solver.set_output_interval(10);
     MocoSolution solution = moco.solve();
+
+    // std::cout << "DEBUG solution 0 " << std::endl;
+
+    // solver.set_num_mesh_points(4 * solver.get_num_mesh_points());
+    // solver.setGuess(solution0);
+    // MocoSolution solution1 = moco.solve();
     moco.visualize(solution);
 }
 
@@ -186,10 +200,10 @@ int main() {
 
     // Solve the torque-driven marker tracking problem.
     // This problem takes a few minutes to solve.
-    torqueDrivenMarkerTracking();
+    // torqueDrivenMarkerTracking();
 
     // Solve the muscle-driven state tracking problem.
-    // This problem could take an hour or more to solve, depending on the 
+    // This problem could take an hour or more to solve, depending on the
     // number of processor cores available for parallelization. With 12 cores,
     // it takes around 25 minutes.
     muscleDrivenStateTracking();
