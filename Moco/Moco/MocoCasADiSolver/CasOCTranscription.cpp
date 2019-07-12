@@ -21,6 +21,7 @@ using casadi::DM;
 using casadi::MX;
 using casadi::MXVector;
 using casadi::Slice;
+using casadi::Sparsity;
 
 namespace CasOC {
 
@@ -154,18 +155,31 @@ void Transcription::createVariablesAndSetBounds(const casadi::DM& grid,
     m_daeIndicesIgnoringConstraints =
             makeTimeIndices(daeIndicesIgnoringConstraintsVector);
 
-    // Set variable bounds.
-    // --------------------
-    auto initializeVariablesDM = [&](VariablesDM& bounds) {
+    // Set variable bounds and scale factors.
+    // --------------------------------------
+    auto initializeBoundsDM = [&](VariablesDM& bounds) {
         for (auto& kv : m_scaledVars) {
-            bounds[kv.first] = DM(kv.second.rows(), kv.second.columns());
+            bounds[kv.first] =
+                    DM(Sparsity::dense(kv.second.rows(), kv.second.columns()));
         }
     };
-    initializeVariablesDM(m_lowerBounds);
-    initializeVariablesDM(m_upperBounds);
+    initializeBoundsDM(m_lowerBounds);
+    initializeBoundsDM(m_upperBounds);
+
+    // The VariablesDM for scaling have length 1 in the time dimension.
+    auto initializeScalingDM = [&](VariablesDM& bounds) {
+        for (auto& kv : m_scaledVars) {
+            bounds[kv.first] = DM(Sparsity::dense(kv.second.rows(), 1));
+        }
+    };
+    initializeScalingDM(m_shift);
+    initializeScalingDM(m_scale);
 
     setVariableBounds(initial_time, 0, 0, m_problem.getTimeInitialBounds());
     setVariableBounds(final_time, 0, 0, m_problem.getTimeFinalBounds());
+
+    setScalingUsingBounds(initial_time, m_problem.getTimeInitialBounds());
+    setScalingUsingBounds(final_time, m_problem.getTimeFinalBounds());
 
     {
         const auto& stateInfos = m_problem.getStateInfos();
@@ -177,6 +191,9 @@ void Transcription::createVariablesAndSetBounds(const casadi::DM& grid,
             setVariableBounds(states, is, 0, info.initialBounds);
             // The "-1" grabs the last column (last mesh point).
             setVariableBounds(states, is, -1, info.finalBounds);
+
+            setScalingUsingBounds(states, info.bounds);
+
             ++is;
         }
     }
@@ -188,6 +205,9 @@ void Transcription::createVariablesAndSetBounds(const casadi::DM& grid,
                     controls, ic, Slice(1, m_numGridPoints - 1), info.bounds);
             setVariableBounds(controls, ic, 0, info.initialBounds);
             setVariableBounds(controls, ic, -1, info.finalBounds);
+
+            setScalingUsingBounds(controls, info.bounds);
+
             ++ic;
         }
     }
@@ -199,6 +219,9 @@ void Transcription::createVariablesAndSetBounds(const casadi::DM& grid,
                     info.bounds);
             setVariableBounds(multipliers, im, 0, info.initialBounds);
             setVariableBounds(multipliers, im, -1, info.finalBounds);
+
+            setScalingUsingBounds(multipliers, info.bounds);
+
             ++im;
         }
     }
@@ -207,7 +230,10 @@ void Transcription::createVariablesAndSetBounds(const casadi::DM& grid,
             // "Slice()" grabs everything in that dimension (like ":" in
             // Matlab).
             // TODO: How to choose bounds on udot?
-            setVariableBounds(derivatives, Slice(), Slice(), {-1000, 1000});
+            Bounds bounds(-1000.0, 1000.0);
+            setVariableBounds(derivatives, Slice(), Slice(), bounds);
+
+            setScalingUsingBounds(derivatives, bounds);
         }
     }
     {
@@ -215,6 +241,8 @@ void Transcription::createVariablesAndSetBounds(const casadi::DM& grid,
         int isl = 0;
         for (const auto& info : slackInfos) {
             setVariableBounds(slacks, isl, Slice(), info.bounds);
+
+            setScalingUsingBounds(slacks, info.bounds);
             ++isl;
         }
     }
@@ -223,44 +251,9 @@ void Transcription::createVariablesAndSetBounds(const casadi::DM& grid,
         int ip = 0;
         for (const auto& info : paramInfos) {
             setVariableBounds(parameters, ip, 0, info.bounds);
+
+            setScalingUsingBounds(parameters, info.bounds);
             ++ip;
-        }
-    }
-
-    // Handle scaling of variables.
-    // ----------------------------
-    initializeVariablesDM(m_shift);
-    initializeVariablesDM(m_scale);
-
-    for (const auto& kv : m_scaledVars) {
-        const auto& key = kv.first;
-        // TODO: do NOT use initial/final bounds for scaling; always use phase
-        // bounds.
-        if (m_solver.getScaleVariablesUsingBounds()) {
-            const auto& L = m_lowerBounds.at(key);
-            const auto& U = m_upperBounds.at(key);
-            for (int irow = 0; irow < kv.second.rows(); ++irow) {
-                for (int icol = 0; icol < kv.second.columns(); ++icol) {
-                    const double upper = U(irow, icol).scalar();
-                    const double lower = L(irow, icol).scalar();
-                    double range = upper - lower;
-                    double midpoint;
-                    if (std::isinf(range)) {
-                        range = 1;
-                        midpoint = 0;
-                    } else if (range == 0) {
-                        range = 1;
-                        midpoint = upper;
-                    } else {
-                        midpoint = -0.5 * (upper + lower);
-                    }
-                    m_scale.at(key)(irow, icol) = range;
-                    m_shift.at(key)(irow, icol) = midpoint;
-                }
-            }
-        } else {
-            m_scale.at(key) = 1;
-            m_shift.at(key) = 0;
         }
     }
 
@@ -328,8 +321,10 @@ void Transcription::transcribe() {
 
     // qdot
     // ----
-    const MX u = m_unscaledVars[states](Slice(NQ, NQ + NU), Slice());
-    m_xdot(Slice(0, NQ), Slice()) = u;
+    {
+        const MX u = m_unscaledVars[states](Slice(NQ, NQ + NU), Slice());
+        m_xdot(Slice(0, NQ), Slice()) = u;
+    }
 
     if (m_problem.getEnforceConstraintDerivatives() &&
             m_numPointsIgnoringConstraints) {
@@ -354,8 +349,10 @@ void Transcription::transcribe() {
     if (m_solver.isDynamicsModeImplicit()) {
 
         // udot.
-        const MX w = m_unscaledVars[derivatives];
-        m_xdot(Slice(NQ, NQ + NU), Slice()) = w;
+        {
+            const MX w = m_unscaledVars[derivatives];
+            m_xdot(Slice(NQ, NQ + NU), Slice()) = w;
+        }
 
         std::vector<Var> inputs{states, controls, multipliers, derivatives};
 
