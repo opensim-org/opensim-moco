@@ -66,6 +66,10 @@ MocoStudy MocoTrack::initialize() {
     TimeSeriesTable tracked_states;
     if (!get_states_reference().empty()) {
         tracked_states = configureStateTracking(problem, model);
+    } else {
+        OPENSIM_THROW_IF(get_apply_tracked_states_to_guess(), Exception,
+                "Property 'apply_tracked_states_to_guess' was enabled, but no "
+                "states reference data was provided.")
     }
 
     // Marker tracking cost.
@@ -81,9 +85,9 @@ MocoStudy MocoTrack::initialize() {
     if (get_minimize_control_effort()) {
         OPENSIM_THROW_IF(get_control_effort_weight() < 0, Exception,
                 format("Expected a non-negative control effort weight, but "
-                       "got a weight with value %d.", 
+                       "got a weight with value %d.",
                         get_control_effort_weight()));
-      
+
         auto* effort = problem.addCost<MocoControlCost>("control_effort");
         effort->set_weight(get_control_effort_weight());
     }
@@ -110,16 +114,15 @@ MocoStudy MocoTrack::initialize() {
     // If the user provided a guess file, use that guess in the solver.
     if (!get_guess_file().empty()) {
         solver.setGuessFile(getFilePath(get_guess_file()));
+    } else {
+        solver.setGuess("bounds");
     }
 
     // Apply states from the reference data the to solver guess if specified by
     // the user.
     if (get_apply_tracked_states_to_guess()) {
         auto guess = solver.getGuess();
-        OPENSIM_THROW_IF(!tracked_states.getNumRows(), Exception,
-            "Property 'apply_tracked_states_to_guess' was enabled, but no "
-            "states reference data was provided.")
-            applyStatesToGuess(tracked_states, model, guess);
+        applyStatesToGuess(tracked_states, model, guess);
         solver.setGuess(guess);
     }
 
@@ -138,7 +141,7 @@ MocoSolution MocoTrack::solve(bool visualize) {
     return solution;
 }
 
-TimeSeriesTable MocoTrack::configureStateTracking(MocoProblem& problem, 
+TimeSeriesTable MocoTrack::configureStateTracking(MocoProblem& problem,
         Model& model) {
 
     // Read in the states reference data and spline.
@@ -146,7 +149,7 @@ TimeSeriesTable MocoTrack::configureStateTracking(MocoProblem& problem,
     auto stateSplines = GCVSplineSet(states, states.getColumnLabels());
 
     // Loop through all coordinates and compare labels in the reference data
-    // to coordinate variable names. 
+    // to coordinate variable names.
     auto time = states.getIndependentColumn();
     auto labels = states.getColumnLabels();
     int numRefStates = (int)states.getNumColumns();
@@ -168,7 +171,7 @@ TimeSeriesTable MocoTrack::configureStateTracking(MocoProblem& problem,
             }
         }
 
-        // If a coordinate value was provided to track in the reference data, 
+        // If a coordinate value was provided to track in the reference data,
         // but no corresponding speed, append the derivative of the coordinate
         // value to the tracking reference.
         if (trackingValue && !trackingSpeed &&
@@ -246,7 +249,7 @@ void MocoTrack::configureMarkerTracking(MocoProblem& problem, Model& model) {
         }
         markersRef.setMarkerWeightSet(markerWeights);
     }
-    
+
     // Add marker tracking cost to the MocoProblem.
     auto* markerTracking =
         problem.addCost<MocoMarkerTrackingCost>("marking_tracking",
@@ -267,11 +270,18 @@ void MocoTrack::applyStatesToGuess(const TimeSeriesTable& states,
         const Model& model, MocoTrajectory& guess) {
 
     guess.resampleWithNumTimes((int)states.getNumRows());
+    std::vector<std::string> names = guess.getStateNames();
     for (int i = 0; i < (int)states.getNumColumns(); ++i) {
         const auto& label = states.getColumnLabel(i);
         const auto& col = states.getDependentColumnAtIndex(i);
 
-        guess.setState(label, col);
+        if (std::find(names.begin(), names.end(), label) != names.end()) {
+            guess.setState(label, col);
+        } else {
+            OPENSIM_THROW_IF(!get_allow_unused_references(), Exception,
+                format("Tried to apply data for state '%s' to guess, but this "
+                    "state does not exist in the model.", label));
+        }
     }
 }
 

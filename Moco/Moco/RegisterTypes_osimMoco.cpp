@@ -21,13 +21,16 @@
 #include "Components/AccelerationMotion.h"
 #include "Components/ActivationCoordinateActuator.h"
 #include "Components/DeGrooteFregly2016Muscle.h"
+#include "Components/SmoothSphereHalfSpaceForce.h"
 #include "Components/DiscreteForces.h"
 #include "Components/PositionMotion.h"
 #include "Components/StationPlaneContactForce.h"
 #include "Components/PolynomialActuators.h"
 #include "Components/MultivariatePolynomialFunction.h"
+#ifdef MOCO_WITH_TROPTER
 #include "InverseMuscleSolver/GlobalStaticOptimization.h"
 #include "InverseMuscleSolver/INDYGO.h"
+#endif
 #include "MocoBounds.h"
 #include "MocoCasADiSolver/MocoCasADiSolver.h"
 #include "MocoControlBoundConstraint.h"
@@ -92,8 +95,11 @@ OSIMMOCO_API void RegisterTypes_osimMoco() {
         Object::registerType(MocoCasADiSolver());
 
         Object::registerType(ActivationCoordinateActuator());
+
+#ifdef MOCO_WITH_TROPTER
         Object::registerType(GlobalStaticOptimization());
         Object::registerType(INDYGO());
+#endif
 
         Object::registerType(TableProcessor());
 
@@ -115,7 +121,8 @@ OSIMMOCO_API void RegisterTypes_osimMoco() {
         Object::registerType(EspositoMiller2018Force());
         Object::registerType(PositionMotion());
         Object::registerType(DeGrooteFregly2016Muscle());
-        //Object::registerType(PolynomialActuators());
+        Object::registerType(SmoothSphereHalfSpaceForce());
+        Object::registerType(PolynomialActuators());
         Object::registerType(MultivariatePolynomialFunction());
 
         Object::registerType(DiscreteForces());
