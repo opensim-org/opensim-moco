@@ -35,7 +35,7 @@ using namespace OpenSim;
 MocoCasADiSolver::MocoCasADiSolver() { constructProperties(); }
 
 void MocoCasADiSolver::constructProperties() {
-    constructProperty_scale_variables_using_bounds(true);
+    constructProperty_scale_variables_using_bounds(false);
     constructProperty_parameters_require_initsystem(true);
     constructProperty_optim_sparsity_detection("none");
     constructProperty_optim_write_sparsity("");

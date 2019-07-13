@@ -100,19 +100,19 @@ protected:
         if (m_solver.getScaleVariablesUsingBounds()) {
             const auto& lower = bounds.lower;
             const auto& upper = bounds.upper;
-            double range = upper - lower;
-            double midpoint;
-            if (std::isinf(range)) {
-                range = 1;
-                midpoint = 0;
-            } else if (range == 0) {
-                range = 1;
-                midpoint = upper;
+            double dilate = upper - lower;
+            double shift;
+            if (std::isinf(dilate) || std::isnan(dilate)) {
+                dilate = 1;
+                shift = 0;
+            } else if (dilate == 0) {
+                dilate = 1;
+                shift = upper;
             } else {
-                midpoint = -0.5 * (upper + lower);
+                shift = -0.5 * (upper + lower);
             }
-            m_scale.at(key)(casadi::Slice()) = range;
-            m_shift.at(key)(casadi::Slice()) = midpoint;
+            m_scale.at(key)(casadi::Slice()) = dilate;
+            m_shift.at(key)(casadi::Slice()) = shift;
         } else {
             m_scale.at(key)(casadi::Slice()) = 1;
             m_shift.at(key)(casadi::Slice()) = 0;

@@ -457,7 +457,8 @@ void Transcription::setObjective() {
     // Minimize Lagrange multipliers if specified by the solver.
     if (m_solver.getMinimizeLagrangeMultipliers() &&
             m_problem.getNumMultipliers()) {
-        const auto mults = m_vars[multipliers];
+        // TODO: should we scale?
+        const auto mults = m_scaledVars[multipliers];
         const double multiplierWeight = m_solver.getLagrangeMultiplierWeight();
         // Sum across constraints of each multiplier element squared.
         MX integrandTraj = multiplierWeight * MX::sum1(MX::sq(mults));
@@ -486,15 +487,17 @@ void Transcription::setObjective() {
         MXVector costOut;
 
         info.cost_function->call(
-                {m_unscaledVars[initial_time], m_unscaledVars[states](Slice(), 0),
+                {m_unscaledVars[initial_time],
+                        m_unscaledVars[states](Slice(), 0),
                         m_unscaledVars[controls](Slice(), 0),
                         m_unscaledVars[multipliers](Slice(), 0),
-                        m_unscaledVars[derivatives](Slice(), 0), m_unscaledVars[final_time],
+                        m_unscaledVars[derivatives](Slice(), 0),
+                        m_unscaledVars[final_time],
                         m_unscaledVars[states](Slice(), -1),
                         m_unscaledVars[controls](Slice(), -1),
                         m_unscaledVars[multipliers](Slice(), -1),
-                        m_unscaledVars[derivatives](Slice(), -1), m_unscaledVars[parameters],
-                        integral},
+                        m_unscaledVars[derivatives](Slice(), -1),
+                        m_unscaledVars[parameters], integral},
                 costOut);
         m_objective += costOut.at(0);
     }
