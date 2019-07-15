@@ -26,6 +26,8 @@
 #include "Components/PositionMotion.h"
 #include "Components/SmoothSphereHalfSpaceForce.h"
 #include "Components/StationPlaneContactForce.h"
+#include "Components/PolynomialActuators.h"
+#include "Components/MultivariatePolynomialFunction.h"
 #include "MocoBounds.h"
 #include "MocoCasADiSolver/MocoCasADiSolver.h"
 #include "MocoConstraint.h"
