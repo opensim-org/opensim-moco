@@ -4,4 +4,4 @@ add_subdirectory(exampleTracking)
 add_subdirectory(exampleMarkerTracking)
 add_subdirectory(exampleMocoTrack)
 add_subdirectory(exampleCoordinateTracking)
-
+add_subdirectory(example2DGaitPrediction)
