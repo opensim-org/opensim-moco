@@ -60,7 +60,7 @@ function torqueDrivenMarkerTracking()
 import org.opensim.modeling.*;
 
 % Create and name an instance of the MocoTrack tool.
-MocoTrack track;
+track = MocoTrack();
 track.setName("torque_driven_marker_tracking");
 
 % Construct a ModelProcessor and add it to the tool. ModelProcessors
@@ -170,12 +170,6 @@ track.set_mesh_interval(0.08);
 % MocoStudy object based on the settings above. Use this to customize the
 % problem beyond the MocoTrack interface.
 moco = track.initialize();
-
-% By default, the MocoTrack tool uses explicit dynamics for the model 
-% defect constraints. Here, get a reference to the MocoSolver and set the 
-% dynamics mode to "implicit" instead.
-solver = MocoCasADiSolver.safeDownCast(moco.updSolver());
-solver.set_dynamics_mode("implicit");
 
 % Get a reference to the MocoControlCost that is added to every MocoTrack
 % problem by default.

@@ -314,7 +314,7 @@ HC_heel_r->set_static_friction(staticFriction);
 HC_heel_r->set_dynamic_friction(dynamicFriction);
 HC_heel_r->set_viscous_friction(viscousFriction);
 HC_heel_r->set_transition_velocity(transitionVelocity);
-HC_heel_r->set_derivative_smoothing(cf);
+HC_heel_r->set_constant_contact_force(cf);
 HC_heel_r->set_hertz_smoothing(bd);
 HC_heel_r->set_hunt_crossley_smoothing(bv);
 model->addComponent(HC_heel_r);
@@ -339,7 +339,7 @@ HC_heel_l->set_static_friction(staticFriction);
 HC_heel_l->set_dynamic_friction(dynamicFriction);
 HC_heel_l->set_viscous_friction(viscousFriction);
 HC_heel_l->set_transition_velocity(transitionVelocity);
-HC_heel_l->set_derivative_smoothing(cf);
+HC_heel_l->set_constant_contact_force(cf);
 HC_heel_l->set_hertz_smoothing(bd);
 HC_heel_l->set_hunt_crossley_smoothing(bv);
 
@@ -363,7 +363,7 @@ HC_front_r->set_static_friction(staticFriction);
 HC_front_r->set_dynamic_friction(dynamicFriction);
 HC_front_r->set_viscous_friction(viscousFriction);
 HC_front_r->set_transition_velocity(transitionVelocity);
-HC_front_r->set_derivative_smoothing(cf);
+HC_front_r->set_constant_contact_force(cf);
 HC_front_r->set_hertz_smoothing(bd);
 HC_front_r->set_hunt_crossley_smoothing(bv);
 model->addComponent(HC_front_r);
@@ -388,7 +388,7 @@ HC_front_l->set_static_friction(staticFriction);
 HC_front_l->set_dynamic_friction(dynamicFriction);
 HC_front_l->set_viscous_friction(viscousFriction);
 HC_front_l->set_transition_velocity(transitionVelocity);
-HC_front_l->set_derivative_smoothing(cf);
+HC_front_l->set_constant_contact_force(cf);
 HC_front_l->set_hertz_smoothing(bd);
 HC_front_l->set_hunt_crossley_smoothing(bv);
 model->addComponent(HC_front_l);
@@ -521,23 +521,23 @@ model->addComponent(lumbarAct);
 
 model->finalizeConnections();
 
-SimTK::State& state = model->initSystem();
-
-int ndof = model->getNumStateVariables()/2;
-SimTK::Vector QsUs(2*ndof);
-QsUs.setTo(-2.);
-
-SimTK::Vector knownUdot(ndof);
-knownUdot.setTo(-2.);
-
-
-model->setStateVariableValues(state, QsUs);
-model->realizeVelocity(state);
-
-
-std::cout << model->getStateVariableNames() << std::endl;
+//SimTK::State& state = model->initSystem();
 //
-//model->print("gait_2D_contact_torque_geom_test.osim");
+//int ndof = model->getNumStateVariables()/2;
+//SimTK::Vector QsUs(2*ndof);
+//QsUs.setTo(-2.);
+//
+//SimTK::Vector knownUdot(ndof);
+//knownUdot.setTo(-2.);
+//
+//
+//model->setStateVariableValues(state, QsUs);
+//model->realizeVelocity(state);
+//
+//
+//std::cout << model->getStateVariableNames() << std::endl;
+//
+model->print("gait_2D_contact_torque_geom_test.osim");
 
 //int ndof = model->getNumStateVariables()/2;
 //SimTK::Vector QsUs(2*ndof);

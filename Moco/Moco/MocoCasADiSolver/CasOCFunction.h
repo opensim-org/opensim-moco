@@ -67,6 +67,8 @@ protected:
     const Problem* m_casProblem;
 
 private:
+    /// Here, "point" refers to a vector of all variables in the optimization
+    /// problem.
     VectorDM getSubsetPointsForSparsityDetection() const {
         VectorDM out(m_fullPointsForSparsityDetection->size());
         for (int i = 0; i < (int)out.size(); ++i) {
@@ -176,7 +178,6 @@ public:
         case 8: return "final_multipliers";
         case 9: return "final_derivatives";
         case 10: return "parameters";
-        // TODO: be more clever about which integrals we say a given cost depends on.
         case 11: return "integral";
         default: OPENSIM_THROW(OpenSim::Exception, "Internal error.");
         }
@@ -196,7 +197,12 @@ public:
             return casadi::Sparsity(0, 0);
     }
     VectorDM eval(const VectorDM& args) const override;
-    // TODO must override get_sparsity() to add a nonzero for the last integral.
+    /// The cost input is not simply a subset of the NLP variables; the cost
+    /// also depends on an integral, computed from an integrand function and
+    /// using a transcription's quadrature scheme. Ideally, the value for the
+    /// integral would be computed properly from the provided point, but
+    /// applying the integrand function and quadrature scheme here is
+    /// complicated. For simplicity, we provide the integral as 0.
     casadi::DM getSubsetPoint(const VariablesDM& fullPoint) const override {
         using casadi::Slice;
         return casadi::DM::vertcat({fullPoint.at(initial_time),
@@ -208,9 +214,11 @@ public:
                 fullPoint.at(controls)(Slice(), -1),
                 fullPoint.at(multipliers)(Slice(), -1),
                 fullPoint.at(derivatives)(Slice(), -1),
-                fullPoint.at(parameters)});
-                // TODO: not right.
-                // fullPoint.at(integrals)});
+                fullPoint.at(parameters),
+                // TODO: We should find a way to actually compute the integral
+                // from fullPoint. Or, make the integral an optimization
+                // variable.
+                casadi::DM::zeros(1, 1)});
     }
 private:
     int m_index = -1;
