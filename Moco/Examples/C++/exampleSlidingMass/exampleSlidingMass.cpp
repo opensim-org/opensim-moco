@@ -85,10 +85,10 @@ int main() {
     problem.setTimeBounds(MocoInitialBounds(0), MocoFinalBounds(0, 5));
 
     // Initial position must be 0, final position must be 1.
-    problem.setStateInfo("/slider/position/value", MocoBounds(-5, 5),
+    problem.setStateInfo("/slider/position/value", MocoBounds(0, 1),
                          MocoInitialBounds(0), MocoFinalBounds(1));
     // Initial and final speed must be 0. Use compact syntax.
-    problem.setStateInfo("/slider/position/speed", {-50, 50}, 0, 0);
+    problem.setStateInfo("/slider/position/speed", {-10, 10}, 0, 0);
 
     // Applied force must be between -50 and 50.
     problem.setControlInfo("/actuator", MocoBounds(-50, 50));

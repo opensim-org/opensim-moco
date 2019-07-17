@@ -1137,6 +1137,83 @@ void testPredictive_withPassiveForces_JRL(){
     MocoSolution solution = moco.solve();
 }
 
+void testPredictive_withPassiveForces_Implicit_Acceleration_Scaling(){
+
+    MocoStudy moco;
+    moco.setName("2DGaitPrediction_withPassiveForce_Implicit_Acceleration");
+
+    // Define the optimal control problem.
+    // ===================================
+    MocoProblem& problem = moco.updProblem();
+    ModelProcessor modelprocessor = ModelProcessor(
+        "gait10dof18musc_MusclePolynomials_withPassiveForces.osim");
+    problem.setModelProcessor(modelprocessor);
+
+    problem.setTimeBounds(0, {0.4,0.6});
+
+    //// Cost.
+    //// =====
+    // Impose symmetric walking pattern
+    auto* symmetryCost = problem.addCost<MocoSymmetryCost>("symmetryCost");
+
+    // Impose prescribed average speed
+    auto* speedCost = problem.addCost<MocoAverageSpeedCost>("speedCost");
+    speedCost->set_desired_speed(1.2);
+
+    // Minimize squared control normalized by the distance travelled
+    auto* controlCost =
+        problem.addCost<MocoControlOverDistanceCost>("controlCost");
+    controlCost->set_weight(1);
+
+    // Minimize squared accelerations normalized by the distance travelled
+    auto* accelerationCost =
+        problem.addCost<MocoAccelerationOverDistanceCost>("accelerationCost");
+    accelerationCost->set_weight(0.001);
+
+    // Adjust bounds
+    //problem.setStateInfo("/lumbarAct/activation",{-1,1});
+    problem.setStateInfo("/jointset/groundPelvis/pelvis_tilt/value",
+            {-20*SimTK::Pi/180,-10*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/groundPelvis/pelvis_tx/value", {0,1});
+    problem.setStateInfo("/jointset/groundPelvis/pelvis_ty/value",
+            {0.75,1.25});
+    problem.setStateInfo("/jointset/hip_l/hip_flexion_l/value",
+            {-10*SimTK::Pi/180,60*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/hip_r/hip_flexion_r/value",
+            {-10*SimTK::Pi/180,60*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/knee_l/knee_angle_l/value",
+            {-50*SimTK::Pi/180,0});
+    problem.setStateInfo("/jointset/knee_r/knee_angle_r/value",
+            {-50*SimTK::Pi/180,0});
+    problem.setStateInfo("/jointset/ankle_l/ankle_angle_l/value",
+            {-15*SimTK::Pi/180,25*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/ankle_r/ankle_angle_r/value",
+            {-15*SimTK::Pi/180,25*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/lumbar/lumbar/value",
+            {0,20*SimTK::Pi/180});
+
+    // Configure the solver.
+    // =====================
+    auto& solver = moco.initCasADiSolver();
+    solver.set_dynamics_mode("implicit");
+    solver.set_num_mesh_points(50);
+    solver.set_verbosity(2);
+    solver.set_optim_solver("ipopt");
+    solver.set_optim_convergence_tolerance(1e-4);
+    solver.set_optim_constraint_tolerance(1e-4);
+    solver.set_optim_max_iterations(10000);
+    solver.set_scale_variables_using_bounds(true);
+    solver.set_parallel(6);
+    // Set Guess
+    MocoTrajectory guess = solver.createGuess();
+    TableProcessor guessTable(
+        "coordinateTracking_MusclePolynomials_withPassiveForces_solution.sto");
+    guess.setStatesTrajectory(guessTable.process(),true,true);
+    solver.setGuess(guess);
+
+    MocoSolution solution = moco.solve();
+}
+
 int main() {
     //testPredictive_withPassiveForces();
     //testPredictive_withoutPassiveForces();
@@ -1144,5 +1221,6 @@ int main() {
     //testPredictive_withPassiveForces_accelerationSquared();
     //testPredictive_withPassiveForces_Implicit();
     //testPredictive_withPassiveForces_JRL();
-    testPredictive_withPassiveForces_Implicit_Acceleration();
+    //testPredictive_withPassiveForces_Implicit_Acceleration();
+    testPredictive_withPassiveForces_Implicit_Acceleration_Scaling();
 }

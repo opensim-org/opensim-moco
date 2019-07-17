@@ -177,6 +177,8 @@ Solver::optimize(const Eigen::VectorXd& variables) const
     TROPTER_THROW_IF(variables.size() != m_problem->get_num_variables(),
             "Expected guess to have %i elements, but it has %i elements.",
             m_problem->get_num_variables(), variables.size() );
+    Eigen::VectorXd scaled_variables(variables.size());
+    m_problem->scale_variables(variables.data(), scaled_variables.data());
     return optimize_impl(variables);
 }
 
@@ -186,7 +188,7 @@ Solver::optimize() const {
     return optimize_impl(m_problem->make_initial_guess_from_bounds());
 }
 
-void Solver::calc_sparsity(const Eigen::VectorXd guess,
+void Solver::calc_sparsity(const Eigen::VectorXd scaled_guess,
         SparsityCoordinates& jacobian_sparsity,
         bool provide_hessian_sparsity,
         SparsityCoordinates& hessian_sparsity
@@ -194,9 +196,10 @@ void Solver::calc_sparsity(const Eigen::VectorXd guess,
     VectorXd variables_random;
     const VectorXd* variables_for_sparsity = nullptr;
     if (get_sparsity_detection() == "initial-guess") {
-        variables_for_sparsity = &guess;
+        variables_for_sparsity = &scaled_guess;
     } else if (get_sparsity_detection() == "random") {
         variables_random = m_problem->make_random_iterate_within_bounds();
+        m_problem->scale_variables(variables_random.data(), variables_random.data());
         variables_for_sparsity = &variables_random;
     }
     assert(variables_for_sparsity);

@@ -164,7 +164,7 @@ protected:
     /// be used.
     /// @throws if provide_hessian_indices is false but the decorator provides
     ///         Hessian indices.
-    void calc_sparsity(const Eigen::VectorXd guess,
+    void calc_sparsity(const Eigen::VectorXd scaled_guess,
             SparsityCoordinates& jacobian_sparsity,
             bool provide_hessian_sparsity,
             SparsityCoordinates& hessian_sparsity) const;

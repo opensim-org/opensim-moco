@@ -462,8 +462,8 @@ TEMPLATE_TEST_CASE("Workflow", "", MocoTropterSolver, MocoCasADiSolver) {
             {
                 // Default speed bounds.
                 const auto& info = rep.getStateInfo("/slider/position/speed");
-                SimTK_TEST_EQ(info.getBounds().getLower(), -50);
-                SimTK_TEST_EQ(info.getBounds().getUpper(), 50);
+                SimTK_TEST_EQ(info.getBounds().getLower(), -20);
+                SimTK_TEST_EQ(info.getBounds().getUpper(), 20);
             }
             // No control info stored in the Problem.
             SimTK_TEST_MUST_THROW_EXC(
@@ -563,8 +563,8 @@ TEMPLATE_TEST_CASE("Workflow", "", MocoTropterSolver, MocoCasADiSolver) {
                 }
                 MocoProblemRep rep = problem.createRep();
                 const auto& info = rep.getStateInfo("/slider/position/speed");
-                SimTK_TEST_EQ(info.getBounds().getLower(), -50);
-                SimTK_TEST_EQ(info.getBounds().getUpper(), 50);
+                SimTK_TEST_EQ(info.getBounds().getLower(), -20);
+                SimTK_TEST_EQ(info.getBounds().getUpper(), 20);
                 SimTK_TEST_EQ(info.getInitialBounds().getLower(), -4.1);
                 SimTK_TEST_EQ(info.getInitialBounds().getUpper(), 3.9);
                 SimTK_TEST(!info.getFinalBounds().isSet());
@@ -582,8 +582,8 @@ TEMPLATE_TEST_CASE("Workflow", "", MocoTropterSolver, MocoCasADiSolver) {
                 }
                 MocoProblemRep rep = problem.createRep();
                 const auto& info = rep.getStateInfo("/slider/position/speed");
-                SimTK_TEST_EQ(info.getBounds().getLower(), -50);
-                SimTK_TEST_EQ(info.getBounds().getUpper(), 50);
+                SimTK_TEST_EQ(info.getBounds().getLower(), -20);
+                SimTK_TEST_EQ(info.getBounds().getUpper(), 20);
                 SimTK_TEST(!info.getInitialBounds().isSet());
                 SimTK_TEST_EQ(info.getFinalBounds().getLower(), 0.1);
                 SimTK_TEST_EQ(info.getFinalBounds().getUpper(), 0.8);

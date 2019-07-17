@@ -49,6 +49,14 @@ public:
     const std::string& getTranscriptionScheme() const {
         return m_transcriptionScheme;
     }
+    /// Should variables be scaled by the variable bounds?
+    /// TODO explain more.
+    void setScaleVariablesUsingBounds(bool value) {
+        m_scaleVariablesUsingBounds = value;
+    }
+    bool getScaleVariablesUsingBounds() const {
+        return m_scaleVariablesUsingBounds;
+    }
     std::string getDynamicsMode() const { return m_problem.getDynamicsMode(); }
     bool isDynamicsModeImplicit() const {
         return m_problem.getDynamicsMode() == "implicit";
@@ -142,6 +150,7 @@ private:
     const Problem& m_problem;
     std::vector<double> m_mesh;
     std::string m_transcriptionScheme = "hermite-simpson";
+    bool m_scaleVariablesUsingBounds = false;
     bool m_minimizeLagrangeMultipliers = false;
     double m_lagrangeMultiplierWeight = 1.0;
     bool m_interpolateControlMidpoints = true;

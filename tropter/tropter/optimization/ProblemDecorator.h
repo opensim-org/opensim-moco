@@ -44,6 +44,7 @@ public:
     {   return m_problem.get_num_variables(); }
     unsigned get_num_constraints() const
     {   return m_problem.get_num_constraints(); }
+    // TODO must scale these!
     const Eigen::VectorXd& get_variable_lower_bounds() const
     {   return m_problem.get_variable_lower_bounds(); }
     const Eigen::VectorXd& get_variable_upper_bounds() const
@@ -67,13 +68,20 @@ public:
     /// @see AbstractOptimizationProblem::make_random_iterate_within_bounds()
     Eigen::VectorXd make_random_iterate_within_bounds() const
     {   return m_problem.make_random_iterate_within_bounds(); }
+
+    void scale_variables(const double* unscaled_variables,
+            double* scaled_variables) const;
+    Eigen::VectorXd scale_variables(Eigen::Ref<const Eigen::VectorXd> unscaled) const;
+    void unscale_variables(const double* scaled_variables,
+            double* unscaled_variables) const;
+    Eigen::VectorXd unscale_variables(Eigen::Ref<const Eigen::VectorXd> scaled) const;
     /// This function determines the sparsity pattern of the Jacobian and
     /// Hessian, using the provided variables.
     /// You must call this function first before calling calc_objective(),
     /// calc_constraints(), etc.
     // TODO create a struct to hold row and col indices.
     // TODO b/c of SNOPT, want to be able to ask for sparsity separately.
-    virtual void calc_sparsity(const Eigen::VectorXd& variables,
+    virtual void calc_sparsity(const Eigen::VectorXd& scaled_variables,
             SparsityCoordinates& jacobian_sparsity,
             bool provide_hessian_sparsity,
             SparsityCoordinates& hessian_sparsity) const = 0;
@@ -129,6 +137,50 @@ private:
     double m_findiff_hessian_step_size = 1e-5;
     std::string m_findiff_hessian_mode = "fast";
 };
+
+inline void ProblemDecorator::scale_variables(const double* unscaled_variables,
+        double* scaled_variables) const {
+    int N = m_problem.get_num_variables();
+    Eigen::Map<const Eigen::VectorXd> unscaled(unscaled_variables, N);
+    Eigen::Map<Eigen::VectorXd> scaled(scaled_variables, N);
+
+    if (m_problem.has_variable_scaling()) {
+        const auto& shift = m_problem.get_variable_scaling_shift();
+        const auto& scale = m_problem.get_variable_scaling_scale();
+        scaled = unscaled.array() * scale.array() + shift.array();
+    } else if (scaled_variables != unscaled_variables) {
+        scaled = unscaled;
+    }
+}
+
+inline Eigen::VectorXd ProblemDecorator::scale_variables(
+        Eigen::Ref<const Eigen::VectorXd> unscaled) const {
+    Eigen::VectorXd out(m_problem.get_num_variables());
+    scale_variables(unscaled.data(), out.data());
+    return out;
+}
+
+inline void ProblemDecorator::unscale_variables(const double* scaled_variables,
+        double* unscaled_variables) const {
+    int N = m_problem.get_num_variables();
+    Eigen::Map<const Eigen::VectorXd> scaled(scaled_variables, N);
+    Eigen::Map<Eigen::VectorXd> unscaled(unscaled_variables, N);
+
+    if (m_problem.has_variable_scaling()) {
+        const auto& shift = m_problem.get_variable_scaling_shift();
+        const auto& scale = m_problem.get_variable_scaling_scale();
+        unscaled = (scaled.array() - shift.array()) / scale.array();
+    } else if (scaled_variables != unscaled_variables) {
+        unscaled = scaled;
+    }
+}
+
+inline Eigen::VectorXd ProblemDecorator::unscale_variables(
+        Eigen::Ref<const Eigen::VectorXd> scaled) const {
+    Eigen::VectorXd out(m_problem.get_num_variables());
+    unscale_variables(scaled.data(), out.data());
+    return out;
+}
 
 inline int ProblemDecorator::get_verbosity() const
 {   return m_verbosity; }

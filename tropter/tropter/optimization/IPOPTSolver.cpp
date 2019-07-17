@@ -164,7 +164,7 @@ std::string convert_IPOPT_ApplicationReturnStatus_to_string(
     }
 }
 
-Solution IPOPTSolver::optimize_impl(const VectorXd& guess) const {
+Solution IPOPTSolver::optimize_impl(const VectorXd& scaled_guess) const {
 
     Ipopt::SmartPtr<Ipopt::IpoptApplication> app = IpoptApplicationFactory();
     // Set options.
@@ -266,9 +266,9 @@ Solution IPOPTSolver::optimize_impl(const VectorXd& guess) const {
     // Determine sparsity pattern of Jacobian, Hessian, etc.
     SparsityCoordinates jacobian_sparsity;
     SparsityCoordinates hessian_sparsity;
-    calc_sparsity(guess, jacobian_sparsity,
+    calc_sparsity(scaled_guess, jacobian_sparsity,
             need_exact_hessian, hessian_sparsity);
-    nlp->initialize(guess, std::move(jacobian_sparsity),
+    nlp->initialize(scaled_guess, std::move(jacobian_sparsity),
             std::move(hessian_sparsity));
 
     // Optimize!!!
