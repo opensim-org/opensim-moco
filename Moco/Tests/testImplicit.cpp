@@ -256,8 +256,8 @@ SCENARIO("Using MocoTrajectory with the implicit dynamics mode",
         THEN("it is not empty") { REQUIRE(!iterate.empty()); }
     }
     GIVEN("MocoTrajectory with derivative data") {
-        MocoTrajectory iter(createVectorLinspace(6, 0, 1), {}, {}, {}, {"a", "b"},
-                {}, {}, {}, {}, {6, 2, 0.5}, {});
+        MocoTrajectory iter(createVectorLinspace(6, 0, 1), {}, {}, {},
+                {"a", "b"}, {}, {}, {}, {}, {6, 2, 0.5}, {});
         WHEN("calling setNumTimes()") {
             REQUIRE(iter.getDerivativesTrajectory().nrow() != 4);
             iter.setNumTimes(4);
@@ -278,10 +278,10 @@ SCENARIO("Using MocoTrajectory with the implicit dynamics mode",
     GIVEN("two MocoTrajectorys with different derivative data") {
         const double valueA = 0.5;
         const double valueB = 0.499999;
-        MocoTrajectory iterA(createVectorLinspace(6, 0, 1), {}, {}, {}, {"a", "b"},
-                {}, {}, {}, {}, {6, 2, valueA}, {});
-        MocoTrajectory iterB(createVectorLinspace(6, 0, 1), {}, {}, {}, {"a", "b"},
-                {}, {}, {}, {}, {6, 2, valueB}, {});
+        MocoTrajectory iterA(createVectorLinspace(6, 0, 1), {}, {}, {},
+                {"a", "b"}, {}, {}, {}, {}, {6, 2, valueA}, {});
+        MocoTrajectory iterB(createVectorLinspace(6, 0, 1), {}, {}, {},
+                {"a", "b"}, {}, {}, {}, {}, {6, 2, valueB}, {});
         THEN("not numerically equal") {
             REQUIRE(!iterA.isNumericallyEqual(iterB));
         }
@@ -315,3 +315,194 @@ TEST_CASE("AccelerationMotion") {
     model.realizeAcceleration(state);
     CHECK(state.getUDot()[0] == Approx(0).margin(1e-10));
 }
+
+class MyAuxiliaryImplicitDynamics : public Component {
+    OpenSim_DECLARE_CONCRETE_OBJECT(MyAuxiliaryImplicitDynamics, Component);
+
+public:
+    OpenSim_DECLARE_PROPERTY(default_fiber_length, double, "");
+    OpenSim_DECLARE_OUTPUT(implicitresidual_fiber_length, double,
+            getImplicitResidualFiberLength, SimTK::Stage::Dynamics);
+    MyAuxiliaryImplicitDynamics() {
+        constructProperty_default_fiber_length(1.0);
+    }
+    double getImplicitResidualFiberLength(const SimTK::State& s) const {
+        // TODO: Use index instead.
+        if (!isCacheVariableValid(s, "implicitresidual_fiber_equilibrium")) {
+            const double fiberVel =
+                    getDiscreteVariableValue(s, "implicitderiv_fiber_length");
+            const double fiberLength = getStateVariableValue(s, "fiber_length");
+            // y y' = 1
+            double residual = fiberVel * fiberLength - 1;
+            setCacheVariableValue(
+                    s, "implicitresidual_fiber_equilibrium", residual);
+            markCacheVariableValid(s, "implicitresidual_fiber_equilibrium");
+        }
+        return getCacheVariableValue<double>(
+                s, "implicitresidual_fiber_equilibrium");
+    }
+
+private:
+    void extendInitStateFromProperties(SimTK::State& s) const override {
+        Super::extendInitStateFromProperties(s);
+        setStateVariableValue(s, "fiber_length", get_default_fiber_length());
+    }
+    void extendSetPropertiesFromState(const SimTK::State& s) override {
+        Super::extendSetPropertiesFromState(s);
+        set_default_fiber_length(getStateVariableValue(s, "fiber_length"));
+    }
+    void computeStateVariableDerivatives(const SimTK::State& s) const override {
+        const double fiberLength = getStateVariableValue(s, "fiber_length");
+        setStateVariableDerivativeValue(s, "fiber_length", 1.0 / fiberLength);
+    }
+    void extendAddToSystem(SimTK::MultibodySystem& system) const override {
+        Super::extendAddToSystem(system);
+        addStateVariable("fiber_length");
+        addDiscreteVariable(
+                "implicitderiv_fiber_length", SimTK::Stage::Velocity);
+        addCacheVariable("implicitresidual_fiber_length", double(0),
+                SimTK::Stage::Dynamics);
+    }
+};
+
+TEST_CASE("Auxiliary implicit dynamics") {
+    SECTION("Time stepping") {
+        Model model;
+        model.addComponent(new MyAuxiliaryImplicitDynamics());
+        auto initState = model.initSystem();
+        Manager manager(model, initState);
+        auto finalState = manager.integrate(1.0);
+        std::cout << "DEBUG " << finalState.getY() << std::endl;
+    }
+    SECTION("Direct collocation implicit") {
+        MocoStudy study;
+        auto& problem = study.updProblem();
+        auto model = OpenSim::make_unique<Model>();
+        model->addComponent(new MyAuxiliaryImplicitDynamics());
+        problem.setModel(std::move(model));
+        problem.setTimeBounds(0, 1);
+        problem.setStateInfo("fiber_length", {}, 1.0);
+        auto solution = study.solve();
+    }
+}
+
+// class MyAuxiliaryPathConstraint : public ScalarActuator {
+//     OpenSim_DECLARE_CONCRETE_OBJECT(MyAuxiliaryPathConstraint,
+//     ScalarActuator);
+//
+// public:
+//     MyAuxiliaryPathConstraint() {
+//         constructProperty_explicit_activation_dynamics(true);
+//         constructProperty_default_activation(0.5);
+//         constructProperty_activation_time_constant(0.015);
+//         constructProperty_deactivation_time_constant(0.060);
+//     }
+//     OpenSim_DECLARE_PROPERTY(explicit_activation_dynamics, bool, "");
+//     OpenSim_DECLARE_PROPERTY(default_activation, double, "");
+//     OpenSim_DECLARE_PROPERTY(activation_time_constant, double,
+//             "Smaller value means activation can change more rapidly (units: "
+//             "seconds).");
+//     OpenSim_DECLARE_PROPERTY(deactivation_time_constant, double,
+//             "Smaller value means activation can decrease more rapidly "
+//             "(units: seconds).");
+//
+//     OpenSim_DECLARE_OUTPUT(pathconstraint_value_activationratemin, double,
+//             getActivationRateMinValue, SimTK::Stage::Velocity);
+//     OpenSim_DECLARE_OUTPUT(pathconstraint_lower_activationratemin, double,
+//             getActivationRateMinLowerBound, SimTK::Stage::Model);
+//     OpenSim_DECLARE_OUTPUT(pathconstraint_upper_activationratemin, double,
+//             getActivationRateMinUpperBound, SimTK::Stage::Model);
+//
+//     // TODO create a Vec3 output instead.
+//     OpenSim_DECLARE_OUTPUT(pathconstraint_value_activationratemax, double,
+//             getActivationRateMaxValue, SimTK::Stage::Velocity);
+//     OpenSim_DECLARE_OUTPUT(pathconstraint_lower_activationratemax, double,
+//             getActivationRateMaxLowerBound, SimTK::Stage::Model);
+//     OpenSim_DECLARE_OUTPUT(pathconstraint_upper_activationratemax, double,
+//             getActivationRateMaxUpperBound, SimTK::Stage::Model);
+//
+//     OpenSim_DECLARE_OUTPUT(
+//             excitation, double, getExcitation, SimTK::Stage::Dynamics);
+//
+//     // TODO: Meaning of the control variable changes if using implicit
+//     // activation dynamics.
+//     double getActivationRateMinValue(const SimTK::State& s) const {
+//         const auto& adot = getControl(s);
+//         const auto& a = getStateVariableValue(s, "activation");
+//         const auto& taud = get_deactivation_time_constant();
+//         return adot + a / taud;
+//     }
+//     // TODO assume these are constant.
+//     double getActivationRateMinLowerBound(const SimTK::State&) const {
+//         return 0;
+//     }
+//     double getActivationRateMinUpperBound(const SimTK::State&) const {
+//         return SimTK::Infinity;
+//     }
+//
+//     double getActivationRateMaxValue(const SimTK::State& s) const {
+//         const auto& adot = getControl(s);
+//         const auto& a = getStateVariableValue(s, "activation");
+//         const auto& taua = get_activation_time_constant();
+//         return adot + a / taua;
+//     }
+//     double getActivationRateMaxLowerBound(const SimTK::State&) const {
+//         return -SimTK::Infinity;
+//     }
+//     double getActivationRateMaxUpperBound(const SimTK::State&) const {
+//         const auto& taua = get_activation_time_constant();
+//         return 1.0 / taua;
+//     }
+//
+//     double getExcitation(const SimTK::State& s) const {
+//         if (get_explicit_activation_dynamics()) return getControl(s);
+//
+//         const auto& adot = getControl(s);
+//         const auto& a = getStateVariableValue(s, "activation");
+//         const auto& taud = get_deactivation_time_constant();
+//         if (adot <= 0) {
+//             return taud * adot + a;
+//         } else {
+//             const auto& taua = get_activation_time_constant();
+//             const double c1 = 1.0 / taua - 1 / taud;
+//             const double c2 = 1.0 / taud;
+//             const double D = SimTK::square(c2 + a * c1) + 4 * c1 * adot;
+//             return (a * c1 - c2 + sqrt(D)) / (2 * c1);
+//         }
+//     }
+//
+// private:
+//     void extendInitStateFromProperties(SimTK::State& s) const override {
+//         Super::extendInitStateFromProperties(s);
+//         setStateVariableValue(s, "activation", get_default_activation());
+//     }
+//     void extendSetPropertiesFromState(const SimTK::State& s) override {
+//         Super::extendSetPropertiesFromState(s);
+//         set_default_activation(getStateVariableValue(s, "activation"));
+//     }
+//     void computeStateVariableDerivatives(const SimTK::State& s) const
+//     override {
+//         // TODO: avoid calculating this if not explicit.
+//         // TODO: how to handle the Z slot for states we are handling
+//         implicitly?
+//         // TODO: handle all auxiliary states implicitly!
+//         if (get_explicit_activation_dynamics()) {
+//             const auto& u = getControl(s);
+//             const auto& a = getStateVariableValue(s, "activation");
+//             const auto& taud = get_deactivation_time_constant();
+//             const auto& taua = get_activation_time_constant();
+//             SimTK::Real adot = u - a;
+//             // De Groote 2009 (Raasch 1997)
+//             if (u >= a) {
+//                 adot *= u / taua + (1 - u) / taud;
+//             } else {
+//                 adot *= 1.0 / taud;
+//             }
+//             setStateVariableDerivativeValue(s, "activation", adot);
+//         }
+//     }
+//     void extendAddToSystem(SimTK::MultibodySystem& system) const override {
+//         Super::extendAddToSystem(system);
+//         addStateVariable("activation");
+//     }
+// };
