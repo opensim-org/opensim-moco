@@ -328,10 +328,93 @@ void testCoordinateTracking_CoordinateActuators() {
             {0,20*SimTK::Pi/180});
     // Solve problem
     MocoSolution solution = moco.solve();
+
+    // Extract ground reaction forces
+    // Get optimal states
+    StatesTrajectory optStates = solution.exportToStatesTrajectory(problem);
+    // Get optimal time vector
+    SimTK::Vector optTime = solution.getTime();
+    // Get model
+    auto model = modelprocessor.process();
+    // Create labels for output file
+    std::vector<std::string> labels;
+    labels.push_back("time");
+    labels.push_back("ground_force_vx"); // right
+    labels.push_back("ground_force_vy");
+    labels.push_back("ground_force_vz");
+    labels.push_back("ground_force_px");
+    labels.push_back("ground_force_py");
+    labels.push_back("ground_force_pz");
+    labels.push_back("1_ground_force_vx"); // left
+    labels.push_back("1_ground_force_vy");
+    labels.push_back("1_ground_force_vz");
+    labels.push_back("1_ground_force_px");
+    labels.push_back("1_ground_force_py");
+    labels.push_back("1_ground_force_pz");
+    labels.push_back("ground_torque_x"); // right
+    labels.push_back("ground_torque_y");
+    labels.push_back("ground_torque_z");
+    labels.push_back("1_ground_torque_x"); // left
+    labels.push_back("1_ground_torque_y");
+    labels.push_back("1_ground_torque_z");
+    TimeSeriesTable externalForcesTable{};
+    externalForcesTable.setColumnLabels(labels);
+    // Helper Vec3
+    SimTK::Vec3 nullP(0);
+    // Extract forces
+    int count = 0;
+    for (const auto& state : optStates) {
+        Array<double> forcesContactSphereHeel_r = model.getComponent<
+                SmoothSphereHalfSpaceForce>(
+                "contactSphereHeel_r").getRecordValues(state);
+        Array<double> forcesContactSphereHeel_l = model.getComponent<
+                SmoothSphereHalfSpaceForce>(
+                "contactSphereHeel_l").getRecordValues(state);
+        Array<double> forcesContactSphereFront_r = model.getComponent<
+                SmoothSphereHalfSpaceForce>(
+                "contactSphereFront_r").getRecordValues(state);
+        Array<double> forcesContactSphereFront_l = model.getComponent<
+                SmoothSphereHalfSpaceForce>(
+                "contactSphereFront_l").getRecordValues(state);
+        // Combine forces and torques from contact spheres from same foot
+        // Forces
+        SimTK::Vec3 forces_r = SimTK::Vec3(forcesContactSphereHeel_r[0],
+                forcesContactSphereHeel_r[1], forcesContactSphereHeel_r[2]) +
+                SimTK::Vec3(forcesContactSphereFront_r[0],
+                forcesContactSphereFront_r[1], forcesContactSphereFront_r[2]);
+        SimTK::Vec3 forces_l = SimTK::Vec3(forcesContactSphereHeel_l[0],
+                forcesContactSphereHeel_l[1], forcesContactSphereHeel_l[2]) +
+                SimTK::Vec3(forcesContactSphereFront_l[0],
+                forcesContactSphereFront_l[1], forcesContactSphereFront_l[2]);
+        // Torques
+        SimTK::Vec3 torques_r = SimTK::Vec3(forcesContactSphereHeel_r[3],
+                forcesContactSphereHeel_r[4], forcesContactSphereHeel_r[5]) +
+                SimTK::Vec3(forcesContactSphereFront_r[3],
+                forcesContactSphereFront_r[4], forcesContactSphereFront_r[5]);
+        SimTK::Vec3 torques_l = SimTK::Vec3(forcesContactSphereHeel_l[3],
+                forcesContactSphereHeel_l[4], forcesContactSphereHeel_l[5]) +
+                SimTK::Vec3(forcesContactSphereFront_l[3],
+                forcesContactSphereFront_l[4], forcesContactSphereFront_l[5]);
+        // Create row
+        SimTK::RowVector row{18,0.0};
+        for (int i = 0; i < 2; ++i) {
+            row(i) = forces_r[i];
+            row(i+3) = nullP[i];
+            row(i+6) = forces_l[i];
+            row(i+9) = nullP[i];
+            row(i+12) = torques_r[i];
+            row(i+15) = torques_l[i];
+        }
+        // Append row
+        externalForcesTable.appendRow(optTime[count],row);
+        ++count;
+    }
+    // Write file
+    writeTableToFile(externalForcesTable,"test_GRF.sto");
 }
 
 int main() {
-   testCoordinateTracking_MusclePolynomials();
-   testCoordinateTracking_MuscleGeometryPath();
+   /*testCoordinateTracking_MusclePolynomials();
+   testCoordinateTracking_MuscleGeometryPath();*/
    testCoordinateTracking_CoordinateActuators();
 }

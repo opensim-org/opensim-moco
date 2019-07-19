@@ -1010,7 +1010,7 @@ void testPredictive_withPassiveForces_Implicit_Acceleration(){
     // Minimize squared accelerations normalized by the distance travelled
     auto* accelerationCost =
         problem.addCost<MocoAccelerationOverDistanceCost>("accelerationCost");
-    accelerationCost->set_weight(100);
+    accelerationCost->set_weight(0.001);
 
     // Adjust bounds
     //problem.setStateInfo("/lumbarAct/activation",{-1,1});
@@ -1053,6 +1053,7 @@ void testPredictive_withPassiveForces_Implicit_Acceleration(){
     solver.setGuess(guess);
 
     MocoSolution solution = moco.solve();
+    }
 }
 
 void testPredictive_withPassiveForces_JRL(){
