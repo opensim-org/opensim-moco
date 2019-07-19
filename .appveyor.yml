@@ -103,7 +103,6 @@ install:
   - ps: Add-Content .\CMakeCacheInit.cmake -Value 'set(CMAKE_INSTALL_PREFIX "C:/projects/opensim-moco_deps_install" CACHE PATH "")'
   - ps: Add-Content .\CMakeCacheInit.cmake -Value 'set(OPENSIM_JAVA_WRAPPING ON CACHE BOOL "")'
   - ps: Add-Content .\CMakeCacheInit.cmake -Value 'set(OPENSIM_PYTHON_WRAPPING ON CACHE BOOL "")'
-  - ps: Add-Content .\CMakeCacheInit.cmake -Value 'set(SWIG_EXECUTABLE ON CACHE PATH "C:/ProgramData/chocolatey/lib/swig/tools/swigwin-3.0.9/swig.exe")'
   # /W0 disables warnings. The other CXX flags are copied from CMake's default
   # CMAKE_CXX_FLAGS.
   # https://msdn.microsoft.com/en-us/library/19z1t1wy.aspx
@@ -134,7 +133,7 @@ build_script:
   - mkdir ..\build
   - cd ..\build
   # Turn warnings into errors (/WX)
-  - cmake -E env CXXFLAGS="/WX" cmake ..\opensim-moco -G"Visual Studio 14 2015 Win64" -DCMAKE_INSTALL_PREFIX="C:\opensim-moco" -DADOLC_DIR="..\deps\adol-c" -DCMAKE_PREFIX_PATH="C:\projects\deps\eigen;C:\projects\deps\colpack;C:\projects\deps\opensim-core;C:\projects\deps\ipopt;C:\projects\deps\casadi;C:\projects\deps\casadi\casadi" -DMOCO_PYTHON_BINDINGS=ON -DMOCO_JAVA_BINDINGS=ON -DSWIG_EXECUTABLE="C:/ProgramData/chocolatey/lib/swig/tools/swigwin-3.0.9/swig.exe"
+  - cmake -E env CXXFLAGS="/WX" cmake ..\opensim-moco -G"Visual Studio 14 2015 Win64" -DCMAKE_INSTALL_PREFIX="C:\opensim-moco" -DADOLC_DIR="..\deps\adol-c" -DCMAKE_PREFIX_PATH="C:\projects\deps\eigen;C:\projects\deps\colpack;C:\projects\deps\opensim-core;C:\projects\deps\ipopt;C:\projects\deps\casadi;C:\projects\deps\casadi\casadi" -DMOCO_PYTHON_BINDINGS=ON -DMOCO_JAVA_BINDINGS=ON
   #-DCMAKE_TOOLCHAIN_FILE="C:\Tools\vcpkg\scripts\buildsystems\vcpkg.cmake"
   - cmake --build . --config %BTYPE% -- /maxcpucount:4 /verbosity:minimal
 
