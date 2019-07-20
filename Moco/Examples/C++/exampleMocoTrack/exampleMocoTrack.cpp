@@ -131,6 +131,10 @@ void muscleDrivenStateTracking() {
             ModOpIgnorePassiveFiberForcesDGF() |
             // Only valid for DeGrooteFregly2016Muscles.
             ModOpScaleActiveFiberForceCurveWidthDGF(1.5);
+    // auto model = modelProcessor.process();
+    // for (auto& muscle : model.updComponentList<Muscle>()) {
+    //     muscle.setMinControl(0);
+    // }
     track.setModel(modelProcessor);
 
     // Construct a TableProcessor of the coordinate data and pass it to the
@@ -154,9 +158,11 @@ void muscleDrivenStateTracking() {
     // Initial time, final time, and mesh interval.
     track.set_initial_time(0.81);
     track.set_final_time(1.65);
-    track.set_mesh_interval(0.02);
+    track.set_mesh_interval(0.08);
+    // track.set_control_effort_weight(0.1);
+    track.set_apply_tracked_states_to_guess(true);
 
-    track.set_guess_file("muscle_driven_state_tracking_solution.sto");
+    // track.set_guess_file("muscle_driven_state_tracking_solution.sto");
 
     // Instead of calling solve(), call initialize() to receive a pre-configured
     // MocoStudy object based on the settings above. Use this to customize the
@@ -172,20 +178,24 @@ void muscleDrivenStateTracking() {
     // Put a large weight on the pelvis CoordinateActuators, which act as the
     // residual, or 'hand-of-god', forces which we would like to keep as small
     // as possible.
-    Model model = modelProcessor.process();
-    for (const auto& coordAct : model.getComponentList<CoordinateActuator>()) {
-        auto coordPath = coordAct.getAbsolutePathString();
-        if (coordPath.find("pelvis") != std::string::npos) {
-            effort.setWeight(coordPath, 10);
+    {
+        Model model = modelProcessor.process();
+        for (const auto& coordAct : model.getComponentList<CoordinateActuator>()) {
+            auto coordPath = coordAct.getAbsolutePathString();
+            if (coordPath.find("pelvis") != std::string::npos) {
+                effort.setWeight(coordPath, 10);
+            }
         }
     }
 
-    // TODO: Tighten speed bounds to [-10, 10].
+    problem.updPhase().setDefaultSpeedBounds({-10, 10});
+    problem.setControlInfoPattern("/forceset/tau_.*", {-100, 100});
 
     // Solve and visualize.
     auto& solver = moco.updSolver<MocoCasADiSolver>();
-    solver.set_optim_convergence_tolerance(1e-4);
-    solver.set_output_interval(10);
+    solver.set_optim_convergence_tolerance(1e-2);
+    moco.print("exampleMocoTrack.omoco");
+    // solver.set_output_interval(10);
     MocoSolution solution = moco.solve();
 
     // std::cout << "DEBUG solution 0 " << std::endl;
