@@ -26,13 +26,13 @@ using namespace OpenSim;
 // a tracking term (coordinate values and speeds) and an effort term (squared
 // controls). Periodicity is imposed over half a gait cycle (symmetric walking
 // pattern).
-void testCoordinateTracking_MusclePolynomials_withoutPassiveForces() {
+void testCoordinateTracking() {
     // Create a MocoTrack
     MocoTrack track;
-    track.setName("coordinateTracking_MusclePolynomials_withoutPassiveForces");
+    track.setName("coordinateTracking");
     // Set model
     ModelProcessor modelprocessor = ModelProcessor(
-            "gait10dof18musc_MusclePolynomials_withoutPassiveForces.osim");
+            "gait10dof18musc.osim");
     track.setModel(modelprocessor);
     // Set experimental coordinate values to track
     track.setStatesReference(TableProcessor("referenceCoordinate.sto") |
@@ -612,7 +612,6 @@ void testCoordinateTracking_MusclePolynomials_withoutPassiveForces() {
 //}
 
 int main() {
-   //testCoordinateTracking_MusclePolynomials_withPassiveForces();
-   testCoordinateTracking_MusclePolynomials_withoutPassiveForces();
+   testCoordinateTracking();
    //testCoordinateTracking_CoordinateActuators();
 }
