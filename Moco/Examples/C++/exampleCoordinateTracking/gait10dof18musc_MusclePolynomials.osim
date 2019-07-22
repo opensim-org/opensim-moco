@@ -151,7 +151,7 @@
 					<!--The function approximating the geometry: MultivariatePolynomial or spline (TODO not supported yet)-->
 					<MultivariatePolynomialFunction name="function">
 						<!--Coefficients of a multivariate polynomial function, TODO.-->
-						<coefficients>0.42049524880528 0.02875525494048 0.018300167519637998 0.0069954436391790002 0.053690588126276001 0.002092858497112 0.0011648744240559999 0.016799961996946 0.0001886801073680048 0.0095763378701470003</coefficients>
+						<coefficients>0.42049524880528 0.02875525494048 -0.018300167519637998 -0.0069954436391790002 0.053690588126276001 0.002092858497112 0.0011648744240559999 0.016799961996946 0.0001886801073680048 -0.0095763378701470003</coefficients>
 						<!--Number of dimensions of a multivariate polynomial function, TODO.-->
 						<dimension>2</dimension>
 						<!--Order of a multivariate polynomial function, TODO.-->
@@ -295,7 +295,7 @@
 					<!--The function approximating the geometry: MultivariatePolynomial or spline (TODO not supported yet)-->
 					<MultivariatePolynomialFunction name="function">
 						<!--Coefficients of a multivariate polynomial function, TODO.-->
-						<coefficients>0.254156701045543 -0.038230025226882 0.0052105322842889998 0.0025341680057849999</coefficients>
+						<coefficients>0.254156701045543 -0.038230025226882 -0.0052105322842889998 0.0025341680057849999</coefficients>
 						<!--Number of dimensions of a multivariate polynomial function, TODO.-->
 						<dimension>1</dimension>
 						<!--Order of a multivariate polynomial function, TODO.-->
@@ -583,7 +583,7 @@
                     <!--The function approximating the geometry: MultivariatePolynomial or spline (TODO not supported yet)-->
                     <MultivariatePolynomialFunction name="function">
                         <!--Coefficients of a multivariate polynomial function, TODO.-->
-                        <coefficients>0.42049524880528 0.02875525494048 0.018300167519637998 0.0069954436391790002 0.053690588126276001 0.002092858497112 0.0011648744240559999 0.016799961996946 0.0001886801073680048 0.0095763378701470003</coefficients>
+                        <coefficients>0.42049524880528 0.02875525494048 -0.018300167519637998 -0.0069954436391790002 0.053690588126276001 0.002092858497112 0.0011648744240559999 0.016799961996946 0.0001886801073680048 -0.0095763378701470003</coefficients>
                         <!--Number of dimensions of a multivariate polynomial function, TODO.-->
                         <dimension>2</dimension>
                         <!--Order of a multivariate polynomial function, TODO.-->
@@ -727,7 +727,7 @@
                     <!--The function approximating the geometry: MultivariatePolynomial or spline (TODO not supported yet)-->
                     <MultivariatePolynomialFunction name="function">
                         <!--Coefficients of a multivariate polynomial function, TODO.-->
-                        <coefficients>0.254156701045543 -0.038230025226882 0.0052105322842889998 0.0025341680057849999</coefficients>
+                        <coefficients>0.254156701045543 -0.038230025226882 -0.0052105322842889998 0.0025341680057849999</coefficients>
                         <!--Number of dimensions of a multivariate polynomial function, TODO.-->
                         <dimension>1</dimension>
                         <!--Order of a multivariate polynomial function, TODO.-->
