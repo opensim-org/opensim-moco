@@ -354,9 +354,10 @@ void testCoordinateTracking_CoordinateActuators() {
     SimTK::Vector optTime = solution.getTime();
     // Get model
     auto model = modelprocessor.process();
+    model.initSystem();
     // Create labels for output file
     std::vector<std::string> labels;
-    labels.push_back("time");
+    //labels.push_back("time");
     labels.push_back("ground_force_vx"); // right
     labels.push_back("ground_force_vy");
     labels.push_back("ground_force_vz");
@@ -377,11 +378,14 @@ void testCoordinateTracking_CoordinateActuators() {
     labels.push_back("1_ground_torque_z");
     TimeSeriesTable externalForcesTable{};
     externalForcesTable.setColumnLabels(labels);
+    TimeSeriesTableVec3 externalForcesTable2{};
+    externalForcesTable2.setColumnLabels(labels);
     // Helper Vec3
     SimTK::Vec3 nullP(0);
     // Extract forces
     int count = 0;
     for (const auto& state : optStates) {
+        model.realizeVelocity(state);
         Array<double> forcesContactSphereHeel_r = model.getComponent<
                 SmoothSphereHalfSpaceForce>(
                 "contactSphereHeel_r").getRecordValues(state);
@@ -415,7 +419,7 @@ void testCoordinateTracking_CoordinateActuators() {
                 forcesContactSphereFront_l[4], forcesContactSphereFront_l[5]);
         // Create row
         SimTK::RowVector row{18,0.0};
-        for (int i = 0; i < 2; ++i) {
+        for (int i = 0; i < 3; ++i) {
             row(i) = forces_r[i];
             row(i+3) = nullP[i];
             row(i+6) = forces_l[i];
@@ -425,10 +429,53 @@ void testCoordinateTracking_CoordinateActuators() {
         }
         // Append row
         externalForcesTable.appendRow(optTime[count],row);
+
+        SimTK::RowVector_<SimTK::Vec3> row2(6);
+        row2(0) = forces_r;
+        row2(1) = nullP;
+        row2(2) = forces_l;
+        row2(3) = nullP;
+        row2(4) = torques_r;
+        row2(5) = torques_l;
+
+        externalForcesTable2.appendRow(optTime[count],row2);
+
         ++count;
     }
     // Write file
-    writeTableToFile(externalForcesTable,"test_GRF.sto");
+    //writeTableToFile(externalForcesTable2,"test_GRF2.sto");
+
+    DataAdapter::InputTables tables = {{"table", &externalForcesTable2}};
+    FileAdapter::writeFile(tables, "test_GRF2.sto");
+}
+
+void test_Antoine() {
+
+    SimTK::Vec3 a(0,1,2);
+    SimTK::Vec3 b(3,4,5);
+    SimTK::Vec3 c(6,7,8);
+
+    SimTK::RowVector_<SimTK::Vec3> row(3);
+    row(0) = a;
+    row(1) = b;
+    row(2) = c;
+
+    TimeSeriesTableVec3 externalForcesTable2{};
+    std::vector<std::string> labels;
+    labels.push_back("1_ground_force_px");
+    labels.push_back("1_ground_force_py");
+    labels.push_back("1_ground_force_pz");
+    labels.push_back("ground_torque_x"); // right
+    labels.push_back("ground_torque_y");
+    labels.push_back("ground_torque_z");
+    labels.push_back("1_ground_torque_x"); // left
+    labels.push_back("1_ground_torque_y");
+    labels.push_back("1_ground_torque_z");
+    //externalForcesTable2.setColumnLabels(labels);
+    externalForcesTable2.appendRow(1,row);
+    DataAdapter::InputTables tables = {{"table", &externalForcesTable2}};
+    FileAdapter::writeFile(tables, "test_GRF2.sto");
+
 }
 
 // Set a coordinate tracking problem. Here the model is driven by muscles whose
@@ -808,5 +855,13 @@ int main() {
     //    catch(const std::exception& e){
     //        std::cout << e.what() << std::endl;
     //    }
-   testCoordinateTracking_CoordinateActuators();
+   /*testCoordinateTracking_CoordinateActuators();*/
+    test_Antoine();
+    try {
+        test_Antoine();
+    }
+        catch(const std::exception& e){
+            std::cout << e.what() << std::endl;
+        }
+   //testCoordinateTracking_CoordinateActuators();
 }
