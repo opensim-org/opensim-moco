@@ -19,14 +19,14 @@
 #include <Moco/osimMoco.h>
 
 using namespace OpenSim;
-// This class defines a MocoGoal that computes the average speed defined as the
-// distance travelled by the pelvis in the forward direction divided by the
-// final time.
+// MocoGoal imposing the average gait speed through endpoint constraints. The
+// average gait speed is defined as the distance travelled by the pelvis in the
+// forward direction divided by the final time.
 class MocoAverageSpeedGoal : public MocoGoal {
 OpenSim_DECLARE_CONCRETE_OBJECT(MocoAverageSpeedGoal, MocoGoal);
 public:
     OpenSim_DECLARE_PROPERTY(desired_speed, double,
-            "The desired forward speed defined as the distance travelled by "
+            "The desired gait speed defined as the distance travelled by "
             "the pelvis in the forward direction divided by the final time.");
     MocoAverageSpeedGoal() {
         constructProperties();
@@ -55,14 +55,13 @@ protected:
     }
 private:
     void constructProperties() {
-        constructProperty_desired_speed(0.0);
+        constructProperty_desired_speed(0);
     }
     mutable SimTK::ReferencePtr<const Coordinate> m_coord;
 };
 
-// This class defines a MocoGoal that computes the integral of the squared
-// controls divided by the distance travelled by the pelvis in the forward
-// direction.
+// MocoGoal minimizing the integral of the squared controls divided by the
+// distance travelled by the pelvis in the forward direction.
 class MocoControlOverDistanceGoal : public MocoGoal {
 OpenSim_DECLARE_CONCRETE_OBJECT(MocoControlOverDistanceGoal, MocoGoal);
 public:
@@ -377,16 +376,12 @@ void testPredictive(){
     // Define the optimal control problem.
     // ===================================
     MocoProblem& problem = moco.updProblem();
-    ModelProcessor modelprocessor = ModelProcessor(
-        "gait10dof18musc.osim");
+    ModelProcessor modelprocessor = ModelProcessor("gait10dof18musc.osim");
     problem.setModelProcessor(modelprocessor);
 
-    problem.setTimeBounds(0, {0.4,0.6});
-
-    //// Goal.
-    //// =====
-    // Impose symmetric walking pattern
-    // Add symmetry goal
+    // Goal.
+    // =====
+    // Symmetry
     auto* symmetryGoal = problem.addGoal<MocoPeriodicityGoal>("symmetryGoal");
     // Coordinate values
     symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_tilt/value"});
@@ -421,7 +416,7 @@ void testPredictive(){
     symmetryGoal->addStatePair({"/jointset/ankle_r/ankle_angle_r/speed",
             "/jointset/ankle_l/ankle_angle_l/speed"});
     symmetryGoal->addStatePair({"/jointset/lumbar/lumbar/speed"});
-    // Coodinate actuators
+    // Coordinate actuators
     symmetryGoal->addControlPair({"/lumbarAct"});
     // Muscle activations
     symmetryGoal->addStatePair({"/hamstrings_l/activation",
@@ -461,17 +456,155 @@ void testPredictive(){
     symmetryGoal->addStatePair({"/tib_ant_r/activation",
             "/tib_ant_l/activation"});
 
-    // Impose prescribed average speed
+    // Prescribed average gait speed
     auto* speedGoal = problem.addGoal<MocoAverageSpeedGoal>("speedGoal");
     speedGoal->set_desired_speed(1.2);
 
-    // Minimize squared control normalized by the distance travelled
+    // Minimize squared controls normalized by distance travelled
     auto* controlGoal =
         problem.addGoal<MocoControlOverDistanceGoal>("controlGoal");
     controlGoal->setWeight(10);
 
     // Adjust bounds
-    //problem.setStateInfo("/lumbarAct/activation",{-1,1});
+    problem.setTimeBounds(0, {0.4,0.6});
+
+    problem.setStateInfo("/jointset/groundPelvis/pelvis_tilt/value",
+            {-20*SimTK::Pi/180,-10*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/groundPelvis/pelvis_tx/value", {0,1});
+    problem.setStateInfo("/jointset/groundPelvis/pelvis_ty/value",
+            {0.75,1.25});
+    problem.setStateInfo("/jointset/hip_l/hip_flexion_l/value",
+            {-10*SimTK::Pi/180,60*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/hip_r/hip_flexion_r/value",
+            {-10*SimTK::Pi/180,60*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/knee_l/knee_angle_l/value",
+            {-50*SimTK::Pi/180,0});
+    problem.setStateInfo("/jointset/knee_r/knee_angle_r/value",
+            {-50*SimTK::Pi/180,0});
+    problem.setStateInfo("/jointset/ankle_l/ankle_angle_l/value",
+            {-15*SimTK::Pi/180,25*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/ankle_r/ankle_angle_r/value",
+            {-15*SimTK::Pi/180,25*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/lumbar/lumbar/value",
+            {0,20*SimTK::Pi/180});
+
+    // Configure the solver.
+    // =====================
+    auto& solver = moco.initCasADiSolver();
+    solver.set_num_mesh_points(50);
+    solver.set_verbosity(2);
+    solver.set_optim_solver("ipopt");
+    solver.set_optim_convergence_tolerance(1e-4);
+    solver.set_optim_constraint_tolerance(1e-4);
+    solver.set_optim_max_iterations(10000);
+    solver.set_parallel(8);
+    // Set Guess
+    solver.setGuessFile("coordinateTracking_solution.sto");
+
+    MocoSolution solution = moco.solve();
+}
+
+void testPredictive_GeometryPath(){
+
+    MocoStudy moco;
+    moco.setName("2DGaitPrediction_GeometryPath");
+
+    // Define the optimal control problem.
+    // ===================================
+    MocoProblem& problem = moco.updProblem();
+    ModelProcessor modelprocessor = ModelProcessor("gait10dof18musc.osim") |
+        ModOpUsePathLengthApproximation(false);
+    problem.setModelProcessor(modelprocessor);
+
+    // Goal.
+    // =====
+    // Symmetry
+    auto* symmetryGoal = problem.addGoal<MocoPeriodicityGoal>("symmetryGoal");
+    // Coordinate values
+    symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_tilt/value"});
+    symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_ty/value"});
+    symmetryGoal->addStatePair({"/jointset/hip_l/hip_flexion_l/value",
+            "/jointset/hip_r/hip_flexion_r/value"});
+    symmetryGoal->addStatePair({"/jointset/hip_r/hip_flexion_r/value",
+            "/jointset/hip_l/hip_flexion_l/value"});
+    symmetryGoal->addStatePair({"/jointset/knee_l/knee_angle_l/value",
+            "/jointset/knee_r/knee_angle_r/value"});
+    symmetryGoal->addStatePair({"/jointset/knee_r/knee_angle_r/value",
+            "/jointset/knee_l/knee_angle_l/value"});
+    symmetryGoal->addStatePair({"/jointset/ankle_l/ankle_angle_l/value",
+            "/jointset/ankle_r/ankle_angle_r/value"});
+    symmetryGoal->addStatePair({"/jointset/ankle_r/ankle_angle_r/value",
+            "/jointset/ankle_l/ankle_angle_l/value"});
+    symmetryGoal->addStatePair({"/jointset/lumbar/lumbar/value"});
+    // Coordinate speeds
+    symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_tilt/speed"});
+    symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_tx/speed"});
+    symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_ty/speed"});
+    symmetryGoal->addStatePair({"/jointset/hip_l/hip_flexion_l/speed",
+            "/jointset/hip_r/hip_flexion_r/speed"});
+    symmetryGoal->addStatePair({"/jointset/hip_r/hip_flexion_r/speed",
+            "/jointset/hip_l/hip_flexion_l/speed"});
+    symmetryGoal->addStatePair({"/jointset/knee_l/knee_angle_l/speed",
+            "/jointset/knee_r/knee_angle_r/speed"});
+    symmetryGoal->addStatePair({"/jointset/knee_r/knee_angle_r/speed",
+            "/jointset/knee_l/knee_angle_l/speed"});
+    symmetryGoal->addStatePair({"/jointset/ankle_l/ankle_angle_l/speed",
+            "/jointset/ankle_r/ankle_angle_r/speed"});
+    symmetryGoal->addStatePair({"/jointset/ankle_r/ankle_angle_r/speed",
+            "/jointset/ankle_l/ankle_angle_l/speed"});
+    symmetryGoal->addStatePair({"/jointset/lumbar/lumbar/speed"});
+    // Coordinate actuators
+    symmetryGoal->addControlPair({"/lumbarAct"});
+    // Muscle activations
+    symmetryGoal->addStatePair({"/hamstrings_l/activation",
+            "/hamstrings_r/activation"});
+    symmetryGoal->addStatePair({"/hamstrings_r/activation",
+            "/hamstrings_l/activation"});
+    symmetryGoal->addStatePair({"/bifemsh_l/activation",
+            "/bifemsh_r/activation"});
+    symmetryGoal->addStatePair({"/bifemsh_r/activation",
+            "/bifemsh_l/activation"});
+    symmetryGoal->addStatePair({"/glut_max_l/activation",
+            "/glut_max_r/activation"});
+    symmetryGoal->addStatePair({"/glut_max_r/activation",
+            "/glut_max_l/activation"});
+    symmetryGoal->addStatePair({"/iliopsoas_l/activation",
+            "/iliopsoas_r/activation"});
+    symmetryGoal->addStatePair({"/iliopsoas_r/activation",
+            "/iliopsoas_l/activation"});
+    symmetryGoal->addStatePair({"/rect_fem_l/activation",
+            "/rect_fem_r/activation"});
+    symmetryGoal->addStatePair({"/rect_fem_r/activation",
+            "/rect_fem_l/activation"});
+    symmetryGoal->addStatePair({"/vasti_l/activation",
+            "/vasti_r/activation"});
+    symmetryGoal->addStatePair({"/vasti_r/activation",
+            "/vasti_l/activation"});
+    symmetryGoal->addStatePair({"/gastroc_l/activation",
+            "/gastroc_r/activation"});
+    symmetryGoal->addStatePair({"/gastroc_r/activation",
+            "/gastroc_l/activation"});
+    symmetryGoal->addStatePair({"/soleus_l/activation",
+            "/soleus_r/activation"});
+    symmetryGoal->addStatePair({"/soleus_r/activation",
+            "/soleus_l/activation"});
+    symmetryGoal->addStatePair({"/tib_ant_l/activation",
+            "/tib_ant_r/activation"});
+    symmetryGoal->addStatePair({"/tib_ant_r/activation",
+            "/tib_ant_l/activation"});
+
+    // Prescribed average gait speed
+    auto* speedGoal = problem.addGoal<MocoAverageSpeedGoal>("speedGoal");
+    speedGoal->set_desired_speed(1.2);
+
+    // Minimize squared controls normalized by distance travelled
+    auto* controlGoal =
+        problem.addGoal<MocoControlOverDistanceGoal>("controlGoal");
+    controlGoal->setWeight(10);
+
+    // Adjust bounds
+    problem.setTimeBounds(0, {0.4,0.6});
+
     problem.setStateInfo("/jointset/groundPelvis/pelvis_tilt/value",
             {-20*SimTK::Pi/180,-10*SimTK::Pi/180});
     problem.setStateInfo("/jointset/groundPelvis/pelvis_tx/value", {0,1});
@@ -878,7 +1011,8 @@ void testPredictive(){
 //}
 
 int main() {
-    testPredictive();
+    //testPredictive();
+    testPredictive_GeometryPath();
     //testPredictive_withoutPassiveForces();
     //testPredictive_withPassiveForces_activationSquared();
     //testPredictive_withPassiveForces_accelerationSquared();

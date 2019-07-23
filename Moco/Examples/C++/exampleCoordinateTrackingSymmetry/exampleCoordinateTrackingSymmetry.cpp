@@ -244,6 +244,196 @@ void testCoordinateTracking() {
 // Set a coordinate tracking problem. Here the model is driven by muscles whose
 // muscle-tendon lengths, velocities, and moment arms are derived from
 // polynomial approximations of joint coordinates. The cost function combines
+// a tracking term (coordinate values and speeds) and an effort term (squared
+// controls). Periodicity is imposed over half a gait cycle (symmetric walking
+// pattern).
+void testCoordinateTracking_CoordinateActuators() {
+    // Create a MocoTrack
+    MocoTrack track;
+    track.setName("coordinateTracking_CoordinateActuators");
+    // Set model
+    ModelProcessor modelprocessor = ModelProcessor(
+            "gait10dof18musc_CoordinateActuators.osim");
+    track.setModel(modelprocessor);
+    // Set experimental coordinate values to track
+    track.setStatesReference(TableProcessor("referenceCoordinate.sto") |
+            TabOpLowPassFilter(6));
+    track.set_states_global_tracking_weight(10.0);
+    track.set_allow_unused_references(true);
+    track.set_track_reference_position_derivatives(true);
+    // Set guess
+    track.set_apply_tracked_states_to_guess(true);
+    // Set time bounds
+    track.set_initial_time(0.0);
+    track.set_final_time(0.47008941);
+    // Initialize study
+    MocoStudy moco = track.initialize();
+    // Set solver settings
+    MocoCasADiSolver& solver = moco.updSolver<MocoCasADiSolver>();
+    solver.set_num_mesh_points(50);
+    solver.set_verbosity(2);
+    solver.set_optim_solver("ipopt");
+    solver.set_optim_convergence_tolerance(1e-4);
+    solver.set_optim_constraint_tolerance(1e-4);
+    solver.set_optim_max_iterations(100000);
+    solver.set_parallel(6);
+    // Update problem
+    MocoProblem& problem = moco.updProblem();
+    // Add symmetry goal
+    auto* symmetryGoal = problem.addGoal<MocoPeriodicityGoal>("symmetryGoal");
+    // Coordinate values
+    symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_tilt/value"});
+    symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_ty/value"});
+    symmetryGoal->addStatePair({"/jointset/hip_l/hip_flexion_l/value",
+            "/jointset/hip_r/hip_flexion_r/value"});
+    symmetryGoal->addStatePair({"/jointset/hip_r/hip_flexion_r/value",
+            "/jointset/hip_l/hip_flexion_l/value"});
+    symmetryGoal->addStatePair({"/jointset/knee_l/knee_angle_l/value",
+            "/jointset/knee_r/knee_angle_r/value"});
+    symmetryGoal->addStatePair({"/jointset/knee_r/knee_angle_r/value",
+            "/jointset/knee_l/knee_angle_l/value"});
+    symmetryGoal->addStatePair({"/jointset/ankle_l/ankle_angle_l/value",
+            "/jointset/ankle_r/ankle_angle_r/value"});
+    symmetryGoal->addStatePair({"/jointset/ankle_r/ankle_angle_r/value",
+            "/jointset/ankle_l/ankle_angle_l/value"});
+    symmetryGoal->addStatePair({"/jointset/lumbar/lumbar/value"});
+    // Coordinate speeds
+    symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_tilt/speed"});
+    symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_tx/speed"});
+    symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_ty/speed"});
+    symmetryGoal->addStatePair({"/jointset/hip_l/hip_flexion_l/speed",
+            "/jointset/hip_r/hip_flexion_r/speed"});
+    symmetryGoal->addStatePair({"/jointset/hip_r/hip_flexion_r/speed",
+            "/jointset/hip_l/hip_flexion_l/speed"});
+    symmetryGoal->addStatePair({"/jointset/knee_l/knee_angle_l/speed",
+            "/jointset/knee_r/knee_angle_r/speed"});
+    symmetryGoal->addStatePair({"/jointset/knee_r/knee_angle_r/speed",
+            "/jointset/knee_l/knee_angle_l/speed"});
+    symmetryGoal->addStatePair({"/jointset/ankle_l/ankle_angle_l/speed",
+            "/jointset/ankle_r/ankle_angle_r/speed"});
+    symmetryGoal->addStatePair({"/jointset/ankle_r/ankle_angle_r/speed",
+            "/jointset/ankle_l/ankle_angle_l/speed"});
+    symmetryGoal->addStatePair({"/jointset/lumbar/lumbar/speed"});
+    // Coodinate actuators
+    symmetryGoal->addControlPair({"/lumbarAct"});
+    symmetryGoal->addControlPair({"/hipAct_l", "/hipAct_r"});
+    symmetryGoal->addControlPair({"/hipAct_r", "/hipAct_l"});
+    symmetryGoal->addControlPair({"/kneeAct_l", "/kneeAct_r"});
+    symmetryGoal->addControlPair({"/kneeAct_r", "/kneeAct_l"});
+    symmetryGoal->addControlPair({"/ankleAct_l", "/ankleAct_r"});
+    symmetryGoal->addControlPair({"/ankleAct_r", "/ankleAct_l"});
+    // Add effort cots
+    auto* effortGoal = problem.addGoal<MocoControlGoal>("effortGoal", 10);
+    // Adjust bounds
+    problem.setStateInfo("/jointset/groundPelvis/pelvis_tilt/value",
+            {-20*SimTK::Pi/180,-10*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/groundPelvis/pelvis_tx/value", {0,1});
+    problem.setStateInfo("/jointset/groundPelvis/pelvis_ty/value",
+            {0.75,1.25});
+    problem.setStateInfo("/jointset/hip_l/hip_flexion_l/value",
+            {-10*SimTK::Pi/180,60*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/hip_r/hip_flexion_r/value",
+            {-10*SimTK::Pi/180,60*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/knee_l/knee_angle_l/value",
+            {-50*SimTK::Pi/180,0});
+    problem.setStateInfo("/jointset/knee_r/knee_angle_r/value",
+            {-50*SimTK::Pi/180,0});
+    problem.setStateInfo("/jointset/ankle_l/ankle_angle_l/value",
+            {-15*SimTK::Pi/180,25*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/ankle_r/ankle_angle_r/value",
+            {-15*SimTK::Pi/180,25*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/lumbar/lumbar/value",
+            {0,20*SimTK::Pi/180});
+    // Solve problem
+    MocoSolution solution = moco.solve();
+
+    // Extract ground reaction forces
+    // Get optimal states
+    StatesTrajectory optStates = solution.exportToStatesTrajectory(problem);
+    // Get optimal time vector
+    SimTK::Vector optTime = solution.getTime();
+    // Get model
+    auto model = modelprocessor.process();
+    // Create labels for output file
+    std::vector<std::string> labels;
+    labels.push_back("time");
+    labels.push_back("ground_force_vx"); // right
+    labels.push_back("ground_force_vy");
+    labels.push_back("ground_force_vz");
+    labels.push_back("ground_force_px");
+    labels.push_back("ground_force_py");
+    labels.push_back("ground_force_pz");
+    labels.push_back("1_ground_force_vx"); // left
+    labels.push_back("1_ground_force_vy");
+    labels.push_back("1_ground_force_vz");
+    labels.push_back("1_ground_force_px");
+    labels.push_back("1_ground_force_py");
+    labels.push_back("1_ground_force_pz");
+    labels.push_back("ground_torque_x"); // right
+    labels.push_back("ground_torque_y");
+    labels.push_back("ground_torque_z");
+    labels.push_back("1_ground_torque_x"); // left
+    labels.push_back("1_ground_torque_y");
+    labels.push_back("1_ground_torque_z");
+    TimeSeriesTable externalForcesTable{};
+    externalForcesTable.setColumnLabels(labels);
+    // Helper Vec3
+    SimTK::Vec3 nullP(0);
+    // Extract forces
+    int count = 0;
+    for (const auto& state : optStates) {
+        Array<double> forcesContactSphereHeel_r = model.getComponent<
+                SmoothSphereHalfSpaceForce>(
+                "contactSphereHeel_r").getRecordValues(state);
+        Array<double> forcesContactSphereHeel_l = model.getComponent<
+                SmoothSphereHalfSpaceForce>(
+                "contactSphereHeel_l").getRecordValues(state);
+        Array<double> forcesContactSphereFront_r = model.getComponent<
+                SmoothSphereHalfSpaceForce>(
+                "contactSphereFront_r").getRecordValues(state);
+        Array<double> forcesContactSphereFront_l = model.getComponent<
+                SmoothSphereHalfSpaceForce>(
+                "contactSphereFront_l").getRecordValues(state);
+        // Combine forces and torques from contact spheres from same foot
+        // Forces
+        SimTK::Vec3 forces_r = SimTK::Vec3(forcesContactSphereHeel_r[0],
+                forcesContactSphereHeel_r[1], forcesContactSphereHeel_r[2]) +
+                SimTK::Vec3(forcesContactSphereFront_r[0],
+                forcesContactSphereFront_r[1], forcesContactSphereFront_r[2]);
+        SimTK::Vec3 forces_l = SimTK::Vec3(forcesContactSphereHeel_l[0],
+                forcesContactSphereHeel_l[1], forcesContactSphereHeel_l[2]) +
+                SimTK::Vec3(forcesContactSphereFront_l[0],
+                forcesContactSphereFront_l[1], forcesContactSphereFront_l[2]);
+        // Torques
+        SimTK::Vec3 torques_r = SimTK::Vec3(forcesContactSphereHeel_r[3],
+                forcesContactSphereHeel_r[4], forcesContactSphereHeel_r[5]) +
+                SimTK::Vec3(forcesContactSphereFront_r[3],
+                forcesContactSphereFront_r[4], forcesContactSphereFront_r[5]);
+        SimTK::Vec3 torques_l = SimTK::Vec3(forcesContactSphereHeel_l[3],
+                forcesContactSphereHeel_l[4], forcesContactSphereHeel_l[5]) +
+                SimTK::Vec3(forcesContactSphereFront_l[3],
+                forcesContactSphereFront_l[4], forcesContactSphereFront_l[5]);
+        // Create row
+        SimTK::RowVector row{18,0.0};
+        for (int i = 0; i < 2; ++i) {
+            row(i) = forces_r[i];
+            row(i+3) = nullP[i];
+            row(i+6) = forces_l[i];
+            row(i+9) = nullP[i];
+            row(i+12) = torques_r[i];
+            row(i+15) = torques_l[i];
+        }
+        // Append row
+        externalForcesTable.appendRow(optTime[count],row);
+        ++count;
+    }
+    // Write file
+    writeTableToFile(externalForcesTable,"test_GRF.sto");
+}
+
+// Set a coordinate tracking problem. Here the model is driven by muscles whose
+// muscle-tendon lengths, velocities, and moment arms are derived from
+// polynomial approximations of joint coordinates. The cost function combines
 // a tracking term (coordinate values and speeds), an effort term (squared
 // controls), and a term encouraging symmetry of the coordinate values over
 // half a gait cycle.
@@ -612,11 +802,11 @@ void testCoordinateTracking() {
 //}
 
 int main() {
-    try {
-        testCoordinateTracking();
-    }
-        catch(const std::exception& e){
-            std::cout << e.what() << std::endl;
-        }
-   //testCoordinateTracking_CoordinateActuators();
+    //try {
+    //    testCoordinateTracking();
+    //}
+    //    catch(const std::exception& e){
+    //        std::cout << e.what() << std::endl;
+    //    }
+   testCoordinateTracking_CoordinateActuators();
 }
