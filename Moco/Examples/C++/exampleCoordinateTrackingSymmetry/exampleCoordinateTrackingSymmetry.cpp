@@ -612,6 +612,11 @@ void testCoordinateTracking() {
 //}
 
 int main() {
-   testCoordinateTracking();
+    try {
+        testCoordinateTracking();
+    }
+        catch(const std::exception& e){
+            std::cout << e.what() << std::endl;
+        }
    //testCoordinateTracking_CoordinateActuators();
 }
