@@ -170,7 +170,7 @@ void coordinateTracking_Muscles() {
     model.initSystem();
     TimeSeriesTableVec3 externalForcesTable{};
     StatesTrajectory optStates = solution.exportToStatesTrajectory(problem);
-    SimTK::Vector optTime = solution.getTime();
+    SimTK::Vector optTime = solution.getTime();z
     int count = 0;
     for (const auto& state : optStates) {
         model.realizeVelocity(state);
