@@ -128,6 +128,12 @@ public:
     TimeSeriesTable analyze(
             const MocoTrajectory& it, std::vector<std::string> outputPaths) const;
 
+    /// TODO
+    TimeSeriesTable getSmoothSphereHalfSpaceForce(
+            const MocoSolution& s,
+            std::vector<std::string>& smoothSphereHalfSpaceForceNamesRight,
+            std::vector<std::string>& smoothSphereHalfSpaceForceNamesLeft) const;
+
     /// @name Using other solvers
     /// @{
     template <typename SolverType>
