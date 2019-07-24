@@ -368,7 +368,7 @@ private:
 //    MocoSolution solution = moco.solve();
 //}
 
-void testPredictive_Polynomial(){
+void example2DPrediction_Polynomial(){
 
     MocoStudy moco;
     moco.setName("2DGaitPrediction_Polynomial");
@@ -512,11 +512,12 @@ void testPredictive_Polynomial(){
     contactSpheres_l.push_back("contactSphereHeel_l");
     contactSpheres_l.push_back("contactSphereFront_l");
     // Extract forces
+    auto model = modelprocessor.process();
+    model.initSystem();
+    problem.setModelCopy(model);
     TimeSeriesTableVec3 externalForcesTable{};
     StatesTrajectory optStates = solution.exportToStatesTrajectory(problem);
     SimTK::Vector optTime = solution.getTime();
-    auto model = modelprocessor.process();
-    model.initSystem();
     int count = 0;
     for (const auto& state : optStates) {
         model.realizeVelocity(state);
@@ -576,7 +577,7 @@ void testPredictive_Polynomial(){
             "2DGaitPrediction_Polynomial_GRF.sto");
 }
 
-void testPredictive_GeometryPath(){
+void example2DPrediction_GeometryPath(){
 
     MocoStudy moco;
     moco.setName("2DGaitPrediction_GeometryPath");
@@ -721,11 +722,12 @@ void testPredictive_GeometryPath(){
     contactSpheres_l.push_back("contactSphereHeel_l");
     contactSpheres_l.push_back("contactSphereFront_l");
     // Extract forces
+    auto model = modelprocessor.process();
+    model.initSystem();
+    problem.setModelCopy(model);
     TimeSeriesTableVec3 externalForcesTable{};
     StatesTrajectory optStates = solution.exportToStatesTrajectory(problem);
     SimTK::Vector optTime = solution.getTime();
-    auto model = modelprocessor.process();
-    model.initSystem();
     int count = 0;
     for (const auto& state : optStates) {
         model.realizeVelocity(state);
@@ -784,6 +786,9 @@ void testPredictive_GeometryPath(){
     FileAdapter::writeFile(tables,
             "2DGaitPrediction_GeometryPath_GRF.sto");
 }
+
+
+
 
 //void testPredictive_withPassiveForces_activationSquared(){
 //
@@ -1156,5 +1161,5 @@ void testPredictive_GeometryPath(){
 
 int main() {
     example2DPrediction_Polynomial();
-    example2DPrediction_GeometryPath();
+    //example2DPrediction_GeometryPath();
 }

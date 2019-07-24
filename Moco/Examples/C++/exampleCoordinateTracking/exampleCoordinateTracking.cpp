@@ -166,11 +166,11 @@ void coordinateTracking_Muscles() {
     contactSpheres_l.push_back("contactSphereHeel_l");
     contactSpheres_l.push_back("contactSphereFront_l");
     // Extract forces
+    auto model = modelprocessor.process();
+    model.initSystem();
     TimeSeriesTableVec3 externalForcesTable{};
     StatesTrajectory optStates = solution.exportToStatesTrajectory(problem);
     SimTK::Vector optTime = solution.getTime();
-    auto model = modelprocessor.process();
-    model.initSystem();
     int count = 0;
     for (const auto& state : optStates) {
         model.realizeVelocity(state);
@@ -345,11 +345,11 @@ void coordinateTracking_CoordinateActuators() {
     contactSpheres_l.push_back("contactSphereHeel_l");
     contactSpheres_l.push_back("contactSphereFront_l");
     // Extract forces
+    auto model = modelprocessor.process();
+    model.initSystem();
     TimeSeriesTableVec3 externalForcesTable{};
     StatesTrajectory optStates = solution.exportToStatesTrajectory(problem);
     SimTK::Vector optTime = solution.getTime();
-    auto model = modelprocessor.process();
-    model.initSystem();
     int count = 0;
     for (const auto& state : optStates) {
         model.realizeVelocity(state);
