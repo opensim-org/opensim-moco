@@ -1,7 +1,7 @@
-#ifndef MOCO_MOCOJOINTREACTIONCOST_H
-#define MOCO_MOCOJOINTREACTIONCOST_H
+#ifndef MOCO_MOCOJOINTREACTIONGOAL_H
+#define MOCO_MOCOJOINTREACTIONGOAL_H
 /* -------------------------------------------------------------------------- *
- * OpenSim Moco: MocoJointReactionCost.h                                      *
+ * OpenSim Moco: MocoJointReactionGoal.h                                      *
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2019 Stanford University and the Authors                     *
  *                                                                            *
@@ -18,14 +18,14 @@
  * limitations under the License.                                             *
  * -------------------------------------------------------------------------- */
 
-#include "MocoCost.h"
 #include "../MocoWeightSet.h"
+#include "MocoGoal.h"
 
 #include <OpenSim/Simulation/SimbodyEngine/Joint.h>
 
 namespace OpenSim {
 
-/// Minimize the sum of squares of specified reaction moment and force
+/// Minimize the sum of squares of specified reaction moment and force 
 /// measures for a given joint, integrated over the phase.
 ///
 /// In addition to specifying the joint and reaction measures, the user may
@@ -34,8 +34,8 @@ namespace OpenSim {
 ///
 /// Minimizing the y-direction reaction force on the child frame of the right
 /// knee joint expressed in the right tibia frame:
-/// @code
-/// auto* cost = problem.addCost<MocoJointReactionCost>();
+/// @code 
+/// auto* cost = problem.addGoal<MocoJointReactionCost>();
 /// cost->setName("tibiofemoral_compressive_force");
 /// cost->setJointPath("/jointset/knee_r");
 /// cost->setLoadsFrame("child");
@@ -44,16 +44,16 @@ namespace OpenSim {
 /// @endcode
 ///
 /// This cost requires realizing to the Acceleration stage.
-/// @ingroup mococost
-class OSIMMOCO_API MocoJointReactionCost : public MocoCost {
-OpenSim_DECLARE_CONCRETE_OBJECT(MocoJointReactionCost, MocoCost);
+/// @ingroup mocogoal
+class OSIMMOCO_API MocoJointReactionGoal : public MocoGoal {
+OpenSim_DECLARE_CONCRETE_OBJECT(MocoJointReactionGoal, MocoGoal);
 public:
-    MocoJointReactionCost();
-    MocoJointReactionCost(std::string name) : MocoCost(std::move(name)) {
+    MocoJointReactionGoal();
+    MocoJointReactionGoal(std::string name) : MocoGoal(std::move(name)) {
         constructProperties();
     }
-    MocoJointReactionCost(std::string name, double weight)
-            : MocoCost(std::move(name), weight) {
+    MocoJointReactionGoal(std::string name, double weight)
+            : MocoGoal(std::move(name), weight) {
         constructProperties();
     }
 
@@ -65,14 +65,14 @@ public:
     /// "parent" or "child" (default: "parent").
     void setLoadsFrame(const std::string& frame)
     {   set_loads_frame(frame); }
-    /// Set the frame in which the minimized reaction load is expressed. By
-    /// default, it is set to the parent or child frame depending on the
+    /// Set the frame in which the minimized reaction load is expressed. By 
+    /// default, it is set to the parent or child frame depending on the 
     /// 'loads_frame' property value.
-    void setExpressedInFramePath(const std::string& framePath)
+    void setExpressedInFramePath(const std::string& framePath) 
     {   set_expressed_in_frame_path(framePath); }
     /// Set a specific set of reaction measures to be minimized. Options:
-    /// "moment-x", "moment-y", "moment-z", "force-x", "force-y", and "force-z".
-    /// All reaction measures are minimized by default.
+    /// "moment-x", "moment-y", "moment-z", "force-x", "force-y", and "force-z". 
+    /// All reaction measures are minimized by default. 
     /// Replaces the reaction measure set if it already exists.
     void setReactionMeasures(const std::vector<std::string>& measures){
         updProperty_reaction_measures().clear();
@@ -99,22 +99,21 @@ public:
 
 protected:
     void initializeOnModelImpl(const Model&) const override;
-    int getNumIntegralsImpl() const override { return 1; }
     void calcIntegrandImpl(const SimTK::State& state,
             double& integrand) const override;
-    void calcCostImpl(
-            const CostInput& input, SimTK::Real& cost) const override {
-        cost = input.integral;
+    void calcGoalImpl(
+            const GoalInput& input, SimTK::Vector& cost) const override {
+        cost[0] = input.integral;
     }
 
 private:
-    OpenSim_DECLARE_PROPERTY(joint_path, std::string,
+    OpenSim_DECLARE_PROPERTY(joint_path, std::string, 
             "The model path to the joint whose reaction load(s) will be "
             "minimized.");
-    OpenSim_DECLARE_PROPERTY(loads_frame, std::string,
+    OpenSim_DECLARE_PROPERTY(loads_frame, std::string, 
             "The frame from which the reaction loads are computed. Options: "
             "'child' or 'parent' (default: 'parent').");
-    OpenSim_DECLARE_PROPERTY(expressed_in_frame_path, std::string,
+    OpenSim_DECLARE_PROPERTY(expressed_in_frame_path, std::string, 
             "The frame in which the minimized reaction load is expressed.");
     OpenSim_DECLARE_LIST_PROPERTY(reaction_measures, std::string,
             "A specific set of reaction measures to be minimized. Options: "
@@ -123,7 +122,7 @@ private:
     OpenSim_DECLARE_PROPERTY(reaction_weights, MocoWeightSet,
             "Set of weight objects to weight individual reaction measures in "
             "the cost.");
-
+    
     void constructProperties();
 
     mutable SimTK::ReferencePtr<const Joint> m_joint;
@@ -135,4 +134,4 @@ private:
 
 } // namespace OpenSim
 
-#endif // MOCO_MOCOJOINTREACTIONCOST_H
+#endif // MOCO_MOCOJOINTREACTIONGOAL_H

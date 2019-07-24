@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- *
- * OpenSim Moco: MocoControlCost.cpp                                          *
+ * OpenSim Moco: MocoControlGoal.cpp                                          *
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2017 Stanford University and the Authors                     *
  *                                                                            *
@@ -16,7 +16,7 @@
  * limitations under the License.                                             *
  * -------------------------------------------------------------------------- */
 
-#include "MocoControlCost.h"
+#include "MocoControlGoal.h"
 
 #include "../MocoUtilities.h"
 
@@ -24,14 +24,13 @@
 
 using namespace OpenSim;
 
-MocoControlCost::MocoControlCost() { constructProperties(); }
+MocoControlGoal::MocoControlGoal() { constructProperties(); }
 
-void MocoControlCost::constructProperties() {
+void MocoControlGoal::constructProperties() {
     constructProperty_control_weights(MocoWeightSet());
-    constructProperty_exponent(2);
 }
 
-void MocoControlCost::setWeight(
+void MocoControlGoal::setWeightForControl(
         const std::string& controlName, const double& weight) {
     if (get_control_weights().contains(controlName)) {
         upd_control_weights().get(controlName).setWeight(weight);
@@ -40,7 +39,7 @@ void MocoControlCost::setWeight(
     }
 }
 
-void MocoControlCost::initializeOnModelImpl(const Model& model) const {
+void MocoControlGoal::initializeOnModelImpl(const Model& model) const {
 
     // Get all expected control names.
     auto controlNames = createControlNamesFromModel(model);
@@ -71,19 +70,17 @@ void MocoControlCost::initializeOnModelImpl(const Model& model) const {
         }
     }
 
-    OPENSIM_THROW_IF_FRMOBJ(get_exponent() < 1, Exception,
-            format("Exponent must be >= 1, but got %i.", get_exponent()));
-    m_exponent = get_exponent();
+    setNumIntegralsAndOutputs(1, 1);
 }
 
-void MocoControlCost::calcIntegrandImpl(
+void MocoControlGoal::calcIntegrandImpl(
         const SimTK::State& state, double& integrand) const {
     getModel().realizeVelocity(state); // TODO would avoid this, ideally.
     const auto& controls = getModel().getControls(state);
     integrand = 0;
     int iweight = 0;
     for (const auto& icontrol : m_controlIndices) {
-        integrand += m_weights[iweight] * pow(controls[icontrol], m_exponent);
+        integrand += m_weights[iweight] * controls[icontrol] * controls[icontrol];
         ++iweight;
     }
 }
