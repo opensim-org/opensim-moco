@@ -112,16 +112,15 @@ std::unique_ptr<MocoCasOCProblem> MocoCasADiSolver::createCasOCProblem() const {
     } else if (parallelEV != -1) {
         parallel = parallelEV;
     }
-    // Not an issue with Python 3?
-    // if (m_runningInPython && parallel) {
-    //     std::cout << "Warning: "
-    //                  "Cannot use parallelism in Python due to its "
-    //                  "Global Interpreter Lock. "
-    //                  "Set the environment variable OPENSIM_MOCO_PARALLEL or "
-    //                  "MocoCasADiSolver's 'parallel' property to 0, "
-    //                  "or use the command-line or Matlab interfaces."
-    //               << std::endl;
-    // }
+    //if (m_runningInPython && parallel) {
+    //    std::cout << "Warning: "
+    //                 "Cannot use parallelism in Python due to its "
+    //                 "Global Interpreter Lock. "
+    //                 "Set the environment variable OPENSIM_MOCO_PARALLEL or "
+    //                 "MocoCasADiSolver's 'parallel' property to 0, "
+    //                 "or use the command-line or Matlab interfaces."
+    //              << std::endl;
+    //}
     int numThreads;
     if (parallel == 0) {
         numThreads = 1;
@@ -296,7 +295,16 @@ MocoSolution MocoCasADiSolver::solveImpl() const {
     if (guess.empty()) {
         casGuess = casSolver->createInitialGuessFromBounds();
     } else {
-        casGuess = convertToCasOCIterate(*m_guessToUse);
+        OPENSIM_THROW_IF(get_dynamics_mode() == "implicit" &&
+                guess.hasCoordinateStates() &&
+                guess.getDerivativeNames().empty(), Exception,
+            "'dynamics_mode' set to 'implicit' and coordinate states exist in "
+            "the guess, but no coordinate accelerations were found in the "
+            "guess. Consider using "
+            "MocoTrajectory::generateAccelerationsFromValues() or "
+            "MocoTrajectory::generateAccelerationsFromSpeeds() to construct an "
+            "appropriate guess.")
+        casGuess = convertToCasOCIterate(guess);
     }
     CasOC::Solution casSolution = casSolver->solve(casGuess);
     MocoSolution mocoSolution =

@@ -19,8 +19,8 @@ set(MOCO_SOURCES
         MocoProblemRep.cpp
         MocoCost/MocoCost.h
         MocoCost/MocoCost.cpp
-        MocoCost/MocoMarkerEndpointCost.h
-        MocoCost/MocoMarkerEndpointCost.cpp
+        MocoCost/MocoMarkerFinalCost.h
+        MocoCost/MocoMarkerFinalCost.cpp
         MocoCost/MocoMarkerTrackingCost.h
         MocoCost/MocoMarkerTrackingCost.cpp
         MocoWeightSet.h
@@ -52,18 +52,10 @@ set(MOCO_SOURCES
         MocoConstraint.cpp
         MocoControlBoundConstraint.cpp
         MocoControlBoundConstraint.h
-        InverseMuscleSolver/InverseMuscleSolver.h
-        InverseMuscleSolver/InverseMuscleSolver.cpp
-        InverseMuscleSolver/GlobalStaticOptimization.h
-        InverseMuscleSolver/GlobalStaticOptimization.cpp
-        InverseMuscleSolver/INDYGO.h
-        InverseMuscleSolver/INDYGO.cpp
-        InverseMuscleSolver/INDYGOProblemInternal.h
-        InverseMuscleSolver/DeGrooteFregly2016MuscleStandalone.h
-        InverseMuscleSolver/InverseMuscleSolverMotionData.h
-        InverseMuscleSolver/InverseMuscleSolverMotionData.cpp
         Components/DeGrooteFregly2016Muscle.h
         Components/DeGrooteFregly2016Muscle.cpp
+        Components/SmoothSphereHalfSpaceForce.h
+        Components/SmoothSphereHalfSpaceForce.cpp
         Components/ActivationCoordinateActuator.h
         Components/StationPlaneContactForce.h
         Components/StationPlaneContactForce.cpp
@@ -77,6 +69,7 @@ set(MOCO_SOURCES
         Components/FreePointBodyActuator.cpp
         Components/AccelerationMotion.h
         Components/AccelerationMotion.cpp
+        Components/MultivariatePolynomialFunction.h
         MocoCasADiSolver/MocoCasADiSolver.h
         MocoCasADiSolver/MocoCasADiSolver.cpp
         MocoCasADiSolver/MocoCasOCProblem.h
@@ -104,14 +97,28 @@ set(MOCO_SOURCES
         MocoTool.cpp
         MocoTool.h
         )
-if (MOCO_WITH_TROPTER)
+if(MOCO_WITH_TROPTER)
     list(APPEND MOCO_SOURCES
             tropter/TropterProblem.h
-            tropter/TropterProblem.cpp)
+            tropter/TropterProblem.cpp
+            InverseMuscleSolver/InverseMuscleSolver.h
+            InverseMuscleSolver/InverseMuscleSolver.cpp
+            InverseMuscleSolver/GlobalStaticOptimization.h
+            InverseMuscleSolver/GlobalStaticOptimization.cpp
+            InverseMuscleSolver/INDYGO.h
+            InverseMuscleSolver/INDYGO.cpp
+            InverseMuscleSolver/INDYGOProblemInternal.h
+            InverseMuscleSolver/DeGrooteFregly2016MuscleStandalone.h
+            InverseMuscleSolver/InverseMuscleSolverMotionData.h
+            InverseMuscleSolver/InverseMuscleSolverMotionData.cpp
+            )
 endif ()
 add_library(osimMoco SHARED ${MOCO_SOURCES})
 target_link_libraries(osimMoco PUBLIC osimTools
-        PRIVATE tropter casadi)
+        PRIVATE casadi)
+if (MOCO_WITH_TROPTER)
+    target_link_libraries(osimMoco PRIVATE tropter)
+endif()
 
 target_include_directories(osimMoco INTERFACE
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/Moco>

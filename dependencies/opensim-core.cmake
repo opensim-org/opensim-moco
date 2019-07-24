@@ -4,7 +4,7 @@
 # will invalidate its cached opensim-core installation if we change the commit.
 # This commented commit hash is not actually used in the superbuild.
 # opensim-core commit:
-# 1bf48b75aef1c1ba0a386b555010f3b63f0a98f5
+# 7420c7e67aa2438b1157784f68b7fbda1b6b2498
 
 AddDependency(NAME       opensim-core
               URL        ${CMAKE_SOURCE_DIR}/../opensim-core
@@ -24,7 +24,7 @@ if(SUPERBUILD_opensim-core)
     # OpenSim's dependencies.
     AddDependency(NAME simbody
                   GIT_URL    https://github.com/simbody/simbody.git
-                  GIT_TAG    187d22c690359677912f03c0490049f878d36c72
+                  GIT_TAG    94814f3c19e613f82a91ab58abd5471ed63aad96
                   CMAKE_ARGS -DBUILD_EXAMPLES:BOOL=OFF 
                              -DBUILD_TESTING:BOOL=OFF)
 
@@ -36,6 +36,5 @@ if(SUPERBUILD_opensim-core)
     add_dependencies(opensim-core simbody docopt)
 endif()
 
-# CACHE INVALIDATION LOG
-# - Line added to upgrade OpenSim bindings to Python 3.
+
 

@@ -76,7 +76,7 @@ void MocoControlCost::initializeOnModelImpl(const Model& model) const {
     m_exponent = get_exponent();
 }
 
-void MocoControlCost::calcIntegralCostImpl(
+void MocoControlCost::calcIntegrandImpl(
         const SimTK::State& state, double& integrand) const {
     getModel().realizeVelocity(state); // TODO would avoid this, ideally.
     const auto& controls = getModel().getControls(state);

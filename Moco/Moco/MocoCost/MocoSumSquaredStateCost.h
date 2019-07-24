@@ -24,7 +24,7 @@ namespace OpenSim {
 
 /// Minimize the sum of squared states, integrated over the phase. This
 /// can be used to minimize muscle activations (if those are the only states
-/// in the system).
+/// in the system), as is done in MocoInverse.
 /// @underdevelopment
 /// In the future, this class will allow you to select which states to
 /// minimize.
@@ -43,8 +43,13 @@ public:
 
 protected:
     void initializeOnModelImpl(const Model&) const override;
-    void calcIntegralCostImpl(
+    int getNumIntegralsImpl() const override { return 1; }
+    void calcIntegrandImpl(
             const SimTK::State& state, double& integrand) const override;
+    void calcCostImpl(
+            const CostInput& input, SimTK::Real& cost) const override {
+        cost = input.integral;
+    }
 
 private:
     void constructProperties();

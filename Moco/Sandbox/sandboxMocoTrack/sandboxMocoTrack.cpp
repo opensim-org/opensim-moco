@@ -225,20 +225,20 @@ Model createModel(bool removeMuscles = false, bool addAnkleExo = false) {
     addCoordinateActuator(model, "pelvis_tx", 1000);
     addCoordinateActuator(model, "pelvis_ty", 5000);
     addCoordinateActuator(model, "pelvis_tz", 1000);
-    //if (removeMuscles) {
-    addCoordinateActuator(model, "hip_adduction_l", 100);
-    addCoordinateActuator(model, "hip_adduction_r", 100);
-    addCoordinateActuator(model, "hip_flexion_l", 100);
-    addCoordinateActuator(model, "hip_flexion_r", 100);
-    addCoordinateActuator(model, "hip_rotation_l", 100);
-    addCoordinateActuator(model, "hip_rotation_r", 100);
-    addCoordinateActuator(model, "knee_angle_l", 100);
-    addCoordinateActuator(model, "knee_angle_r", 100);
-    addCoordinateActuator(model, "ankle_angle_l", 250);
-    addCoordinateActuator(model, "ankle_angle_r", 250);
-    addCoordinateActuator(model, "subtalar_angle_r", 100);
-    addCoordinateActuator(model, "subtalar_angle_l", 100);
-    //}
+    if (removeMuscles) {
+        addCoordinateActuator(model, "hip_adduction_l", 100);
+        addCoordinateActuator(model, "hip_adduction_r", 100);
+        addCoordinateActuator(model, "hip_flexion_l", 100);
+        addCoordinateActuator(model, "hip_flexion_r", 100);
+        addCoordinateActuator(model, "hip_rotation_l", 100);
+        addCoordinateActuator(model, "hip_rotation_r", 100);
+        addCoordinateActuator(model, "knee_angle_l", 100);
+        addCoordinateActuator(model, "knee_angle_r", 100);
+        addCoordinateActuator(model, "ankle_angle_l", 250);
+        addCoordinateActuator(model, "ankle_angle_r", 250);
+        addCoordinateActuator(model, "subtalar_angle_r", 100);
+        addCoordinateActuator(model, "subtalar_angle_l", 100);
+    }
 
     if (removeMuscles) {
         model.print("subject_walk_rra_adjusted_armless_updated.osim");
@@ -312,7 +312,8 @@ MocoSolution runBaselineProblem(bool removeMuscles, double controlWeight = 0.1,
                                     ModOpAddExternalLoads("grf_walk.xml");
     track.setModel(model);
     TableProcessor tableProcessor = 
-            TableProcessor("coordinates_rra_adjusted.sto");
+            TableProcessor("coordinates_rra_adjusted.sto") |
+            TabOpLowPassFilter(6);
     track.set_states_reference(tableProcessor);
     track.set_track_reference_position_derivatives(true);
     track.set_initial_time(0.81);
@@ -698,12 +699,11 @@ int main() {
 
     // Baseline tracking problem w/o muscles.
     // --------------------------------------
-    //MocoSolution baseline = runBaselineProblem(true, controlWeight);
+    MocoSolution baseline = runBaselineProblem(true, controlWeight);
 
     // Baseline tracking problem w/ muscles.
     // -------------------------------------
-    MocoSolution baselineWithMuscles = runBaselineProblem(false, controlWeight,
-      "sandboxMocoTrack_solution_baseline_muscles.sto");
+    MocoSolution baselineWithMuscles = runBaselineProblem(false, controlWeight);
 
     // Knee adduction minimization w/o muscles.
     // ----------------------------------------

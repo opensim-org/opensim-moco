@@ -30,6 +30,7 @@ Parts of the documentation:
   - @ref mocotrack
   - @ref mocoinverse
   - @ref mocostudy
+  - MocoTrajectory
   - @ref utilities
   - @ref mocoimplguide
   - @ref faq
@@ -45,9 +46,9 @@ of these satisfy your needs, you can define your own using a plugin.
 
 
 
-@defgroup utilities Utilities
+@page utilities Utilities
 
-Moco contains utilties for creating models, modifying models,
+Moco contains utilities for creating models, modifying models,
 working with data, and postprocessing results.
 
 1. ModelFactory: Create standard models and modify existing models.
@@ -64,9 +65,9 @@ working with data, and postprocessing results.
 
 
 
-@defgroup faq Frequently Asked Questions
+@page faq Frequently Asked Questions
 
-@section How do I interrupt an optimization in MATLAB?
+@section interrupt How do I interrupt an optimization in MATLAB?
 
 Sometimes, you may want to interrupt an optimization before it is complete. In
 MATLAB, we commonly use Ctrl-C to interrupt code, but this does not work during

@@ -54,8 +54,13 @@ public:
     int getExponent() const { return get_exponent(); }
 protected:
     void initializeOnModelImpl(const Model&) const override;
-    void calcIntegralCostImpl(
+    int getNumIntegralsImpl() const override { return 1; }
+    void calcIntegrandImpl(
             const SimTK::State& state, double& integrand) const override;
+    void calcCostImpl(
+            const CostInput& input, SimTK::Real& cost) const override {
+        cost = input.integral;
+    }
 
 private:
     void constructProperties();

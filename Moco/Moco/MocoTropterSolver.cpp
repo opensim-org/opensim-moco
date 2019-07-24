@@ -54,6 +54,7 @@ std::unique_ptr<tropter::DirectCollocationSolver<double>>
 MocoTropterSolver::createTropterSolver(
         std::shared_ptr<const MocoTropterSolver::TropterProblemBase<double>>
                 ocp) const {
+#ifdef MOCO_WITH_TROPTER
     // Check that a positive number of mesh points was provided.
     checkPropertyIsPositive(*this, getProperty_num_mesh_points());
 
@@ -199,6 +200,9 @@ MocoTropterSolver::createTropterSolver(
     // TODO optsolver.set_findiff_hessian_step_size(1e-3);
 
     return dircol;
+#else
+    OPENSIM_THROW(MocoTropterSolverNotAvailable);
+#endif
 }
 
 MocoTrajectory MocoTropterSolver::createGuess(const std::string& type) const {
@@ -302,7 +306,16 @@ MocoSolution MocoTropterSolver::solveImpl() const {
         getProblemRep().printDescription();
     }
     auto dircol = createTropterSolver(ocp);
-    tropter::Iterate tropIterate = ocp->convertToTropterIterate(getGuess());
+    MocoTrajectory guess = getGuess();
+    OPENSIM_THROW_IF(get_dynamics_mode() == "implicit" &&
+            guess.hasCoordinateStates() &&
+            guess.getDerivativeNames().empty(), Exception,
+        "'dynamics_mode' set to 'implicit' and coordinate states exist in the "
+        "guess, but no coordinate accelerations were found in the guess. "
+        "Consider using MocoTrajectory::generateAccelerationsFromValues() or "
+        "MocoTrajectory::generateAccelerationsFromSpeeds() to construct an "
+        "appropriate guess.")
+    tropter::Iterate tropIterate = ocp->convertToTropterIterate(guess);
     tropter::Solution tropSolution = dircol->solve(tropIterate);
 
     if (get_verbosity()) { dircol->print_constraint_values(tropSolution); }

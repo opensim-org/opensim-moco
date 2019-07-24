@@ -41,7 +41,7 @@ void MocoStudy::constructProperties() {
     constructProperty_write_setup("./");
     constructProperty_write_solution("./");
     constructProperty_problem(MocoProblem());
-    constructProperty_solver(MocoTropterSolver());
+    constructProperty_solver(MocoCasADiSolver());
 }
 
 const MocoProblem& MocoStudy::getProblem() const { return get_problem(); }
@@ -80,7 +80,20 @@ MocoSolver& MocoStudy::updSolver() { return updSolver<MocoSolver>(); }
 MocoSolution MocoStudy::solve() const {
     // TODO avoid const_cast.
     const_cast<Self*>(this)->initSolverInternal();
-    MocoSolution solution = get_solver().solve();
+
+    // Temporarily disable printing of negative muscle force warnings so the
+    // output stream isn't flooded while computing finite differences.
+    bool oldWarningFlag = Muscle::getPrintWarnings();
+    Muscle::setPrintWarnings(false);
+    MocoSolution solution;
+    try {
+        solution = get_solver().solve();
+    } catch (const Exception&) { 
+        Muscle::setPrintWarnings(oldWarningFlag);
+        throw;
+    }
+    Muscle::setPrintWarnings(oldWarningFlag);
+
     bool originallySealed = solution.isSealed();
     if (get_write_setup() != "false") {
         OpenSim::IO::makeDir(get_write_setup());

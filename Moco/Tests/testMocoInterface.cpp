@@ -625,8 +625,7 @@ TEMPLATE_TEST_CASE("Workflow", "", MocoTropterSolver, MocoCasADiSolver) {
         }
     }
 
-    // Ensure that changes to time bounds are obeyed.
-    {
+    SECTION("Changes to time bounds are obeyed") {
         MocoStudy moco;
         MocoProblem& problem = moco.updProblem();
         problem.setModel(createSlidingMassModel());
@@ -657,7 +656,7 @@ TEMPLATE_TEST_CASE("Workflow", "", MocoTropterSolver, MocoCasADiSolver) {
         CHECK(solution.getFinalTime() == Approx(5.8));
     }
 
-    {
+    SECTION("Changes to model are obeyed; set costs and model in any order.") {
         double finalTime0;
         {
             // Ensure that changes to the model are obeyed.
@@ -694,8 +693,7 @@ TEMPLATE_TEST_CASE("Workflow", "", MocoTropterSolver, MocoCasADiSolver) {
         }
     }
 
-    // Changes to the costs are obeyed.
-    {
+    SECTION("Changes to costs are obeyed") {
         MocoStudy moco;
         MocoProblem& problem = moco.updProblem();
         problem.setModel(createSlidingMassModel());
@@ -713,17 +711,15 @@ TEMPLATE_TEST_CASE("Workflow", "", MocoTropterSolver, MocoCasADiSolver) {
     }
 
     // Invoking functions without initializing.
-    {
-        // TODO
-    }
+    // TODO
 
     // TODO MocoCost and MocoParameter cache pointers into some model.
     // TODO {
     // TODO     MocoFinalTimeCost cost;
     // TODO     // TODO must be initialized first.
     // TODO     // TODO MocoPhase shouldn't even have a public
-    // calcEndpointCost function.
-    // TODO     SimTK_TEST_MUST_THROW_EXC(cost.calcEndpointCost(state),
+    // calcCost function.
+    // TODO     SimTK_TEST_MUST_THROW_EXC(cost.calcCost(state),
     // Exception);
     // TODO }
 
@@ -1221,6 +1217,25 @@ TEMPLATE_TEST_CASE("Guess", "", MocoTropterSolver, MocoCasADiSolver) {
         MocoTrajectory guess1(guess2);
         guess1.setNumTimes(1);
         CHECK_THROWS_AS(guess1.resampleWithNumTimes(10), Exception);
+    }
+
+    // Can't use a guess from explicit dynamics in implicit dynamics mode.
+    {
+        MocoTrajectory explicitGuess = ms.createGuess();
+        ms.set_dynamics_mode("implicit");
+        ms.setGuess(explicitGuess);
+        CHECK_THROWS_WITH(moco.solve(), 
+            Catch::Contains(
+                "'dynamics_mode' set to 'implicit' and coordinate states "
+                "exist in the guess, but no coordinate accelerations were "
+                "found in the guess. Consider using "
+                "MocoTrajectory::generateAccelerationsFromValues() or "
+                "MocoTrajectory::generateAccelerationsFromSpeeds() to "
+                "construct an appropriate guess."));
+        CHECK(explicitGuess.getDerivativeNames().empty());
+        explicitGuess.generateAccelerationsFromSpeeds();
+        // Only one coordinate in the sliding mass model.
+        CHECK(explicitGuess.getDerivativeNames().size() == 1);
     }
 
     // TODO ordering of states and controls in MocoTrajectory should not
