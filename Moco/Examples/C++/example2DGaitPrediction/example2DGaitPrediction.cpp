@@ -368,10 +368,10 @@ private:
 //    MocoSolution solution = moco.solve();
 //}
 
-void testPredictive(){
+void testPredictive_Polynomial(){
 
     MocoStudy moco;
-    moco.setName("2DGaitPrediction");
+    moco.setName("2DGaitPrediction_Polynomial");
 
     // Define the optimal control problem.
     // ===================================
@@ -499,9 +499,81 @@ void testPredictive(){
     solver.set_optim_max_iterations(10000);
     solver.set_parallel(8);
     // Set Guess
-    solver.setGuessFile("coordinateTracking_solution.sto");
-
+    solver.setGuessFile("coordinateTracking_Muscles_solution.sto");
+    // Solve problem
     MocoSolution solution = moco.solve();
+
+    // Extract ground reaction forces
+    std::vector<std::string> contactSpheres_r;
+    std::vector<std::string> contactSpheres_l;
+    // What users would provide
+    contactSpheres_r.push_back("contactSphereHeel_r");
+    contactSpheres_r.push_back("contactSphereFront_r");
+    contactSpheres_l.push_back("contactSphereHeel_l");
+    contactSpheres_l.push_back("contactSphereFront_l");
+    // Extract forces
+    TimeSeriesTableVec3 externalForcesTable{};
+    StatesTrajectory optStates = solution.exportToStatesTrajectory(problem);
+    SimTK::Vector optTime = solution.getTime();
+    auto model = modelprocessor.process();
+    model.initSystem();
+    int count = 0;
+    for (const auto& state : optStates) {
+        model.realizeVelocity(state);
+
+        SimTK::Vec3 forces_r(0);
+        SimTK::Vec3 torques_r(0);
+        for (const auto& contactSphere_r : contactSpheres_r) {
+            Array<double> forcesContactSphere_r = model.getComponent<
+                    SmoothSphereHalfSpaceForce>(
+                            contactSphere_r).getRecordValues(state);
+            forces_r += SimTK::Vec3(forcesContactSphere_r[0],
+                forcesContactSphere_r[1], forcesContactSphere_r[2]);
+            torques_r += SimTK::Vec3(forcesContactSphere_r[3],
+                forcesContactSphere_r[4], forcesContactSphere_r[5]);
+        }
+        SimTK::Vec3 forces_l(0);
+        SimTK::Vec3 torques_l(0);
+        for (const auto& contactSphere_l : contactSpheres_l) {
+            Array<double> forcesContactSphere_l = model.getComponent<
+                    SmoothSphereHalfSpaceForce>(
+                            contactSphere_l).getRecordValues(state);
+            forces_l += SimTK::Vec3(forcesContactSphere_l[0],
+                forcesContactSphere_l[1], forcesContactSphere_l[2]);
+            torques_l += SimTK::Vec3(forcesContactSphere_l[3],
+                forcesContactSphere_l[4], forcesContactSphere_l[5]);
+        }
+        // Combine in a row
+        SimTK::RowVector_<SimTK::Vec3> row(6);
+        row(0) = forces_r;
+        row(1) = SimTK::Vec3(0);
+        row(2) = forces_l;
+        row(3) = SimTK::Vec3(0);
+        row(4) = torques_r;
+        row(5) = torques_l;
+        // Append to a table
+        externalForcesTable.appendRow(optTime[count],row);
+        ++count;
+    }
+    // Write file
+    // Create labels for output file
+    std::vector<std::string> labels;
+    labels.push_back("ground_force_v");
+    labels.push_back("ground_force_p");
+    labels.push_back("1_ground_force_v");
+    labels.push_back("1_ground_force_p");
+    labels.push_back("ground_torque_");
+    labels.push_back("1_ground_torque_");
+    std::vector<std::string> suffixes;
+    suffixes.push_back("x");
+    suffixes.push_back("y");
+    suffixes.push_back("z");
+    externalForcesTable.setColumnLabels(labels);
+    TimeSeriesTable externalForcesTableFlat =
+            externalForcesTable.flatten(suffixes);
+    DataAdapter::InputTables tables = {{"table", &externalForcesTableFlat}};
+    FileAdapter::writeFile(tables,
+            "2DGaitPrediction_Polynomial_GRF.sto");
 }
 
 void testPredictive_GeometryPath(){
@@ -636,9 +708,81 @@ void testPredictive_GeometryPath(){
     solver.set_optim_max_iterations(10000);
     solver.set_parallel(8);
     // Set Guess
-    solver.setGuessFile("coordinateTracking_solution.sto");
-
+    solver.setGuessFile("coordinateTracking_Muscles_solution.sto");
+    // Solve problem
     MocoSolution solution = moco.solve();
+
+    // Extract ground reaction forces
+    std::vector<std::string> contactSpheres_r;
+    std::vector<std::string> contactSpheres_l;
+    // What users would provide
+    contactSpheres_r.push_back("contactSphereHeel_r");
+    contactSpheres_r.push_back("contactSphereFront_r");
+    contactSpheres_l.push_back("contactSphereHeel_l");
+    contactSpheres_l.push_back("contactSphereFront_l");
+    // Extract forces
+    TimeSeriesTableVec3 externalForcesTable{};
+    StatesTrajectory optStates = solution.exportToStatesTrajectory(problem);
+    SimTK::Vector optTime = solution.getTime();
+    auto model = modelprocessor.process();
+    model.initSystem();
+    int count = 0;
+    for (const auto& state : optStates) {
+        model.realizeVelocity(state);
+
+        SimTK::Vec3 forces_r(0);
+        SimTK::Vec3 torques_r(0);
+        for (const auto& contactSphere_r : contactSpheres_r) {
+            Array<double> forcesContactSphere_r = model.getComponent<
+                    SmoothSphereHalfSpaceForce>(
+                            contactSphere_r).getRecordValues(state);
+            forces_r += SimTK::Vec3(forcesContactSphere_r[0],
+                forcesContactSphere_r[1], forcesContactSphere_r[2]);
+            torques_r += SimTK::Vec3(forcesContactSphere_r[3],
+                forcesContactSphere_r[4], forcesContactSphere_r[5]);
+        }
+        SimTK::Vec3 forces_l(0);
+        SimTK::Vec3 torques_l(0);
+        for (const auto& contactSphere_l : contactSpheres_l) {
+            Array<double> forcesContactSphere_l = model.getComponent<
+                    SmoothSphereHalfSpaceForce>(
+                            contactSphere_l).getRecordValues(state);
+            forces_l += SimTK::Vec3(forcesContactSphere_l[0],
+                forcesContactSphere_l[1], forcesContactSphere_l[2]);
+            torques_l += SimTK::Vec3(forcesContactSphere_l[3],
+                forcesContactSphere_l[4], forcesContactSphere_l[5]);
+        }
+        // Combine in a row
+        SimTK::RowVector_<SimTK::Vec3> row(6);
+        row(0) = forces_r;
+        row(1) = SimTK::Vec3(0);
+        row(2) = forces_l;
+        row(3) = SimTK::Vec3(0);
+        row(4) = torques_r;
+        row(5) = torques_l;
+        // Append to a table
+        externalForcesTable.appendRow(optTime[count],row);
+        ++count;
+    }
+    // Write file
+    // Create labels for output file
+    std::vector<std::string> labels;
+    labels.push_back("ground_force_v");
+    labels.push_back("ground_force_p");
+    labels.push_back("1_ground_force_v");
+    labels.push_back("1_ground_force_p");
+    labels.push_back("ground_torque_");
+    labels.push_back("1_ground_torque_");
+    std::vector<std::string> suffixes;
+    suffixes.push_back("x");
+    suffixes.push_back("y");
+    suffixes.push_back("z");
+    externalForcesTable.setColumnLabels(labels);
+    TimeSeriesTable externalForcesTableFlat =
+            externalForcesTable.flatten(suffixes);
+    DataAdapter::InputTables tables = {{"table", &externalForcesTableFlat}};
+    FileAdapter::writeFile(tables,
+            "2DGaitPrediction_GeometryPath_GRF.sto");
 }
 
 //void testPredictive_withPassiveForces_activationSquared(){
@@ -1011,12 +1155,6 @@ void testPredictive_GeometryPath(){
 //}
 
 int main() {
-    //testPredictive();
-    testPredictive_GeometryPath();
-    //testPredictive_withoutPassiveForces();
-    //testPredictive_withPassiveForces_activationSquared();
-    //testPredictive_withPassiveForces_accelerationSquared();
-    //testPredictive_withPassiveForces_Implicit();
-    //testPredictive_withPassiveForces_JRL();
-    //testPredictive_withPassiveForces_Implicit_Acceleration();
+    example2DPrediction_Polynomial();
+    example2DPrediction_GeometryPath();
 }
