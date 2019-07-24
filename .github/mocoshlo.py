@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 
 import os
@@ -9,13 +10,22 @@ from pathlib import Path
 
 parser = argparse.ArgumentParser(
         description="Submit a Moco job to the Stanford Sherlock computing cluster.")
-parser.add_argument('directory', type=str, help="Location of input files.")
+parser.add_argument('--directory', type=str, default="",
+        help="Location of input files for running a job on Sherlock.")
+parser.add_argument('--build-docker', metavar='gitref:dockertag', type=str, 
+        dest='build_docker', default="",
+        help="Build a new Docker container of opensim-moco using the git "
+        "commit/tag gitref, upload the container to DockerHub using tag "
+        "dockertag, and download the container to Sherlock as a Singularity "
+        "container.")
 parser.add_argument('--duration', type=str, default="00:30:00",
         help="Maximum duration for the job in HH:MM:SS.")
 parser.add_argument('--name', type=str, default="",
         help="A name for the job (default: directory name).")
 parser.add_argument('--note', type=str, default="",
         help="A note to save to the directory (as note.txt).")
+parser.add_argument('--tag', type=str, default="latest",
+        help="The tag of the Singularity container to use.")
 
 parser.add_argument('--sshmaster', dest='sshmaster', action='store_true',
         help="Start master SSH session (default).")
@@ -35,6 +45,13 @@ parser.set_defaults(sshmaster=True, sshexit=True)
 
 
 args = parser.parse_args()
+
+if not args.directory and not args.build_docker:
+    raise Exception("Must provide either --directory or --build-docker.")
+if args.directory and args.build_docker:
+    raise Exception("Must provide either --directory or --build-docker, not "
+            "both.")
+
 directory = args.directory
 if args.name != "":
     name = args.name
@@ -53,15 +70,20 @@ with open('config.yaml') as f:
 
 sunetid = config['sunetid']
 
+if directory:
+    # Check that the directory contains setup.omoco.
+    if not os.path.exists(os.path.join(directory, 'setup.omoco')):
+        raise Exception(f"setup.omoco is missing from {directory}.")
 
+    # if note:
+    #     with open(os.path.join(directory, 'note.txt'), 'w') as f:
+    #         f.write(note)
 
-# Check that the directory contains setup.omoco.
-if not os.path.exists(os.path.join(directory, 'setup.omoco')):
-    raise Exception(f"setup.omoco is missing from {directory}.")
+#docker build -- build-arg GITHUBTOKEN --build-arg MOCOBRANCH=... --tag
+#chrisdembia/opensim-moco:TODO .
+#docker push chrisdembia/opensim-moco:TODO
+#singularity pull docker://chrisdembia/opensim-moco:TODO
 
-# if note:
-#     with open(os.path.join(directory, 'note.txt'), 'w') as f:
-#         f.write(note)
 
 
 home = str(Path.home()) # Should work on Windows and UNIX.
@@ -93,7 +115,11 @@ batch = f"""#!/bin/bash
 #SBATCH --partition=owners,normal
 module load gcc/8.1.0
 
-singularity exec $GROUP_HOME/opensim-moco/opensim-moco_latest.sif /opensim-moco-install/bin/opensim-moco run-tool setup.omoco
+container=$GROUP_HOME/opensim-moco/opensim-moco_latest.sif
+singularity exec $container /opensim-moco-install/bin/opensim-moco run-tool setup.omoco
+
+# TODO: generate report.
+singularity exec $container opensim-moco-generate-report MODEL SOLUTION
 
 
 # Upload results to Google Drive.
