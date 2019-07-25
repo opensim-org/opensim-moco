@@ -512,9 +512,12 @@ void example2DPrediction_Polynomial(){
     contactSpheres_l.push_back("contactSphereHeel_l");
     contactSpheres_l.push_back("contactSphereFront_l");
 
-
     TimeSeriesTable externalForcesTableFlat =
         moco.getSmoothSphereHalfSpaceForce(solution,contactSpheres_r,contactSpheres_l);
+
+    DataAdapter::InputTables tables = {{"table", &externalForcesTableFlat}};
+    FileAdapter::writeFile(tables,
+            "2DGaitPrediction_Polynomial_GRF.sto");
 
     //// Extract ground reaction forces
     //std::vector<std::string> contactSpheres_r;
@@ -585,9 +588,9 @@ void example2DPrediction_Polynomial(){
     //externalForcesTable.setColumnLabels(labels);
     //TimeSeriesTable externalForcesTableFlat =
     //        externalForcesTable.flatten(suffixes);
-    DataAdapter::InputTables tables = {{"table", &externalForcesTableFlat}};
-    FileAdapter::writeFile(tables,
-            "2DGaitPrediction_Polynomial_GRF.sto");
+    //DataAdapter::InputTables tables = {{"table", &externalForcesTableFlat}};
+    //FileAdapter::writeFile(tables,
+    //        "2DGaitPrediction_Polynomial_GRF.sto");
 }
 
 void example2DPrediction_GeometryPath(){
@@ -800,7 +803,175 @@ void example2DPrediction_GeometryPath(){
             "2DGaitPrediction_GeometryPath_GRF.sto");
 }
 
+void example2DPrediction_GeometryPath_JRL(){
 
+    MocoStudy moco;
+    moco.setName("2DGaitPrediction_GeometryPath_JRL");
+
+    // Define the optimal control problem.
+    // ===================================
+    MocoProblem& problem = moco.updProblem();
+    ModelProcessor modelprocessor = ModelProcessor("gait10dof18musc.osim") |
+        ModOpUsePathLengthApproximation(false);
+    problem.setModelProcessor(modelprocessor);
+
+    // Goal.
+    // =====
+    // Symmetry
+    auto* symmetryGoal = problem.addGoal<MocoPeriodicityGoal>("symmetryGoal");
+    // Coordinate values
+    symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_tilt/value"});
+    symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_ty/value"});
+    symmetryGoal->addStatePair({"/jointset/hip_l/hip_flexion_l/value",
+            "/jointset/hip_r/hip_flexion_r/value"});
+    symmetryGoal->addStatePair({"/jointset/hip_r/hip_flexion_r/value",
+            "/jointset/hip_l/hip_flexion_l/value"});
+    symmetryGoal->addStatePair({"/jointset/knee_l/knee_angle_l/value",
+            "/jointset/knee_r/knee_angle_r/value"});
+    symmetryGoal->addStatePair({"/jointset/knee_r/knee_angle_r/value",
+            "/jointset/knee_l/knee_angle_l/value"});
+    symmetryGoal->addStatePair({"/jointset/ankle_l/ankle_angle_l/value",
+            "/jointset/ankle_r/ankle_angle_r/value"});
+    symmetryGoal->addStatePair({"/jointset/ankle_r/ankle_angle_r/value",
+            "/jointset/ankle_l/ankle_angle_l/value"});
+    symmetryGoal->addStatePair({"/jointset/lumbar/lumbar/value"});
+    // Coordinate speeds
+    symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_tilt/speed"});
+    symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_tx/speed"});
+    symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_ty/speed"});
+    symmetryGoal->addStatePair({"/jointset/hip_l/hip_flexion_l/speed",
+            "/jointset/hip_r/hip_flexion_r/speed"});
+    symmetryGoal->addStatePair({"/jointset/hip_r/hip_flexion_r/speed",
+            "/jointset/hip_l/hip_flexion_l/speed"});
+    symmetryGoal->addStatePair({"/jointset/knee_l/knee_angle_l/speed",
+            "/jointset/knee_r/knee_angle_r/speed"});
+    symmetryGoal->addStatePair({"/jointset/knee_r/knee_angle_r/speed",
+            "/jointset/knee_l/knee_angle_l/speed"});
+    symmetryGoal->addStatePair({"/jointset/ankle_l/ankle_angle_l/speed",
+            "/jointset/ankle_r/ankle_angle_r/speed"});
+    symmetryGoal->addStatePair({"/jointset/ankle_r/ankle_angle_r/speed",
+            "/jointset/ankle_l/ankle_angle_l/speed"});
+    symmetryGoal->addStatePair({"/jointset/lumbar/lumbar/speed"});
+    // Coordinate actuators
+    symmetryGoal->addControlPair({"/lumbarAct"});
+    // Muscle activations
+    symmetryGoal->addStatePair({"/hamstrings_l/activation",
+            "/hamstrings_r/activation"});
+    symmetryGoal->addStatePair({"/hamstrings_r/activation",
+            "/hamstrings_l/activation"});
+    symmetryGoal->addStatePair({"/bifemsh_l/activation",
+            "/bifemsh_r/activation"});
+    symmetryGoal->addStatePair({"/bifemsh_r/activation",
+            "/bifemsh_l/activation"});
+    symmetryGoal->addStatePair({"/glut_max_l/activation",
+            "/glut_max_r/activation"});
+    symmetryGoal->addStatePair({"/glut_max_r/activation",
+            "/glut_max_l/activation"});
+    symmetryGoal->addStatePair({"/iliopsoas_l/activation",
+            "/iliopsoas_r/activation"});
+    symmetryGoal->addStatePair({"/iliopsoas_r/activation",
+            "/iliopsoas_l/activation"});
+    symmetryGoal->addStatePair({"/rect_fem_l/activation",
+            "/rect_fem_r/activation"});
+    symmetryGoal->addStatePair({"/rect_fem_r/activation",
+            "/rect_fem_l/activation"});
+    symmetryGoal->addStatePair({"/vasti_l/activation",
+            "/vasti_r/activation"});
+    symmetryGoal->addStatePair({"/vasti_r/activation",
+            "/vasti_l/activation"});
+    symmetryGoal->addStatePair({"/gastroc_l/activation",
+            "/gastroc_r/activation"});
+    symmetryGoal->addStatePair({"/gastroc_r/activation",
+            "/gastroc_l/activation"});
+    symmetryGoal->addStatePair({"/soleus_l/activation",
+            "/soleus_r/activation"});
+    symmetryGoal->addStatePair({"/soleus_r/activation",
+            "/soleus_l/activation"});
+    symmetryGoal->addStatePair({"/tib_ant_l/activation",
+            "/tib_ant_r/activation"});
+    symmetryGoal->addStatePair({"/tib_ant_r/activation",
+            "/tib_ant_l/activation"});
+
+    // Prescribed average gait speed
+    auto* speedGoal = problem.addGoal<MocoAverageSpeedGoal>("speedGoal");
+    speedGoal->set_desired_speed(1.2);
+
+    // Minimize squared controls normalized by distance travelled
+    auto* controlGoal =
+        problem.addGoal<MocoControlOverDistanceGoal>("controlGoal");
+    controlGoal->setWeight(10);
+
+    // Minimize joint reaction loads
+    auto* loadGoal_knee_r = problem.addGoal<MocoJointReactionGoal>();
+    loadGoal_knee_r->setName("tibiofemoral_compressive_force_r");
+    loadGoal_knee_r->setJointPath("/jointset/knee_r");
+    loadGoal_knee_r->setLoadsFrame("child");
+    loadGoal_knee_r->setExpressedInFramePath("/bodyset/tibia_r");
+    loadGoal_knee_r->setReactionMeasures({"force-y"});
+    loadGoal_knee_r->setWeight("force-y",1);
+    auto* loadGoal_knee_l = problem.addGoal<MocoJointReactionGoal>();
+    loadGoal_knee_l->setName("tibiofemoral_compressive_force_l");
+    loadGoal_knee_l->setJointPath("/jointset/knee_l");
+    loadGoal_knee_l->setLoadsFrame("child");
+    loadGoal_knee_l->setExpressedInFramePath("/bodyset/tibia_l");
+    loadGoal_knee_l->setReactionMeasures({"force-y"});
+    loadGoal_knee_l->setWeight("force-y",1);
+
+    // Adjust bounds
+    problem.setTimeBounds(0, {0.4,0.6});
+
+    problem.setStateInfo("/jointset/groundPelvis/pelvis_tilt/value",
+            {-20*SimTK::Pi/180,-10*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/groundPelvis/pelvis_tx/value", {0,1});
+    problem.setStateInfo("/jointset/groundPelvis/pelvis_ty/value",
+            {0.75,1.25});
+    problem.setStateInfo("/jointset/hip_l/hip_flexion_l/value",
+            {-10*SimTK::Pi/180,60*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/hip_r/hip_flexion_r/value",
+            {-10*SimTK::Pi/180,60*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/knee_l/knee_angle_l/value",
+            {-50*SimTK::Pi/180,0});
+    problem.setStateInfo("/jointset/knee_r/knee_angle_r/value",
+            {-50*SimTK::Pi/180,0});
+    problem.setStateInfo("/jointset/ankle_l/ankle_angle_l/value",
+            {-15*SimTK::Pi/180,25*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/ankle_r/ankle_angle_r/value",
+            {-15*SimTK::Pi/180,25*SimTK::Pi/180});
+    problem.setStateInfo("/jointset/lumbar/lumbar/value",
+            {0,20*SimTK::Pi/180});
+
+    // Configure the solver.
+    // =====================
+    auto& solver = moco.initCasADiSolver();
+    solver.set_num_mesh_points(50);
+    solver.set_verbosity(2);
+    solver.set_optim_solver("ipopt");
+    solver.set_optim_convergence_tolerance(1e-4);
+    solver.set_optim_constraint_tolerance(1e-4);
+    solver.set_optim_max_iterations(10000);
+    solver.set_parallel(8);
+    // Set Guess
+    solver.setGuessFile("coordinateTracking_Muscles_solution.sto");
+    // Solve problem
+    MocoSolution solution = moco.solve();
+
+    // Extract ground reaction forces
+    std::vector<std::string> contactSpheres_r;
+    std::vector<std::string> contactSpheres_l;
+    // What users would provide
+    contactSpheres_r.push_back("contactSphereHeel_r");
+    contactSpheres_r.push_back("contactSphereFront_r");
+    contactSpheres_l.push_back("contactSphereHeel_l");
+    contactSpheres_l.push_back("contactSphereFront_l");
+
+    TimeSeriesTable externalForcesTableFlat =
+            moco.getSmoothSphereHalfSpaceForce(solution, contactSpheres_r,
+                    contactSpheres_l);
+
+    DataAdapter::InputTables tables = {{"table", &externalForcesTableFlat}};
+    FileAdapter::writeFile(tables,
+            "2DGaitPrediction_GeometryPath_JRL_GRF.sto");
+}
 
 
 //void testPredictive_withPassiveForces_activationSquared(){
@@ -1173,6 +1344,7 @@ void example2DPrediction_GeometryPath(){
 //}
 
 int main() {
-    example2DPrediction_Polynomial();
+    //example2DPrediction_Polynomial();
     //example2DPrediction_GeometryPath();
+    example2DPrediction_GeometryPath_JRL();
 }
