@@ -3,7 +3,12 @@ namespace OpenSim {
 
 @page mocouserguide Moco User Guide
 
-This guide shows the various ways of using Moco.
+This guide shows the various ways of using Moco. Moco can solve specific classes
+of problems, such as motion tracking and muscle redundancy, and has a generic
+interface for solving custom optimal control problems. Solving a custom optimal
+control problem with direct collocation requires substantial tuning of the
+direct collocation method's settings. Use the more specific interfaces if
+possible.
 
 @tableofcontents
 
