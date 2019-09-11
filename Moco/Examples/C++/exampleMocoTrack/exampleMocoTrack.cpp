@@ -59,10 +59,10 @@ void torqueDrivenMarkerTracking() {
     // append ModelOperators.
     track.setModel(
             // Create the base Model by passing in the model file.
-            ModelProcessor("subject_walk_armless.osim") |
+            ModelProcessor("subject_walk_armless_contact_no_reserves.osim") |
             // Add ground reaction external loads in lieu of a ground-contact
             // model.
-            ModOpAddExternalLoads("grf_walk.xml") |
+            //ModOpAddExternalLoads("grf_walk.xml") |
             // Remove all the muscles in the model's ForceSet.
             ModOpRemoveMuscles() |
             // Add CoordinateActuators to the model degrees-of-freedom. This
@@ -70,10 +70,19 @@ void torqueDrivenMarkerTracking() {
             // CoordinateActuators.
             ModOpAddReserves(250));
 
+    TableProcessor tableProcessor("coordinates.sto");
+    track.setStatesReference(tableProcessor);
+    track.set_states_global_tracking_weight(10);
+    track.set_track_reference_position_derivatives(true);
+    track.set_scale_state_weights_with_range(true);
+    MocoWeightSet weightSet;
+    weightSet.cloneAndAppend({"/jointset/ground_pelvis/pelvis_ty/value", 1000});
+    track.set_states_weight_set(weightSet);
+
     // Use this convenience function to set the MocoTrack markers reference
     // directly from a TRC file. By default, the markers data is filtered at
     // 6 Hz and if in millimeters, converted to meters.
-    track.setMarkersReferenceFromTRC("marker_trajectories.trc");
+    //track.setMarkersReferenceFromTRC("marker_trajectories.trc");
 
     // There is marker data in the 'marker_trajectories.trc' associated with
     // model markers that no longer exists (i.e. markers on the arms). Set this
@@ -82,35 +91,73 @@ void torqueDrivenMarkerTracking() {
 
     // Increase the global marker tracking weight, which is the weight
     // associated with the internal MocoMarkerTrackingGoal term.
-    track.set_markers_global_tracking_weight(10);
+    //track.set_markers_global_tracking_weight(10);
 
     // Increase the tracking weights for individual markers in the data set 
     // placed on bony landmarks compared to markers located on soft tissue.
-    MocoWeightSet markerWeights;
-    markerWeights.cloneAndAppend({"R.ASIS", 20});
-    markerWeights.cloneAndAppend({"L.ASIS", 20});
-    markerWeights.cloneAndAppend({"R.PSIS", 20});
-    markerWeights.cloneAndAppend({"L.PSIS", 20});
-    markerWeights.cloneAndAppend({"R.Knee", 10});
-    markerWeights.cloneAndAppend({"R.Ankle", 10});
-    markerWeights.cloneAndAppend({"R.Heel", 10});
-    markerWeights.cloneAndAppend({"R.MT5", 5});
-    markerWeights.cloneAndAppend({"R.Toe", 2});
-    markerWeights.cloneAndAppend({"L.Knee", 10});
-    markerWeights.cloneAndAppend({"L.Ankle", 10});
-    markerWeights.cloneAndAppend({"L.Heel", 10});
-    markerWeights.cloneAndAppend({"L.MT5", 5});
-    markerWeights.cloneAndAppend({"L.Toe", 2});
-    track.set_markers_weight_set(markerWeights);
+    //MocoWeightSet markerWeights;
+    //markerWeights.cloneAndAppend({"R.ASIS", 20});
+    //markerWeights.cloneAndAppend({"L.ASIS", 20});
+    //markerWeights.cloneAndAppend({"R.PSIS", 20});
+    //markerWeights.cloneAndAppend({"L.PSIS", 20});
+    //markerWeights.cloneAndAppend({"R.Knee", 10});
+    //markerWeights.cloneAndAppend({"R.Ankle", 10});
+    //markerWeights.cloneAndAppend({"R.Heel", 10});
+    //markerWeights.cloneAndAppend({"R.MT5", 5});
+    //markerWeights.cloneAndAppend({"R.Toe", 2});
+    //markerWeights.cloneAndAppend({"L.Knee", 10});
+    //markerWeights.cloneAndAppend({"L.Ankle", 10});
+    //markerWeights.cloneAndAppend({"L.Heel", 10});
+    //markerWeights.cloneAndAppend({"L.MT5", 5});
+    //markerWeights.cloneAndAppend({"L.Toe", 2});
+    //track.set_markers_weight_set(markerWeights);
 
     // Initial time, final time, and mesh interval. The number of mesh points
     // used to discretize the problem is computed internally using these values.
     track.set_initial_time(0.81);
     track.set_final_time(1.65);
-    track.set_mesh_interval(0.05);
+    track.set_mesh_interval(0.075);
 
     // Solve! The boolean argument indicates to visualize the solution.
-    MocoSolution solution = track.solve(true);
+    //MocoSolution solution = track.solve(true);
+    MocoStudy moco = track.initialize();
+
+    TimeSeriesTable table("torque_driven_marker_tracking_tracked_states.sto");
+    MocoProblem& problem = moco.updProblem();
+
+    const auto initialIdx = (int)table.getNearestRowIndexForTime(0.81);
+    const auto finalIdx = (int)table.getNearestRowIndexForTime(1.65);
+
+
+    for (const auto& label : table.getColumnLabels()) {
+        if (label.find("subtalar") != std::string::npos || 
+            label.find("mtp") != std::string::npos ||
+            label.find("back") != std::string::npos ||
+            label.find("acromial") != std::string::npos ||
+            label.find("radius") != std::string::npos ||
+            label.find("ulna") != std::string::npos ||
+            label.find("wrist") != std::string::npos ||
+            label.find("elbow") != std::string::npos ||
+            label.find("pro_sup") != std::string::npos) {
+            continue;
+         }
+        const auto col = table.getDependentColumn(label);
+        problem.setStateInfo(label, {}, col[initialIdx], col[finalIdx]);
+    }
+
+    MocoControlGoal& effort =
+            dynamic_cast<MocoControlGoal&>(problem.updGoal("control_effort"));
+    effort.setWeight(0.001);
+
+    MocoCasADiSolver& solver = moco.updSolver<MocoCasADiSolver>();
+    solver.set_optim_solver("ipopt");
+    solver.set_optim_max_iterations(100);
+    solver.set_optim_convergence_tolerance(1e-2);
+    solver.set_optim_constraint_tolerance(1e-2);
+    //solver.setGuessFile("torque_driven_marker_tracking_solution.sto");
+
+    MocoSolution solution = moco.solve().unseal();
+    moco.visualize(solution);
 }
 
 void muscleDrivenStateTracking() {
@@ -192,7 +239,7 @@ int main() {
     // This problem could take an hour or more to solve, depending on the 
     // number of processor cores available for parallelization. With 12 cores,
     // it takes around 25 minutes.
-    muscleDrivenStateTracking();
+    //muscleDrivenStateTracking();
 
     return EXIT_SUCCESS;
 }

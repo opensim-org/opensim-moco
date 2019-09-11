@@ -340,7 +340,7 @@ void gaitPrediction(const MocoSolution& gaitTrackingSolution,
 
     // Bounds.
     // =======
-    problem.setTimeBounds(0, {0.4,0.6});
+    problem.setTimeBounds(0, {0.4, 0.6});
     problem.setStateInfo("/jointset/groundPelvis/pelvis_tilt/value",
             {-20*Pi/180, -10*Pi/180});
     problem.setStateInfo("/jointset/groundPelvis/pelvis_tx/value", {0, 1});
@@ -392,15 +392,333 @@ void gaitPrediction(const MocoSolution& gaitTrackingSolution,
     writeTableToFile(externalForcesTableFlat,
             "gaitPrediction_solutionGRF_fullcycle.sto");
 
-    moco.visualize(solution);
+    //moco.visualize(solution);
+}
+
+MocoSolution gaitPredictionKneeContact(const MocoSolution& gaitTrackingSolution,
+        const bool& setPathLengthApproximation, double jointReactionWeight) {
+
+    using SimTK::Pi;
+
+    MocoStudy moco;
+    moco.setName("gaitPredictionKneeContact_" + 
+            std::to_string(jointReactionWeight));
+
+    // Define the optimal control problem.
+    // ===================================
+    MocoProblem& problem = moco.updProblem();
+    ModelProcessor modelprocessor =
+            ModelProcessor("2D_gait.osim") |
+            ModOpSetPathLengthApproximation(setPathLengthApproximation);
+    problem.setModelProcessor(modelprocessor);
+
+    // Goals.
+    // =====
+    // Symmetry.
+    auto* symmetryGoal = problem.addGoal<MocoPeriodicityGoal>("symmetryGoal");
+    Model model = modelprocessor.process();
+    model.initSystem();
+    // Symmetric coordinate values (except for pelvis_tx) and speeds.
+    for (const auto& coord : model.getComponentList<Coordinate>()) {
+        if (endsWith(coord.getName(), "_r")) {
+            symmetryGoal->addStatePair({coord.getStateVariableNames()[0],
+                    std::regex_replace(coord.getStateVariableNames()[0],
+                            std::regex("_r"), "_l")});
+            symmetryGoal->addStatePair({coord.getStateVariableNames()[1],
+                    std::regex_replace(coord.getStateVariableNames()[1],
+                            std::regex("_r"), "_l")});
+        }
+        if (endsWith(coord.getName(), "_l")) {
+            symmetryGoal->addStatePair({coord.getStateVariableNames()[0],
+                    std::regex_replace(coord.getStateVariableNames()[0],
+                            std::regex("_l"), "_r")});
+            symmetryGoal->addStatePair({coord.getStateVariableNames()[1],
+                    std::regex_replace(coord.getStateVariableNames()[1],
+                            std::regex("_l"), "_r")});
+        }
+        if (!endsWith(coord.getName(), "_l") &&
+                !endsWith(coord.getName(), "_r") &&
+                !endsWith(coord.getName(), "_tx")) {
+            symmetryGoal->addStatePair({coord.getStateVariableNames()[0],
+                    coord.getStateVariableNames()[0]});
+            symmetryGoal->addStatePair({coord.getStateVariableNames()[1],
+                    coord.getStateVariableNames()[1]});
+        }
+    }
+    symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_tx/speed"});
+    // Symmetric coordinate actuator controls.
+    symmetryGoal->addControlPair({"/lumbarAct"});
+    // Symmetric muscle activations.
+    for (const auto& muscle : model.getComponentList<Muscle>()) {
+        if (endsWith(muscle.getName(), "_r")) {
+            symmetryGoal->addStatePair({muscle.getStateVariableNames()[0],
+                    std::regex_replace(muscle.getStateVariableNames()[0],
+                            std::regex("_r"), "_l")});
+        }
+        if (endsWith(muscle.getName(), "_l")) {
+            symmetryGoal->addStatePair({muscle.getStateVariableNames()[0],
+                    std::regex_replace(muscle.getStateVariableNames()[0],
+                            std::regex("_l"), "_r")});
+        }
+    }
+    // Prescribed average gait speed.
+    auto* speedGoal = problem.addGoal<MocoGaitSpeedGoal>("speedGoal");
+    speedGoal->set_gait_speed(1.2);
+    // Effort over distance.
+    auto* effortGoal =
+            problem.addGoal<MocoEffortOverDistanceGoal>("effortGoal", 10);
+
+    // Joint reaction goals
+    auto* jointReactionGoalRight =
+            problem.addGoal<MocoJointReactionGoal>("jointReactionGoalRight", 
+                jointReactionWeight);
+    jointReactionGoalRight->setJointPath("/jointset/knee_r");
+    jointReactionGoalRight->setLoadsFrame("child");
+    jointReactionGoalRight->setExpressedInFramePath("/bodyset/tibia_r");
+    jointReactionGoalRight->setReactionMeasures({"force-y"});
+
+    auto* jointReactionGoalLeft = problem.addGoal<MocoJointReactionGoal>(
+            "jointReactionGoalLeft", jointReactionWeight);
+    jointReactionGoalLeft->setJointPath("/jointset/knee_l");
+    jointReactionGoalLeft->setLoadsFrame("child");
+    jointReactionGoalLeft->setExpressedInFramePath("/bodyset/tibia_l");
+    jointReactionGoalLeft->setReactionMeasures({"force-y"});
+
+    // Bounds.
+    // =======
+    problem.setTimeBounds(0, {0.4, 0.6});
+    problem.setStateInfo("/jointset/groundPelvis/pelvis_tilt/value",
+            {-30 * Pi / 180, 30 * Pi / 180});
+    problem.setStateInfo("/jointset/groundPelvis/pelvis_tx/value", {0, 1});
+    problem.setStateInfo(
+            "/jointset/groundPelvis/pelvis_ty/value", {0.75, 1.25});
+    problem.setStateInfo("/jointset/hip_l/hip_flexion_l/value",
+            {-40 * Pi / 180, 60 * Pi / 180});
+    problem.setStateInfo("/jointset/hip_r/hip_flexion_r/value",
+            {-40 * Pi / 180, 60 * Pi / 180});
+    problem.setStateInfo(
+            "/jointset/knee_l/knee_angle_l/value", {-90 * Pi / 180, 0});
+    problem.setStateInfo(
+            "/jointset/knee_r/knee_angle_r/value", {-90 * Pi / 180, 0});
+    problem.setStateInfo("/jointset/ankle_l/ankle_angle_l/value",
+            {-40 * Pi / 180, 25 * Pi / 180});
+    problem.setStateInfo("/jointset/ankle_r/ankle_angle_r/value",
+            {-40 * Pi / 180, 25 * Pi / 180});
+    problem.setStateInfo(
+            "/jointset/lumbar/lumbar/value", {-40 * Pi / 180, 20 * Pi / 180});
+
+    // Configure the solver.
+    // =====================
+    auto& solver = moco.initCasADiSolver();
+    solver.set_num_mesh_points(50);
+    solver.set_verbosity(2);
+    solver.set_optim_solver("ipopt");
+    solver.set_optim_convergence_tolerance(1e-4);
+    solver.set_optim_constraint_tolerance(1e-4);
+    solver.set_optim_max_iterations(1000);
+    // Use the solution from the tracking simulation as initial guess.
+    solver.setGuess(gaitTrackingSolution);
+
+    // Solve problem.
+    // ==============
+    MocoSolution solution = moco.solve();
+    auto full = createPeriodicTrajectory(solution);
+    full.write("gaitPredictionKneeContact_" +
+               std::to_string(jointReactionWeight) + "_solution_fullcycle.sto");
+
+    // Extract ground reaction forces.
+    // ===============================
+    std::vector<std::string> contactSpheres_r;
+    std::vector<std::string> contactSpheres_l;
+    contactSpheres_r.push_back("contactSphereHeel_r");
+    contactSpheres_r.push_back("contactSphereFront_r");
+    contactSpheres_l.push_back("contactSphereHeel_l");
+    contactSpheres_l.push_back("contactSphereFront_l");
+    TimeSeriesTable externalForcesTableFlat = createExternalLoadsTableForGait(
+            model, full, contactSpheres_r, contactSpheres_l);
+    writeTableToFile(externalForcesTableFlat,
+            "gaitPredictionKneeContact_" + std::to_string(jointReactionWeight) +
+                    "_solutionGRF_fullcycle.sto");
+
+    //moco.visualize(solution);
+
+    return solution;
+}
+
+MocoSolution gaitPredictionKneeContactFixedCycle(
+        const MocoSolution& gaitTrackingSolution,
+        const bool& setPathLengthApproximation, double jointReactionWeight) {
+
+    using SimTK::Pi;
+
+    MocoStudy moco;
+    moco.setName("gaitPredictionKneeContactFixedCycle_" + 
+            std::to_string(jointReactionWeight));
+
+    // Define the optimal control problem.
+    // ===================================
+    MocoProblem& problem = moco.updProblem();
+    ModelProcessor modelprocessor =
+            ModelProcessor("2D_gait.osim") |
+            ModOpSetPathLengthApproximation(setPathLengthApproximation);
+    problem.setModelProcessor(modelprocessor);
+
+    // Goals.
+    // =====
+    // Symmetry.
+    auto* symmetryGoal = problem.addGoal<MocoPeriodicityGoal>("symmetryGoal");
+    Model model = modelprocessor.process();
+    model.initSystem();
+    // Symmetric coordinate values (except for pelvis_tx) and speeds.
+    for (const auto& coord : model.getComponentList<Coordinate>()) {
+        if (endsWith(coord.getName(), "_r")) {
+            symmetryGoal->addStatePair({coord.getStateVariableNames()[0],
+                    std::regex_replace(coord.getStateVariableNames()[0],
+                            std::regex("_r"), "_l")});
+            symmetryGoal->addStatePair({coord.getStateVariableNames()[1],
+                    std::regex_replace(coord.getStateVariableNames()[1],
+                            std::regex("_r"), "_l")});
+        }
+        if (endsWith(coord.getName(), "_l")) {
+            symmetryGoal->addStatePair({coord.getStateVariableNames()[0],
+                    std::regex_replace(coord.getStateVariableNames()[0],
+                            std::regex("_l"), "_r")});
+            symmetryGoal->addStatePair({coord.getStateVariableNames()[1],
+                    std::regex_replace(coord.getStateVariableNames()[1],
+                            std::regex("_l"), "_r")});
+        }
+        if (!endsWith(coord.getName(), "_l") &&
+                !endsWith(coord.getName(), "_r") &&
+                !endsWith(coord.getName(), "_tx")) {
+            symmetryGoal->addStatePair({coord.getStateVariableNames()[0],
+                    coord.getStateVariableNames()[0]});
+            symmetryGoal->addStatePair({coord.getStateVariableNames()[1],
+                    coord.getStateVariableNames()[1]});
+        }
+    }
+    symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_tx/speed"});
+    // Symmetric coordinate actuator controls.
+    symmetryGoal->addControlPair({"/lumbarAct"});
+    // Symmetric muscle activations.
+    for (const auto& muscle : model.getComponentList<Muscle>()) {
+        if (endsWith(muscle.getName(), "_r")) {
+            symmetryGoal->addStatePair({muscle.getStateVariableNames()[0],
+                    std::regex_replace(muscle.getStateVariableNames()[0],
+                            std::regex("_r"), "_l")});
+        }
+        if (endsWith(muscle.getName(), "_l")) {
+            symmetryGoal->addStatePair({muscle.getStateVariableNames()[0],
+                    std::regex_replace(muscle.getStateVariableNames()[0],
+                            std::regex("_l"), "_r")});
+        }
+    }
+    // Effort over distance.
+    auto* effortGoal =
+            problem.addGoal<MocoEffortOverDistanceGoal>("effortGoal", 10);
+
+    // Joint reaction goals
+    auto* jointReactionGoalRight = problem.addGoal<MocoJointReactionGoal>(
+            "jointReactionGoalRight", jointReactionWeight);
+    jointReactionGoalRight->setJointPath("/jointset/knee_r");
+    jointReactionGoalRight->setLoadsFrame("child");
+    jointReactionGoalRight->setExpressedInFramePath("/bodyset/tibia_r");
+    jointReactionGoalRight->setReactionMeasures({"force-y"});
+
+    auto* jointReactionGoalLeft = problem.addGoal<MocoJointReactionGoal>(
+            "jointReactionGoalLeft", jointReactionWeight);
+    jointReactionGoalLeft->setJointPath("/jointset/knee_l");
+    jointReactionGoalLeft->setLoadsFrame("child");
+    jointReactionGoalLeft->setExpressedInFramePath("/bodyset/tibia_l");
+    jointReactionGoalLeft->setReactionMeasures({"force-y"});
+
+    // Bounds.
+    // =======
+    problem.setTimeBounds(0, 0.50157);
+    problem.setStateInfo("/jointset/groundPelvis/pelvis_tilt/value",
+            {-30 * Pi / 180, 30 * Pi / 180});
+    problem.setStateInfo("/jointset/groundPelvis/pelvis_tx/value", {0, 1}, 
+            0.2087, 0.8106);
+    problem.setStateInfo(
+            "/jointset/groundPelvis/pelvis_ty/value", {0.75, 1.25});
+    problem.setStateInfo("/jointset/hip_l/hip_flexion_l/value",
+            {-40 * Pi / 180, 60 * Pi / 180});
+    problem.setStateInfo("/jointset/hip_r/hip_flexion_r/value",
+            {-40 * Pi / 180, 60 * Pi / 180});
+    problem.setStateInfo(
+            "/jointset/knee_l/knee_angle_l/value", {-90 * Pi / 180, 0});
+    problem.setStateInfo(
+            "/jointset/knee_r/knee_angle_r/value", {-90 * Pi / 180, 0});
+    problem.setStateInfo("/jointset/ankle_l/ankle_angle_l/value",
+            {-40 * Pi / 180, 25 * Pi / 180});
+    problem.setStateInfo("/jointset/ankle_r/ankle_angle_r/value",
+            {-40 * Pi / 180, 25 * Pi / 180});
+    problem.setStateInfo(
+            "/jointset/lumbar/lumbar/value", {-40 * Pi / 180, 20 * Pi / 180});
+
+    // Configure the solver.
+    // =====================
+    auto& solver = moco.initCasADiSolver();
+    solver.set_num_mesh_points(50);
+    solver.set_verbosity(2);
+    solver.set_optim_solver("ipopt");
+    solver.set_optim_convergence_tolerance(1e-3);
+    solver.set_optim_constraint_tolerance(1e-3);
+    solver.set_optim_max_iterations(1000);
+    // Use the solution from the tracking simulation as initial guess.
+    solver.setGuess(gaitTrackingSolution);
+
+    // Solve problem.
+    // ==============
+    MocoSolution solution = moco.solve();
+    auto full = createPeriodicTrajectory(solution);
+    full.write("gaitPredictionKneeContactFixedCycle_" +
+               std::to_string(jointReactionWeight) + "_solution_fullcycle.sto");
+
+    // Extract ground reaction forces.
+    // ===============================
+    std::vector<std::string> contactSpheres_r;
+    std::vector<std::string> contactSpheres_l;
+    contactSpheres_r.push_back("contactSphereHeel_r");
+    contactSpheres_r.push_back("contactSphereFront_r");
+    contactSpheres_l.push_back("contactSphereHeel_l");
+    contactSpheres_l.push_back("contactSphereFront_l");
+    TimeSeriesTable externalForcesTableFlat = createExternalLoadsTableForGait(
+            model, full, contactSpheres_r, contactSpheres_l);
+    writeTableToFile(externalForcesTableFlat,
+            "gaitPredictionKneeContactFixedCycle_" 
+            + std::to_string(jointReactionWeight) +
+                    "_solutionGRF_fullcycle.sto");
+
+    // moco.visualize(solution);
+
+    return solution;
 }
 
 int main() {
     try {
         // Use polynomial approximations of muscle path lengths (set false to
         // use GeometryPath).
-        const MocoSolution gaitTrackingSolution = gaitTracking(false);
-        gaitPrediction(gaitTrackingSolution, false);
+        //const MocoSolution gaitTrackingSolution = gaitTracking(false);
+        //gaitPrediction(gaitTrackingSolution, false);
+
+        //gaitPrediction(MocoSolution("gaitPrediction_solution.sto"), false);
+
+        //MocoSolution guess("gaitPredictionKneeContact_0p001_solution.sto");
+        //double weight = 0.01;
+        //while (weight < 10) {
+        //    guess = gaitPredictionKneeContact(guess, false, weight);
+        //    weight *= 10;
+        //}
+
+        MocoSolution guessFixedCycle(
+                "gaitPredictionKneeContactFixedCycle_0p01_solution.sto");
+        double weightFixedCycle = 0.1;
+        while (weightFixedCycle < 10) {
+            guessFixedCycle = gaitPredictionKneeContactFixedCycle(
+                    guessFixedCycle, false, weightFixedCycle);
+            weightFixedCycle *= 10;
+        }
+
     } catch (const std::exception& e) {
         std::cout << e.what() << std::endl;
     }

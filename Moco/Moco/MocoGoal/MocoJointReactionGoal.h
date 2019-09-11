@@ -106,7 +106,14 @@ protected:
             double& integrand) const override;
     void calcGoalImpl(
             const GoalInput& input, SimTK::Vector& cost) const override {
-        cost[0] = input.integral / m_denominator;
+
+        // Get initial and final pelvis forward coordinate values.
+        SimTK::Real pelvisTxInitial = m_coord->getValue(input.initial_state);
+        SimTK::Real pelvisTxFinal = m_coord->getValue(input.final_state);
+        // Calculate distance traveled.
+        SimTK::Real distanceTraveled = pelvisTxFinal - pelvisTxInitial;
+
+        cost[0] = input.integral / (distanceTraveled * m_denominator);
     }
 
 private:
@@ -134,6 +141,7 @@ private:
     mutable std::vector<std::pair<int, int>> m_measureIndices;
     mutable std::vector<double> m_measureWeights;
     mutable bool m_isParentFrame;
+    mutable SimTK::ReferencePtr<const Coordinate> m_coord;
 };
 
 } // namespace OpenSim

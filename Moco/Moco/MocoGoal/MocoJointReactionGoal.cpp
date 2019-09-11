@@ -112,6 +112,8 @@ void MocoJointReactionGoal::initializeOnModelImpl(const Model& model) const {
         m_measureWeights.push_back(compWeight);
     }
 
+    m_coord.reset(&model.getCoordinateSet().get("pelvis_tx"));
+
     setNumIntegralsAndOutputs(1, 1);
 }
 
@@ -151,6 +153,7 @@ void MocoJointReactionGoal::calcIntegrandImpl(const SimTK::State& state,
     for (int i = 0; i < (int)m_measureIndices.size(); ++i) {
         const auto index = m_measureIndices[i];
         const double weight = m_measureWeights[i];
-        integrand += weight * pow(reaction[index.first][index.second], 2);
+        const double& value = reaction[index.first][index.second];
+        integrand += weight * (value * value);
     }
 }

@@ -361,11 +361,15 @@ MocoSolution MocoCasADiSolver::solveImpl() const {
         }
     }
 
+    int iter_count = 0;
+    if (get_optim_solver() != "snopt") {
+        iter_count = casSolution.stats.at("iter_count");
+    }
+
     const long long elapsed = stopwatch.getElapsedTimeInNs();
     setSolutionStats(mocoSolution, casSolution.stats.at("success"),
             casSolution.objective, casSolution.stats.at("return_status"),
-            casSolution.stats.at("iter_count"),
-            SimTK::nsToSec(elapsed));
+            iter_count, SimTK::nsToSec(elapsed));
 
     if (get_verbosity()) {
         std::cout << std::string(79, '-') << "\n";
