@@ -45,35 +45,38 @@
 
 #include <Moco/osimMoco.h>
 
+#include <OpenSim/Common/LogManager.h>
+#include <OpenSim/OpenSim.h>
+
 using namespace OpenSim;
 
 // MocoGoal imposing an average gait speed through endpoint constraints. The
 // average gait speed is defined as the distance traveled by the pelvis in the
 // forward direction divided by the final time.
 class MocoGaitSpeedGoal : public MocoGoal {
-OpenSim_DECLARE_CONCRETE_OBJECT(MocoGaitSpeedGoal, MocoGoal);
+    OpenSim_DECLARE_CONCRETE_OBJECT(MocoGaitSpeedGoal, MocoGoal);
+
 public:
     OpenSim_DECLARE_PROPERTY(gait_speed, double,
             "The average gait speed defined as the distance traveled by "
             "the pelvis in the forward direction divided by the final time.");
-    MocoGaitSpeedGoal() {
-        constructProperties();
-    }
+    MocoGaitSpeedGoal() { constructProperties(); }
     MocoGaitSpeedGoal(std::string name) : MocoGoal(std::move(name)) {
         constructProperties();
     }
+
 protected:
     bool getSupportsEndpointConstraintImpl() const override { return true; }
     Mode getDefaultModeImpl() const override {
         return Mode::EndpointConstraint;
     }
-    void calcGoalImpl(const GoalInput& input, SimTK::Vector& values)
-        const override {
+    void calcGoalImpl(
+            const GoalInput& input, SimTK::Vector& values) const override {
         // Get final time.
         SimTK::Real timeFinal = input.final_state.getTime();
         // Get initial and final pelvis forward coordinate values.
-        SimTK::Real pelvisTxInitial =  m_coord->getValue(input.initial_state);
-        SimTK::Real pelvisTxFinal =  m_coord->getValue(input.final_state);
+        SimTK::Real pelvisTxInitial = m_coord->getValue(input.initial_state);
+        SimTK::Real pelvisTxFinal = m_coord->getValue(input.final_state);
         // Calculate distance traveled.
         SimTK::Real distanceTraveled = pelvisTxFinal - pelvisTxInitial;
         // Calculate average gait speed.
@@ -83,36 +86,36 @@ protected:
         m_coord.reset(&model.getCoordinateSet().get("pelvis_tx"));
         setNumIntegralsAndOutputs(0, 1);
     }
+
 private:
-    void constructProperties() {
-        constructProperty_gait_speed(0);
-    }
+    void constructProperties() { constructProperty_gait_speed(0); }
     mutable SimTK::ReferencePtr<const Coordinate> m_coord;
 };
 
 // MocoGoal minimizing the integral of the squared controls divided by the
 // distance traveled by the pelvis in the forward direction.
 class MocoEffortOverDistanceGoal : public MocoGoal {
-OpenSim_DECLARE_CONCRETE_OBJECT(MocoEffortOverDistanceGoal, MocoGoal);
+    OpenSim_DECLARE_CONCRETE_OBJECT(MocoEffortOverDistanceGoal, MocoGoal);
+
 public:
     MocoEffortOverDistanceGoal() = default;
-    MocoEffortOverDistanceGoal(std::string name)
-            : MocoGoal(std::move(name)) {}
+    MocoEffortOverDistanceGoal(std::string name) : MocoGoal(std::move(name)) {}
     MocoEffortOverDistanceGoal(std::string name, double weight)
             : MocoGoal(std::move(name), weight) {}
+
 protected:
-    void calcGoalImpl(const GoalInput& input, SimTK::Vector& goal)
-        const override {
+    void calcGoalImpl(
+            const GoalInput& input, SimTK::Vector& goal) const override {
         // Get initial and final pelvis forward coordinate values.
-        SimTK::Real pelvisTxInitial =  m_coord->getValue(input.initial_state);
-        SimTK::Real pelvisTxFinal =  m_coord->getValue(input.final_state);
+        SimTK::Real pelvisTxInitial = m_coord->getValue(input.initial_state);
+        SimTK::Real pelvisTxFinal = m_coord->getValue(input.final_state);
         // Calculate distance traveled.
         SimTK::Real distanceTraveled = pelvisTxFinal - pelvisTxInitial;
         // Normalize integral by distance traveled.
-        goal[0] = input.integral / distanceTraveled ;
+        goal[0] = input.integral / distanceTraveled;
     }
     void calcIntegrandImpl(
-        const SimTK::State& state, double& integrand) const override {
+            const SimTK::State& state, double& integrand) const override {
         // Integrand is cubed controls.
         const auto& controls = getModel().getControls(state);
         integrand = 0;
@@ -123,6 +126,7 @@ protected:
         m_coord.reset(&model.getCoordinateSet().get("pelvis_tx"));
         setNumIntegralsAndOutputs(1, 1);
     }
+
 private:
     mutable SimTK::ReferencePtr<const Coordinate> m_coord;
 };
@@ -144,11 +148,12 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
 
     // Define the optimal control problem.
     // ===================================
-    ModelProcessor modelprocessor = ModelProcessor("2D_gait.osim") |
+    ModelProcessor modelprocessor =
+            ModelProcessor("2D_gait.osim") |
             ModOpSetPathLengthApproximation(setPathLengthApproximation);
     track.setModel(modelprocessor);
-    track.setStatesReference(TableProcessor("referenceCoordinates.sto") |
-            TabOpLowPassFilter(6));
+    track.setStatesReference(
+            TableProcessor("referenceCoordinates.sto") | TabOpLowPassFilter(6));
     track.set_states_global_tracking_weight(10.0);
     track.set_allow_unused_references(true);
     track.set_track_reference_position_derivatives(true);
@@ -184,11 +189,11 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
         }
         if (!endsWith(coord.getName(), "_l") &&
                 !endsWith(coord.getName(), "_r") &&
-                        !endsWith(coord.getName(), "_tx")) {
+                !endsWith(coord.getName(), "_tx")) {
             symmetryGoal->addStatePair({coord.getStateVariableNames()[0],
-                        coord.getStateVariableNames()[0]});
+                    coord.getStateVariableNames()[0]});
             symmetryGoal->addStatePair({coord.getStateVariableNames()[1],
-                        coord.getStateVariableNames()[1]});
+                    coord.getStateVariableNames()[1]});
         }
     }
     symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_tx/speed"});
@@ -200,7 +205,6 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
             symmetryGoal->addStatePair({muscle.getStateVariableNames()[0],
                     std::regex_replace(muscle.getStateVariableNames()[0],
                             std::regex("_r"), "_l")});
-
         }
         if (endsWith(muscle.getName(), "_l")) {
             symmetryGoal->addStatePair({muscle.getStateVariableNames()[0],
@@ -211,30 +215,29 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
     // Effort. Get a reference to the MocoControlGoal that is added to every
     // MocoTrack problem by default.
     MocoControlGoal& effort =
-        dynamic_cast<MocoControlGoal&>(problem.updGoal("control_effort"));
+            dynamic_cast<MocoControlGoal&>(problem.updGoal("control_effort"));
     effort.setWeight(10);
 
     // Bounds.
     // =======
     problem.setStateInfo("/jointset/groundPelvis/pelvis_tilt/value",
-            {-20*Pi/180, -10*Pi/180});
+            {-20 * Pi / 180, -10 * Pi / 180});
     problem.setStateInfo("/jointset/groundPelvis/pelvis_tx/value", {0, 1});
-    problem.setStateInfo("/jointset/groundPelvis/pelvis_ty/value",
-            {0.75, 1.25});
+    problem.setStateInfo(
+            "/jointset/groundPelvis/pelvis_ty/value", {0.75, 1.25});
     problem.setStateInfo("/jointset/hip_l/hip_flexion_l/value",
-            {-10*Pi/180, 60*Pi/180});
+            {-10 * Pi / 180, 60 * Pi / 180});
     problem.setStateInfo("/jointset/hip_r/hip_flexion_r/value",
-            {-10*Pi/180, 60*Pi/180});
-    problem.setStateInfo("/jointset/knee_l/knee_angle_l/value",
-            {-50*Pi/180, 0});
-    problem.setStateInfo("/jointset/knee_r/knee_angle_r/value",
-            {-50*Pi/180, 0});
+            {-10 * Pi / 180, 60 * Pi / 180});
+    problem.setStateInfo(
+            "/jointset/knee_l/knee_angle_l/value", {-50 * Pi / 180, 0});
+    problem.setStateInfo(
+            "/jointset/knee_r/knee_angle_r/value", {-50 * Pi / 180, 0});
     problem.setStateInfo("/jointset/ankle_l/ankle_angle_l/value",
-            {-15*Pi/180, 25*Pi/180});
+            {-15 * Pi / 180, 25 * Pi / 180});
     problem.setStateInfo("/jointset/ankle_r/ankle_angle_r/value",
-            {-15*Pi/180, 25*Pi/180});
-    problem.setStateInfo("/jointset/lumbar/lumbar/value",
-            {0, 20*Pi/180});
+            {-15 * Pi / 180, 25 * Pi / 180});
+    problem.setStateInfo("/jointset/lumbar/lumbar/value", {0, 20 * Pi / 180});
 
     // Configure the solver.
     // =====================
@@ -252,7 +255,7 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
     auto full = createPeriodicTrajectory(solution);
     full.write("gaitTracking_solution_fullcycle.sto");
 
-    //moco.visualize(solution);
+    // moco.visualize(solution);
 
     return solution;
 }
@@ -267,7 +270,7 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
 // argument false. Polynomial approximations should improve the computation
 // speeds by about 25% for this problem.
 void gaitPrediction(const MocoSolution& gaitTrackingSolution,
-        const bool& setPathLengthApproximation){
+        const bool& setPathLengthApproximation) {
 
     using SimTK::Pi;
 
@@ -277,7 +280,8 @@ void gaitPrediction(const MocoSolution& gaitTrackingSolution,
     // Define the optimal control problem.
     // ===================================
     MocoProblem& problem = moco.updProblem();
-    ModelProcessor modelprocessor = ModelProcessor("2D_gait.osim") |
+    ModelProcessor modelprocessor =
+            ModelProcessor("2D_gait.osim") |
             ModOpSetPathLengthApproximation(setPathLengthApproximation);
     problem.setModelProcessor(modelprocessor);
 
@@ -307,11 +311,11 @@ void gaitPrediction(const MocoSolution& gaitTrackingSolution,
         }
         if (!endsWith(coord.getName(), "_l") &&
                 !endsWith(coord.getName(), "_r") &&
-                        !endsWith(coord.getName(), "_tx")) {
+                !endsWith(coord.getName(), "_tx")) {
             symmetryGoal->addStatePair({coord.getStateVariableNames()[0],
-                        coord.getStateVariableNames()[0]});
+                    coord.getStateVariableNames()[0]});
             symmetryGoal->addStatePair({coord.getStateVariableNames()[1],
-                        coord.getStateVariableNames()[1]});
+                    coord.getStateVariableNames()[1]});
         }
     }
     symmetryGoal->addStatePair({"/jointset/groundPelvis/pelvis_tx/speed"});
@@ -323,7 +327,6 @@ void gaitPrediction(const MocoSolution& gaitTrackingSolution,
             symmetryGoal->addStatePair({muscle.getStateVariableNames()[0],
                     std::regex_replace(muscle.getStateVariableNames()[0],
                             std::regex("_r"), "_l")});
-
         }
         if (endsWith(muscle.getName(), "_l")) {
             symmetryGoal->addStatePair({muscle.getStateVariableNames()[0],
@@ -336,30 +339,29 @@ void gaitPrediction(const MocoSolution& gaitTrackingSolution,
     speedGoal->set_gait_speed(1.2);
     // Effort over distance.
     auto* effortGoal =
-        problem.addGoal<MocoEffortOverDistanceGoal>("effortGoal", 10);
+            problem.addGoal<MocoEffortOverDistanceGoal>("effortGoal", 10);
 
     // Bounds.
     // =======
     problem.setTimeBounds(0, {0.4, 0.6});
     problem.setStateInfo("/jointset/groundPelvis/pelvis_tilt/value",
-            {-20*Pi/180, -10*Pi/180});
+            {-20 * Pi / 180, -10 * Pi / 180});
     problem.setStateInfo("/jointset/groundPelvis/pelvis_tx/value", {0, 1});
-    problem.setStateInfo("/jointset/groundPelvis/pelvis_ty/value",
-            {0.75, 1.25});
+    problem.setStateInfo(
+            "/jointset/groundPelvis/pelvis_ty/value", {0.75, 1.25});
     problem.setStateInfo("/jointset/hip_l/hip_flexion_l/value",
-            {-10*Pi/180, 60*Pi/180});
+            {-10 * Pi / 180, 60 * Pi / 180});
     problem.setStateInfo("/jointset/hip_r/hip_flexion_r/value",
-            {-10*Pi/180, 60*Pi/180});
-    problem.setStateInfo("/jointset/knee_l/knee_angle_l/value",
-            {-50*Pi/180, 0});
-    problem.setStateInfo("/jointset/knee_r/knee_angle_r/value",
-            {-50*Pi/180, 0});
+            {-10 * Pi / 180, 60 * Pi / 180});
+    problem.setStateInfo(
+            "/jointset/knee_l/knee_angle_l/value", {-50 * Pi / 180, 0});
+    problem.setStateInfo(
+            "/jointset/knee_r/knee_angle_r/value", {-50 * Pi / 180, 0});
     problem.setStateInfo("/jointset/ankle_l/ankle_angle_l/value",
-            {-15*Pi/180, 25*Pi/180});
+            {-15 * Pi / 180, 25 * Pi / 180});
     problem.setStateInfo("/jointset/ankle_r/ankle_angle_r/value",
-            {-15*Pi/180, 25*Pi/180});
-    problem.setStateInfo("/jointset/lumbar/lumbar/value",
-            {0, 20*Pi/180});
+            {-15 * Pi / 180, 25 * Pi / 180});
+    problem.setStateInfo("/jointset/lumbar/lumbar/value", {0, 20 * Pi / 180});
 
     // Configure the solver.
     // =====================
@@ -392,7 +394,7 @@ void gaitPrediction(const MocoSolution& gaitTrackingSolution,
     writeTableToFile(externalForcesTableFlat,
             "gaitPrediction_solutionGRF_fullcycle.sto");
 
-    //moco.visualize(solution);
+    // moco.visualize(solution);
 }
 
 MocoSolution gaitPredictionKneeContact(const MocoSolution& gaitTrackingSolution,
@@ -401,8 +403,8 @@ MocoSolution gaitPredictionKneeContact(const MocoSolution& gaitTrackingSolution,
     using SimTK::Pi;
 
     MocoStudy moco;
-    moco.setName("gaitPredictionKneeContact_" + 
-            std::to_string(jointReactionWeight));
+    moco.setName(
+            "gaitPredictionKneeContact_" + std::to_string(jointReactionWeight));
 
     // Define the optimal control problem.
     // ===================================
@@ -469,9 +471,8 @@ MocoSolution gaitPredictionKneeContact(const MocoSolution& gaitTrackingSolution,
             problem.addGoal<MocoEffortOverDistanceGoal>("effortGoal", 10);
 
     // Joint reaction goals
-    auto* jointReactionGoalRight =
-            problem.addGoal<MocoJointReactionGoal>("jointReactionGoalRight", 
-                jointReactionWeight);
+    auto* jointReactionGoalRight = problem.addGoal<MocoJointReactionGoal>(
+            "jointReactionGoalRight", jointReactionWeight);
     jointReactionGoalRight->setJointPath("/jointset/knee_r");
     jointReactionGoalRight->setLoadsFrame("child");
     jointReactionGoalRight->setExpressedInFramePath("/bodyset/tibia_r");
@@ -540,7 +541,7 @@ MocoSolution gaitPredictionKneeContact(const MocoSolution& gaitTrackingSolution,
             "gaitPredictionKneeContact_" + std::to_string(jointReactionWeight) +
                     "_solutionGRF_fullcycle.sto");
 
-    //moco.visualize(solution);
+    // moco.visualize(solution);
 
     return solution;
 }
@@ -552,8 +553,8 @@ MocoSolution gaitPredictionKneeContactFixedCycle(
     using SimTK::Pi;
 
     MocoStudy moco;
-    moco.setName("gaitPredictionKneeContactFixedCycle_" + 
-            std::to_string(jointReactionWeight));
+    moco.setName("gaitPredictionKneeContactFixedCycle_" +
+                 std::to_string(jointReactionWeight));
 
     // Define the optimal control problem.
     // ===================================
@@ -636,8 +637,8 @@ MocoSolution gaitPredictionKneeContactFixedCycle(
     problem.setTimeBounds(0, 0.50157);
     problem.setStateInfo("/jointset/groundPelvis/pelvis_tilt/value",
             {-30 * Pi / 180, 30 * Pi / 180});
-    problem.setStateInfo("/jointset/groundPelvis/pelvis_tx/value", {0, 1}, 
-            0.2087, 0.8106);
+    problem.setStateInfo(
+            "/jointset/groundPelvis/pelvis_tx/value", {0, 1}, 0.2087, 0.8106);
     problem.setStateInfo(
             "/jointset/groundPelvis/pelvis_ty/value", {0.75, 1.25});
     problem.setStateInfo("/jointset/hip_l/hip_flexion_l/value",
@@ -685,8 +686,8 @@ MocoSolution gaitPredictionKneeContactFixedCycle(
     TimeSeriesTable externalForcesTableFlat = createExternalLoadsTableForGait(
             model, full, contactSpheres_r, contactSpheres_l);
     writeTableToFile(externalForcesTableFlat,
-            "gaitPredictionKneeContactFixedCycle_" 
-            + std::to_string(jointReactionWeight) +
+            "gaitPredictionKneeContactFixedCycle_" +
+                    std::to_string(jointReactionWeight) +
                     "_solutionGRF_fullcycle.sto");
 
     // moco.visualize(solution);
@@ -694,33 +695,211 @@ MocoSolution gaitPredictionKneeContactFixedCycle(
     return solution;
 }
 
+void transformReactionToBodyFrame(Model model, const MocoTrajectory& traj,
+        TimeSeriesTable_<SimTK::SpatialVec>& reactionTable) {
+
+    model.initSystem();
+    const auto& ground = model.getGround();
+    Storage storage = traj.exportToStatesStorage();
+    auto statesTraj =
+            StatesTrajectory::createFromStatesStorage(model, storage, true);
+    assert(statesTraj.getSize() == reactionTable.getNumRows());
+
+    for (int irow = 0; irow < reactionTable.getNumRows(); ++irow) {
+        auto& row = reactionTable.updRowAtIndex(irow);
+        for (int ielt = 0; ielt < row.size(); ++ielt) {
+
+            const auto& state = statesTraj.get(irow);
+            const auto& label = reactionTable.getColumnLabel(ielt);
+            std::string frameName;
+            if (label.find("knee_l") != std::string::npos) {
+                frameName = "/bodyset/tibia_l";
+            } else if (label.find("knee_r") != std::string::npos) {
+                frameName = "/bodyset/tibia_r";
+            }
+            const auto& frame = model.getComponent<Frame>(frameName);
+
+            const auto& elt = row.getElt(0, ielt);
+            model.realizeAcceleration(state);
+            SimTK::Vec3 moment =
+                    ground.expressVectorInAnotherFrame(state, elt[0], frame);
+            SimTK::Vec3 force =
+                    ground.expressVectorInAnotherFrame(state, elt[1], frame);
+
+            SimTK::SpatialVec newElt(moment, force);
+            row.updElt(0, ielt) = newElt;
+        }
+    }
+}
+
+void computeReactionLoads() {
+
+    Model model("2D_gait.osim");
+
+    std::vector<std::string> solutions;
+    solutions.push_back("gaitPrediction_solution_fullcycle.sto");
+    solutions.push_back("gaitPredictionKneeContactFixedCycle_0p1_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContactFixedCycle_0p01_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContactFixedCycle_0p001_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContactFixedCycle_0p0001_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContactFixedCycle_0p00001_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContactFixedCycle_0p000001_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContactFixedCycle_0p0000001_solution_fullcycle.sto");
+
+    for (auto solution : solutions) {
+        TimeSeriesTable_<SimTK::SpatialVec> reactionTable =
+                analyze<SimTK::SpatialVec>(model, MocoSolution(solution),
+                        {"/jointset/knee_l\\|reaction_on_child",
+                                "/jointset/knee_r\\|reaction_on_child"});
+
+        transformReactionToBodyFrame(
+                model, MocoSolution(solution), reactionTable);
+        STOFileAdapter::write(reactionTable.flatten(),
+                solution.replace(
+                        solution.end() - 4, solution.end(), "_reactions.sto"));
+    }
+}
+
+void transformGRFs() {
+
+    Model model("2D_gait.osim");
+    model.initSystem();
+
+    std::vector<std::string> solutions;
+    solutions.push_back("gaitPrediction_solution_fullcycle.sto");
+    solutions.push_back("gaitPredictionKneeContact_1_solution_fullcycle.sto");
+    solutions.push_back("gaitPredictionKneeContact_0p1_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContact_0p01_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContact_0p001_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContact_0p0001_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContact_0p00001_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContact_0p000001_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContact_0p0000001_solution_fullcycle.sto");
+
+
+    std::vector<std::string> solutionsGRF;
+    solutionsGRF.push_back("gaitPrediction_solutionGRF_fullcycle.sto");
+    solutionsGRF.push_back(
+            "gaitPredictionKneeContact_1_solutionGRF_fullcycle.sto");
+    solutionsGRF.push_back(
+            "gaitPredictionKneeContact_0p1_solutionGRF_fullcycle.sto");
+    solutionsGRF.push_back(
+            "gaitPredictionKneeContact_0p01_solutionGRF_fullcycle.sto");
+    solutionsGRF.push_back(
+            "gaitPredictionKneeContact_0p001_solutionGRF_fullcycle.sto");
+    solutionsGRF.push_back(
+            "gaitPredictionKneeContact_0p0001_solutionGRF_fullcycle.sto");
+    solutionsGRF.push_back(
+            "gaitPredictionKneeContact_0p00001_solutionGRF_fullcycle.sto");
+    solutionsGRF.push_back(
+            "gaitPredictionKneeContact_0p000001_solutionGRF_fullcycle.sto");
+    solutionsGRF.push_back(
+            "gaitPredictionKneeContact_0p0000001_solutionGRF_fullcycle.sto");
+
+    for (int i = 0; i < solutions.size(); ++i) {
+
+        auto solution = solutions[i];
+        auto solutionGRF = solutionsGRF[i];
+
+        MocoTrajectory traj(solution);
+        Storage storage = traj.exportToStatesStorage();
+        auto statesTraj =
+                StatesTrajectory::createFromStatesStorage(model, storage, true);
+
+        TimeSeriesTable grfsFlat(solutionGRF);
+        TimeSeriesTableVec3 grfs = grfsFlat.pack<SimTK::Vec3>();
+        auto time = grfs.getIndependentColumn();
+
+        TimeSeriesTableVec3 grfsT{};
+
+        SimTK::Vec3 copRight(0);
+        SimTK::Vec3 copLeft(0);
+        SimTK::Vec3 torquesRightT(0);
+        SimTK::Vec3 torquesLeftT(0);
+        for (int irow = 0; irow < grfs.getNumRows(); ++irow) {
+            auto row = grfs.getRowAtIndex(irow);
+            auto forcesRight = row(0);
+            auto forcesLeft = row(2);
+            auto torquesRight = row(4);
+            auto torquesLeft = row(5);
+
+            auto state = statesTraj.get(irow);
+            const auto& calcn_r = model.getBodySet().get("calcn_r");
+            const auto& calcn_l = model.getBodySet().get("calcn_l");
+
+            model.realizePosition(state);
+            auto rightO = calcn_r.getPositionInGround(state);
+            auto leftO = calcn_l.getPositionInGround(state);
+
+            copRight(0) = -torquesRight(2) / forcesRight(1) + rightO(0);
+            copRight(1) = rightO(1);
+            copRight(2) = torquesRight(0) / forcesRight(1) + rightO(2);
+            torquesRightT(1) = torquesRight(1) - copRight(0) * forcesRight(2) +
+                               copRight(2) * forcesRight(0);
+
+            copLeft(0) = -torquesLeft(2) / forcesLeft(1) + leftO(0);
+            copLeft(1) = leftO(1);
+            copLeft(2) = torquesLeft(0) / forcesLeft(1) + leftO(2);
+            torquesLeftT(1) = torquesLeft(1) - copLeft(0) * forcesLeft(2) +
+                              copLeft(2) * forcesLeft(0);
+
+            SimTK::RowVector_<SimTK::Vec3> rowT(6);
+            rowT(0) = forcesRight;
+            rowT(1) = copRight;
+            rowT(2) = forcesLeft;
+            rowT(3) = copLeft;
+            rowT(4) = torquesRightT;
+            rowT(5) = torquesLeftT;
+            grfsT.appendRow(time[irow], rowT);
+        }
+        grfsT.setColumnLabels(grfs.getColumnLabels());
+
+        STOFileAdapter::write(grfsT.flatten({"x", "y", "z"}),
+                solutionGRF.replace(solutionGRF.end() - 4, solutionGRF.end(), 
+                    "_transformed.mot"));
+    }
+}
+
 int main() {
     try {
         // Use polynomial approximations of muscle path lengths (set false to
         // use GeometryPath).
-        //const MocoSolution gaitTrackingSolution = gaitTracking(false);
-        //gaitPrediction(gaitTrackingSolution, false);
+        // const MocoSolution gaitTrackingSolution = gaitTracking(false);
+        // gaitPrediction(gaitTrackingSolution, false);
 
-        //gaitPrediction(MocoSolution("gaitPrediction_solution.sto"), false);
+        // gaitPrediction(MocoSolution("gaitPrediction_solution.sto"), false);
 
-        //MocoSolution guess("gaitPredictionKneeContact_0p001_solution.sto");
-        //double weight = 0.01;
-        //while (weight < 10) {
+        // MocoSolution guess("gaitPredictionKneeContact_0p001_solution.sto");
+        // double weight = 0.01;
+        // while (weight < 10) {
         //    guess = gaitPredictionKneeContact(guess, false, weight);
         //    weight *= 10;
         //}
 
-        MocoSolution guessFixedCycle(
-                "gaitPredictionKneeContactFixedCycle_0p01_solution.sto");
-        double weightFixedCycle = 0.1;
-        while (weightFixedCycle < 10) {
-            guessFixedCycle = gaitPredictionKneeContactFixedCycle(
-                    guessFixedCycle, false, weightFixedCycle);
-            weightFixedCycle *= 10;
-        }
+        // MocoSolution guessFixedCycle(
+        //        "gaitPredictionKneeContactFixedCycle_0p01_solution.sto");
+        // double weightFixedCycle = 0.1;
+        // while (weightFixedCycle < 10) {
+        //    guessFixedCycle = gaitPredictionKneeContactFixedCycle(
+        //            guessFixedCycle, false, weightFixedCycle);
+        //    weightFixedCycle *= 10;
+        //}
 
-    } catch (const std::exception& e) {
-        std::cout << e.what() << std::endl;
-    }
+        computeReactionLoads();
+        //transformGRFs();
+
+    } catch (const std::exception& e) { std::cout << e.what() << std::endl; }
     return EXIT_SUCCESS;
 }
