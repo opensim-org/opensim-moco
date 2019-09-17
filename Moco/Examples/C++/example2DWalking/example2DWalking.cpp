@@ -234,7 +234,17 @@ void gaitPrediction(const MocoSolution& gaitTrackingSolution,
     // Define the optimal control problem.
     // ===================================
     MocoProblem& problem = moco.updProblem();
-    ModelProcessor modelprocessor = ModelProcessor("2D_gait.osim") |
+
+    Model m("2D_gait.osim");
+    auto* actu_r = new CoordinateActuator("ankle_angle_r");
+    actu_r->setOptimalForce(500.0);
+    actu_r->setName("assist_ankle_angle_r");
+    m.addForce(actu_r);
+    auto* actu_l = new CoordinateActuator("ankle_angle_l");
+    actu_l->setOptimalForce(500.0);
+    actu_l->setName("assist_ankle_angle_l");
+    m.addForce(actu_l);
+    ModelProcessor modelprocessor = ModelProcessor(m) |
             ModOpSetPathLengthApproximation(setPathLengthApproximation);
     problem.setModelProcessor(modelprocessor);
 
@@ -328,7 +338,11 @@ void gaitPrediction(const MocoSolution& gaitTrackingSolution,
     solver.set_optim_constraint_tolerance(1e-4);
     solver.set_optim_max_iterations(1000);
     // Use the solution from the tracking simulation as initial guess.
-    solver.setGuess(gaitTrackingSolution);
+    auto guess = solver.createGuess();
+    guess.insertStatesTrajectory(gaitTrackingSolution.exportToStatesTable(),
+            true);
+    // guess.insertControlsTrajectory(gaitTrackingSolution.getC
+    solver.setGuess(guess);
 
     // Solve problem.
     // ==============
