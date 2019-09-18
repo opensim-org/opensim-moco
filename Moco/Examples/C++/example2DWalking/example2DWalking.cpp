@@ -734,11 +734,16 @@ void transformReactionToBodyFrame(Model model, const MocoTrajectory& traj,
 
 void computeReactionLoads() {
 
-    Model model("2D_gait.osim");
+    ModelProcessor modelprocessor =
+            ModelProcessor("2D_gait.osim") |
+            ModOpSetPathLengthApproximation(false);
+
+    Model model = modelprocessor.process();
 
     std::vector<std::string> solutions;
     solutions.push_back("gaitPrediction_solution_fullcycle.sto");
-    solutions.push_back("gaitPredictionKneeContactFixedCycle_0p1_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContactFixedCycle_0p1_solution_fullcycle.sto");
     solutions.push_back(
             "gaitPredictionKneeContactFixedCycle_0p01_solution_fullcycle.sto");
     solutions.push_back(
@@ -751,6 +756,20 @@ void computeReactionLoads() {
             "gaitPredictionKneeContactFixedCycle_0p000001_solution_fullcycle.sto");
     solutions.push_back(
             "gaitPredictionKneeContactFixedCycle_0p0000001_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContact_0p1_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContact_0p01_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContact_0p001_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContact_0p0001_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContact_0p00001_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContact_0p000001_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContact_0p0000001_solution_fullcycle.sto");
 
     for (auto solution : solutions) {
         TimeSeriesTable_<SimTK::SpatialVec> reactionTable =
@@ -766,14 +785,29 @@ void computeReactionLoads() {
     }
 }
 
-void transformGRFs() {
+void computeMuscleInfo() {
 
-    Model model("2D_gait.osim");
-    model.initSystem();
+    ModelProcessor modelprocessor = ModelProcessor("2D_gait.osim") |
+                                    ModOpSetPathLengthApproximation(false);
+
+    Model model = modelprocessor.process();
 
     std::vector<std::string> solutions;
     solutions.push_back("gaitPrediction_solution_fullcycle.sto");
-    solutions.push_back("gaitPredictionKneeContact_1_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContactFixedCycle_0p1_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContactFixedCycle_0p01_solution_fullcycle.sto");
+    solutions.push_back(
+            "gaitPredictionKneeContactFixedCycle_0p001_solution_fullcycle.sto");
+    solutions.push_back("gaitPredictionKneeContactFixedCycle_0p0001_solution_"
+                        "fullcycle.sto");
+    solutions.push_back("gaitPredictionKneeContactFixedCycle_0p00001_solution_"
+                        "fullcycle.sto");
+    solutions.push_back("gaitPredictionKneeContactFixedCycle_0p000001_solution_"
+                        "fullcycle.sto");
+    solutions.push_back("gaitPredictionKneeContactFixedCycle_0p0000001_"
+                        "solution_fullcycle.sto");
     solutions.push_back("gaitPredictionKneeContact_0p1_solution_fullcycle.sto");
     solutions.push_back(
             "gaitPredictionKneeContact_0p01_solution_fullcycle.sto");
@@ -788,87 +822,31 @@ void transformGRFs() {
     solutions.push_back(
             "gaitPredictionKneeContact_0p0000001_solution_fullcycle.sto");
 
+    std::vector<std::string> muscles{"hamstrings_r", "bifemsh_r", "glut_max_r",
+            "iliopsoas_r", "rect_fem_r", "vasti_r", "gastroc_r", "soleus_r",
+            "tib_ant_r"};
+    std::vector<std::string> outputs{
+            "active_force_length_multiplier",
+            "force_velocity_multiplier",
+            "tendon_force",
+            "passive_fiber_force",
+            "muscle_power"
+    };
 
-    std::vector<std::string> solutionsGRF;
-    solutionsGRF.push_back("gaitPrediction_solutionGRF_fullcycle.sto");
-    solutionsGRF.push_back(
-            "gaitPredictionKneeContact_1_solutionGRF_fullcycle.sto");
-    solutionsGRF.push_back(
-            "gaitPredictionKneeContact_0p1_solutionGRF_fullcycle.sto");
-    solutionsGRF.push_back(
-            "gaitPredictionKneeContact_0p01_solutionGRF_fullcycle.sto");
-    solutionsGRF.push_back(
-            "gaitPredictionKneeContact_0p001_solutionGRF_fullcycle.sto");
-    solutionsGRF.push_back(
-            "gaitPredictionKneeContact_0p0001_solutionGRF_fullcycle.sto");
-    solutionsGRF.push_back(
-            "gaitPredictionKneeContact_0p00001_solutionGRF_fullcycle.sto");
-    solutionsGRF.push_back(
-            "gaitPredictionKneeContact_0p000001_solutionGRF_fullcycle.sto");
-    solutionsGRF.push_back(
-            "gaitPredictionKneeContact_0p0000001_solutionGRF_fullcycle.sto");
-
-    for (int i = 0; i < solutions.size(); ++i) {
-
-        auto solution = solutions[i];
-        auto solutionGRF = solutionsGRF[i];
-
-        MocoTrajectory traj(solution);
-        Storage storage = traj.exportToStatesStorage();
-        auto statesTraj =
-                StatesTrajectory::createFromStatesStorage(model, storage, true);
-
-        TimeSeriesTable grfsFlat(solutionGRF);
-        TimeSeriesTableVec3 grfs = grfsFlat.pack<SimTK::Vec3>();
-        auto time = grfs.getIndependentColumn();
-
-        TimeSeriesTableVec3 grfsT{};
-
-        SimTK::Vec3 copRight(0);
-        SimTK::Vec3 copLeft(0);
-        SimTK::Vec3 torquesRightT(0);
-        SimTK::Vec3 torquesLeftT(0);
-        for (int irow = 0; irow < grfs.getNumRows(); ++irow) {
-            auto row = grfs.getRowAtIndex(irow);
-            auto forcesRight = row(0);
-            auto forcesLeft = row(2);
-            auto torquesRight = row(4);
-            auto torquesLeft = row(5);
-
-            auto state = statesTraj.get(irow);
-            const auto& calcn_r = model.getBodySet().get("calcn_r");
-            const auto& calcn_l = model.getBodySet().get("calcn_l");
-
-            model.realizePosition(state);
-            auto rightO = calcn_r.getPositionInGround(state);
-            auto leftO = calcn_l.getPositionInGround(state);
-
-            copRight(0) = -torquesRight(2) / forcesRight(1) + rightO(0);
-            copRight(1) = rightO(1);
-            copRight(2) = torquesRight(0) / forcesRight(1) + rightO(2);
-            torquesRightT(1) = torquesRight(1) - copRight(0) * forcesRight(2) +
-                               copRight(2) * forcesRight(0);
-
-            copLeft(0) = -torquesLeft(2) / forcesLeft(1) + leftO(0);
-            copLeft(1) = leftO(1);
-            copLeft(2) = torquesLeft(0) / forcesLeft(1) + leftO(2);
-            torquesLeftT(1) = torquesLeft(1) - copLeft(0) * forcesLeft(2) +
-                              copLeft(2) * forcesLeft(0);
-
-            SimTK::RowVector_<SimTK::Vec3> rowT(6);
-            rowT(0) = forcesRight;
-            rowT(1) = copRight;
-            rowT(2) = forcesLeft;
-            rowT(3) = copLeft;
-            rowT(4) = torquesRightT;
-            rowT(5) = torquesLeftT;
-            grfsT.appendRow(time[irow], rowT);
+    std::vector<std::string> output_paths;
+    for (const auto& muscle : muscles) {
+        for (const auto& output : outputs) {
+            output_paths.push_back("/" + muscle + "\\|" + output);
         }
-        grfsT.setColumnLabels(grfs.getColumnLabels());
+    }
 
-        STOFileAdapter::write(grfsT.flatten({"x", "y", "z"}),
-                solutionGRF.replace(solutionGRF.end() - 4, solutionGRF.end(), 
-                    "_transformed.mot"));
+    for (auto solution : solutions) {
+        TimeSeriesTable table = analyze<double>(model, MocoSolution(solution),
+                output_paths);
+
+
+        STOFileAdapter::write(table, solution.replace(
+                solution.end() - 4, solution.end(), "_muscle_info.sto"));
     }
 }
 
@@ -896,6 +874,13 @@ int main() {
         //            guessFixedCycle, false, weightFixedCycle);
         //    weightFixedCycle *= 10;
         //}
+
+        //MocoSolution sol("gaitPrediction_solution_fullcycle.sto");
+        //MocoSolution 
+        //sol("gaitPredictionKneeContact_0p01_solution_fullcycle.sto");
+        //visualize(Model("2D_gait.osim"), sol.exportToStatesStorage());
+
+        computeMuscleInfo();
 
         computeReactionLoads();
         //transformGRFs();
