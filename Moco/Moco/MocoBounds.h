@@ -23,6 +23,7 @@
 #include <OpenSim/Common/Object.h>
 #include <OpenSim/Common/Property.h>
 #include <OpenSim/Common/Array.h>
+#include <OpenSim/Common/Function.h>
 
 namespace OpenSim {
 
@@ -119,6 +120,57 @@ OpenSim_DECLARE_CONCRETE_OBJECT(MocoFinalBounds, MocoBounds);
     using MocoBounds::MocoBounds;
     friend MocoPhase;
     friend MocoVariableInfo;
+};
+
+class OSIMMOCO_API MocoFunctionBounds : public Object {
+    OpenSim_DECLARE_CONCRETE_OBJECT(MocoFunctionBounds, Object);
+public:
+    MocoFunctionBounds();
+    MocoFunctionBounds(Function bounds);
+    MocoFunctionBounds(Function lower, Function upper);
+    /// Create bounds that are (-inf, inf), so the variable is unconstrained.
+    static MocoBounds unconstrained() {
+        return MocoBounds(-SimTK::Infinity, SimTK::Infinity);
+    }
+    /// True if the lower and upper bounds are both not NaN.
+    bool isSet() const {
+        return !getProperty_bounds().empty();
+    }
+    /// True if the lower and upper bounds are the same, resulting in an
+    /// equality constraint.
+    bool isEquality() const {
+        return isSet() && getLower() == getUpper();
+    }
+    /// Returns true if the provided value is within these bounds.
+    bool isWithinBounds(const double& value) const {
+        return getLower() <= value && value <= getUpper();
+    }
+    double getLower() const {
+        if (!isSet()) {
+            return SimTK::NTraits<double>::getNaN();
+        } else {
+            return get_bounds(0);
+        }
+    }
+    double getUpper() const {
+        if (!isSet()) {
+            return SimTK::NTraits<double>::getNaN();
+        } else if (getProperty_bounds().size() == 1) {
+            return get_bounds(0);
+        } else {
+            return get_bounds(1);
+        }
+    }
+
+    void printDescription(std::ostream& stream) const;
+private:
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(
+            lower_bound, Function, "Lower bound as a function of time.");
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(
+            upper_bound, Function, "Upper bound as a function of time.");
+    OpenSim_DECLARE_PROPERTY(equality_with_lower, bool,
+            "The variable must be equal to the lower bound; "
+            "upper must be unspecified (default: false).");
 };
 
 } // namespace OpenSim

@@ -771,3 +771,10 @@ TimeSeriesTable OpenSim::createExternalLoadsTableForGait(Model model,
 
     return externalForcesTableFlat;
 }
+
+void OpenSim::setKinematicsFunctionBoundsFromTable(MocoProblem& problem,
+        const TimeSeriesTable& kinematics, const double& rangeRotational,
+        const double& rangeTranslational) {
+    // TODO: get the states from the model.
+    // TOOD: create GCVSplineSet? how to offset?
+}

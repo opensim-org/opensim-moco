@@ -102,6 +102,15 @@ MocoStudy MocoTrack::initialize() {
     }
     problem.setTimeBounds(m_timeInfo.initial, m_timeInfo.final);
 
+    // Set state bounds.
+    // -----------------
+    if (get_tight_state_bounds() /*TODO Rename*/) {
+        setKinematicsFunctionBoundsFromTable(problem, tracked_states,
+                get_state_bound_range_rotational(),
+                get_state_bound_range_translational());
+    }
+
+
     // Configure solver.
     // -----------------
     MocoCasADiSolver& solver = study.initCasADiSolver();

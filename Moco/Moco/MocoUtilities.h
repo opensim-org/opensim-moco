@@ -772,6 +772,11 @@ TimeSeriesTable createExternalLoadsTableForGait(Model model,
         const std::vector<std::string>& forceNamesRightFoot,
         const std::vector<std::string>& forceNamesLeftFoot);
 
+OSIMMOCO_API
+void setKinematicsFunctionBoundsFromTable(MocoProblem& problem,
+        const TimeSeriesTable& kinematics, const double& rangeRotational,
+        const double& rangeTranslational);
+
 } // namespace OpenSim
 
 #endif // MOCO_MOCOUTILITIES_H

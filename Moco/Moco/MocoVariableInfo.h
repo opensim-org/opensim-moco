@@ -35,6 +35,8 @@ public:
     MocoVariableInfo();
     MocoVariableInfo(const std::string& name, const MocoBounds&,
             const MocoInitialBounds&, const MocoFinalBounds&);
+    MocoVariableInfo(const std::string& name, const MocoFunctionBounds&,
+            const MocoInitialBounds&, const MocoFinalBounds&);
 
     /// @details Note: the return value is constructed fresh on every call from
     /// the internal property. Avoid repeated calls to this function.

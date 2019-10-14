@@ -35,6 +35,17 @@ MocoVariableInfo::MocoVariableInfo(const std::string& name,
     validate();
 }
 
+MocoVariableInfo::MocoVariableInfo(const std::string& name,
+        const MocoFunctionBounds&,
+        const MocoInitialBounds&, const MocoFinalBounds&) 
+        : MocoVariableInfo() {
+    setName(name);
+    set_bounds(bounds.getAsArray());
+    set_initial_bounds(initial.getAsArray());
+    set_final_bounds(final.getAsArray());
+    // TODO validate();
+}
+
 void MocoVariableInfo::validate() const {
     const auto& n = getName();
     const auto b = getBounds();
