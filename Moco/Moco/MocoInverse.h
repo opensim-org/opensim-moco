@@ -135,6 +135,9 @@ public:
             "the model operator ModOpAddReserves, which names each appended "
             "actuator in this format. Default weight: 1.")
 
+    OpenSim_DECLARE_PROPERTY(auxiliary_derivatives_weight, double, "TODO")
+    OpenSim_DECLARE_PROPERTY(auxiliary_derivatives_bound, double, "TODO")
+
     MocoInverse() { constructProperties(); }
 
     void setKinematics(TableProcessor kinematics) {

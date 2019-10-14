@@ -175,7 +175,51 @@ public:
     void operate(Model& model, const std::string&) const override {
         model.finalizeFromProperties();
         for (auto& muscle : model.updComponentList<Muscle>()) {
-            muscle.set_max_isometric_force(get_scale_factor());
+            muscle.set_max_isometric_force(
+                get_scale_factor() * muscle.get_max_isometric_force());
+        }
+    }
+};
+
+/// Scale the tendon slack length for all muscles in the model.
+class OSIMMOCO_API ModOpScaleTendonSlackLength : public ModelOperator {
+    OpenSim_DECLARE_CONCRETE_OBJECT(ModOpScaleTendonSlackLength, ModelOperator);
+    OpenSim_DECLARE_PROPERTY(
+            scale_factor, double, "The tendon slack length scale factor.");
+
+public:
+    ModOpScaleTendonSlackLength() { constructProperty_scale_factor(1); }
+    ModOpScaleTendonSlackLength(double scaleFactor)
+            : ModOpScaleTendonSlackLength() {
+        set_scale_factor(scaleFactor);
+    }
+    void operate(Model& model, const std::string&) const override {
+        model.finalizeFromProperties();
+        for (auto& muscle : model.updComponentList<Muscle>()) {
+            muscle.set_tendon_slack_length(
+                get_scale_factor() * muscle.get_tendon_slack_length());
+        }
+    }
+};
+
+/// Scale the optimal fiber length for all muscles in the model.
+class OSIMMOCO_API ModOpScaleOptimalFiberLength : public ModelOperator {
+    OpenSim_DECLARE_CONCRETE_OBJECT(
+            ModOpScaleOptimalFiberLength, ModelOperator);
+    OpenSim_DECLARE_PROPERTY(
+            scale_factor, double, "The optimal fiber length scale factor.");
+
+public:
+    ModOpScaleOptimalFiberLength() { constructProperty_scale_factor(1); }
+    ModOpScaleOptimalFiberLength(double scaleFactor)
+            : ModOpScaleOptimalFiberLength() {
+        set_scale_factor(scaleFactor);
+    }
+    void operate(Model& model, const std::string&) const override {
+        model.finalizeFromProperties();
+        for (auto& muscle : model.updComponentList<Muscle>()) {
+            muscle.set_optimal_fiber_length(
+                get_scale_factor() * muscle.get_optimal_fiber_length());
         }
     }
 };

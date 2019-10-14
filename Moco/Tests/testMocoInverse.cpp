@@ -147,6 +147,21 @@ TEST_CASE("MocoInverse Rajagopal2016, 18 muscles") {
     MocoSolution solution = inverse.solve().getMocoSolution();
     solution.write("testMocoInverse_subject_18musc_solution.sto");
 
+    Model model = modelProcessor.process();
+    std::vector<std::string> outputPaths;
+
+    const auto& muscles = model.getMuscles();
+    for (int i = 0; i < muscles.getSize(); ++i) {
+        const auto& muscle = muscles.get(i);
+        outputPaths.push_back(muscle.getAbsolutePathString() + 
+                "\\|tendon_length");
+        outputPaths.push_back(
+                muscle.getAbsolutePathString() + "\\|normalized_fiber_length");
+    }
+
+    TimeSeriesTable outputTable = analyze<double>(model, solution, outputPaths);
+    writeTableToFile(outputTable, "output_table.sto");
+
     MocoTrajectory std("std_testMocoInverse_subject_18musc_solution.sto");
     const auto expected = std.getControlsTrajectory();
     CHECK(std.compareContinuousVariablesRMS(solution,

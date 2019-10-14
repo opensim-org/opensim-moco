@@ -53,7 +53,12 @@ void DeGrooteFregly2016Muscle::constructProperties() {
     constructProperty_activation_time_constant(0.015);
     constructProperty_deactivation_time_constant(0.060);
     constructProperty_default_activation(0.5);
+    constructProperty_clamp_activation(false);
+    constructProperty_minimum_activation(0.0);
     constructProperty_default_normalized_tendon_force(0.5);
+    constructProperty_clamp_normalized_tendon_length(false);
+    constructProperty_minimum_normalized_tendon_length(1.0);
+    constructProperty_maximum_normalized_tendon_length(2.5);
     constructProperty_active_force_width_scale(1.0);
     constructProperty_fiber_damping(0.0);
     constructProperty_tendon_strain_at_one_norm_force(0.049);
@@ -182,7 +187,11 @@ void DeGrooteFregly2016Muscle::computeStateVariableDerivatives(
     // Activation dynamics.
     // --------------------
     if (!get_ignore_activation_dynamics()) {
-        const auto& activation = getActivation(s);
+        auto activation = getActivation(s);
+        if (get_clamp_activation()) {
+            activation = 
+                SimTK::clamp(get_minimum_activation(), activation, 1.0);
+        }
         const auto& excitation = getControl(s);
         static const double actTimeConst = get_activation_time_constant();
         static const double deactTimeConst = get_deactivation_time_constant();
@@ -212,9 +221,15 @@ void DeGrooteFregly2016Muscle::computeStateVariableDerivatives(
             // normalized tendon length, so using the chain rule, to get
             // normalized tendon force derivative with respect to time, we 
             // multiply by normalized fiber velocity.
+            double normTendonLength = mli.normTendonLength;
+            if (get_clamp_normalized_tendon_length()) {
+                normTendonLength = SimTK::clamp(
+                    get_minimum_normalized_tendon_length(), normTendonLength,
+                    get_maximum_normalized_tendon_length());
+            }
             normTendonForceDerivative =
                     fvi.normTendonVelocity *
-                    calcTendonForceMultiplierDerivative(mli.normTendonLength);
+                    calcTendonForceMultiplierDerivative(normTendonLength);
         } else {
             normTendonForceDerivative = getDiscreteVariableValue(
                     s, DERIVATIVE_NORMALIZED_TENDON_FORCE_NAME);
@@ -451,8 +466,9 @@ void DeGrooteFregly2016Muscle::calcMuscleLengthInfo(
         // TODO the Millard model sets fiber velocity to zero when the
         //       tendon is buckling, but this may create a discontinuity.
         std::cout << "Warning: DeGrooteFregly2016Muscle '" << getName()
-                  << "' is buckling (length < tendon_slack_length) at time "
-                  << s.getTime() << " s." << std::endl;
+                  << "' is buckling (normFiberLength = " << mli.normFiberLength
+                  << ", normTendonLength = " << mli.normTendonLength << ") " 
+                  << "at time " << s.getTime() << " s." << std::endl;
     }
 }
 
@@ -551,7 +567,7 @@ void DeGrooteFregly2016Muscle::computeInitialFiberEquilibrium(
                 mdi.tendonForce, mdi.fiberForceAlongTendon);
     };
 
-    const auto equilNormTendonForce = solveBisection(calcResidual,
+    const auto equilNormTendonForce = solveBisection(calcResidual, 
             m_minNormTendonForce, m_maxNormTendonForce, 1e-10, 1e-10, 100);
 
     setNormalizedTendonForce(s, equilNormTendonForce);

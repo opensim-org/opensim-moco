@@ -94,9 +94,23 @@ public:
     OpenSim_DECLARE_PROPERTY(default_activation, double,
             "Value of activation in the default state returned by "
             "initSystem().");
+    OpenSim_DECLARE_PROPERTY(clamp_activation, bool,
+            "Clamp activations between the value set by the "
+            "'minimum_activation' property and 1.");
+    OpenSim_DECLARE_PROPERTY(minimum_activation, double, 
+            "The enforced activation lower bound if 'clamp_activation' is set "
+            "to true. Default: 0.");
     OpenSim_DECLARE_PROPERTY(default_normalized_tendon_force, double,
             "Value of normalized tendon force in the default state returned by "
             "initSystem().");
+    OpenSim_DECLARE_PROPERTY(clamp_normalized_tendon_length, bool,
+            "Clamp normalized tendon length between the value set by the "
+            "'minimum_normalized_tendon_length' and "
+            "'maximum_normalized_tendon_length' properties.");
+    OpenSim_DECLARE_PROPERTY(minimum_normalized_tendon_length, double, 
+            "Normalized tendon length lower bound. Default: 1.");
+    OpenSim_DECLARE_PROPERTY(maximum_normalized_tendon_length, double,
+            "Normalized tendon length upper bound. Default: 2.5.");
     OpenSim_DECLARE_PROPERTY(active_force_width_scale, double,
             "Scale factor for the width of the active force-length curve. "
             "Larger values make the curve wider. "
