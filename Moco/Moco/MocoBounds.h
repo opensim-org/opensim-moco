@@ -126,45 +126,38 @@ class OSIMMOCO_API MocoFunctionBounds : public Object {
     OpenSim_DECLARE_CONCRETE_OBJECT(MocoFunctionBounds, Object);
 public:
     MocoFunctionBounds();
-    MocoFunctionBounds(Function bounds);
-    MocoFunctionBounds(Function lower, Function upper);
-    /// Create bounds that are (-inf, inf), so the variable is unconstrained.
-    static MocoBounds unconstrained() {
-        return MocoBounds(-SimTK::Infinity, SimTK::Infinity);
-    }
-    /// True if the lower and upper bounds are both not NaN.
-    bool isSet() const {
-        return !getProperty_bounds().empty();
-    }
+    MocoFunctionBounds(const Function& bounds);
+    MocoFunctionBounds(const Function& lower, const Function& upper);
     /// True if the lower and upper bounds are the same, resulting in an
     /// equality constraint.
     bool isEquality() const {
-        return isSet() && getLower() == getUpper();
+        return get_equality_with_lower();
     }
     /// Returns true if the provided value is within these bounds.
-    bool isWithinBounds(const double& value) const {
-        return getLower() <= value && value <= getUpper();
+    bool isWithinBounds(const double& time, const double& value) const {
+        return findLower(time) <= value && value <= findUpper(time);
     }
-    double getLower() const {
-        if (!isSet()) {
-            return SimTK::NTraits<double>::getNaN();
-        } else {
-            return get_bounds(0);
-        }
+    double findLower(const double& time) const {
+        SimTK::Vector timeVec(1, &time, true);
+        return get_lower_bound().calcValue(timeVec);
     }
-    double getUpper() const {
-        if (!isSet()) {
-            return SimTK::NTraits<double>::getNaN();
-        } else if (getProperty_bounds().size() == 1) {
-            return get_bounds(0);
+    double findUpper(const double& time) const {
+        if (get_equality_with_lower()) {
+            return findLower(time);
         } else {
-            return get_bounds(1);
+            OPENSIM_THROW_IF_FRMOBJ(getProperty_upper_bound().empty(),
+                    Exception, "No upper bound provided.");
+            SimTK::Vector timeVec(1, &time, true);
+            return get_upper_bound().calcValue(timeVec);
         }
     }
 
     void printDescription(std::ostream& stream) const;
+
 private:
-    OpenSim_DECLARE_OPTIONAL_PROPERTY(
+    void constructProperties();
+
+    OpenSim_DECLARE_PROPERTY(
             lower_bound, Function, "Lower bound as a function of time.");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(
             upper_bound, Function, "Upper bound as a function of time.");

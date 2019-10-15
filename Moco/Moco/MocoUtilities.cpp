@@ -772,9 +772,54 @@ TimeSeriesTable OpenSim::createExternalLoadsTableForGait(Model model,
     return externalForcesTableFlat;
 }
 
-void OpenSim::setKinematicsFunctionBoundsFromTable(MocoProblem& problem,
+void OpenSim::setKinematicStateFunctionBoundsFromTable(const Model& model,
         const TimeSeriesTable& kinematics, const double& rangeRotational,
-        const double& rangeTranslational) {
-    // TODO: get the states from the model.
-    // TOOD: create GCVSplineSet? how to offset?
+        const double& rangeTranslational,
+        MocoProblem& problem) {
+
+    OPENSIM_THROW_IF(rangeRotational < 0, Exception,
+            format("Expected rangeRotational to be non-negative, but got {}.",
+                    rangeRotational));
+    OPENSIM_THROW_IF(rangeTranslational < 0, Exception,
+            format("Expected rangeTranslational to be non-negative, "
+                   "but got {}.", rangeTranslational));
+
+    const auto coords = model.getCoordinatesInMultibodyTreeOrder();
+    const int numRows = (int)kinematics.getNumRows();
+    const auto& time = kinematics.getIndependentColumn();
+    const std::unordered_map<Coordinate::MotionType, double> ranges =
+            {{Coordinate::Rotational, rangeRotational},
+             {Coordinate::Translational, rangeTranslational}};
+    for (const auto& coord : coords) {
+        const auto& motionType = coord->getMotionType();
+        // We can't set the bounds for coupled coordinates in a generic way,
+        // so we ignore.
+        if (motionType == Coordinate::Rotational ||
+                motionType == Coordinate::Translational) {
+            const auto& valueStr = coord->getStateVariableNames().get(0);
+            if (kinematics.hasColumn(valueStr)) {
+                const auto& column = kinematics.getDependentColumn(valueStr);
+                SimTK::Vector temp = column - ranges[motionType];
+                GCVSpline lower(5, numRows, time.data(),
+                        temp.getContiguousScalarData());
+                temp = column + ranges[motionType];
+                GCVSpline upper(5, numRows, time.data(),
+                        temp.getContiguousScalarData());
+                problem.setStateInfo(valueStr,
+                        {std::move(lower), std::move(upper)});
+            }
+            const auto& speedStr = coord->getStateVariableNames().get(1);
+            if (kinematics.hasColumn(speedStr)) {
+                const auto& column = kinematics.getDependentColumn(speedStr);
+                SimTK::Vector temp = column - ranges[motionType];
+                GCVSpline lower(5, numRows, time.data(),
+                        temp.getContiguousScalarData());
+                temp = column + ranges[motionType];
+                GCVSpline upper(5, numRows, time.data(),
+                        temp.getContiguousScalarData());
+                problem.setStateInfo(speedStr,
+                        {std::move(lower), std::move(upper)});
+            }
+        }
+    }
 }

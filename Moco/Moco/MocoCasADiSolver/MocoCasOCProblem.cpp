@@ -55,9 +55,13 @@ MocoCasOCProblem::MocoCasOCProblem(const MocoCasADiSolver& mocoCasADiSolver,
             stateType = CasOC::StateType::Speed;
         else
             stateType = CasOC::StateType::Auxiliary;
-        addState(stateName, stateType, convertBounds(info.getBounds()),
-                convertBounds(info.getInitialBounds()),
-                convertBounds(info.getFinalBounds()));
+        if (info.getUseFunctionBounds()) {
+            addStateWithTimeVaryingBounds(stateName, stateType);
+        } else {
+            addState(stateName, stateType, convertBounds(info.getBounds()),
+                    convertBounds(info.getInitialBounds()),
+                    convertBounds(info.getFinalBounds()));
+        }
     }
 
     auto controlNames =

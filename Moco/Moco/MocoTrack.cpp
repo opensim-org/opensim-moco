@@ -104,10 +104,19 @@ MocoStudy MocoTrack::initialize() {
 
     // Set state bounds.
     // -----------------
-    if (get_tight_state_bounds() /*TODO Rename*/) {
-        setKinematicsFunctionBoundsFromTable(problem, tracked_states,
-                get_state_bound_range_rotational(),
-                get_state_bound_range_translational());
+    // TODO: Default true. Make it an optional property.
+    if (get_bound_kinematic_states_with_states_reference()) {
+        OPENSIM_THROW_IF_FRMOBJ(get_states_reference().empty(),
+                Exception,
+                "Cannot bound kinematic states with states reference if no "
+                "states reference is supplied.");
+        setKinematicStateFunctionBoundsFromTable(model,
+                tracked_states,
+                // TODO: use properties for these ranges.
+                SimTK::convertDegreesToRadians(10), 0.10,
+                problem);
+                // get_state_bound_range_rotational(),
+                // get_state_bound_range_translational());
     }
 
 

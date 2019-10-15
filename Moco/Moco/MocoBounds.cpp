@@ -20,6 +20,8 @@
 
 #include "MocoUtilities.h"
 
+#include <OpenSim/Common/Constant.h>
+
 using namespace OpenSim;
 
 MocoBounds::MocoBounds() {
@@ -68,4 +70,38 @@ void MocoBounds::printDescription(std::ostream& stream) const {
         stream << "[" << getLower() << ", " << getUpper() << "]";
     }
     stream.flush();
+}
+
+MocoFunctionBounds::MocoFunctionBounds() {
+    constructProperties();
+}
+
+MocoFunctionBounds::MocoFunctionBounds(const Function& lower)
+        : MocoFunctionBounds() {
+    set_lower_bound(lower);
+}
+
+MocoFunctionBounds::MocoFunctionBounds(const Function& lower,
+        const Function& upper) : MocoFunctionBounds(lower) {
+    set_upper_bound(upper);
+}
+
+
+void MocoFunctionBounds::printDescription(std::ostream& stream) const {
+    // TODO: Print min and max of the functions.
+    if (isEquality()) {
+        stream << get_lower_bound().getConcreteClassName();
+    }
+    else {
+        const auto& lower = get_lower_bound().getConcreteClassName();
+        const auto& upper = get_upper_bound().getConcreteClassName();
+        stream << "[" << lower << ", " << upper << "]";
+    }
+    stream.flush();
+}
+
+void MocoFunctionBounds::constructProperties() {
+    constructProperty_lower_bound(Constant(0));
+    constructProperty_upper_bound();
+    constructProperty_equality_with_lower(false);
 }

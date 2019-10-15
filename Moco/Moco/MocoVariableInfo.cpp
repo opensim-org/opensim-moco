@@ -17,82 +17,85 @@
  * -------------------------------------------------------------------------- */
 
 #include "MocoVariableInfo.h"
+
 #include "MocoUtilities.h"
 
 using namespace OpenSim;
 
-MocoVariableInfo::MocoVariableInfo() {
-    constructProperties();
-}
+MocoVariableInfo::MocoVariableInfo() { constructProperties(); }
 
 MocoVariableInfo::MocoVariableInfo(const std::string& name,
         const MocoBounds& bounds, const MocoInitialBounds& initial,
-        const MocoFinalBounds& final) : MocoVariableInfo() {
+        const MocoFinalBounds& final)
+        : MocoVariableInfo() {
     setName(name);
-    set_bounds(bounds.getAsArray());
+    set_phase_bounds(bounds.getAsArray());
     set_initial_bounds(initial.getAsArray());
     set_final_bounds(final.getAsArray());
     validate();
 }
 
-MocoVariableInfo::MocoVariableInfo(const std::string& name,
-        const MocoFunctionBounds&,
-        const MocoInitialBounds&, const MocoFinalBounds&) 
+MocoVariableInfo::MocoVariableInfo(
+        const std::string& name, const MocoFunctionBounds& bounds)
         : MocoVariableInfo() {
     setName(name);
-    set_bounds(bounds.getAsArray());
-    set_initial_bounds(initial.getAsArray());
-    set_final_bounds(final.getAsArray());
-    // TODO validate();
+    set_function_bounds(bounds);
+    set_use_function_bounds(true);
 }
 
 void MocoVariableInfo::validate() const {
     const auto& n = getName();
-    const auto b = getBounds();
+    const auto b = getPhaseBounds();
     const auto ib = getInitialBounds();
     const auto fb = getFinalBounds();
 
     OPENSIM_THROW_IF(ib.isSet() && ib.getLower() < b.getLower(), Exception,
             format("For variable %s, expected "
-                   "[initial value lower bound] >= [lower bound], but "
-                   "intial value lower bound=%g, lower bound=%g.",
+                   "[initial value lower bound] >= [phase lower bound], but "
+                   "intial value lower bound=%g, phase lower bound=%g.",
                     n, ib.getLower(), b.getLower()));
     OPENSIM_THROW_IF(fb.isSet() && fb.getLower() < b.getLower(), Exception,
             format("For variable %s, expected "
-                   "[final value lower bound] >= [lower bound], but "
-                   "final value lower bound=%g, lower bound=%g.",
+                   "[final value lower bound] >= [phase lower bound], but "
+                   "final value lower bound=%g, phase lower bound=%g.",
                     n, fb.getLower(), b.getLower()));
     OPENSIM_THROW_IF(ib.isSet() && ib.getUpper() > b.getUpper(), Exception,
             format("For variable %s, expected "
-                   "[initial value upper bound] >= [upper bound], but "
-                   "initial value upper bound=%g, upper bound=%g.",
+                   "[initial value upper bound] >= [phase upper bound], but "
+                   "initial value upper bound=%g, phase upper bound=%g.",
                     n, ib.getUpper(), b.getUpper()));
     OPENSIM_THROW_IF(fb.isSet() && fb.getUpper() > b.getUpper(), Exception,
             format("For variable %s, expected "
-                   "[final value upper bound] >= [upper bound], but "
-                   "final value upper bound=%g, upper bound=%g.",
+                   "[final value upper bound] >= [phase upper bound], but "
+                   "final value upper bound=%g, phase upper bound=%g.",
                     n, fb.getUpper(), b.getUpper()));
 }
 
 void MocoVariableInfo::printDescription(std::ostream& stream) const {
-    const auto bounds = getBounds();
-    stream << getName() << ". bounds: ";
-    bounds.printDescription(stream);
-    const auto initial = getInitialBounds();
-    if (initial.isSet()) {
-        stream << " initial: ";
-        initial.printDescription(stream);
-    }
-    const auto final = getFinalBounds();
-    if (final.isSet()) {
-        stream << " final: ";
-        final.printDescription(stream);
+    if (get_use_function_bounds()) {
+        get_function_bounds().printDescription(stream);
+    } else {
+        const auto bounds = getPhaseBounds();
+        stream << getName() << ". bounds: ";
+        bounds.printDescription(stream);
+        const auto initial = getInitialBounds();
+        if (initial.isSet()) {
+            stream << " initial: ";
+            initial.printDescription(stream);
+        }
+        const auto final = getFinalBounds();
+        if (final.isSet()) {
+            stream << " final: ";
+            final.printDescription(stream);
+        }
     }
     stream << std::endl;
 }
 
 void MocoVariableInfo::constructProperties() {
-    constructProperty_bounds();
+    constructProperty_phase_bounds();
     constructProperty_initial_bounds();
     constructProperty_final_bounds();
+    constructProperty_function_bounds();
+    constructProperty_use_function_bounds(false);
 }

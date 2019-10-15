@@ -200,6 +200,18 @@ public:
     int getJarSize() const { return (int)m_jar->size(); }
 
 private:
+    casadi::DM findTimeVaryingStateLowerBoundsImpl(
+            const std::string& name, const casadi::DM& times) const override {
+        auto mocoProblemRep = m_jar->take();
+        for (int i = 0; i < times.numel(); ++i) {
+            mocoProblemRep->getState
+        }
+
+    }
+    casadi::DM findTimeVaryingStateUpperBoundsImpl(
+            const std::string& name, const casadi::DM& times) const override {
+
+    };
     void calcMultibodySystemExplicit(const ContinuousInput& input,
             bool calcKCErrors,
             MultibodySystemExplicitOutput& output) const override {
