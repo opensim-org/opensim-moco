@@ -40,6 +40,18 @@ public:
     /// TODO
     bool getUseFunctionBounds() const { return get_use_function_bounds(); }
 
+    double calcLowerFunctionBound(const double& time) const {
+        OPENSIM_THROW_IF_FRMOBJ(!getUseFunctionBounds(), Exception,
+                "This info is not set to use function bounds.");
+        return get_function_bounds().calcLower(time);
+    }
+
+    double calcUpperFunctionBound(const double& time) const {
+        OPENSIM_THROW_IF_FRMOBJ(!getUseFunctionBounds(), Exception,
+                "This info is not set to use function bounds.");
+        return get_function_bounds().calcUpper(time);
+    }
+
     /// @details Note: the return value is constructed fresh on every call from
     /// the internal property. Avoid repeated calls to this function.
     MocoBounds getPhaseBounds() const {

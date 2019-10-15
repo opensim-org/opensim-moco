@@ -137,13 +137,13 @@ public:
     bool isWithinBounds(const double& time, const double& value) const {
         return findLower(time) <= value && value <= findUpper(time);
     }
-    double findLower(const double& time) const {
+    double calcLower(const double& time) const {
         SimTK::Vector timeVec(1, &time, true);
         return get_lower_bound().calcValue(timeVec);
     }
-    double findUpper(const double& time) const {
+    double calcUpper(const double& time) const {
         if (get_equality_with_lower()) {
-            return findLower(time);
+            return calcLower(time);
         } else {
             OPENSIM_THROW_IF_FRMOBJ(getProperty_upper_bound().empty(),
                     Exception, "No upper bound provided.");

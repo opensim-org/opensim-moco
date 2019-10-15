@@ -203,14 +203,22 @@ private:
     casadi::DM findTimeVaryingStateLowerBoundsImpl(
             const std::string& name, const casadi::DM& times) const override {
         auto mocoProblemRep = m_jar->take();
+        casadi::DM ret(casadi::Sparsity::dense(times.rows(), times.columns()));
         for (int i = 0; i < times.numel(); ++i) {
-            mocoProblemRep->getState
+            ret(i, 0) = mocoProblemRep->calcStateLowerFunctionBound(times(i, 0).scalar());
         }
-
+        return ret;
+        m_jar->leave(std::move(mocoProblemRep));
     }
     casadi::DM findTimeVaryingStateUpperBoundsImpl(
             const std::string& name, const casadi::DM& times) const override {
-
+        auto mocoProblemRep = m_jar->take();
+        casadi::DM ret(casadi::Sparsity::dense(times.rows(), times.columns()));
+        for (int i = 0; i < times.numel(); ++i) {
+            ret(i, 0) = mocoProblemRep->calcStateUpperFunctionBound(times(i, 0).scalar());
+        }
+        return ret;
+        m_jar->leave(std::move(mocoProblemRep));
     };
     void calcMultibodySystemExplicit(const ContinuousInput& input,
             bool calcKCErrors,
