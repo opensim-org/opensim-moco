@@ -255,8 +255,14 @@ void DeGrooteFregly2016Muscle::calcMuscleLengthInfoHelper(
     if (ignoreTendonCompliance) {
         mli.normTendonLength = 1.0;
     } else {
+        double normTendonForceClamped = normTendonForce;
+        if (get_clamp_normalized_tendon_length()) {
+            normTendonForceClamped = SimTK::clamp(
+                    getMinNormalizedTendonForce(),
+                    normTendonForceClamped, getMaxNormalizedTendonForce());
+        }
         mli.normTendonLength =
-                calcTendonForceLengthInverseCurve(normTendonForce);
+                calcTendonForceLengthInverseCurve(normTendonForceClamped);
     }
     mli.tendonStrain = mli.normTendonLength - 1.0;
     mli.tendonLength = get_tendon_slack_length() * mli.normTendonLength;
@@ -291,7 +297,13 @@ void DeGrooteFregly2016Muscle::calcFiberVelocityInfoHelper(
         const SimTK::Real& normTendonForceDerivative = SimTK::NaN) const {
 
     if (isTendonDynamicsExplicit && !ignoreTendonCompliance) {
-        const auto& normFiberForce = normTendonForce / mli.cosPennationAngle;
+        double normTendonForceClamped = normTendonForce;
+        if (get_clamp_normalized_tendon_length()) {
+            normTendonForceClamped = SimTK::clamp(getMinNormalizedTendonForce(),
+                    normTendonForceClamped, getMaxNormalizedTendonForce());
+        }
+        const auto& normFiberForce =
+                normTendonForceClamped / mli.cosPennationAngle;
         fvi.fiberForceVelocityMultiplier =
                 (normFiberForce - mli.fiberPassiveForceLengthMultiplier) /
                 (activation * mli.fiberActiveForceLengthMultiplier);
@@ -377,7 +389,12 @@ void DeGrooteFregly2016Muscle::calcMuscleDynamicsInfoHelper(
         mdi.normTendonForce = mdi.normFiberForce * mli.cosPennationAngle;
         mdi.tendonForce = mdi.fiberForceAlongTendon;
     } else {
-        mdi.normTendonForce = normTendonForce;
+        double normTendonForceClamped = normTendonForce;
+        if (get_clamp_normalized_tendon_length()) {
+            normTendonForceClamped = SimTK::clamp(getMinNormalizedTendonForce(),
+                    normTendonForceClamped, getMaxNormalizedTendonForce());
+        }
+        mdi.normTendonForce = normTendonForceClamped;
         mdi.tendonForce = maxIsometricForce * mdi.normTendonForce;
     }
 
