@@ -119,6 +119,7 @@ MocoStudy MocoTrack::initialize() {
                 Exception,
                 "Cannot bound kinematic states with states reference if no "
                 "states reference is supplied.");
+        boundKinematicStates = get_bound_kinematic_states();
     }
 
     checkPropertyIsNonnegative(
