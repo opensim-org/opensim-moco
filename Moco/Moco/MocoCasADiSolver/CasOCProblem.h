@@ -44,6 +44,7 @@ struct Bounds {
     double lower = std::numeric_limits<double>::quiet_NaN();
     double upper = std::numeric_limits<double>::quiet_NaN();
     bool isSet() const { return !std::isnan(lower) && !std::isnan(upper); }
+    bool isEquality() const { return isSet() && lower == upper; }
 };
 
 /// This enum is used to categorize a state variable as a generalized
@@ -54,6 +55,7 @@ enum class KinematicLevel { Position, Velocity, Acceleration };
 struct StateInfo {
     std::string name;
     StateType type;
+    bool usingFunctionBounds;
     Bounds bounds;
     Bounds initialBounds;
     Bounds finalBounds;
@@ -177,19 +179,18 @@ protected:
     /// internally handles the differential equations for the generalized
     /// coordinates. The state variables must be added in the order Coordinate,
     /// Speed, Auxiliary.
-    // TODO: Create separate addDegreeOfFreedom() and addAuxiliaryState()?
     void addState(std::string name, StateType type, Bounds bounds,
             Bounds initialBounds, Bounds finalBounds) {
         clipEndpointBounds(bounds, initialBounds);
         clipEndpointBounds(bounds, finalBounds);
-        m_stateInfos.push_back({std::move(name), type, std::move(bounds),
+        m_stateInfos.push_back({std::move(name), type, false, std::move(bounds),
                 std::move(initialBounds), std::move(finalBounds)});
-        if (type == StateType::Coordinate)
-            ++m_numCoordinates;
-        else if (type == StateType::Speed)
-            ++m_numSpeeds;
-        else if (type == StateType::Auxiliary)
-            ++m_numAuxiliaryStates;
+        addStateInternal(type);
+    }
+    void addStateWithTimeVaryingBounds(std::string name, StateType type) {
+        m_usingTimeVaryingBounds = true;
+        m_stateInfos.push_back({std::move(name), type, true, {}, {}, {}});
+        addStateInternal(type);
     }
     /// Add an algebraic variable/"state" to the problem.
     void addControl(std::string name, Bounds bounds, Bounds initialBounds,
@@ -303,6 +304,26 @@ protected:
     }
 
 public:
+    struct TimeVaryingBounds {
+        casadi::DM lower;
+        casadi::DM upper;
+    };
+    TimeVaryingBounds findTimeVaryingStateBounds(const std::string& name,
+            const casadi::DM& times) const {
+        const auto it = std::find_if(m_stateInfos.begin(), m_stateInfos.end(),
+                [&name](const StateInfo& s) { return s.name == name; });
+
+        OPENSIM_THROW_IF(it == m_stateInfos.end(),
+                OpenSim::Exception, "State does not exist.");
+        OPENSIM_THROW_IF(!it->usingFunctionBounds, OpenSim::Exception,
+                "State is not using function bounds.");
+
+        return findTimeVaryingStateBoundsImpl(name, times);
+    }
+    virtual TimeVaryingBounds findTimeVaryingStateBoundsImpl(
+            const std::string& name, const casadi::DM& times) const {
+        OPENSIM_THROW(OpenSim::Exception, "Not implemented.");
+    }
     /// Kinematic constraint errors should be ordered as so:
     /// - position-level constraints
     /// - first derivative of position-level constraints
@@ -347,6 +368,12 @@ public:
     /// @}
 
 public:
+    /// Are the initial and final times fixed?
+    bool isFixedTime() const {
+        return m_timeInitialBounds.isEquality() &&
+                m_timeFinalBounds.isEquality();
+    }
+
     /// Create an iterate with the variable names populated according to the
     /// variables added to this problem.
     template <typename IterateType = Iterate>
@@ -384,6 +411,11 @@ public:
     void initialize(const std::string& finiteDiffScheme,
             std::shared_ptr<const std::vector<VariablesDM>>
                     pointsForSparsityDetection) const {
+
+        OPENSIM_THROW_IF(m_usingTimeVaryingBounds && !isFixedTime(),
+                OpenSim::Exception,
+                "Cannot use time-varying bounds for non-fixed-time problems.");
+
         auto* mutThis = const_cast<Problem*>(this);
 
         {
@@ -410,8 +442,9 @@ public:
                         pointsForSparsityDetection);
                 if (info.integrand_function) {
                     info.integrand_function->constructFunction(this,
-                            "endpoint_constraint_" + info.name + "_integrand", index,
-                            finiteDiffScheme, pointsForSparsityDetection);
+                            "endpoint_constraint_" + info.name + "_integrand",
+                            index, finiteDiffScheme,
+                            pointsForSparsityDetection);
                 }
                 ++index;
             }
@@ -549,6 +582,16 @@ public:
     const Bounds& getKinematicConstraintBounds() const {
         return m_kinematicConstraintBounds;
     }
+    const double& getInitialTime() const {
+        OPENSIM_THROW_IF(!isFixedTime(), OpenSim::Exception,
+                "Cannot get initial time if it's not fixed.");
+        return m_timeInitialBounds.lower;
+    }
+    const double& getFinalTime() const {
+        OPENSIM_THROW_IF(!isFixedTime(), OpenSim::Exception,
+                "Cannot get final time if it's not fixed.");
+        return m_timeFinalBounds.lower;
+    }
     const Bounds& getTimeInitialBounds() const { return m_timeInitialBounds; }
     const Bounds& getTimeFinalBounds() const { return m_timeFinalBounds; }
     const std::vector<StateInfo>& getStateInfos() const { return m_stateInfos; }
@@ -599,6 +642,14 @@ public:
     /// @}
 
 private:
+    void addStateInternal(StateType type) {
+        if (type == StateType::Coordinate)
+            ++m_numCoordinates;
+        else if (type == StateType::Speed)
+            ++m_numSpeeds;
+        else if (type == StateType::Auxiliary)
+            ++m_numAuxiliaryStates;
+    }
     /// Clip endpoint to be as strict as b.
     void clipEndpointBounds(const Bounds& b, Bounds& endpoint) {
         endpoint.lower = std::max(b.lower, endpoint.lower);
@@ -608,6 +659,7 @@ private:
     Bounds m_timeInitialBounds;
     Bounds m_timeFinalBounds;
     std::vector<StateInfo> m_stateInfos;
+    bool m_usingTimeVaryingBounds = false;
     int m_numCoordinates = 0;
     int m_numSpeeds = 0;
     int m_numAuxiliaryStates = 0;

@@ -457,14 +457,14 @@ TEMPLATE_TEST_CASE("Workflow", "", MocoTropterSolver, MocoCasADiSolver) {
             MocoProblemRep rep = problem.createRep();
             {
                 const auto& info = rep.getStateInfo("/slider/position/value");
-                SimTK_TEST_EQ(info.getBounds().getLower(), -10);
-                SimTK_TEST_EQ(info.getBounds().getUpper(), 15);
+                SimTK_TEST_EQ(info.getPhaseBounds().getLower(), -10);
+                SimTK_TEST_EQ(info.getPhaseBounds().getUpper(), 15);
             }
             {
                 // Default speed bounds.
                 const auto& info = rep.getStateInfo("/slider/position/speed");
-                SimTK_TEST_EQ(info.getBounds().getLower(), -50);
-                SimTK_TEST_EQ(info.getBounds().getUpper(), 50);
+                SimTK_TEST_EQ(info.getPhaseBounds().getLower(), -50);
+                SimTK_TEST_EQ(info.getPhaseBounds().getUpper(), 50);
             }
             // No control info stored in the Problem.
             SimTK_TEST_MUST_THROW_EXC(
@@ -472,8 +472,8 @@ TEMPLATE_TEST_CASE("Workflow", "", MocoTropterSolver, MocoCasADiSolver) {
             {
                 // Obtained from controls.
                 const auto& info = rep.getControlInfo("/actuator");
-                SimTK_TEST_EQ(info.getBounds().getLower(), 35);
-                SimTK_TEST_EQ(info.getBounds().getUpper(), 56);
+                SimTK_TEST_EQ(info.getPhaseBounds().getLower(), 35);
+                SimTK_TEST_EQ(info.getPhaseBounds().getUpper(), 56);
             }
         }
 
@@ -481,14 +481,14 @@ TEMPLATE_TEST_CASE("Workflow", "", MocoTropterSolver, MocoCasADiSolver) {
         SECTION("Setting control info explicitly") {
             {
                 const auto& probinfo = phase0.getControlInfo("/actuator");
-                SimTK_TEST_EQ(probinfo.getBounds().getLower(), 12);
-                SimTK_TEST_EQ(probinfo.getBounds().getUpper(), 15);
+                SimTK_TEST_EQ(probinfo.getPhaseBounds().getLower(), 12);
+                SimTK_TEST_EQ(probinfo.getPhaseBounds().getUpper(), 15);
             }
             {
                 MocoProblemRep rep = problem.createRep();
                 const auto& info = rep.getControlInfo("/actuator");
-                SimTK_TEST_EQ(info.getBounds().getLower(), 12);
-                SimTK_TEST_EQ(info.getBounds().getUpper(), 15);
+                SimTK_TEST_EQ(info.getPhaseBounds().getLower(), 12);
+                SimTK_TEST_EQ(info.getPhaseBounds().getUpper(), 15);
             }
         }
 
@@ -497,20 +497,20 @@ TEMPLATE_TEST_CASE("Workflow", "", MocoTropterSolver, MocoCasADiSolver) {
         {
             {
                 const auto& probinfo0 = phase0.getControlInfo("/residuals_0");
-                SimTK_TEST_EQ(probinfo0.getBounds().getLower(), -5);
-                SimTK_TEST_EQ(probinfo0.getBounds().getUpper(), 5);
+                SimTK_TEST_EQ(probinfo0.getPhaseBounds().getLower(), -5);
+                SimTK_TEST_EQ(probinfo0.getPhaseBounds().getUpper(), 5);
                 const auto& probinfo3 = phase0.getControlInfo("/residuals_3");
-                SimTK_TEST_EQ(probinfo3.getBounds().getLower(), -7.5);
-                SimTK_TEST_EQ(probinfo3.getBounds().getUpper(), 10);
+                SimTK_TEST_EQ(probinfo3.getPhaseBounds().getLower(), -7.5);
+                SimTK_TEST_EQ(probinfo3.getPhaseBounds().getUpper(), 10);
             }
             MocoProblemRep rep = problem.createRep();
             {
                 const auto& info0 = rep.getControlInfo("/residuals_0");
-                SimTK_TEST_EQ(info0.getBounds().getLower(), -5);
-                SimTK_TEST_EQ(info0.getBounds().getUpper(), 5);
+                SimTK_TEST_EQ(info0.getPhaseBounds().getLower(), -5);
+                SimTK_TEST_EQ(info0.getPhaseBounds().getUpper(), 5);
                 const auto& info3 = rep.getControlInfo("/residuals_3");
-                SimTK_TEST_EQ(info3.getBounds().getLower(), -7.5);
-                SimTK_TEST_EQ(info3.getBounds().getUpper(), 10);
+                SimTK_TEST_EQ(info3.getPhaseBounds().getLower(), -7.5);
+                SimTK_TEST_EQ(info3.getPhaseBounds().getUpper(), 10);
             }
         }
 
@@ -520,15 +520,15 @@ TEMPLATE_TEST_CASE("Workflow", "", MocoTropterSolver, MocoCasADiSolver) {
                 {
                     const auto& info =
                             phase0.getStateInfo("/slider/position/value");
-                    SimTK_TEST(!info.getBounds().isSet());
+                    SimTK_TEST(!info.getPhaseBounds().isSet());
                     SimTK_TEST_EQ(info.getInitialBounds().getLower(), -5.0);
                     SimTK_TEST_EQ(info.getInitialBounds().getUpper(), 3.6);
                     SimTK_TEST(!info.getFinalBounds().isSet());
                 }
                 MocoProblemRep rep = problem.createRep();
                 const auto& info = rep.getStateInfo("/slider/position/value");
-                SimTK_TEST_EQ(info.getBounds().getLower(), -10);
-                SimTK_TEST_EQ(info.getBounds().getUpper(), 15);
+                SimTK_TEST_EQ(info.getPhaseBounds().getLower(), -10);
+                SimTK_TEST_EQ(info.getPhaseBounds().getUpper(), 15);
                 SimTK_TEST_EQ(info.getInitialBounds().getLower(), -5.0);
                 SimTK_TEST_EQ(info.getInitialBounds().getUpper(), 3.6);
                 SimTK_TEST(!info.getFinalBounds().isSet());
@@ -539,15 +539,15 @@ TEMPLATE_TEST_CASE("Workflow", "", MocoTropterSolver, MocoCasADiSolver) {
                 {
                     const auto& info =
                             phase0.getStateInfo("/slider/position/value");
-                    SimTK_TEST(!info.getBounds().isSet());
+                    SimTK_TEST(!info.getPhaseBounds().isSet());
                     SimTK_TEST(!info.getInitialBounds().isSet());
                     SimTK_TEST_EQ(info.getFinalBounds().getLower(), 1.3);
                     SimTK_TEST_EQ(info.getFinalBounds().getUpper(), 2.5);
                 }
                 MocoProblemRep rep = problem.createRep();
                 const auto& info = rep.getStateInfo("/slider/position/value");
-                SimTK_TEST_EQ(info.getBounds().getLower(), -10);
-                SimTK_TEST_EQ(info.getBounds().getUpper(), 15);
+                SimTK_TEST_EQ(info.getPhaseBounds().getLower(), -10);
+                SimTK_TEST_EQ(info.getPhaseBounds().getUpper(), 15);
                 SimTK_TEST(!info.getInitialBounds().isSet());
                 SimTK_TEST_EQ(info.getFinalBounds().getLower(), 1.3);
                 SimTK_TEST_EQ(info.getFinalBounds().getUpper(), 2.5);
@@ -557,15 +557,15 @@ TEMPLATE_TEST_CASE("Workflow", "", MocoTropterSolver, MocoCasADiSolver) {
                 {
                     const auto& info =
                             phase0.getStateInfo("/slider/position/speed");
-                    SimTK_TEST(!info.getBounds().isSet());
+                    SimTK_TEST(!info.getPhaseBounds().isSet());
                     SimTK_TEST_EQ(info.getInitialBounds().getLower(), -4.1);
                     SimTK_TEST_EQ(info.getInitialBounds().getUpper(), 3.9);
                     SimTK_TEST(!info.getFinalBounds().isSet());
                 }
                 MocoProblemRep rep = problem.createRep();
                 const auto& info = rep.getStateInfo("/slider/position/speed");
-                SimTK_TEST_EQ(info.getBounds().getLower(), -50);
-                SimTK_TEST_EQ(info.getBounds().getUpper(), 50);
+                SimTK_TEST_EQ(info.getPhaseBounds().getLower(), -50);
+                SimTK_TEST_EQ(info.getPhaseBounds().getUpper(), 50);
                 SimTK_TEST_EQ(info.getInitialBounds().getLower(), -4.1);
                 SimTK_TEST_EQ(info.getInitialBounds().getUpper(), 3.9);
                 SimTK_TEST(!info.getFinalBounds().isSet());
@@ -576,15 +576,15 @@ TEMPLATE_TEST_CASE("Workflow", "", MocoTropterSolver, MocoCasADiSolver) {
                 {
                     const auto& info =
                             phase0.getStateInfo("/slider/position/speed");
-                    SimTK_TEST(!info.getBounds().isSet());
+                    SimTK_TEST(!info.getPhaseBounds().isSet());
                     SimTK_TEST(!info.getInitialBounds().isSet());
                     SimTK_TEST_EQ(info.getFinalBounds().getLower(), 0.1);
                     SimTK_TEST_EQ(info.getFinalBounds().getUpper(), 0.8);
                 }
                 MocoProblemRep rep = problem.createRep();
                 const auto& info = rep.getStateInfo("/slider/position/speed");
-                SimTK_TEST_EQ(info.getBounds().getLower(), -50);
-                SimTK_TEST_EQ(info.getBounds().getUpper(), 50);
+                SimTK_TEST_EQ(info.getPhaseBounds().getLower(), -50);
+                SimTK_TEST_EQ(info.getPhaseBounds().getUpper(), 50);
                 SimTK_TEST(!info.getInitialBounds().isSet());
                 SimTK_TEST_EQ(info.getFinalBounds().getLower(), 0.1);
                 SimTK_TEST_EQ(info.getFinalBounds().getUpper(), 0.8);
@@ -593,15 +593,15 @@ TEMPLATE_TEST_CASE("Workflow", "", MocoTropterSolver, MocoCasADiSolver) {
                 problem.setControlInfo("/actuator", {}, {-4.1, 3.9});
                 {
                     const auto& info = phase0.getControlInfo("/actuator");
-                    SimTK_TEST(!info.getBounds().isSet());
+                    SimTK_TEST(!info.getPhaseBounds().isSet());
                     SimTK_TEST_EQ(info.getInitialBounds().getLower(), -4.1);
                     SimTK_TEST_EQ(info.getInitialBounds().getUpper(), 3.9);
                     SimTK_TEST(!info.getFinalBounds().isSet());
                 }
                 MocoProblemRep rep = problem.createRep();
                 const auto& info = rep.getControlInfo("/actuator");
-                SimTK_TEST_EQ(info.getBounds().getLower(), 35);
-                SimTK_TEST_EQ(info.getBounds().getUpper(), 56);
+                SimTK_TEST_EQ(info.getPhaseBounds().getLower(), 35);
+                SimTK_TEST_EQ(info.getPhaseBounds().getUpper(), 56);
                 SimTK_TEST_EQ(info.getInitialBounds().getLower(), -4.1);
                 SimTK_TEST_EQ(info.getInitialBounds().getUpper(), 3.9);
                 SimTK_TEST(!info.getFinalBounds().isSet());
@@ -610,15 +610,15 @@ TEMPLATE_TEST_CASE("Workflow", "", MocoTropterSolver, MocoCasADiSolver) {
                 problem.setControlInfo("/actuator", {}, {}, {0.1, 0.8});
                 {
                     const auto& info = phase0.getControlInfo("/actuator");
-                    SimTK_TEST(!info.getBounds().isSet());
+                    SimTK_TEST(!info.getPhaseBounds().isSet());
                     SimTK_TEST(!info.getInitialBounds().isSet());
                     SimTK_TEST_EQ(info.getFinalBounds().getLower(), 0.1);
                     SimTK_TEST_EQ(info.getFinalBounds().getUpper(), 0.8);
                 }
                 MocoProblemRep rep = problem.createRep();
                 const auto& info = rep.getControlInfo("/actuator");
-                SimTK_TEST_EQ(info.getBounds().getLower(), 35);
-                SimTK_TEST_EQ(info.getBounds().getUpper(), 56);
+                SimTK_TEST_EQ(info.getPhaseBounds().getLower(), 35);
+                SimTK_TEST_EQ(info.getPhaseBounds().getUpper(), 56);
                 SimTK_TEST(!info.getInitialBounds().isSet());
                 SimTK_TEST_EQ(info.getFinalBounds().getLower(), 0.1);
                 SimTK_TEST_EQ(info.getFinalBounds().getUpper(), 0.8);
@@ -749,38 +749,38 @@ TEMPLATE_TEST_CASE("Set infos with regular expression", "", MocoCasADiSolver,
     problem.setStateInfoPattern(".*/speed", {3, 10});
     MocoProblemRep problemRep = problem.createRep();
     SimTK_TEST_EQ(problemRep.getStateInfo("/jointset/j0/q0/value")
-                          .getBounds()
+                          .getPhaseBounds()
                           .getLower(),
             2);
     SimTK_TEST_EQ(problemRep.getStateInfo("/jointset/j1/q1/value")
-                          .getBounds()
+                          .getPhaseBounds()
                           .getLower(),
             2);
     SimTK_TEST_EQ(problemRep.getStateInfo("/jointset/j0/q0/speed")
-                          .getBounds()
+                          .getPhaseBounds()
                           .getLower(),
             3);
     SimTK_TEST_EQ(problemRep.getStateInfo("/jointset/j1/q1/speed")
-                          .getBounds()
+                          .getPhaseBounds()
                           .getLower(),
             3);
     problem.setStateInfo("/jointset/j0/q0/value", {3, 10});
     problem.setStateInfo("/jointset/j1/q1/speed", {4, 10});
     problemRep = problem.createRep();
     SimTK_TEST_EQ(problemRep.getStateInfo("/jointset/j0/q0/value")
-                          .getBounds()
+                          .getPhaseBounds()
                           .getLower(),
             3);
     SimTK_TEST_EQ(problemRep.getStateInfo("/jointset/j1/q1/value")
-                          .getBounds()
+                          .getPhaseBounds()
                           .getLower(),
             2);
     SimTK_TEST_EQ(problemRep.getStateInfo("/jointset/j0/q0/speed")
-                          .getBounds()
+                          .getPhaseBounds()
                           .getLower(),
             3);
     SimTK_TEST_EQ(problemRep.getStateInfo("/jointset/j1/q1/speed")
-                          .getBounds()
+                          .getPhaseBounds()
                           .getLower(),
             4);
 }
@@ -1851,28 +1851,34 @@ TEST_CASE("MocoPhase::bound_activation_from_excitation") {
     }
     SECTION("bound_activation_from_excitation is true") {
         auto rep = problem.createRep();
-        CHECK(rep.getStateInfo("/muscle/activation").getBounds().getLower() ==
-                0);
-        CHECK(rep.getStateInfo("/muscle/activation").getBounds().getUpper() ==
-                1);
+        CHECK(rep.getStateInfo("/muscle/activation")
+                        .getPhaseBounds()
+                        .getLower() == 0);
+        CHECK(rep.getStateInfo("/muscle/activation")
+                        .getPhaseBounds()
+                        .getUpper() == 1);
     }
     SECTION("bound_activation_from_excitation is true; non-default min/max "
             "control") {
         musclePtr->setMinControl(0.35);
         musclePtr->setMaxControl(0.96);
         auto rep = problem.createRep();
-        CHECK(rep.getStateInfo("/muscle/activation").getBounds().getLower() ==
-                Approx(0.35));
-        CHECK(rep.getStateInfo("/muscle/activation").getBounds().getUpper() ==
-                Approx(0.96));
+        CHECK(rep.getStateInfo("/muscle/activation")
+                        .getPhaseBounds()
+                        .getLower() == Approx(0.35));
+        CHECK(rep.getStateInfo("/muscle/activation")
+                        .getPhaseBounds()
+                        .getUpper() == Approx(0.96));
     }
     SECTION("Custom excitation bounds") {
         problem.setControlInfo("/muscle", {0.41, 0.63});
         auto rep = problem.createRep();
-        CHECK(rep.getStateInfo("/muscle/activation").getBounds().getLower() ==
-                Approx(0.41));
-        CHECK(rep.getStateInfo("/muscle/activation").getBounds().getUpper() ==
-                Approx(0.63));
+        CHECK(rep.getStateInfo("/muscle/activation")
+                        .getPhaseBounds()
+                        .getLower() == Approx(0.41));
+        CHECK(rep.getStateInfo("/muscle/activation")
+                        .getPhaseBounds()
+                        .getUpper() == Approx(0.63));
     }
     SECTION("ignore_activation_dynamics") {
         musclePtr->set_ignore_activation_dynamics(true);
@@ -1882,4 +1888,7 @@ TEST_CASE("MocoPhase::bound_activation_from_excitation") {
                         "No info available for state '/muscle/activation'."));
     }
 }
+
+// TODO: Test functions with lower > upper.
+// TODO: test constraining a state exactly (equality_with_lower).
 

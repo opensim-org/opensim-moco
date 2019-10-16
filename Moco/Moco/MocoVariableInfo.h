@@ -35,21 +35,33 @@ public:
     MocoVariableInfo();
     MocoVariableInfo(const std::string& name, const MocoBounds&,
             const MocoInitialBounds&, const MocoFinalBounds&);
+    MocoVariableInfo(const std::string& name, const MocoFunctionBounds&);
+
+    /// TODO
+    bool getUseFunctionBounds() const { return get_use_function_bounds(); }
+
+    const MocoFunctionBounds& getFunctionBounds() const {
+        OPENSIM_THROW_IF_FRMOBJ(getProperty_function_bounds().empty(),
+                Exception, "This info does not have function bounds.");
+        return get_function_bounds();
+    }
 
     /// @details Note: the return value is constructed fresh on every call from
     /// the internal property. Avoid repeated calls to this function.
-    MocoBounds getBounds() const { return MocoBounds(getProperty_bounds()); }
-    /// @copydoc getBounds()
+    MocoBounds getPhaseBounds() const {
+        return MocoBounds(getProperty_phase_bounds());
+    }
+    /// @copydoc getPhaseBounds()
     MocoInitialBounds getInitialBounds() const {
         return MocoInitialBounds(getProperty_initial_bounds());
     }
-    /// @copydoc getBounds()
+    /// @copydoc getPhaseBounds()
     MocoFinalBounds getFinalBounds() const {
         return MocoFinalBounds(getProperty_final_bounds());
     }
 
-    void setBounds(const MocoBounds& bounds) {
-        set_bounds(bounds.getAsArray());
+    void setPhaseBounds(const MocoBounds& bounds) {
+        set_phase_bounds(bounds.getAsArray());
     }
     void setInitialBounds(const MocoInitialBounds& bounds) {
         set_initial_bounds(bounds.getAsArray());
@@ -58,7 +70,8 @@ public:
         set_final_bounds(bounds.getAsArray());
     }
 
-    /// Throws an exception if initial and final bounds are not within bounds.
+    /// Throws an exception if initial and final bounds are not within phase
+    /// bounds. This does not check the function bounds.
     // TODO Move to finalizeFromProperties() and cache MocoBounds.
     void validate() const;
 
@@ -66,7 +79,7 @@ public:
     void printDescription(std::ostream& stream = std::cout) const;
 
 protected:
-    OpenSim_DECLARE_LIST_PROPERTY_ATMOST(bounds, double, 2,
+    OpenSim_DECLARE_LIST_PROPERTY_ATMOST(phase_bounds, double, 2,
             "1 value: required value over all time. "
             "2 values: lower, upper bounds on value over all time.");
     OpenSim_DECLARE_LIST_PROPERTY_ATMOST(initial_bounds, double, 2,
@@ -75,6 +88,9 @@ protected:
     OpenSim_DECLARE_LIST_PROPERTY_ATMOST(final_bounds, double, 2,
             "1 value: required final value. "
             "2 values: lower, upper bounds on final value.");
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(function_bounds, MocoFunctionBounds,
+            "TODO");
+    OpenSim_DECLARE_PROPERTY(use_function_bounds, bool, "TODO");
 
 private:
     void constructProperties();

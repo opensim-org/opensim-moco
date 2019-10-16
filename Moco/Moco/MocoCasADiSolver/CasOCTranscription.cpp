@@ -184,15 +184,35 @@ void Transcription::createVariablesAndSetBounds(const casadi::DM& grid,
     setVariableBounds(final_time, 0, 0, m_problem.getTimeFinalBounds());
 
     {
+        casadi::DM timesDM;
+        if (m_problem.isFixedTime()) {
+            casadi::DM initialTime(casadi::Sparsity::dense(1, 1));
+            initialTime(0, 0) = m_problem.getInitialTime();
+            casadi::DM finalTime(casadi::Sparsity::dense(1, 1));
+            finalTime(0, 0) = m_problem.getFinalTime();
+            timesDM = createTimes(initialTime, finalTime);
+        }
         const auto& stateInfos = m_problem.getStateInfos();
         int is = 0;
         for (const auto& info : stateInfos) {
-            setVariableBounds(
-                    states, is, Slice(1, m_numGridPoints - 1), info.bounds);
-            // The "0" grabs the first column (first mesh point).
-            setVariableBounds(states, is, 0, info.initialBounds);
-            // The "-1" grabs the last column (last mesh point).
-            setVariableBounds(states, is, -1, info.finalBounds);
+            if (info.usingFunctionBounds) {
+                const Problem::TimeVaryingBounds bounds =
+                        m_problem.findTimeVaryingStateBounds(
+                                info.name, timesDM);
+                for (int itime = 0; itime < m_numGridPoints; ++itime) {
+                    setVariableBounds(states, is, itime, 
+                            {bounds.lower(itime).scalar(),
+                             bounds.upper(itime).scalar()});
+                }
+                
+            } else {
+                setVariableBounds(
+                        states, is, Slice(1, m_numGridPoints - 1), info.bounds);
+                // The "0" grabs the first column (first mesh point).
+                setVariableBounds(states, is, 0, info.initialBounds);
+                // The "-1" grabs the last column (last mesh point).
+                setVariableBounds(states, is, -1, info.finalBounds);
+            }
             ++is;
         }
     }

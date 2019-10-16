@@ -95,7 +95,7 @@ protected:
                 convertBounds(m_mocoProbRep.getTimeFinalBounds()));
         for (const auto& svName : m_svNamesInSysOrder) {
             const auto& info = m_mocoProbRep.getStateInfo(svName);
-            this->add_state(svName, convertBounds(info.getBounds()),
+            this->add_state(svName, convertBounds(info.getPhaseBounds()),
                     convertBounds(info.getInitialBounds()),
                     convertBounds(info.getFinalBounds()));
         }
@@ -106,7 +106,7 @@ protected:
                 createControlNamesFromModel(m_modelBase, m_modelControlIndices);
         for (const auto& controlName : controlNames) {
             const auto& info = m_mocoProbRep.getControlInfo(controlName);
-            this->add_control(controlName, convertBounds(info.getBounds()),
+            this->add_control(controlName, convertBounds(info.getPhaseBounds()),
                     convertBounds(info.getInitialBounds()),
                     convertBounds(info.getFinalBounds()));
         }
@@ -215,7 +215,7 @@ protected:
 
                     const auto& multInfo = multInfos[multIndexThisConstraint];
                     this->add_adjunct(multInfo.getName(),
-                            convertBounds(multInfo.getBounds()),
+                            convertBounds(multInfo.getPhaseBounds()),
                             convertBounds(multInfo.getInitialBounds()),
                             convertBounds(multInfo.getFinalBounds()));
                     // Add velocity correction variables if enforcing

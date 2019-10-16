@@ -1,3 +1,18 @@
+- 2019-10-13: State and control bounds can be time-varying with 
+              MocoCasADiSolver.
+              
+              TODO:
+              - MocoTropterSolver must throw exception.
+              - printDescription().
+              - Only works for fixed-time problems.
+              - Must be able to evaluate the function across the entire time 
+                range.
+              - validate that lower <= upper across the time range.
+
+- 2019-10-04: report.py can plot normalized tendon force states. Users can 
+              provide a MocoStudy file instead of a Model file, and users can
+              specify the name of the report output file.
+              
 - 2019-10-04: MocoControlGoal weights can be specified via regular expression
               patterns.
 
