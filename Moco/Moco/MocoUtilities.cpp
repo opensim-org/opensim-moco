@@ -796,7 +796,7 @@ void OpenSim::setKinematicStateFunctionBoundsFromTable(const Model& model,
         // so we ignore.
         if (motionType == Coordinate::Rotational ||
                 motionType == Coordinate::Translational) {
-            const auto& valueStr = coord->getStateVariableNames().get(0);
+            const std::string valueStr = coord->getStateVariableNames().get(0);
             if (kinematics.hasColumn(valueStr)) {
                 const auto& column = kinematics.getDependentColumn(valueStr);
                 SimTK::Vector temp = column - ranges.at(motionType);
@@ -808,7 +808,7 @@ void OpenSim::setKinematicStateFunctionBoundsFromTable(const Model& model,
                 problem.setStateInfo(valueStr,
                         {std::move(lower), std::move(upper)});
             }
-            const auto& speedStr = coord->getStateVariableNames().get(1);
+            const std::string speedStr = coord->getStateVariableNames().get(1);
             if (kinematics.hasColumn(speedStr)) {
                 const auto& column = kinematics.getDependentColumn(speedStr);
                 SimTK::Vector temp = column - ranges.at(motionType);

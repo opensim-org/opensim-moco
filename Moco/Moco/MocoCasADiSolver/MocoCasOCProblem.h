@@ -208,8 +208,8 @@ private:
         casadi::DM L(casadi::Sparsity::dense(times.rows(), times.columns()));
         casadi::DM U(casadi::Sparsity::dense(times.rows(), times.columns()));
         for (int i = 0; i < times.numel(); ++i) {
-            L(i, 0) = bounds.calcLower(times(i, 0).scalar());
-            U(i, 0) = bounds.calcUpper(times(i, 0).scalar());
+            L(i) = bounds.calcLower(times(i).scalar());
+            U(i) = bounds.calcUpper(times(i).scalar());
         }
         m_jar->leave(std::move(mocoProblemRep));
         return {std::move(L), std::move(U)};

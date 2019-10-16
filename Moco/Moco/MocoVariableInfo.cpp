@@ -72,11 +72,11 @@ void MocoVariableInfo::validate() const {
 }
 
 void MocoVariableInfo::printDescription(std::ostream& stream) const {
+    stream << getName() << ". bounds: ";
     if (get_use_function_bounds()) {
         get_function_bounds().printDescription(stream);
     } else {
         const auto bounds = getPhaseBounds();
-        stream << getName() << ". bounds: ";
         bounds.printDescription(stream);
         const auto initial = getInitialBounds();
         if (initial.isSet()) {

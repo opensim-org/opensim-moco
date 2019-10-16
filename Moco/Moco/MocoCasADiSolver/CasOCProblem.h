@@ -318,10 +318,12 @@ public:
         OPENSIM_THROW_IF(!it->usingFunctionBounds, OpenSim::Exception,
                 "State is not using function bounds.");
 
-        return findTimeVaryingStateBounds(name, times);
+        return findTimeVaryingStateBoundsImpl(name, times);
     }
     virtual TimeVaryingBounds findTimeVaryingStateBoundsImpl(
-            const std::string& name, const casadi::DM& times) const = 0;
+            const std::string& name, const casadi::DM& times) const {
+        OPENSIM_THROW(OpenSim::Exception, "Not implemented.");
+    }
     /// Kinematic constraint errors should be ordered as so:
     /// - position-level constraints
     /// - first derivative of position-level constraints

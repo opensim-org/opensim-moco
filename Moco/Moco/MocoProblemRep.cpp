@@ -330,8 +330,10 @@ void MocoProblemRep::initialize() {
                             MocoVariableInfo(coordValueName, {}, {}, {});
                     m_state_infos[coordValueName] = info;
                 }
-                if (!m_state_infos[coordValueName].getPhaseBounds().isSet()) {
-                    m_state_infos[coordValueName].setPhaseBounds(
+                auto& info = m_state_infos[coordValueName];
+                if (!info.getUseFunctionBounds() &&
+                        !info.getPhaseBounds().isSet()) {
+                    info.setPhaseBounds(
                             {coord.getRangeMin(), coord.getRangeMax()});
                 }
             }
@@ -342,9 +344,10 @@ void MocoProblemRep::initialize() {
                             MocoVariableInfo(coordSpeedName, {}, {}, {});
                     m_state_infos[coordSpeedName] = info;
                 }
-                if (!m_state_infos[coordSpeedName].getPhaseBounds().isSet()) {
-                    m_state_infos[coordSpeedName].setPhaseBounds(
-                            ph0.get_default_speed_bounds());
+                auto& info = m_state_infos[coordSpeedName];
+                if (!info.getUseFunctionBounds() &&
+                        !info.getPhaseBounds().isSet()) {
+                    info.setPhaseBounds(ph0.get_default_speed_bounds());
                 }
             }
         }

@@ -49,20 +49,14 @@ public:
     /// @details Note: the return value is constructed fresh on every call from
     /// the internal property. Avoid repeated calls to this function.
     MocoBounds getPhaseBounds() const {
-        OPENSIM_THROW_IF_FRMOBJ(getUseFunctionBounds(), Exception,
-                "This info is set to use function bounds.");
         return MocoBounds(getProperty_phase_bounds());
     }
     /// @copydoc getPhaseBounds()
     MocoInitialBounds getInitialBounds() const {
-        OPENSIM_THROW_IF_FRMOBJ(getUseFunctionBounds(), Exception,
-                "This info is set to use function bounds.");
         return MocoInitialBounds(getProperty_initial_bounds());
     }
     /// @copydoc getPhaseBounds()
     MocoFinalBounds getFinalBounds() const {
-        OPENSIM_THROW_IF_FRMOBJ(getUseFunctionBounds(), Exception,
-                "This info is set to use function bounds.");
         return MocoFinalBounds(getProperty_final_bounds());
     }
 

@@ -35,7 +35,7 @@ MocoBounds::MocoBounds(double value) : MocoBounds() {
 }
 
 MocoBounds::MocoBounds(double lower, double upper) : MocoBounds() {
-    OPENSIM_THROW_IF(SimTK::isNaN(lower) || SimTK::isNaN(upper), Exception, 
+    OPENSIM_THROW_IF(SimTK::isNaN(lower) || SimTK::isNaN(upper), Exception,
         "NaN value detected. Please provide a non-NaN values for the bounds.");
     OPENSIM_THROW_IF(lower > upper, Exception,
         format("Expected lower <= upper, but lower=%g and upper=%g.",
@@ -88,11 +88,9 @@ MocoFunctionBounds::MocoFunctionBounds(const Function& lower,
 
 
 void MocoFunctionBounds::printDescription(std::ostream& stream) const {
-    // TODO: Print min and max of the functions.
     if (isEquality()) {
         stream << get_lower_bound().getConcreteClassName();
-    }
-    else {
+    } else {
         const auto& lower = get_lower_bound().getConcreteClassName();
         const auto& upper = get_upper_bound().getConcreteClassName();
         stream << "[" << lower << ", " << upper << "]";

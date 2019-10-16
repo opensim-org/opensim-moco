@@ -201,8 +201,8 @@ void Transcription::createVariablesAndSetBounds(const casadi::DM& grid,
                                 info.name, timesDM);
                 for (int itime = 0; itime < m_numGridPoints; ++itime) {
                     setVariableBounds(states, is, itime, 
-                            {bounds.lower(itime, 0).scalar(),
-                             bounds.upper(itime, 0).scalar()});
+                            {bounds.lower(itime).scalar(),
+                             bounds.upper(itime).scalar()});
                 }
                 
             } else {
