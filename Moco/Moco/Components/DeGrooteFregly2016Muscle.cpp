@@ -663,11 +663,12 @@ SimTK::Real DeGrooteFregly2016Muscle::solveBisection(
             row[0] = calcResidual(x[i]);
             table.appendRow(x[i], row);
         }
-        writeTableToFile(table, "DEBUG_solveBisection_residual.sto");
+        writeTableToFile(
+                table, "DeGrooteFregly2016Muscle_solveBisection_residual.sto");
+        OPENSIM_THROW_FRMOBJ(Exception,
+                format("Function has same sign at bounds of %f and %f.", left,
+                        right));
     }
-    OPENSIM_THROW_IF_FRMOBJ(sameSign, Exception,
-            format("Function has same sign at bounds of %f and %f.", left,
-                    right));
 
     SimTK::Real residualMidpoint;
     SimTK::Real residualLeft = calcResidual(left);
