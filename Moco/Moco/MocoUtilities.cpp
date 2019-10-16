@@ -787,9 +787,9 @@ void OpenSim::setKinematicStateFunctionBoundsFromTable(const Model& model,
     const auto coords = model.getCoordinatesInMultibodyTreeOrder();
     const int numRows = (int)kinematics.getNumRows();
     const auto& time = kinematics.getIndependentColumn();
-    const std::unordered_map<Coordinate::MotionType, double> ranges =
-            {{Coordinate::Rotational, rangeRotational},
-             {Coordinate::Translational, rangeTranslational}};
+    const std::map<Coordinate::MotionType, double> ranges = {
+            {Coordinate::Rotational, rangeRotational},
+            {Coordinate::Translational, rangeTranslational}};
     for (const auto& coord : coords) {
         const auto& motionType = coord->getMotionType();
         // We can't set the bounds for coupled coordinates in a generic way,
@@ -799,10 +799,10 @@ void OpenSim::setKinematicStateFunctionBoundsFromTable(const Model& model,
             const auto& valueStr = coord->getStateVariableNames().get(0);
             if (kinematics.hasColumn(valueStr)) {
                 const auto& column = kinematics.getDependentColumn(valueStr);
-                SimTK::Vector temp = column - ranges[motionType];
+                SimTK::Vector temp = column - ranges.at(motionType);
                 GCVSpline lower(5, numRows, time.data(),
                         temp.getContiguousScalarData());
-                temp = column + ranges[motionType];
+                temp = column + ranges.at(motionType);
                 GCVSpline upper(5, numRows, time.data(),
                         temp.getContiguousScalarData());
                 problem.setStateInfo(valueStr,
@@ -811,10 +811,10 @@ void OpenSim::setKinematicStateFunctionBoundsFromTable(const Model& model,
             const auto& speedStr = coord->getStateVariableNames().get(1);
             if (kinematics.hasColumn(speedStr)) {
                 const auto& column = kinematics.getDependentColumn(speedStr);
-                SimTK::Vector temp = column - ranges[motionType];
+                SimTK::Vector temp = column - ranges.at(motionType);
                 GCVSpline lower(5, numRows, time.data(),
                         temp.getContiguousScalarData());
-                temp = column + ranges[motionType];
+                temp = column + ranges.at(motionType);
                 GCVSpline upper(5, numRows, time.data(),
                         temp.getContiguousScalarData());
                 problem.setStateInfo(speedStr,

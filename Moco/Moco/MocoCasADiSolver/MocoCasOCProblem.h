@@ -200,26 +200,20 @@ public:
     int getJarSize() const { return (int)m_jar->size(); }
 
 private:
-    casadi::DM findTimeVaryingStateLowerBoundsImpl(
+    TimeVaryingBounds findTimeVaryingStateBoundsImpl(
             const std::string& name, const casadi::DM& times) const override {
         auto mocoProblemRep = m_jar->take();
-        casadi::DM ret(casadi::Sparsity::dense(times.rows(), times.columns()));
+        const auto& bounds =
+                mocoProblemRep->getStateInfo(name).getFunctionBounds();
+        casadi::DM L(casadi::Sparsity::dense(times.rows(), times.columns()));
+        casadi::DM U(casadi::Sparsity::dense(times.rows(), times.columns()));
         for (int i = 0; i < times.numel(); ++i) {
-            ret(i, 0) = mocoProblemRep->calcStateLowerFunctionBound(times(i, 0).scalar());
+            L(i, 0) = bounds.calcLower(times(i, 0).scalar());
+            U(i, 0) = bounds.calcUpper(times(i, 0).scalar());
         }
-        return ret;
         m_jar->leave(std::move(mocoProblemRep));
+        return {std::move(L), std::move(U)};
     }
-    casadi::DM findTimeVaryingStateUpperBoundsImpl(
-            const std::string& name, const casadi::DM& times) const override {
-        auto mocoProblemRep = m_jar->take();
-        casadi::DM ret(casadi::Sparsity::dense(times.rows(), times.columns()));
-        for (int i = 0; i < times.numel(); ++i) {
-            ret(i, 0) = mocoProblemRep->calcStateUpperFunctionBound(times(i, 0).scalar());
-        }
-        return ret;
-        m_jar->leave(std::move(mocoProblemRep));
-    };
     void calcMultibodySystemExplicit(const ContinuousInput& input,
             bool calcKCErrors,
             MultibodySystemExplicitOutput& output) const override {

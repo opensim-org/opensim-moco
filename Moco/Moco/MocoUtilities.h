@@ -565,6 +565,23 @@ void checkPropertyIsPositive(const Object& obj, const Property<T>& p) {
     }
 }
 
+/// Throw an exception if the property's value is negative.
+/// We assume that `p` is a single-value property.
+template <typename T>
+void checkPropertyIsNonnegative(const Object& obj, const Property<T>& p) {
+    const auto& value = p.getValue();
+    if (value < 0) {
+        std::stringstream msg;
+        msg << "Property '" << p.getName() << "' (in ";
+        if (!obj.getName().empty()) {
+            msg << "object '" << obj.getName() << "' of type ";
+        }
+        msg << obj.getConcreteClassName() << ") must be non-negative, but is "
+                << value << ".";
+        OPENSIM_THROW(Exception, msg.str());
+    }
+}
+
 /// Throw an exception if the property's value is neither in the provided
 /// range nor in the provided set.
 /// We assume that `p` is a single-value property.

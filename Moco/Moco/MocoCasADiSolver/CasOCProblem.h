@@ -304,19 +304,23 @@ protected:
     }
 
 public:
-    casadi::DM findTimeVaryingStateLowerBounds(const std::string& name,
+    struct TimeVaryingBounds {
+        casadi::DM lower;
+        casadi::DM upper;
+    };
+    TimeVaryingBounds findTimeVaryingStateBounds(const std::string& name,
             const casadi::DM& times) const {
-        checkStateNameForTimeVaryingBounds(name);
-        return findTimeVaryingStateLowerBoundsImpl(name, times);
+        const auto it = std::find_if(m_stateInfos.begin(), m_stateInfos.end(),
+                [&name](const StateInfo& s) { return s.name == name; });
+
+        OPENSIM_THROW_IF(it == m_stateInfos.end(),
+                OpenSim::Exception, "State does not exist.");
+        OPENSIM_THROW_IF(!it->usingFunctionBounds, OpenSim::Exception,
+                "State is not using function bounds.");
+
+        return findTimeVaryingStateBounds(name, times);
     }
-    casadi::DM findTimeVaryingStateUpperBounds(const std::string& name,
-            const casadi::DM& times) const {
-        checkStateNameForTimeVaryingBounds(name);
-        return findTimeVaryingStateUpperBoundsImpl(name, times);
-    }
-    virtual casadi::DM findTimeVaryingStateLowerBoundsImpl(
-            const std::string& name, const casadi::DM& times) const = 0;
-    virtual casadi::DM findTimeVaryingStateUpperBoundsImpl(
+    virtual TimeVaryingBounds findTimeVaryingStateBoundsImpl(
             const std::string& name, const casadi::DM& times) const = 0;
     /// Kinematic constraint errors should be ordered as so:
     /// - position-level constraints
@@ -405,6 +409,7 @@ public:
     void initialize(const std::string& finiteDiffScheme,
             std::shared_ptr<const std::vector<VariablesDM>>
                     pointsForSparsityDetection) const {
+
         OPENSIM_THROW_IF(m_usingTimeVaryingBounds && !isFixedTime(),
                 OpenSim::Exception,
                 "Cannot use time-varying bounds for non-fixed-time problems.");
@@ -575,6 +580,16 @@ public:
     const Bounds& getKinematicConstraintBounds() const {
         return m_kinematicConstraintBounds;
     }
+    const double& getInitialTime() const {
+        OPENSIM_THROW_IF(!isFixedTime(), OpenSim::Exception,
+                "Cannot get initial time if it's not fixed.");
+        return m_timeInitialBounds.lower;
+    }
+    const double& getFinalTime() const {
+        OPENSIM_THROW_IF(!isFixedTime(), OpenSim::Exception,
+                "Cannot get final time if it's not fixed.");
+        return m_timeFinalBounds.lower;
+    }
     const Bounds& getTimeInitialBounds() const { return m_timeInitialBounds; }
     const Bounds& getTimeFinalBounds() const { return m_timeFinalBounds; }
     const std::vector<StateInfo>& getStateInfos() const { return m_stateInfos; }
@@ -637,15 +652,6 @@ private:
     void clipEndpointBounds(const Bounds& b, Bounds& endpoint) {
         endpoint.lower = std::max(b.lower, endpoint.lower);
         endpoint.upper = std::min(b.upper, endpoint.upper);
-    }
-    void checkStateNameForTimeVaryingBounds(const std::string& name) const {
-        const auto it = std::find_if(m_stateInfos.begin(), m_stateInfos.end(),
-                [&name](const StateInfo& s) { return s.name == name; });
-
-        OPENSIM_THROW_IF(it == m_stateInfos.end(),
-                OpenSim::Exception, "State does not exist.");
-        OPENSIM_THROW_IF(!it->usingFunctionBounds, OpenSim::Exception,
-                "State is not using function bounds.");
     }
 
     Bounds m_timeInitialBounds;

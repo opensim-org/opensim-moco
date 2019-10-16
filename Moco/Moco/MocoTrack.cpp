@@ -47,6 +47,10 @@ void MocoTrack::constructProperties() {
     constructProperty_allow_unused_references(false);
     constructProperty_guess_file("");
     constructProperty_apply_tracked_states_to_guess(false);
+    constructProperty_bound_kinematic_states();
+    constructProperty_state_bound_range_rotational(
+            SimTK::convertDegreesToRadians(20));
+    constructProperty_state_bound_range_translational(0.20);
     constructProperty_minimize_control_effort(true);
     constructProperty_control_effort_weight(0.001);
 }
@@ -102,21 +106,31 @@ MocoStudy MocoTrack::initialize() {
     }
     problem.setTimeBounds(m_timeInfo.initial, m_timeInfo.final);
 
-    // Set state bounds.
-    // -----------------
-    // TODO: Default true. Make it an optional property.
-    if (get_bound_kinematic_states_with_states_reference()) {
-        OPENSIM_THROW_IF_FRMOBJ(get_states_reference().empty(),
+    // Bound kinematic states.
+    // -----------------------
+    bool boundKinematicStates = false;
+    if (getProperty_bound_kinematic_states().empty()) {
+        if (!get_states_reference().empty()) {
+            boundKinematicStates = true;
+        }
+    } else {
+        OPENSIM_THROW_IF_FRMOBJ(
+                get_bound_kinematic_states() && get_states_reference().empty(),
                 Exception,
                 "Cannot bound kinematic states with states reference if no "
                 "states reference is supplied.");
+    }
+
+    checkPropertyIsNonnegative(
+            *this, getProperty_state_bound_range_rotational());
+    checkPropertyIsNonnegative(
+            *this, getProperty_state_bound_range_translational());
+
+    if (boundKinematicStates) {
         setKinematicStateFunctionBoundsFromTable(model,
                 tracked_states,
-                // TODO: use properties for these ranges.
-                SimTK::convertDegreesToRadians(10), 0.10,
-                problem);
-                // get_state_bound_range_rotational(),
-                // get_state_bound_range_translational());
+                get_state_bound_range_rotational(),
+                get_state_bound_range_translational(), problem);
     }
 
 

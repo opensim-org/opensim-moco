@@ -58,7 +58,7 @@ MocoCasOCProblem::MocoCasOCProblem(const MocoCasADiSolver& mocoCasADiSolver,
         if (info.getUseFunctionBounds()) {
             addStateWithTimeVaryingBounds(stateName, stateType);
         } else {
-            addState(stateName, stateType, convertBounds(info.getBounds()),
+            addState(stateName, stateType, convertBounds(info.getPhaseBounds()),
                     convertBounds(info.getInitialBounds()),
                     convertBounds(info.getFinalBounds()));
         }
@@ -68,7 +68,7 @@ MocoCasOCProblem::MocoCasOCProblem(const MocoCasADiSolver& mocoCasADiSolver,
             createControlNamesFromModel(model, m_modelControlIndices);
     for (const auto& controlName : controlNames) {
         const auto& info = problemRep.getControlInfo(controlName);
-        addControl(controlName, convertBounds(info.getBounds()),
+        addControl(controlName, convertBounds(info.getPhaseBounds()),
                 convertBounds(info.getInitialBounds()),
                 convertBounds(info.getFinalBounds()));
     }
@@ -173,7 +173,7 @@ MocoCasOCProblem::MocoCasOCProblem(const MocoCasADiSolver& mocoCasADiSolver,
                     }
 
                     addKinematicConstraint(multInfo.getName(),
-                            convertBounds(multInfo.getBounds()),
+                            convertBounds(multInfo.getPhaseBounds()),
                             convertBounds(multInfo.getInitialBounds()),
                             convertBounds(multInfo.getFinalBounds()), kinLevel);
 

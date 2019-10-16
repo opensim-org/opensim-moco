@@ -135,7 +135,7 @@ public:
     }
     /// Returns true if the provided value is within these bounds.
     bool isWithinBounds(const double& time, const double& value) const {
-        return findLower(time) <= value && value <= findUpper(time);
+        return calcLower(time) <= value && value <= calcUpper(time);
     }
     double calcLower(const double& time) const {
         SimTK::Vector timeVec(1, &time, true);

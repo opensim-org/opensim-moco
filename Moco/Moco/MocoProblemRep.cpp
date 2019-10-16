@@ -310,10 +310,10 @@ void MocoProblemRep::initialize() {
                     const auto info = MocoVariableInfo(statePath, {}, {}, {});
                     m_state_infos[statePath] = info;
                 }
-                if (!m_state_infos[statePath].getBounds().isSet()) {
+                if (!m_state_infos[statePath].getPhaseBounds().isSet()) {
                     const auto& bounds =
                             output->getValue(m_state_base);
-                    m_state_infos[statePath].setBounds({bounds[0], bounds[1]});
+                    m_state_infos[statePath].setPhaseBounds({bounds[0], bounds[1]});
                 }
             }
         }
@@ -330,8 +330,8 @@ void MocoProblemRep::initialize() {
                             MocoVariableInfo(coordValueName, {}, {}, {});
                     m_state_infos[coordValueName] = info;
                 }
-                if (!m_state_infos[coordValueName].getBounds().isSet()) {
-                    m_state_infos[coordValueName].setBounds(
+                if (!m_state_infos[coordValueName].getPhaseBounds().isSet()) {
+                    m_state_infos[coordValueName].setPhaseBounds(
                             {coord.getRangeMin(), coord.getRangeMax()});
                 }
             }
@@ -342,8 +342,8 @@ void MocoProblemRep::initialize() {
                             MocoVariableInfo(coordSpeedName, {}, {}, {});
                     m_state_infos[coordSpeedName] = info;
                 }
-                if (!m_state_infos[coordSpeedName].getBounds().isSet()) {
-                    m_state_infos[coordSpeedName].setBounds(
+                if (!m_state_infos[coordSpeedName].getPhaseBounds().isSet()) {
+                    m_state_infos[coordSpeedName].setPhaseBounds(
                             ph0.get_default_speed_bounds());
                 }
             }
@@ -389,17 +389,17 @@ void MocoProblemRep::initialize() {
                 const auto info = MocoVariableInfo(actuName, {}, {}, {});
                 m_control_infos[actuName] = info;
             }
-            if (!m_control_infos[actuName].getBounds().isSet()) {
+            if (!m_control_infos[actuName].getPhaseBounds().isSet()) {
                 // If this scalar actuator derives from OpenSim::ScalarActuator,
                 // use the getMinControl() and getMaxControl() methods to set
                 // the bounds. Otherwise, set the bounds to (-inf, inf).
                 if (const auto* scalarActu =
                                 dynamic_cast<const ScalarActuator*>(&actu)) {
-                    m_control_infos[actuName].setBounds(
+                    m_control_infos[actuName].setPhaseBounds(
                             {scalarActu->getMinControl(),
                                     scalarActu->getMaxControl()});
                 } else {
-                    m_control_infos[actuName].setBounds(
+                    m_control_infos[actuName].setPhaseBounds(
                             MocoBounds::unconstrained());
                 }
             }
@@ -410,8 +410,8 @@ void MocoProblemRep::initialize() {
                     const std::string stateName = actuName + "/activation";
                     auto& info = m_state_infos[stateName];
                     if (info.getName().empty()) { info.setName(stateName); }
-                    if (!info.getBounds().isSet()) {
-                        info.setBounds(m_control_infos[actuName].getBounds());
+                    if (!info.getPhaseBounds().isSet()) {
+                        info.setPhaseBounds(m_control_infos[actuName].getPhaseBounds());
                     }
                 }
             }
@@ -425,8 +425,8 @@ void MocoProblemRep::initialize() {
                     const auto info = MocoVariableInfo(controlName, {}, {}, {});
                     m_control_infos[controlName] = info;
                 }
-                if (!m_control_infos[controlName].getBounds().isSet()) {
-                    m_control_infos[controlName].setBounds(
+                if (!m_control_infos[controlName].getPhaseBounds().isSet()) {
+                    m_control_infos[controlName].setPhaseBounds(
                             MocoBounds::unconstrained());
                 }
             }
