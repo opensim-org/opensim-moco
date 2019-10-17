@@ -158,7 +158,7 @@ public:
             auto leafpos = name.find("/value");
             if (leafpos != std::string::npos) return true;
         }
-        return false;    
+        return false;
     }
 
     /// @name Change the length of the trajectory
@@ -236,6 +236,7 @@ public:
     /// overload below; it does *not* construct a 5-element vector with the
     /// value 10.
     void setState(const std::string& name, const SimTK::Vector& trajectory);
+    void setState(const std::string& name, const SimTK::VectorView& trajectory);
     /// Set the value of a single control variable across time. The provided
     /// vector must have length getNumTimes().
     /// @note Using `setControl(name, {5, 10})` uses the initializer list
@@ -541,6 +542,14 @@ public:
     double compareContinuousVariablesRMS(const MocoTrajectory& other,
             std::map<std::string, std::vector<std::string>> columnsToUse = {})
             const;
+    /// This is an alternative interface for compareContinuousVariablesRMS()
+    /// that uses regular expression patterns to select columns. The parameter
+    /// columnType is "states", "controls", "multipliers", or "derivatives".
+    /// All columns for the provided column type whose entire name matches the
+    /// provided regular expression are included in the root-mean-square.
+    double compareContinuousVariablesRMSPattern(const MocoTrajectory& other,
+            std::string columnType,
+            std::string pattern) const;
     /// Compute the root-mean-square error between the parameters in this
     /// iterate and another. The RMS is computed by dividing the the sum of the
     /// squared errors between corresponding parameters and then dividing by the
@@ -569,6 +578,9 @@ public:
     /// The MocoProblem is necessary because we need the underlying Model to
     /// order the state variables correctly.
     StatesTrajectory exportToStatesTrajectory(const MocoProblem&) const;
+    /// This is similar to the above function but requires only a model, not
+    /// a MocoProblem.
+    StatesTrajectory exportToStatesTrajectory(const Model&) const;
     /// @}
 
     /// @name Modify the data
@@ -684,6 +696,7 @@ private:
     // We use "seal" instead of "lock" because locks have a specific meaning
     // with threading (e.g., std::unique_lock()).
     bool m_sealed = false;
+    static const std::vector<std::string> m_allowedKeys;
 };
 
 /// Return type for MocoStudy::solve(). Use success() to check if the solver

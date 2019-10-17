@@ -27,8 +27,8 @@
 
 using namespace OpenSim;
 
-using SimTK::Vec3;
 using SimTK::Inertia;
+using SimTK::Vec3;
 
 Model ModelFactory::createNLinkPendulum(int numLinks) {
     Model model;
@@ -97,15 +97,17 @@ Model ModelFactory::createPlanarPointMass() {
     auto* body = new Body("body", 1, Vec3(0), Inertia(0));
     model.addBody(body);
 
+    body->attachGeometry(new Sphere(0.05));
+
     auto* jointX = new SliderJoint("tx", model.getGround(), *intermed);
     auto& coordX = jointX->updCoordinate(SliderJoint::Coord::TranslationX);
     coordX.setName("tx");
     model.addJoint(jointX);
 
     // The joint's x axis must point in the global "+y" direction.
-    auto* jointY = new SliderJoint("ty",
-            *intermed, Vec3(0), Vec3(0, 0, 0.5 * SimTK::Pi),
-            *body, Vec3(0), Vec3(0, 0, .5 * SimTK::Pi));
+    auto* jointY = new SliderJoint("ty", *intermed, Vec3(0),
+            Vec3(0, 0, 0.5 * SimTK::Pi), *body, Vec3(0),
+            Vec3(0, 0, .5 * SimTK::Pi));
     auto& coordY = jointY->updCoordinate(SliderJoint::Coord::TranslationX);
     coordY.setName("ty");
     model.addJoint(jointY);
@@ -123,6 +125,8 @@ Model ModelFactory::createPlanarPointMass() {
         forceY->setName("force_y");
         model.addForce(forceY);
     }
+
+    model.finalizeConnections();
 
     return model;
 }
@@ -253,7 +257,7 @@ void ModelFactory::createReserveActuators(Model& model, double optimalForce,
         // Don't add a reserve if a CoordinateActuator already exists.
         bool skipCoord = false;
         if (skipCoordinatesWithExistingActuators) {
-            for (const auto& coordAct : 
+            for (const auto& coordAct :
                     modelCopy.getComponentList<CoordinateActuator>()) {
                 if (coordAct.getCoordinate() == &coord) {
                     skipCoord = true;
