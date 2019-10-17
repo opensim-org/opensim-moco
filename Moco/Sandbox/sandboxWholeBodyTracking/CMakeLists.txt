@@ -6,5 +6,6 @@ MocoAddSandboxExecutable(NAME sandboxWholeBodyTracking
             grf_walk.mot
             subject_walk_armless_18musc.osim
             subject_walk_armless_80musc.osim
+            subject_walk_armless_contact_80musc.osim
         )
 

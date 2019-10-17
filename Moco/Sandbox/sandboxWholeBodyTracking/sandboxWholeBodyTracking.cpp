@@ -23,27 +23,41 @@
 
 using namespace OpenSim;
 
-
 int main() {
 
     MocoTrack track;
-    track.setModel(
-            ModelProcessor("subject_walk_armless_80musc.osim") |
-            ModOpAddExternalLoads("grf_walk.xml") |
+    ModelProcessor modelProcessor =
+            ModelProcessor("subject_walk_armless_contact_80musc.osim") |
+            //ModOpAddExternalLoads("grf_walk.xml") |
+            ModOpReplaceJointsWithWelds(
+                    {"subtalar_r", "mtp_r", "subtalar_l", "mtp_l"}) |
             ModOpRemoveMuscles() |
-            ModOpAddReserves(250));
-    track.setStatesReference(TableProcessor("coordinates.mot"));
+            ModOpAddReserves(250, 1, true);
 
-    // There is marker data in the 'marker_trajectories.trc' associated with
-    // model markers that no longer exists (i.e. markers on the arms). Set this
-    // flag to avoid an exception from being thrown.
+    //Model model = modelProcessor.process();
+
+    //model.setUseVisualizer(true);
+    //auto state = model.initSystem();
+    //model.getVisualizer().show(state);
+
+    track.setModel(modelProcessor);
+    track.setStatesReference(TableProcessor("coordinates.mot") |
+            TabOpLowPassFilter(6) |
+            TabOpUseAbsoluteStateNames());
     track.set_allow_unused_references(true);
-
-    // Increase the global marker tracking weight, which is the weight
-    // associated with the internal MocoMarkerTrackingGoal term.
     track.set_markers_global_tracking_weight(10);
 
+    track.set_initial_time(0.83);
+    track.set_final_time(2.0);
+    track.set_mesh_interval(0.05);
+
+    MocoStudy study = track.initialize();
+    auto& solver = study.updSolver<MocoCasADiSolver>();
+    solver.set_optim_max_iterations(25);
+    
+    MocoSolution solution = study.solve();
+    study.visualize(solution);
+    solution.write("sandbox_tracking_contact_solution.sto");
 
     return EXIT_SUCCESS;
-
 }
