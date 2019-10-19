@@ -30,7 +30,7 @@ void MocoInitialVelocityEquilibriumDGFGoal::initializeOnModelImpl(
         }
     }
 
-    setRequirements(0, (int)m_dgfMuscleRefs.size());
+    setRequirements(0, (int)m_dgfMuscleRefs.size(), SimTK::Stage::Velocity);
 }
 
 void MocoInitialVelocityEquilibriumDGFGoal::calcGoalImpl(

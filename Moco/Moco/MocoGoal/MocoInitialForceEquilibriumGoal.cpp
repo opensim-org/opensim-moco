@@ -38,7 +38,7 @@ void MocoInitialForceEquilibriumGoal::initializeOnModelImpl(
         }
     }
 
-    setRequirements(0, (int)m_muscleRefs.size());
+    setRequirements(0, (int)m_muscleRefs.size(), SimTK::Stage::Velocity);
 }
 
 void MocoInitialForceEquilibriumGoal::calcGoalImpl(
