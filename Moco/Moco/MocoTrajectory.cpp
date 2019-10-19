@@ -26,6 +26,9 @@
 
 using namespace OpenSim;
 
+const std::vector<std::string> MocoTrajectory::m_allowedKeys =
+        {"states", "controls", "multipliers", "derivatives"};
+
 MocoTrajectory::MocoTrajectory(const SimTK::Vector& time,
         std::vector<std::string> state_names,
         std::vector<std::string> control_names,
@@ -134,6 +137,20 @@ void MocoTrajectory::setTime(const SimTK::Vector& time) {
 
 void MocoTrajectory::setState(
         const std::string& name, const SimTK::Vector& trajectory) {
+    ensureUnsealed();
+    OPENSIM_THROW_IF(trajectory.size() != m_states.nrow(), Exception,
+            format("For state %s, expected %i elements but got %i.", name,
+                    m_states.nrow(), trajectory.size()));
+
+    auto it = std::find(m_state_names.cbegin(), m_state_names.cend(), name);
+    OPENSIM_THROW_IF(it == m_state_names.cend(), Exception,
+            format("Cannot find state named %s.", name));
+    int index = (int)std::distance(m_state_names.cbegin(), it);
+    m_states.updCol(index) = trajectory;
+}
+
+void MocoTrajectory::setState(
+        const std::string& name, const SimTK::VectorView& trajectory) {
     ensureUnsealed();
     OPENSIM_THROW_IF(trajectory.size() != m_states.nrow(), Exception,
             format("For state %s, expected %i elements but got %i.", name,
@@ -329,13 +346,13 @@ void MocoTrajectory::insertControlsTrajectory(
     GCVSplineSet splines(subsetOfControls, {}, std::min(numTimesTable - 1, 5));
     SimTK::Vector curTime(1, SimTK::NaN);
     for (const auto& label : labelsToInsert) {
-        if (find(origControlNames, label) == origControlNames.cend() 
+        if (find(origControlNames, label) == origControlNames.cend()
                 || overwrite) {
             auto it = find(m_control_names, label);
             int istate = (int)std::distance(m_control_names.cbegin(), it);
             for (int itime = 0; itime < m_time.size(); ++itime) {
                 curTime[0] = m_time[itime];
-                m_controls(itime, istate) = 
+                m_controls(itime, istate) =
                     splines.get(label).calcValue(curTime);
             }
         }
@@ -867,9 +884,16 @@ TimeSeriesTable MocoTrajectory::exportToStatesTable() const {
 StatesTrajectory MocoTrajectory::exportToStatesTrajectory(
         const MocoProblem& problem) const {
     ensureUnsealed();
+    // TODO update when we support multiple phases.
+    const auto& model = problem.getPhase(0).getModelProcessor().process();
+    return exportToStatesTrajectory(model);
+}
+
+StatesTrajectory MocoTrajectory::exportToStatesTrajectory(
+        const Model& model) const {
+    ensureUnsealed();
     Storage storage = exportToStatesStorage();
     // TODO update when we support multiple phases.
-    const auto& model = problem.getPhase(0).getModel();
     return StatesTrajectory::createFromStatesStorage(model, storage, true);
 }
 
@@ -940,7 +964,7 @@ void MocoTrajectory::randomize(bool add, const SimTK::Random& randGen) {
 bool MocoTrajectory::isCompatible(
         const MocoProblemRep& mp, bool throwOnError) const {
     ensureUnsealed();
-    // Slack variables might be solver dependent, so we can't include them in 
+    // Slack variables might be solver dependent, so we can't include them in
     // the compatibility check.
 
     auto mpsn = mp.createStateInfoNames();
@@ -1200,17 +1224,9 @@ double MocoTrajectory::compareContinuousVariablesRMS(
         const MocoTrajectory& other,
         std::map<std::string, std::vector<std::string>> cols) const {
     ensureUnsealed();
-    std::vector<std::string> allowedKeys{
-            "states", "controls", "multipliers", "derivatives"};
     for (auto kv : cols) {
-        bool keyIsAllowed = false;
-        for (auto allowedKey : allowedKeys) {
-            if (kv.first == allowedKey) {
-                keyIsAllowed = true;
-                break;
-            }
-        }
-        OPENSIM_THROW_IF(!keyIsAllowed, Exception,
+        OPENSIM_THROW_IF(find(m_allowedKeys, kv.first) == m_allowedKeys.cend(),
+                Exception,
                 format("Key '%s' is not allowed.", kv.first));
     }
     if (cols.size() == 0) {
@@ -1222,6 +1238,33 @@ double MocoTrajectory::compareContinuousVariablesRMS(
             cols.count("controls") ? cols.at("controls") : none,
             cols.count("multipliers") ? cols.at("multipliers") : none,
             cols.count("derivatives") ? cols.at("derivatives") : none);
+}
+
+double MocoTrajectory::compareContinuousVariablesRMSPattern(
+        const MocoTrajectory& other, std::string columnType,
+        std::string pattern) const {
+    ensureUnsealed();
+    const std::vector<std::string>* names;
+    if (columnType == "states") {
+        names = &m_state_names;
+    } else if (columnType == "controls") {
+        names = &m_control_names;
+    } else if (columnType == "multipliers") {
+        names = &m_multiplier_names;
+    } else if (columnType == "derivatives") {
+        names = &m_derivative_names;
+    } else {
+        OPENSIM_THROW(Exception,
+                format("Column type '%s' is not allowed.", columnType));
+    }
+    std::vector<std::string> namesToUse;
+    std::regex regex(pattern);
+    for (const auto& name : *names) {
+        if (std::regex_match(name, regex)) {
+            namesToUse.push_back(name);
+        }
+    }
+    return compareContinuousVariablesRMS(other, {{columnType, namesToUse}});
 }
 
 double MocoTrajectory::compareParametersRMS(const MocoTrajectory& other,
