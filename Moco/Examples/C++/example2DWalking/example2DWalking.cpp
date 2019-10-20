@@ -45,6 +45,8 @@
 
 #include <Moco/osimMoco.h>
 
+#include <OpenSim/Actuators/SpringGeneralizedForce.h>
+
 using namespace OpenSim;
 
 // Set a coordinate tracking problem where the goal is to minimize the
@@ -64,8 +66,22 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
 
     // Define the optimal control problem.
     // ===================================
+
+    Model baseModel("2D_gait.osim");
+    auto* device_r = new SpringGeneralizedForce("ankle_angle_r");
+    device_r->setName("spring_r");
+    device_r->setStiffness(50);
+    device_r->setRestLength(0);
+    device_r->setViscosity(0);
+    baseModel.addForce(device_r);
+    auto* device_l = new SpringGeneralizedForce("ankle_angle_l");
+    device_l->setName("spring_l");
+    device_l->setStiffness(50);
+    device_l->setRestLength(0);
+    device_l->setViscosity(0);
+    baseModel.addForce(device_l);
     ModelProcessor modelprocessor =
-            ModelProcessor("2D_gait.osim") |
+            ModelProcessor(baseModel) |
             ModOpSetPathLengthApproximation(setPathLengthApproximation);
     track.setModel(modelprocessor);
     track.setStatesReference(
@@ -73,7 +89,7 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
     track.set_states_global_tracking_weight(10.0);
     track.set_allow_unused_references(true);
     track.set_track_reference_position_derivatives(true);
-    track.set_apply_tracked_states_to_guess(true);
+    // track.set_apply_tracked_states_to_guess(true);
     track.set_initial_time(0.0);
     track.set_final_time(0.47008941);
     MocoStudy study = track.initialize();
@@ -155,6 +171,11 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
             {-15 * Pi / 180, 25 * Pi / 180});
     problem.setStateInfo("/jointset/lumbar/lumbar/value", {0, 20 * Pi / 180});
 
+    problem.addParameter("stiffness",
+            std::vector<std::string>{
+                    "/forceset/spring_l", "/forceset/spring_r"},
+            "stiffness", MocoBounds(0, 100));
+
     // Configure the solver.
     // =====================
     MocoCasADiSolver& solver = study.updSolver<MocoCasADiSolver>();
@@ -164,6 +185,8 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
     solver.set_optim_convergence_tolerance(1e-4);
     solver.set_optim_constraint_tolerance(1e-4);
     solver.set_optim_max_iterations(1000);
+    solver.set_parameters_require_initsystem(false);
+    solver.clearGuess();
 
     // Solve problem.
     // ==============
