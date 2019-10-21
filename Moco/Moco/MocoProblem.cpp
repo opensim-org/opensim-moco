@@ -93,6 +93,16 @@ void MocoPhase::setStateInfo(const std::string& name, const MocoBounds& bounds,
     else
         upd_state_infos(idx) = info;
 }
+void MocoPhase::setStateInfo(
+        const std::string& name, const MocoFunctionBounds& fb) {
+    int idx = getProperty_state_infos().findIndexForName(name);
+
+    MocoVariableInfo info(name, fb);
+    if (idx == -1)
+        append_state_infos(info);
+    else
+        upd_state_infos(idx) = info;
+}
 void MocoPhase::setStateInfoPattern(const std::string& pattern,
         const MocoBounds& bounds, const MocoInitialBounds& initial,
         const MocoFinalBounds& final) {
@@ -237,6 +247,10 @@ void MocoProblem::setStateInfo(const std::string& name,
         const MocoBounds& bounds, const MocoInitialBounds& initial,
         const MocoFinalBounds& final) {
     upd_phases(0).setStateInfo(name, bounds, initial, final);
+}
+void MocoProblem::setStateInfo(const std::string& name,
+        const MocoFunctionBounds& fb) {
+    upd_phases(0).setStateInfo(name, fb);
 }
 void MocoProblem::printControlNamesWithSubstring(const std::string& name) {
     upd_phases(0).printControlNamesWithSubstring(name);

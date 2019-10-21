@@ -137,6 +137,8 @@ public:
     void setStateInfo(const std::string& name, const MocoBounds& bounds,
             const MocoInitialBounds& init = {},
             const MocoFinalBounds& final = {});
+    /// TODO
+    void setStateInfo(const std::string& name, const MocoFunctionBounds& fb);
     /// Set information for state variables whose names match the provided
     /// regular expression. You can use this to set bounds for all muscle
     /// activations, etc. Infos provided via setStateInfoPattern() take
@@ -450,6 +452,8 @@ public:
     /// Set bounds for a state variable for phase 0.
     void setStateInfo(const std::string& name, const MocoBounds&,
             const MocoInitialBounds& = {}, const MocoFinalBounds& = {});
+    /// TODO setStateInfoWithFunction()?
+    void setStateInfo(const std::string& name, const MocoFunctionBounds& fb);
     /// Set bounds for all state variables for phase 0 whose path matches
     /// the provided pattern.
     // TODO: We tried to give an example regex but it had characters that caused

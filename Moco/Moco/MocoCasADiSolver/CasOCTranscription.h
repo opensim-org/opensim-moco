@@ -86,8 +86,12 @@ protected:
             const TColumn& columnIndices, const Bounds& bounds) {
         if (bounds.isSet()) {
             const auto& lower = bounds.lower;
-            m_lowerBounds[var](rowIndices, columnIndices) = lower;
             const auto& upper = bounds.upper;
+            OPENSIM_THROW_IF(lower > upper, OpenSim::Exception,
+                    OpenSim::format("Expected lower <= upper, but lower=%d and "
+                                    "upper=%d.",
+                            lower, upper));
+            m_lowerBounds[var](rowIndices, columnIndices) = lower;
             m_upperBounds[var](rowIndices, columnIndices) = upper;
         } else {
             const auto inf = std::numeric_limits<double>::infinity();

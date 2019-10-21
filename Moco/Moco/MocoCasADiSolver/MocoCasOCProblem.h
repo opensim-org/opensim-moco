@@ -200,6 +200,20 @@ public:
     int getJarSize() const { return (int)m_jar->size(); }
 
 private:
+    TimeVaryingBounds findTimeVaryingStateBoundsImpl(
+            const std::string& name, const casadi::DM& times) const override {
+        auto mocoProblemRep = m_jar->take();
+        const auto& bounds =
+                mocoProblemRep->getStateInfo(name).getFunctionBounds();
+        casadi::DM L(casadi::Sparsity::dense(times.rows(), times.columns()));
+        casadi::DM U(casadi::Sparsity::dense(times.rows(), times.columns()));
+        for (int i = 0; i < times.numel(); ++i) {
+            L(i) = bounds.calcLower(times(i).scalar());
+            U(i) = bounds.calcUpper(times(i).scalar());
+        }
+        m_jar->leave(std::move(mocoProblemRep));
+        return {std::move(L), std::move(U)};
+    }
     void calcMultibodySystemExplicit(const ContinuousInput& input,
             bool calcKCErrors,
             MultibodySystemExplicitOutput& output) const override {

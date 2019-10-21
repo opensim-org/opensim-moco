@@ -227,6 +227,12 @@ public:
             "This "
             "will override any guess information provided via `guess_file`.");
 
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(bound_kinematic_states, bool, "TODO");
+
+    OpenSim_DECLARE_PROPERTY(state_bound_range_rotational, double, "TODO");
+
+    OpenSim_DECLARE_PROPERTY(state_bound_range_translational, double, "TODO");
+
     OpenSim_DECLARE_PROPERTY(minimize_control_effort, bool,
             "Whether or not to minimize actuator control effort in the problem."
             "Default: true.");

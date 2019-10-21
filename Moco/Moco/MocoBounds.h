@@ -23,6 +23,7 @@
 #include <OpenSim/Common/Object.h>
 #include <OpenSim/Common/Property.h>
 #include <OpenSim/Common/Array.h>
+#include <OpenSim/Common/Function.h>
 
 namespace OpenSim {
 
@@ -119,6 +120,50 @@ OpenSim_DECLARE_CONCRETE_OBJECT(MocoFinalBounds, MocoBounds);
     using MocoBounds::MocoBounds;
     friend MocoPhase;
     friend MocoVariableInfo;
+};
+
+class OSIMMOCO_API MocoFunctionBounds : public Object {
+    OpenSim_DECLARE_CONCRETE_OBJECT(MocoFunctionBounds, Object);
+public:
+    MocoFunctionBounds();
+    MocoFunctionBounds(const Function& bounds);
+    MocoFunctionBounds(const Function& lower, const Function& upper);
+    /// True if the lower and upper bounds are the same, resulting in an
+    /// equality constraint.
+    bool isEquality() const {
+        return get_equality_with_lower();
+    }
+    /// Returns true if the provided value is within these bounds.
+    bool isWithinBounds(const double& time, const double& value) const {
+        return calcLower(time) <= value && value <= calcUpper(time);
+    }
+    double calcLower(const double& time) const {
+        SimTK::Vector timeVec(1, &time, true);
+        return get_lower_bound().calcValue(timeVec);
+    }
+    double calcUpper(const double& time) const {
+        if (get_equality_with_lower()) {
+            return calcLower(time);
+        } else {
+            OPENSIM_THROW_IF_FRMOBJ(getProperty_upper_bound().empty(),
+                    Exception, "No upper bound provided.");
+            SimTK::Vector timeVec(1, &time, true);
+            return get_upper_bound().calcValue(timeVec);
+        }
+    }
+
+    void printDescription(std::ostream& stream) const;
+
+private:
+    void constructProperties();
+
+    OpenSim_DECLARE_PROPERTY(
+            lower_bound, Function, "Lower bound as a function of time.");
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(
+            upper_bound, Function, "Upper bound as a function of time.");
+    OpenSim_DECLARE_PROPERTY(equality_with_lower, bool,
+            "The variable must be equal to the lower bound; "
+            "upper must be unspecified (default: false).");
 };
 
 } // namespace OpenSim

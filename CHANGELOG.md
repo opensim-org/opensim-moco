@@ -1,3 +1,5 @@
+- 2019-10-20: State bounds can be time-varying with MocoCasADiSolver.
+
 - 2019-10-16: Fix a bug in ModOpscaleMaxIsometricForce, where the scale factor
               was not used properly.
 
