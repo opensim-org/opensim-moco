@@ -1,14 +1,13 @@
 - 2019-10-13: State and control bounds can be time-varying with 
               MocoCasADiSolver.
-              
-              TODO:
-              - MocoTropterSolver must throw exception.
-              - printDescription().
-              - Only works for fixed-time problems.
-              - Must be able to evaluate the function across the entire time 
-                range.
-              - validate that lower <= upper across the time range.
 
+- 2019-10-16: Fix a bug in ModOpscaleMaxIsometricForce, where the scale factor
+              was not used properly.
+
+- 2019-10-12: Add GetMocoVersion(), GetMocoVersionAndDate() to provide the 
+              git commit hash and commit date. The opensim-moco command-line
+              tool now has a --version flag to print the Moco version.
+              
 - 2019-10-04: report.py can plot normalized tendon force states. Users can 
               provide a MocoStudy file instead of a Model file, and users can
               specify the name of the report output file.
