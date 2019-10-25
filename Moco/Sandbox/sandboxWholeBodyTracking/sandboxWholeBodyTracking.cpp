@@ -207,39 +207,34 @@ void addSymmetryConstraints(Model model, MocoProblem& problem) {
             symmetryGoal->addStatePair({coord.getStateVariableNames()[1],
                     std::regex_replace(coord.getStateVariableNames()[1],
                             std::regex("_r/"), "_l/")});
-        }
-        if (endsWith(coord.getName(), "_l")) {
+        } else if (endsWith(coord.getName(), "_l")) {
             symmetryGoal->addStatePair({coord.getStateVariableNames()[0],
                     std::regex_replace(coord.getStateVariableNames()[0],
                             std::regex("_l/"), "_r/")});
             symmetryGoal->addStatePair({coord.getStateVariableNames()[1],
                     std::regex_replace(coord.getStateVariableNames()[1],
                             std::regex("_l/"), "_r/")});
-        }
+        // Coordinates with negated initial and final values. Note that this
+        // forces these coordinates to cross zero, even if the tracked data
+        // does not (e.g., pelvis z-direction translation).
+        } else if (endsWith(coord.getName(), "_bending") ||
+                   endsWith(coord.getName(), "_rotation") ||
+                   endsWith(coord.getName(), "_tz") ||
+                   endsWith(coord.getName(), "_list")) {
+            symmetryGoal->addNegatedStatePair(
+                    {coord.getStateVariableNames()[0],
+                            coord.getStateVariableNames()[0]});
+            symmetryGoal->addNegatedStatePair(
+                    {coord.getStateVariableNames()[1],
+                            coord.getStateVariableNames()[1]});
         // Coordinates with equal initial and final values.
-        if (!endsWith(coord.getName(), "_l") &&
-                !endsWith(coord.getName(), "_r") &&
-                !endsWith(coord.getName(), "_tx") &&
-                !endsWith(coord.getName(), "_rotation") &&
-                !endsWith(coord.getName(), "_list") &&
-                !endsWith(coord.getName(), "_tz")) {
+        } else if (!endsWith(coord.getName(), "_tx")) {
             symmetryGoal->addStatePair({coord.getStateVariableNames()[0],
                     coord.getStateVariableNames()[0]});
             symmetryGoal->addStatePair({coord.getStateVariableNames()[1],
                     coord.getStateVariableNames()[1]});
         }
-        // Coordinates with negated initial and final values. Note that this
-        // forces these coordinates to cross zero, even if the tracked data does
-        // not (e.g., pelvis z-direction translation).
-        if (endsWith(coord.getName(), "lumbar_bending") ||
-                endsWith(coord.getName(), "_rotation") ||
-                endsWith(coord.getName(), "_tz") ||
-                endsWith(coord.getName(), "_list")) {
-            symmetryGoal->addNegatedStatePair({coord.getStateVariableNames()[0],
-                    coord.getStateVariableNames()[0]});
-            symmetryGoal->addNegatedStatePair({coord.getStateVariableNames()[1],
-                    coord.getStateVariableNames()[1]});
-        }
+        
     }
     // Only the pelvis x-direction speed is symmetric.
     symmetryGoal->addStatePair({"/jointset/ground_pelvis/pelvis_tx/speed"});
