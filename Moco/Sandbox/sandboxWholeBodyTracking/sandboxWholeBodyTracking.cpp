@@ -424,7 +424,7 @@ int main() {
     //runTrackingProblemWithMuscles(1.0, 1000, "previous");
 
     runPredictiveProblem(MocoTrajectory(
-        "sandbox_tracking_contact_muscles_solution_track1_control1000.sto"));
+        "sandbox_tracking_contact_muscles_solution_track1_control1.sto"));
 
     return EXIT_SUCCESS;
 }
