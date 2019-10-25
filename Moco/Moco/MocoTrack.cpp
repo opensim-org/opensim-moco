@@ -119,18 +119,19 @@ MocoStudy MocoTrack::initialize() {
                 Exception,
                 "Cannot bound kinematic states with states reference if no "
                 "states reference is supplied.");
+        boundKinematicStates = get_bound_kinematic_states();
     }
 
     checkPropertyIsNonnegative(
-            *this, getProperty_state_bound_range_rotational());
+            *this, getProperty_state_bound_halfrange_rotational());
     checkPropertyIsNonnegative(
-            *this, getProperty_state_bound_range_translational());
+            *this, getProperty_state_bound_halfrange_translational());
 
     if (boundKinematicStates) {
         setKinematicStateFunctionBoundsFromTable(model,
                 tracked_states,
-                get_state_bound_range_rotational(),
-                get_state_bound_range_translational(), problem);
+                get_state_bound_halfrange_rotational(),
+                get_state_bound_halfrange_translational(), problem);
     }
 
 

@@ -773,23 +773,23 @@ TimeSeriesTable OpenSim::createExternalLoadsTableForGait(Model model,
 }
 
 void OpenSim::setKinematicStateFunctionBoundsFromTable(const Model& model,
-        const TimeSeriesTable& kinematics, const double& rangeRotational,
-        const double& rangeTranslational,
+        const TimeSeriesTable& kinematics, const double& halfrangeRotational,
+        const double& halfrangeTranslational,
         MocoProblem& problem) {
 
     OPENSIM_THROW_IF(rangeRotational < 0, Exception,
-            format("Expected rangeRotational to be non-negative, but got {}.",
+            format("Expected halfrangeRotational to be non-negative, but got {}.",
                     rangeRotational));
     OPENSIM_THROW_IF(rangeTranslational < 0, Exception,
-            format("Expected rangeTranslational to be non-negative, "
+            format("Expected halfrangeTranslational to be non-negative, "
                    "but got {}.", rangeTranslational));
 
     const auto coords = model.getCoordinatesInMultibodyTreeOrder();
     const int numRows = (int)kinematics.getNumRows();
     const auto& time = kinematics.getIndependentColumn();
     const std::map<Coordinate::MotionType, double> ranges = {
-            {Coordinate::Rotational, rangeRotational},
-            {Coordinate::Translational, rangeTranslational}};
+            {Coordinate::Rotational, halfrangeRotational},
+            {Coordinate::Translational, halfrangeTranslational}};
     for (const auto& coord : coords) {
         const auto& motionType = coord->getMotionType();
         // We can't set the bounds for coupled coordinates in a generic way,

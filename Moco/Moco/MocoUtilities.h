@@ -792,8 +792,8 @@ TimeSeriesTable createExternalLoadsTableForGait(Model model,
 /// TODO
 OSIMMOCO_API
 void setKinematicStateFunctionBoundsFromTable(const Model& model,
-        const TimeSeriesTable& kinematics, const double& rangeRotational,
-        const double& rangeTranslational, MocoProblem& problem);
+        const TimeSeriesTable& kinematics, const double& halfrangeRotational,
+        const double& halfrangeTranslational, MocoProblem& problem);
 
 } // namespace OpenSim
 
