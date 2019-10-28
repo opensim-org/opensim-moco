@@ -25,6 +25,7 @@
 #include <Moco/MocoGoal/MocoStateTrackingGoal.h>
 #include <Moco/MocoGoal/MocoSumSquaredStateGoal.h>
 #include <Moco/MocoGoal/MocoTranslationTrackingGoal.h>
+#include <Moco/MocoGoal/MocoOutputEndpointGoal.h>
 #include <Moco/MocoInverse.h>
 #include <Moco/MocoParameter.h>
 #include <Moco/MocoProblem.h>
