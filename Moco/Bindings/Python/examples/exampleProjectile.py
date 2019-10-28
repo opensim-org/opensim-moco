@@ -78,10 +78,10 @@ solution = study.solve()
 num_iterations = solution.getNumIterations()
 
 fig = pl.figure()
-ax1 = fig.add_subplot(2, 1, 1)
+ax1 = fig.add_subplot(1, 1, 1)
 ax1.axis('equal')
 
-ax2 = fig.add_subplot(2, 1, 2)
+# ax2 = fig.add_subplot(2, 1, 2)
 
 class HermiteSpline(object):
     """
@@ -89,8 +89,6 @@ class HermiteSpline(object):
     """
     def __init__(self, t, y, ydot):
         self.t = t
-        self.y = y
-        self.n = len(t)
         self.a = y[:-1]
         self.b = ydot[:-1]
         difft = np.diff(t)
@@ -105,18 +103,18 @@ class HermiteSpline(object):
         elif t > self.t[-1]:
             raise RuntimeError()
         interval = 0
-        while t > self.t[interval]:
+        while t > self.t[interval + 1]:
             interval += 1
         return interval
-
-
-    def eval(self, t):
+    def __call__(self, t):
         y_out = np.empty_like(t)
         for i in range(len(t)):
             interval = self.locate(t[i])
-            y_out[i] = (self.a[i] + self.b[i] * (t[i] - self.t[interval]) +
-                        self.c[i] * (t[i] - self.t[interval])**2 +
-                        self.d[i] * (t[i] - self.t[interval])**3)
+            out = (self.d[interval] * (t[i] - self.t[interval + 1]) + self.c[
+                interval])
+            out = out * (t[i] - self.t[interval]) + self.b[interval]
+            out = out * (t[i] - self.t[interval]) + self.a[interval]
+            y_out[i] = out
         return y_out
 
 for n in range(num_iterations + 1):
@@ -136,32 +134,38 @@ for n in range(num_iterations + 1):
     y_spline = HermiteSpline(t, y, ydot)
 
     t_plot = np.linspace(t[0], t[-1], 400)
-    x_plot = x_spline.eval(t_plot)
-    y_plot = y_spline.eval(t_plot)
+    x_plot = x_spline(t_plot)
+    y_plot = y_spline(t_plot)
 
     color = (1 - (n + 1) / float(num_iterations + 1)) * np.array([1, 1, 1])
-    ax1.plot(x_plot, y_plot, color=color, marker='o', markersize=2)
+    ax1.plot(x_plot, y_plot, color=color)
+    ax1.plot(x, y, color=color, linestyle='', marker='o', markersize=2)
 
     # TODO: Plot the actual spline, not just interpolating.
 
     # states = solution.exportToStatesTrajectory(model)
 
-    # for itime in range(solution.getNumTimes()):
-    #     length = 0.10
-    #     slope = ydot[itime] / xdot[itime]
-    #     tan = slope
-    #     cos = np.cos(np.arctan(tan))
-    #     sin = np.sin(np.arctan(tan))
-    #     ax1.plot([x[itime] - 0.5 * length * cos, x[itime] + 0.5 * length * cos],
-    #             [y[itime] - 0.5 * length * sin, y[itime] + 0.5 * length * sin],
-    #             color='tab:blue')
-    #
+    tmid = solution.getTimeMat()[1::2]
+    xdotmid = solution.getStateMat('/jointset/tx/tx/speed')[1::2]
+    ydotmid = solution.getStateMat('/jointset/ty/ty/speed')[1::2]
+    for itime in range(len(tmid)):
+        length = 0.10
+        slope = ydotmid[itime] / xdotmid[itime]
+        tan = slope
+        cos = np.cos(np.arctan(tan))
+        sin = np.sin(np.arctan(tan))
+        xmid = x_spline([tmid[itime]])
+        ymid = y_spline([tmid[itime]])
+        ax1.plot([xmid - 0.5 * length * cos, xmid + 0.5 * length * cos],
+                 [ymid - 0.5 * length * sin, ymid + 0.5 * length * sin],
+                 color='tab:blue')
+
     # ax2.plot(t, ydot, color=color)
 
 
 
 
-fig.savefig('exampleProjectile_solution.svg')
+fig.savefig('exampleProjectile_solution.png', dpi=600)
 print('Number of iterations: {}'.format(num_iterations))
 
 
