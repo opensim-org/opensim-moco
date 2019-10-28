@@ -25,14 +25,20 @@ problem = study.updProblem()
 
 model = osim.ModelFactory.createPlanarPointMass()
 model.finalizeFromProperties()
-drag_x = osim.SpringGeneralizedForce('tx')
+drag_x = osim.ExpressionBasedCoordinateForce('tx', '-qdot*qdot')
 drag_x.setName('drag_x')
-drag_x.setViscosity(5.0)
 model.addForce(drag_x)
-drag_y = osim.SpringGeneralizedForce('ty')
+drag_y = osim.ExpressionBasedCoordinateForce('ty', '-qdot*qdot')
 drag_y.setName('drag_y')
-drag_y.setViscosity(5.0)
 model.addForce(drag_y)
+# drag_x = osim.SpringGeneralizedForce('tx')
+# drag_x.setName('drag_x')
+# drag_x.setViscosity(5.0)
+# model.addForce(drag_x)
+# drag_y = osim.SpringGeneralizedForce('ty')
+# drag_y.setName('drag_y')
+# drag_y.setViscosity(5.0)
+# model.addForce(drag_y)
 
 model.finalizeConnections()
 
@@ -56,15 +62,18 @@ fig = pl.figure()
 ax = fig.add_subplot(1, 1, 1)
 ax.axis('equal')
 
-for n in range(num_iterations):
+for n in range(num_iterations + 1):
     solver = study.initCasADiSolver()
     solver.set_optim_max_iterations(n)
 
-    solution = study.solve().unseal()
+    solution = study.solve()
+    solution.unseal()
 
     x = solution.getStateMat('/jointset/tx/tx/value')
     y = solution.getStateMat('/jointset/ty/ty/value')
     ax.plot(x, y)
+
+    # states = solution.exportToStatesTrajectory()
 
 fig.savefig('exampleProjectile_solution.png')
 
