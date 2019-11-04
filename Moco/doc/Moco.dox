@@ -41,7 +41,7 @@ Where to start?
 
 @defgroup mocogoal Available goals
 
-These are the available goals you can use in your cost functional or as endpoint
+These are the available goals you can use in your cost functional or as boundary
 constraints. If none of these satisfy your needs, you can define your own using
 a plugin.
 

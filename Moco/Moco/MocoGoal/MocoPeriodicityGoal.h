@@ -94,7 +94,7 @@ private:
 /// pair_hamstrings2.set_final_variable("/hamstrings_r");
 /// periodicGoal->append_control_pairs(pair_hamstrings2);
 /// @endcode
-/// This is an endpoint constraint goal by default.
+/// This is an boundary constraint goal by default.
 /// @ingroup mocogoal
 ///
 class OSIMMOCO_API MocoPeriodicityGoal : public MocoGoal {
@@ -127,9 +127,9 @@ public:
     }
 
 protected:
-    bool getSupportsEndpointConstraintImpl() const override { return true; }
+    bool getSupportsBoundaryConstraintImpl() const override { return true; }
     Mode getDefaultModeImpl() const override {
-        return Mode::EndpointConstraint;
+        return Mode::BoundaryConstraint;
     }
     void initializeOnModelImpl(const Model& model) const override;
     void calcGoalImpl(

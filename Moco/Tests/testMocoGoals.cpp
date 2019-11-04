@@ -384,9 +384,9 @@ class MocoPeriodicish : public MocoGoal {
 
 public:
     MocoPeriodicish() = default;
-    bool getSupportsEndpointConstraintImpl() const override { return true; }
+    bool getSupportsBoundaryConstraintImpl() const override { return true; }
     Mode getDefaultModeImpl() const override {
-        return Mode::EndpointConstraint;
+        return Mode::BoundaryConstraint;
     }
     void initializeOnModelImpl(const Model&) const override {
         setNumIntegralsAndOutputs(0, 2);
@@ -402,7 +402,7 @@ public:
     }
 };
 
-TEMPLATE_TEST_CASE("Endpoint constraints", "", MocoCasADiSolver) {
+TEMPLATE_TEST_CASE("Boundary constraints", "", MocoCasADiSolver) {
     // TODO test with Tropter.
     std::cout.rdbuf(LogManager::cout.rdbuf());
     std::cout.rdbuf(LogManager::cout.rdbuf());
@@ -419,7 +419,7 @@ TEMPLATE_TEST_CASE("Endpoint constraints", "", MocoCasADiSolver) {
 
     study.initSolver<TestType>();
 
-    SECTION("Endpoint constraint is satisfied.") {
+    SECTION("Boundary constraint is satisfied.") {
         MocoSolution solution = study.solve();
         const int N = solution.getNumTimes();
         CHECK(solution.getState("/jointset/j0/q0/value").getElt(N - 1, 0) ==
@@ -509,15 +509,15 @@ TEMPLATE_TEST_CASE("MocoPeriodicityGoal", "", MocoCasADiSolver) {
     }
 }
 
-class MocoControlGoalWithEndpointConstraint : public MocoGoal {
-    OpenSim_DECLARE_CONCRETE_OBJECT(MocoControlGoalWithEndpointConstraint,
+class MocoControlGoalWithBoundaryConstraint : public MocoGoal {
+    OpenSim_DECLARE_CONCRETE_OBJECT(MocoControlGoalWithBoundaryConstraint,
             MocoGoal);
 
 public:
-    MocoControlGoalWithEndpointConstraint() = default;
-    bool getSupportsEndpointConstraintImpl() const override { return true; }
+    MocoControlGoalWithBoundaryConstraint() = default;
+    bool getSupportsBoundaryConstraintImpl() const override { return true; }
     Mode getDefaultModeImpl() const override {
-        return Mode::EndpointConstraint;
+        return Mode::BoundaryConstraint;
     }
     void initializeOnModelImpl(const Model&) const override {
         setNumIntegralsAndOutputs(1, 1);
@@ -533,7 +533,7 @@ public:
     }
 };
 
-TEMPLATE_TEST_CASE("Endpoint constraint with integral", "", MocoCasADiSolver) {
+TEMPLATE_TEST_CASE("Boundary constraint with integral", "", MocoCasADiSolver) {
 
     Model model;
     const double mass = 1.3169;
@@ -556,8 +556,8 @@ TEMPLATE_TEST_CASE("Endpoint constraint with integral", "", MocoCasADiSolver) {
 
     problem.setTimeBounds(0, 0.5);
 
-    auto* goal = problem.addGoal<MocoControlGoalWithEndpointConstraint>();
-    goal->setMode("endpoint_constraint");
+    auto* goal = problem.addGoal<MocoControlGoalWithBoundaryConstraint>();
+    goal->setMode("boundary_constraint");
 
     auto& solver = study.initCasADiSolver();
     solver.set_num_mesh_intervals(5);
@@ -567,7 +567,7 @@ TEMPLATE_TEST_CASE("Endpoint constraint with integral", "", MocoCasADiSolver) {
 
     auto solution = study.solve();
 
-    // The endpoint constraint is that the sum of squared controls integrated
+    // The boundary constraint is that the sum of squared controls integrated
     // over the motion must be 0.
     CHECK(solution.getControlsTrajectory().norm() < 1e-3);
 }

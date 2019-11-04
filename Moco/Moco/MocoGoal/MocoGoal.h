@@ -36,12 +36,12 @@ class Model;
 /// constraints that must lie within provided bounds. Goals depend on the
 /// phase's initial and final states and controls, and optionally on the
 /// integral of a quantity over the phase.
-/// Not all goals support endpoint constraint mode; see
-/// getSupportsEndpointConstraint(). If a goal does support endpoint constraint
+/// Not all goals support boundary constraint mode; see
+/// getSupportsBoundaryConstraint(). If a goal does support boundary constraint
 /// mode, then the default mode is available via getMode(). Use endpoint
 /// constraint mode if you require the goal to be met strictly and do not want
 /// to allow a trade-off between this goal and other goals.
-/// The calculation of the goal may differ between cost and endpoint constraint
+/// The calculation of the goal may differ between cost and boundary constraint
 /// modes; cost mode may require that outputs are squared, for example.
 ///
 /// @par For developers
@@ -70,16 +70,16 @@ public:
     void setWeight(double weight) { set_weight(weight); }
     double getWeight() const { return get_weight(); }
 
-    enum class Mode { Cost, EndpointConstraint };
-    /// Set the mode property to either 'cost' or 'endpoint_constraint'. This
-    /// should be set before initializing. Setting to 'endpoint_constraint' if
-    /// getSupportsEndpointConstraint() is false causes an exception during
+    enum class Mode { Cost, BoundaryConstraint };
+    /// Set the mode property to either 'cost' or 'boundary_constraint'. This
+    /// should be set before initializing. Setting to 'boundary_constraint' if
+    /// getSupportsBoundaryConstraint() is false causes an exception during
     /// initializing.
     void setMode(std::string mode) { set_mode(mode); }
     /// This returns the default mode of the goal, unless the user overrode
     /// the default using setMode().
     std::string getModeAsString() const {
-        return getMode() == Mode::Cost ? "cost" : "endpoint_constraint";
+        return getMode() == Mode::Cost ? "cost" : "boundary_constraint";
     }
     Mode getMode() const {
         OPENSIM_THROW_IF_FRMOBJ(
@@ -87,17 +87,17 @@ public:
         return m_modeToUse;
     }
     bool getModeIsCost() const { return getMode() == Mode::Cost; }
-    bool getModeIsEndpointConstraint() const {
-        return getMode() == Mode::EndpointConstraint;
+    bool getModeIsBoundaryConstraint() const {
+        return getMode() == Mode::BoundaryConstraint;
     }
 
     /// Types of goals have a class-level default for whether they are enforced
-    /// as a cost or endpoint constraint.
+    /// as a cost or boundary constraint.
     Mode getDefaultMode() const { return getDefaultModeImpl(); }
 
-    /// Can this constraint be used in endpoint constraint mode?
-    bool getSupportsEndpointConstraint() const {
-        return getSupportsEndpointConstraintImpl();
+    /// Can this constraint be used in boundary constraint mode?
+    bool getSupportsBoundaryConstraint() const {
+        return getSupportsBoundaryConstraintImpl();
     }
 
     /// Get bounds for the constraints when using this goal in endpoint
@@ -139,7 +139,7 @@ public:
     };
     /// In cost mode, the returned cost includes the weight, and the elements of
     /// the returned vector should be summed by the caller to obtain the total
-    /// cost. In endpoint constraint mode, each element of the vector is a
+    /// cost. In boundary constraint mode, each element of the vector is a
     /// different scalar equation to enforce as a constraint.
     /// The length of the returned vector is getNumOutputs().
     void calcGoal(const GoalInput& input, SimTK::Vector& goal) const {
@@ -161,14 +161,14 @@ public:
         } else {
             checkMode(get_mode());
             mode = (get_mode() == "cost") ? Mode::Cost
-                                          : Mode::EndpointConstraint;
+                                          : Mode::BoundaryConstraint;
         }
-        OPENSIM_THROW_IF_FRMOBJ(mode == Mode::EndpointConstraint &&
-                                        !getSupportsEndpointConstraint(),
+        OPENSIM_THROW_IF_FRMOBJ(mode == Mode::BoundaryConstraint &&
+                                        !getSupportsBoundaryConstraint(),
                 Exception,
-                "Endpoint constraint mode not supported by this goal.");
+                "Boundary constraint mode not supported by this goal.");
         m_modeToUse = mode;
-        if (m_modeToUse == Mode::EndpointConstraint) {
+        if (m_modeToUse == Mode::BoundaryConstraint) {
             m_weightToUse = 1;
         } else {
             m_weightToUse = get_weight();
@@ -210,7 +210,7 @@ protected:
     }
 
     virtual Mode getDefaultModeImpl() const { return Mode::Cost; }
-    virtual bool getSupportsEndpointConstraintImpl() const { return false; }
+    virtual bool getSupportsBoundaryConstraintImpl() const { return false; }
     /// @precondition The state is realized to SimTK::Stage::Position.
     /// If you need access to the controls, you must realize to Velocity:
     /// @code
@@ -238,7 +238,7 @@ private:
             "In cost mode, the goal is multiplied by this weight (default: "
             "1).");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(mode, std::string,
-            "'cost' to enforce as a penalty, 'endpoint_constraint' to enforce "
+            "'cost' to enforce as a penalty, 'boundary_constraint' to enforce "
             "as a constraint.");
     OpenSim_DECLARE_UNNAMED_PROPERTY(MocoConstraintInfo,
             "The bounds and labels for this MocoGoal, if applied as an "
@@ -247,9 +247,9 @@ private:
     void constructProperties();
 
     void checkMode(const std::string& mode) const {
-        OPENSIM_THROW_IF_FRMOBJ(mode != "cost" && mode != "endpoint_constraint",
+        OPENSIM_THROW_IF_FRMOBJ(mode != "cost" && mode != "boundary_constraint",
                 Exception,
-                format("Expected mode to be 'cost' or 'endpoint_constraint' "
+                format("Expected mode to be 'cost' or 'boundary_constraint' "
                        "but got %s.",
                         mode));
     }
@@ -263,7 +263,7 @@ private:
 inline void MocoGoal::calcIntegrandImpl(
         const SimTK::State& /*state*/, double& /*integrand*/) const {}
 
-/// Endpoint cost for final time.
+/// The value of this goal is final time, for use in minimum-time problems.
 /// @ingroup mocogoal
 class OSIMMOCO_API MocoFinalTimeGoal : public MocoGoal {
     OpenSim_DECLARE_CONCRETE_OBJECT(MocoFinalTimeGoal, MocoGoal);
@@ -300,9 +300,9 @@ public:
     }
 
 protected:
-    bool getSupportsEndpointConstraintImpl() const override { return true; }
+    bool getSupportsBoundaryConstraintImpl() const override { return true; }
     Mode getDefaultModeImpl() const override {
-        return Mode::EndpointConstraint;
+        return Mode::BoundaryConstraint;
     }
     void calcGoalImpl(
             const GoalInput& input, SimTK::Vector& values) const override {

@@ -27,7 +27,7 @@ namespace OpenSim {
 /// Without this goal, muscle activation may undesirably start at its maximum
 /// possible value in inverse/tracking problems which penalize only excitations
 /// (such activation is "free").
-/// This is an endpoint constraint goal by default.
+/// This is an boundary constraint goal by default.
 /// @ingroup mocogoal
 class OSIMMOCO_API MocoInitialActivationGoal : public MocoGoal {
     OpenSim_DECLARE_CONCRETE_OBJECT(MocoInitialActivationGoal, MocoGoal);
@@ -37,9 +37,9 @@ public:
     MocoInitialActivationGoal(std::string name) : MocoGoal(std::move(name)) {}
 
 protected:
-    bool getSupportsEndpointConstraintImpl() const override { return true; }
+    bool getSupportsBoundaryConstraintImpl() const override { return true; }
     Mode getDefaultModeImpl() const override {
-        return Mode::EndpointConstraint;
+        return Mode::BoundaryConstraint;
     }
     void initializeOnModelImpl(const Model&) const override;
     void calcGoalImpl(

@@ -88,10 +88,10 @@ problem.addParameter(osim.MocoParameter('oscillator_mass', 'body', 'mass',
 
 # Cost.
 # -----
-endpointCost = osim.MocoMarkerFinalGoal()
-endpointCost.setPointName('/markerset/marker')
-endpointCost.setReferenceLocation(osim.Vec3(0.5, 0, 0))
-problem.addGoal(endpointCost)
+boundaryCost = osim.MocoMarkerFinalGoal()
+boundaryCost.setPointName('/markerset/marker')
+boundaryCost.setReferenceLocation(osim.Vec3(0.5, 0, 0))
+problem.addGoal(boundaryCost)
 
 
 # Configure the solver.

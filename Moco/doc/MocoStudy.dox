@@ -11,7 +11,7 @@ costs, constraints, and solver settings are fully defined by the user.
 For a mathematical description, see @ref mocoocp.
 
 In Moco, "goals", such as tracking marker data or effort, can be
-enforced either as cost terms to minimize or endpoint constraints.
+enforced either as cost terms to minimize or boundary constraints.
 
 @section Overview
 
@@ -41,7 +41,7 @@ single-phase problems. A MocoPhase consists of the following:
 
 1. An OpenSim model that describes states, controls, dynamics, and kinematic
    constraints.
-2. MocoGoal%s: describes the cost functional to minimize or endpoint constraints
+2. MocoGoal%s: describes the cost functional to minimize or boundary constraints
    to enforce.
 3. MocoPathConstraint%s: describes non-kinematic algebraic constraints to
    enforce over the entire phase.
@@ -70,7 +70,7 @@ Although we support setting initial and final bounds for controls, such
 functionality is not too useful: the initial and final values of a control have
 little influence on the value of the control at nearby times.
 
-@subsection costfunctional Defining the cost functional and endpoint constraints
+@subsection costfunctional Defining the cost functional and boundary constraints
 
 See @ref mocogoal for more information.
 

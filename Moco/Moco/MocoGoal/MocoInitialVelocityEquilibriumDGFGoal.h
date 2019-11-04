@@ -31,7 +31,7 @@ namespace OpenSim {
 /// control variable in implicit tendon compliance dynamics, may undesirably
 /// start at a very large value if not constrained or minimized (which it is
 /// not by default).
-/// This is an endpoint constraint goal by default.
+/// This is an boundary constraint goal by default.
 /// @note This goal only applies to DeGrooteFregly2016Muscles.
 /// @ingroup mocogoal
 class OSIMMOCO_API MocoInitialVelocityEquilibriumDGFGoal : public MocoGoal {
@@ -44,9 +44,9 @@ public:
         : MocoGoal(std::move(name)) {}
 
 protected:
-    bool getSupportsEndpointConstraintImpl() const override { return true; }
+    bool getSupportsBoundaryConstraintImpl() const override { return true; }
     Mode getDefaultModeImpl() const override {
-        return Mode::EndpointConstraint;
+        return Mode::BoundaryConstraint;
     }
     void initializeOnModelImpl(const Model&) const override;
     void calcGoalImpl(

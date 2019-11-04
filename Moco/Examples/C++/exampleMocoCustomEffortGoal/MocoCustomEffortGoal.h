@@ -35,7 +35,7 @@ public:
 
 protected:
     Mode getDefaultModeImpl() const override { return Mode::Cost; }
-    bool getSupportsEndpointConstraintImpl() const override { return true; }
+    bool getSupportsBoundaryConstraintImpl() const override { return true; }
     void initializeOnModelImpl(const Model&) const override;
     void calcIntegrandImpl(
             const SimTK::State& state, double& integrand) const override;

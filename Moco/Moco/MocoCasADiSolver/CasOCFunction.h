@@ -157,14 +157,14 @@ public:
     VectorDM eval(const VectorDM& args) const override;
 };
 
-class EndpointConstraintIntegrand : public Integrand {
+class BoundaryConstraintIntegrand : public Integrand {
 public:
     VectorDM eval(const VectorDM& args) const override;
 };
 
 /// This function takes initial states/controls, final states/controls, and an
 /// integral.
-class Endpoint : public Function {
+class Boundary : public Function {
 public:
     void constructFunction(const Problem* casProblem, const std::string& name,
             int index,
@@ -209,8 +209,8 @@ public:
         else
             return casadi::Sparsity(0, 0);
     }
-    /// The endpoint input is not simply a subset of the NLP variables; the
-    /// endpoint function also depends on an integral, computed from an
+    /// The boundary input is not simply a subset of the NLP variables; the
+    /// boundary function also depends on an integral, computed from an
     /// integrand function and using a transcription's quadrature scheme.
     /// Ideally, the value for the integral would be computed properly from the
     /// provided point, but applying the integrand function and quadrature
@@ -239,13 +239,13 @@ protected:
 };
 
 /// This invokes CasOC::Problem::calcCost().
-class Cost : public Endpoint {
+class Cost : public Boundary {
 public:
     VectorDM eval(const VectorDM& args) const override;
 };
 
-/// This invokes CasOC::Problem::calcEndpointConstraint().
-class EndpointConstraint : public Endpoint {
+/// This invokes CasOC::Problem::calcBoundaryConstraint().
+class BoundaryConstraint : public Boundary {
 public:
     VectorDM eval(const VectorDM& args) const override;
 

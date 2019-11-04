@@ -25,7 +25,7 @@ function value = examplePrototypeCustomGoal
 % into a proper C++ goal for you. Once your prototype works, create an issue
 % on GitHub.
 %
-% In C++, MocoGoals can be in cost mode or endpoint constraint mode. In this
+% In C++, MocoGoals can be in cost mode or boundary constraint mode. In this
 % example, we expect that your goal is in cost mode.
 %
 % In this example, the custom goal is minimizing the sum of squared controls

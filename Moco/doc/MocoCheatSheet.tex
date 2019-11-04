@@ -309,8 +309,8 @@ solution.unseal(); % Access a failed solution.
     $ q(t) $     & generalized coordinates                              & $ J_j $               & the $j$-th cost                         & $ \nu    $                   & velocity-level constraints \\
     $ u(t) $     & generalized speeds                                   & $ s_{c,j} $           & integrand used in the $j$-th cost       & $ \alpha    $                & acceleration-level constraints\\
     $ z(t) $     & auxiliary states                                     & $ M $                 & mass matrix                             & $ g $                        & path constraints \\
-    $ y(t) $     & $ (q(t),u(t),z(t)) $                                 & $ f_{\textrm{bias}} $ & centripetal and coriolis forces         & $ V_k $                      & the $k$-th endpoint constraint \\
-    $ x(t) $     & controls                                             & $ G $                 & kinematic constraint Jacobian           & $ K $                        & number of endpoint constraints \\
+    $ y(t) $     & $ (q(t),u(t),z(t)) $                                 & $ f_{\textrm{bias}} $ & centripetal and coriolis forces         & $ V_k $                      & the $k$-th boundary constraint \\
+    $ x(t) $     & controls                                             & $ G $                 & kinematic constraint Jacobian           & $ K $                        & number of boundary constraints \\
     $ p    $     & constant parameters                                  & $ f_{\textrm{app}} $  & applied forces                          & $ (\enspace)_{U}   $     & an upper bound \\
     $ \lambda $  & kinematic constraint multipliers                     & $ f_{\textrm{aux}} $  & auxiliary dynamics (explicit \& implicit) & $ (\enspace)_{L}   $     & a lower bound \\
 \end{tabular}

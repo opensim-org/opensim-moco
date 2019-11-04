@@ -69,15 +69,15 @@ We use the following notation:
 - \f$ \nu \f$: velocity-level (non-holonomic) kinematic constraints
 - \f$ \alpha \f$: acceleration-level kinematic constraints
 - \f$ g \f$: path constraints
-- \f$ V_k \f$: the \f$ k \f$-th endpoint constraint goal
-- \f$ s_{e,k} \f$: the integrand used in the \f$ k \f$-th endpoint constraint goal
+- \f$ V_k \f$: the \f$ k \f$-th boundary constraint goal
+- \f$ s_{e,k} \f$: the integrand used in the \f$ k \f$-th boundary constraint goal
 - \f$ S_{e,k} \f$: the integral of \f$ s_{e,k} \f$
-- \f$ K \f$: number of endpoint constraint goals
+- \f$ K \f$: number of boundary constraint goals
 - subscript \f$ U \f$: an upper bound
 - subscript \f$ L \f$: a lower bound
 
 In Moco, "goals", such as tracking marker data or effort, can be
-enforced either as cost terms to minimize or endpoint constraints.
+enforced either as cost terms to minimize or boundary constraints.
 
 Auxiliary dynamics are typically used for muscle activation dynamics and fiber
 dynamics. In Moco, these dynamics can be expressed with explicit differential

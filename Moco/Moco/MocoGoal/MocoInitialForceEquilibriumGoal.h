@@ -28,7 +28,7 @@ namespace OpenSim {
 /// This goal ensures that the initial normalized tendon force state variable
 /// is chosen such that equilibrium is satisfied; otherwise, the initial state
 /// may not be valid.
-/// This is an endpoint constraint goal by default.
+/// This is an boundary constraint goal by default.
 /// @ingroup mocogoal
 class OSIMMOCO_API MocoInitialForceEquilibriumGoal : public MocoGoal {
     OpenSim_DECLARE_CONCRETE_OBJECT(MocoInitialForceEquilibriumGoal, MocoGoal);
@@ -39,9 +39,9 @@ public:
         : MocoGoal(std::move(name)) {}
 
 protected:
-    bool getSupportsEndpointConstraintImpl() const override { return true; }
+    bool getSupportsBoundaryConstraintImpl() const override { return true; }
     Mode getDefaultModeImpl() const override {
-        return Mode::EndpointConstraint;
+        return Mode::BoundaryConstraint;
     }
     /// Save references to muscles with tendon compliance enabled. If the muscle
     /// is of type DeGrooteFregly2016Muscle, check that tendon compliance

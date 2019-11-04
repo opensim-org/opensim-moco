@@ -490,7 +490,7 @@ void Trapezoidal<T>::calc_sparsity_hessian_lagrangian(const Eigen::VectorXd& x,
             std::function<T(const VectorX<T>&, bool)> calc_cost =
                     [this, icost, &x, &st, &ct, &at](
                             const VectorX<T>& vars, bool initial) {
-                        // TODO see if endpoint cost actually depends on
+                        // TODO see if boundary cost actually depends on
                         // time; put it in vars.
                         T it = x[0]; // initial time.
                         T ft = x[1]; // final time.

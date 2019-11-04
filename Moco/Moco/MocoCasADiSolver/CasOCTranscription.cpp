@@ -106,10 +106,10 @@ void Transcription::createVariablesAndSetBounds(const casadi::DM& grid,
             m_numAuxiliaryResiduals * m_numGridPoints +
             m_problem.getNumKinematicConstraintEquations() * m_numMeshPoints +
             m_problem.getNumControls() * (int)pointsForInterpControls.numel();
-    m_constraints.endpoint.resize(
-            m_problem.getEndpointConstraintInfos().size());
-    for (int iec = 0; iec < (int)m_constraints.endpoint.size(); ++iec) {
-        const auto& info = m_problem.getEndpointConstraintInfos()[iec];
+    m_constraints.boundary.resize(
+            m_problem.getBoundaryConstraintInfos().size());
+    for (int iec = 0; iec < (int)m_constraints.boundary.size(); ++iec) {
+        const auto& info = m_problem.getBoundaryConstraintInfos()[iec];
         m_numConstraints += info.num_outputs;
     }
     m_constraints.path.resize(m_problem.getPathConstraintInfos().size());
@@ -254,7 +254,7 @@ void Transcription::transcribe() {
 
     // Cost.
     // =====
-    setObjectiveAndEndpointConstraints();
+    setObjectiveAndBoundaryConstraints();
 
     // Compute DAEs at necessary grid points.
     // ======================================
@@ -445,7 +445,7 @@ void Transcription::transcribe() {
     calcInterpolatingControls();
 }
 
-void Transcription::setObjectiveAndEndpointConstraints() {
+void Transcription::setObjectiveAndBoundaryConstraints() {
     DM quadCoeffs = this->createQuadratureCoefficients();
 
     // Objective.
@@ -507,7 +507,7 @@ void Transcription::setObjectiveAndEndpointConstraints() {
         }
 
         MXVector costOut;
-        info.endpoint_function->call(
+        info.boundary_function->call(
                 {m_vars[initial_time], m_vars[states](Slice(), 0),
                         m_vars[controls](Slice(), 0),
                         m_vars[multipliers](Slice(), 0),
@@ -521,15 +521,15 @@ void Transcription::setObjectiveAndEndpointConstraints() {
         m_objective += casadi::MX::sum1(costOut.at(0));
     }
 
-    // Endpoint constraints
+    // Boundary constraints
 
-    int numEndpointConstraints =
-            (int)m_problem.getEndpointConstraintInfos().size();
-    m_constraints.endpoint.resize(numEndpointConstraints);
-    m_constraintsLowerBounds.endpoint.resize(numEndpointConstraints);
-    m_constraintsUpperBounds.endpoint.resize(numEndpointConstraints);
-    for (int iec = 0; iec < (int)m_constraints.endpoint.size(); ++iec) {
-        const auto& info = m_problem.getEndpointConstraintInfos()[iec];
+    int numBoundaryConstraints =
+            (int)m_problem.getBoundaryConstraintInfos().size();
+    m_constraints.boundary.resize(numBoundaryConstraints);
+    m_constraintsLowerBounds.boundary.resize(numBoundaryConstraints);
+    m_constraintsUpperBounds.boundary.resize(numBoundaryConstraints);
+    for (int iec = 0; iec < (int)m_constraints.boundary.size(); ++iec) {
+        const auto& info = m_problem.getBoundaryConstraintInfos()[iec];
 
         MX integral;
         if (info.integrand_function) {
@@ -542,8 +542,8 @@ void Transcription::setObjectiveAndEndpointConstraints() {
             integral = MX::nan(1, 1);
         }
 
-        MXVector endpointOut;
-        info.endpoint_function->call(
+        MXVector boundaryOut;
+        info.boundary_function->call(
                 {m_vars[initial_time], m_vars[states](Slice(), 0),
                         m_vars[controls](Slice(), 0),
                         m_vars[multipliers](Slice(), 0),
@@ -553,10 +553,10 @@ void Transcription::setObjectiveAndEndpointConstraints() {
                         m_vars[multipliers](Slice(), -1),
                         m_vars[derivatives](Slice(), -1), m_vars[parameters],
                         integral},
-                endpointOut);
-        m_constraints.endpoint[iec] = endpointOut.at(0);
-        m_constraintsLowerBounds.endpoint[iec] = info.lowerBounds;
-        m_constraintsUpperBounds.endpoint[iec] = info.upperBounds;
+                boundaryOut);
+        m_constraints.boundary[iec] = boundaryOut.at(0);
+        m_constraintsLowerBounds.boundary[iec] = info.lowerBounds;
+        m_constraintsUpperBounds.boundary[iec] = info.upperBounds;
     }
 }
 

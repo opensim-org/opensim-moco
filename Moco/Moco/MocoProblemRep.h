@@ -108,9 +108,9 @@ public:
     int getNumParameters() const { return (int)m_parameters.size(); }
     /// Get the number of goals in cost mode.
     int getNumCosts() const { return (int)m_costs.size(); }
-    /// Get the number of goals in endpoint constraint mode.
-    int getNumEndpointConstraints() const {
-        return (int)m_endpoint_constraints.size();
+    /// Get the number of goals in boundary constraint mode.
+    int getNumBoundaryConstraints() const {
+        return (int)m_boundary_constraints.size();
     }
     int getNumKinematicConstraints() const {
         return (int)m_kinematic_constraints.size();
@@ -133,8 +133,8 @@ public:
     std::vector<std::string> createParameterNames() const;
     /// Get the names of all the goals in cost mode.
     std::vector<std::string> createCostNames() const;
-    /// Get the names of all the goals in endpoint constraint mode.
-    std::vector<std::string> createEndpointConstraintNames() const;
+    /// Get the names of all the goals in boundary constraint mode.
+    std::vector<std::string> createBoundaryConstraintNames() const;
     /// Get the names of all the MocoPathConstraint%s.
     std::vector<std::string> createPathConstraintNames() const;
     /// Get the names of all the Lagrange multiplier infos.
@@ -175,13 +175,13 @@ public:
     /// Get a cost by index. The order is the same as in getCostNames().
     /// Note: this does not perform a bounds check.
     const MocoGoal& getCostByIndex(int index) const;
-    /// Get an endpoint constraint by name. This returns a MocoGoal in endpoint
+    /// Get an boundary constraint by name. This returns a MocoGoal in boundary
     /// constraint mode.
-    const MocoGoal& getEndpointConstraint(const std::string& name) const;
-    /// Get an endpoint constraint by index.
-    /// The order is the same as in getEndpointConstraintNames().
+    const MocoGoal& getBoundaryConstraint(const std::string& name) const;
+    /// Get an boundary constraint by index.
+    /// The order is the same as in getBoundaryConstraintNames().
     /// Note: this does not perform a bounds check.
-    const MocoGoal& getEndpointConstraintByIndex(int index) const;
+    const MocoGoal& getBoundaryConstraintByIndex(int index) const;
     /// Get a MocoPathConstraint. Note: this does not
     /// include MocoKinematicConstraints, use getKinematicConstraint() instead.
     const MocoPathConstraint& getPathConstraint(const std::string& name) const;
@@ -324,7 +324,7 @@ private:
 
     std::vector<std::unique_ptr<MocoParameter>> m_parameters;
     std::vector<std::unique_ptr<MocoGoal>> m_costs;
-    std::vector<std::unique_ptr<MocoGoal>> m_endpoint_constraints;
+    std::vector<std::unique_ptr<MocoGoal>> m_boundary_constraints;
     std::vector<std::unique_ptr<MocoPathConstraint>> m_path_constraints;
     int m_num_path_constraint_equations = -1;
     int m_num_kinematic_constraint_equations = -1;

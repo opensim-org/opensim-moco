@@ -102,7 +102,7 @@ protected:
         T multibody_residuals;
         T auxiliary_residuals;
         T kinematic;
-        std::vector<T> endpoint;
+        std::vector<T> boundary;
         std::vector<T> path;
         T interp_controls;
     };
@@ -166,7 +166,7 @@ private:
     }
 
     void transcribe();
-    void setObjectiveAndEndpointConstraints();
+    void setObjectiveAndBoundaryConstraints();
     void calcDefects() {
         calcDefectsImpl(m_vars.at(states), m_xdot, m_constraints.defects);
     }
@@ -228,10 +228,10 @@ private:
         };
 
         // Trapezoidal sparsity pattern for mesh intervals 0, 1 and 2:
-        // Endpoint constraints depend on all time points through their
+        // boundary constraints depend on all time points through their
         // integral.
         //                   0    1    2    3
-        //    endpoint       x    x    x    x
+        //    boundary       x    x    x    x
         //    path_0         x
         //    kinematic_0    x
         //    residual_0     x
@@ -249,7 +249,7 @@ private:
 
         // Hermite-Simpson sparsity pattern for mesh intervals 0, 1 and 2:
         //                   0    0.5    1    1.5    2    2.5    3
-        //    endpoint       x     x     x     x     x     x     x
+        //    boundary       x     x     x     x     x     x     x
         //    path_0         x
         //    kinematic_0    x
         //    residual_0     x
@@ -273,8 +273,8 @@ private:
         //    residual_3                                         x
         //                   0    0.5    1    1.5    2    2.5    3
 
-        for (const auto& endpoint : constraints.endpoint) {
-            copyColumn(endpoint, 0);
+        for (const auto& boundary : constraints.boundary) {
+            copyColumn(boundary, 0);
         }
 
         int igrid = 0;
@@ -326,10 +326,10 @@ private:
                 m_numGridPoints);
         out.kinematic = init(m_problem.getNumKinematicConstraintEquations(),
                 m_numMeshPoints);
-        out.endpoint.resize(m_problem.getEndpointConstraintInfos().size());
-        for (int iec = 0; iec < (int)m_constraints.endpoint.size(); ++iec) {
-            const auto& info = m_problem.getEndpointConstraintInfos()[iec];
-            out.endpoint[iec] = init(info.num_outputs, 1);
+        out.boundary.resize(m_problem.getBoundaryConstraintInfos().size());
+        for (int iec = 0; iec < (int)m_constraints.boundary.size(); ++iec) {
+            const auto& info = m_problem.getBoundaryConstraintInfos()[iec];
+            out.boundary[iec] = init(info.num_outputs, 1);
         }
         out.path.resize(m_problem.getPathConstraintInfos().size());
         for (int ipc = 0; ipc < (int)m_constraints.path.size(); ++ipc) {
@@ -349,8 +349,8 @@ private:
             }
         };
 
-        for (auto& endpoint : out.endpoint) {
-            copyColumn(endpoint, 0);
+        for (auto& boundary : out.boundary) {
+            copyColumn(boundary, 0);
         }
 
         int igrid = 0;

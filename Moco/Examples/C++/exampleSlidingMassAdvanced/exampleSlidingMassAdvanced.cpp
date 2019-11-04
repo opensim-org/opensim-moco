@@ -84,7 +84,7 @@ public:
 
 protected:
     Mode getDefaultModeImpl() const override { return Mode::Cost; }
-    bool getSupportsEndpointConstraintImpl() const override { return true; }
+    bool getSupportsBoundaryConstraintImpl() const override { return true; }
     void initializeOnModelImpl(const Model&) const override {
         setNumIntegralsAndOutputs(1, 1);
     }

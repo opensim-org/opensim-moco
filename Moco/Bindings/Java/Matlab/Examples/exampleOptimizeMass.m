@@ -77,11 +77,11 @@ problem.setStateInfo('/slider/position/speed', [-20, 20], [0], [0]);
 problem.addParameter(MocoParameter('oscillator_mass', 'body', 'mass',... 
     MocoBounds(0, 10)));
 
-endpointCost = MocoMarkerFinalGoal();
-endpointCost.setPointName('/markerset/marker');
-endpointCost.setReferenceLocation(Vec3(0.5, 0, 0));
+boundaryCost = MocoMarkerFinalGoal();
+boundaryCost.setPointName('/markerset/marker');
+boundaryCost.setReferenceLocation(Vec3(0.5, 0, 0));
 
-problem.addGoal(endpointCost);
+problem.addGoal(boundaryCost);
 
 solver = study.initTropterSolver();
 

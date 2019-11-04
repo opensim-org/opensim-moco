@@ -47,7 +47,7 @@ void MocoProblemRep::initialize() {
     m_control_infos.clear();
     m_parameters.clear();
     m_costs.clear();
-    m_endpoint_constraints.clear();
+    m_boundary_constraints.clear();
     m_path_constraints.clear();
     m_kinematic_constraints.clear();
     m_multiplier_infos_map.clear();
@@ -488,8 +488,8 @@ void MocoProblemRep::initialize() {
         if (goal.getEnabled()) {
             std::unique_ptr<MocoGoal> item(goal.clone());
             item->initializeOnModel(m_model_disabled_constraints);
-            if (item->getModeIsEndpointConstraint()) {
-                m_endpoint_constraints.push_back(std::move(item));
+            if (item->getModeIsBoundaryConstraint()) {
+                m_boundary_constraints.push_back(std::move(item));
             } else {
                 m_costs.push_back(std::move(item));
             }
@@ -606,11 +606,11 @@ std::vector<std::string> MocoProblemRep::createCostNames() const {
     }
     return names;
 }
-std::vector<std::string> MocoProblemRep::createEndpointConstraintNames() const {
-    std::vector<std::string> names(m_endpoint_constraints.size());
+std::vector<std::string> MocoProblemRep::createBoundaryConstraintNames() const {
+    std::vector<std::string> names(m_boundary_constraints.size());
     int i = 0;
-    for (const auto& endpoint_constraint : m_endpoint_constraints) {
-        names[i] = endpoint_constraint->getName();
+    for (const auto& boundary_constraint : m_boundary_constraints) {
+        names[i] = boundary_constraint->getName();
         ++i;
     }
     return names;
@@ -655,17 +655,17 @@ const MocoGoal& MocoProblemRep::getCost(const std::string& name) const {
 const MocoGoal& MocoProblemRep::getCostByIndex(int index) const {
     return *m_costs[index];
 }
-const MocoGoal& MocoProblemRep::getEndpointConstraint(
+const MocoGoal& MocoProblemRep::getBoundaryConstraint(
         const std::string& name) const {
 
-    for (const auto& c : m_endpoint_constraints) {
+    for (const auto& c : m_boundary_constraints) {
         if (c->getName() == name) { return *c.get(); }
     }
     OPENSIM_THROW(Exception,
-            format("No endpoint constraint with name '%s' found.", name));
+            format("No boundary constraint with name '%s' found.", name));
 }
-const MocoGoal& MocoProblemRep::getEndpointConstraintByIndex(int index) const {
-    return *m_endpoint_constraints[index];
+const MocoGoal& MocoProblemRep::getBoundaryConstraintByIndex(int index) const {
+    return *m_boundary_constraints[index];
 }
 const MocoPathConstraint& MocoProblemRep::getPathConstraint(
         const std::string& name) const {
@@ -776,15 +776,15 @@ void MocoProblemRep::printDescription(std::ostream& stream) const {
         cost->printDescription(stream);
     }
 
-    stream << "Endpoint constraints:";
-    if (m_endpoint_constraints.empty())
+    stream << "Boundary constraints:";
+    if (m_boundary_constraints.empty())
         stream << " none";
     else
-        stream << " (total: " << m_endpoint_constraints.size() << ")";
+        stream << " (total: " << m_boundary_constraints.size() << ")";
     stream << "\n";
-    for (const auto& endpoint_constraint : m_endpoint_constraints) {
+    for (const auto& boundary_constraint : m_boundary_constraints) {
         stream << "  ";
-        endpoint_constraint->printDescription(stream);
+        boundary_constraint->printDescription(stream);
     }
 
     stream << "Kinematic constraints: ";

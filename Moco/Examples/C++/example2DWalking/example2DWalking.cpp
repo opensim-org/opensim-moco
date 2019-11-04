@@ -50,7 +50,7 @@ using namespace OpenSim;
 // Set a coordinate tracking problem where the goal is to minimize the
 // difference between provided and simulated coordinate values and speeds
 // as well as to minimize an effort cost (squared controls). The provided data
-// represents half a gait cycle. Endpoint constraints enforce periodicity of
+// represents half a gait cycle. Boundary constraints enforce periodicity of
 // the coordinate values (except for pelvis tx) and speeds, coordinate
 // actuator controls, and muscle activations. The tracking problem is solved
 // using polynomial approximations of muscle path lengths if true is passed as
@@ -178,7 +178,7 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
 
 // Set a gait prediction problem where the goal is to minimize effort (squared
 // controls) over distance traveled while enforcing symmetry of the walking
-// cycle and a prescribed average gait speed through endpoint constraints. The
+// cycle and a prescribed average gait speed through boundary constraints. The
 // solution of the coordinate tracking problem is passed as an input argument
 // and used as an initial guess for the prediction. The predictive problem is
 // solved using polynomial approximations of muscle path lengths if true is

@@ -80,30 +80,30 @@ struct ParameterInfo {
     Bounds bounds;
 };
 
-struct EndpointInfo {
-    EndpointInfo(std::string name, int num_outputs,
-            std::unique_ptr<Integrand> ifunc, std::unique_ptr<Endpoint> efunc)
+struct BoundaryInfo {
+    BoundaryInfo(std::string name, int num_outputs,
+            std::unique_ptr<Integrand> ifunc, std::unique_ptr<Boundary> efunc)
             : name(std::move(name)), num_outputs(num_outputs),
               integrand_function(std::move(ifunc)),
-              endpoint_function(std::move(efunc)) {}
+              boundary_function(std::move(efunc)) {}
     std::string name;
     int num_outputs;
     std::unique_ptr<Integrand> integrand_function;
-    std::unique_ptr<Endpoint> endpoint_function;
+    std::unique_ptr<Boundary> boundary_function;
 };
 
-struct CostInfo : EndpointInfo {
+struct CostInfo : BoundaryInfo {
     CostInfo(std::string name, int num_outputs,
-            std::unique_ptr<Integrand> ifunc, std::unique_ptr<Endpoint> efunc)
-            : EndpointInfo(std::move(name), num_outputs, std::move(ifunc),
+            std::unique_ptr<Integrand> ifunc, std::unique_ptr<Boundary> efunc)
+            : BoundaryInfo(std::move(name), num_outputs, std::move(ifunc),
                       std::move(efunc)) {}
 };
 
-struct EndpointConstraintInfo : EndpointInfo {
-    EndpointConstraintInfo(std::string name, int num_outputs,
-            std::unique_ptr<Integrand> ifunc, std::unique_ptr<Endpoint> efunc,
+struct BoundaryConstraintInfo : BoundaryInfo {
+    BoundaryConstraintInfo(std::string name, int num_outputs,
+            std::unique_ptr<Integrand> ifunc, std::unique_ptr<Boundary> efunc,
             casadi::DM lowerBounds, casadi::DM upperBounds)
-            : EndpointInfo(std::move(name), num_outputs, std::move(ifunc),
+            : BoundaryInfo(std::move(name), num_outputs, std::move(ifunc),
                       std::move(efunc)),
               lowerBounds(std::move(lowerBounds)),
               upperBounds(std::move(upperBounds)) {}
@@ -180,8 +180,8 @@ protected:
     // TODO: Create separate addDegreeOfFreedom() and addAuxiliaryState()?
     void addState(std::string name, StateType type, Bounds bounds,
             Bounds initialBounds, Bounds finalBounds) {
-        clipEndpointBounds(bounds, initialBounds);
-        clipEndpointBounds(bounds, finalBounds);
+        clipBoundaryBounds(bounds, initialBounds);
+        clipBoundaryBounds(bounds, finalBounds);
         m_stateInfos.push_back({std::move(name), type, std::move(bounds),
                 std::move(initialBounds), std::move(finalBounds)});
         if (type == StateType::Coordinate)
@@ -194,16 +194,16 @@ protected:
     /// Add an algebraic variable/"state" to the problem.
     void addControl(std::string name, Bounds bounds, Bounds initialBounds,
             Bounds finalBounds) {
-        clipEndpointBounds(bounds, initialBounds);
-        clipEndpointBounds(bounds, finalBounds);
+        clipBoundaryBounds(bounds, initialBounds);
+        clipBoundaryBounds(bounds, finalBounds);
         m_controlInfos.push_back({std::move(name), std::move(bounds),
                 std::move(initialBounds), std::move(finalBounds)});
     }
     void addKinematicConstraint(std::string multName, Bounds multbounds,
             Bounds multInitialBounds, Bounds multFinalBounds,
             KinematicLevel kinLevel) {
-        clipEndpointBounds(multbounds, multInitialBounds);
-        clipEndpointBounds(multbounds, multFinalBounds);
+        clipBoundaryBounds(multbounds, multInitialBounds);
+        clipBoundaryBounds(multbounds, multFinalBounds);
         m_multiplierInfos.push_back({std::move(multName), std::move(multbounds),
                 std::move(multInitialBounds), std::move(multFinalBounds),
                 kinLevel});
@@ -256,15 +256,15 @@ protected:
                 std::move(integrand_function),
                 OpenSim::make_unique<Cost>());
     }
-    /// Add an endpoint constraint to the problem.
-    void addEndpointConstraint(
+    /// Add an boundary constraint to the problem.
+    void addBoundaryConstraint(
             std::string name, int numIntegrals, std::vector<Bounds> bounds) {
         OPENSIM_THROW_IF(numIntegrals < 0 || numIntegrals > 1,
                 OpenSim::Exception, "numIntegrals must be 0 or 1.");
-        std::unique_ptr<EndpointConstraintIntegrand> integrand_function;
+        std::unique_ptr<BoundaryConstraintIntegrand> integrand_function;
         if (numIntegrals) {
             integrand_function =
-                    OpenSim::make_unique<EndpointConstraintIntegrand>();
+                    OpenSim::make_unique<BoundaryConstraintIntegrand>();
         }
         casadi::DM lower(bounds.size(), 1);
         casadi::DM upper(bounds.size(), 1);
@@ -272,9 +272,9 @@ protected:
             lower(ibound, 0) = bounds[ibound].lower;
             upper(ibound, 0) = bounds[ibound].upper;
         }
-        m_endpointConstraintInfos.emplace_back(std::move(name),
+        m_boundaryConstraintInfos.emplace_back(std::move(name),
                 (int)bounds.size(), std::move(integrand_function),
-                OpenSim::make_unique<EndpointConstraint>(), std::move(lower),
+                OpenSim::make_unique<BoundaryConstraint>(), std::move(lower),
                 std::move(upper));
     }
     /// The size of bounds must match the number of outputs in the function.
@@ -323,9 +323,9 @@ public:
             const ContinuousInput& /*input*/, double& /*integrand*/) const {}
     virtual void calcCost(int /*costIndex*/, const CostInput& /*input*/,
             casadi::DM& /*cost*/) const {}
-    virtual void calcEndpointConstraintIntegrand(int /*index*/,
+    virtual void calcBoundaryConstraintIntegrand(int /*index*/,
             const ContinuousInput& /*input*/, double& /*integrand*/) const {}
-    virtual void calcEndpointConstraint(int /*index*/,
+    virtual void calcBoundaryConstraint(int /*index*/,
             const CostInput& /*input*/, casadi::DM& /*values*/) const {}
     virtual void calcPathConstraint(int /*constraintIndex*/,
             const ContinuousInput& /*input*/,
@@ -389,8 +389,8 @@ public:
         {
             int index = 0;
             for (const auto& costInfo : mutThis->m_costInfos) {
-                costInfo.endpoint_function->constructFunction(this,
-                        "cost_" + costInfo.name + "_endpoint", index,
+                costInfo.boundary_function->constructFunction(this,
+                        "cost_" + costInfo.name + "_boundary", index,
                         costInfo.num_outputs, finiteDiffScheme,
                         pointsForSparsityDetection);
                 if (costInfo.integrand_function) {
@@ -403,14 +403,14 @@ public:
         }
         {
             int index = 0;
-            for (const auto& info : mutThis->m_endpointConstraintInfos) {
-                info.endpoint_function->constructFunction(this,
-                        "endpoint_constraint_" + info.name + "_endpoint", index,
+            for (const auto& info : mutThis->m_boundaryConstraintInfos) {
+                info.boundary_function->constructFunction(this,
+                        "boundary_constraint_" + info.name + "_boundary", index,
                         info.num_outputs, finiteDiffScheme,
                         pointsForSparsityDetection);
                 if (info.integrand_function) {
                     info.integrand_function->constructFunction(this,
-                            "endpoint_constraint_" + info.name + "_integrand", index,
+                            "boundary_constraint_" + info.name + "_integrand", index,
                             finiteDiffScheme, pointsForSparsityDetection);
                 }
                 ++index;
@@ -563,9 +563,9 @@ public:
         return m_paramInfos;
     }
     const std::vector<CostInfo>& getCostInfos() const { return m_costInfos; }
-    const std::vector<EndpointConstraintInfo>&
-    getEndpointConstraintInfos() const {
-        return m_endpointConstraintInfos;
+    const std::vector<BoundaryConstraintInfo>&
+    getBoundaryConstraintInfos() const {
+        return m_boundaryConstraintInfos;
     }
     const std::vector<PathConstraintInfo>& getPathConstraintInfos() const {
         return m_pathInfos;
@@ -599,10 +599,10 @@ public:
     /// @}
 
 private:
-    /// Clip endpoint to be as strict as b.
-    void clipEndpointBounds(const Bounds& b, Bounds& endpoint) {
-        endpoint.lower = std::max(b.lower, endpoint.lower);
-        endpoint.upper = std::min(b.upper, endpoint.upper);
+    /// Clip boundary to be as strict as b.
+    void clipBoundaryBounds(const Bounds& b, Bounds& boundary) {
+        boundary.lower = std::max(b.lower, boundary.lower);
+        boundary.upper = std::min(b.upper, boundary.upper);
     }
 
     Bounds m_timeInitialBounds;
@@ -627,7 +627,7 @@ private:
     std::vector<SlackInfo> m_slackInfos;
     std::vector<ParameterInfo> m_paramInfos;
     std::vector<CostInfo> m_costInfos;
-    std::vector<EndpointConstraintInfo> m_endpointConstraintInfos;
+    std::vector<BoundaryConstraintInfo> m_boundaryConstraintInfos;
     std::vector<PathConstraintInfo> m_pathInfos;
     std::unique_ptr<MultibodySystemExplicit<true>> m_multibodyFunc;
     std::unique_ptr<MultibodySystemExplicit<false>>

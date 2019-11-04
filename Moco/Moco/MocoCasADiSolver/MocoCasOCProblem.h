@@ -370,7 +370,7 @@ private:
         m_jar->leave(std::move(mocoProblemRep));
     }
 
-    void calcEndpointConstraintIntegrand(int index,
+    void calcBoundaryConstraintIntegrand(int index,
             const ContinuousInput& input, double& integrand) const override {
         auto mocoProblemRep = m_jar->take();
         applyInput(input.time, input.states, input.controls, input.multipliers,
@@ -380,12 +380,12 @@ private:
                 mocoProblemRep->updStateDisabledConstraints();
 
         const auto& mocoEC =
-                mocoProblemRep->getEndpointConstraintByIndex(index);
+                mocoProblemRep->getBoundaryConstraintByIndex(index);
         integrand = mocoEC.calcIntegrand(simtkStateDisabledConstraints);
 
         m_jar->leave(std::move(mocoProblemRep));
     }
-    void calcEndpointConstraint(int index, const CostInput& input,
+    void calcBoundaryConstraint(int index, const CostInput& input,
             casadi::DM& values) const override {
         auto mocoProblemRep = m_jar->take();
 
@@ -405,7 +405,7 @@ private:
 
         // Compute the cost for this cost term.
         const auto& mocoEC =
-                mocoProblemRep->getEndpointConstraintByIndex(index);
+                mocoProblemRep->getBoundaryConstraintByIndex(index);
         SimTK::Vector simtkValues((int)values.rows(), values.ptr(), true);
         mocoEC.calcGoal(
                 {simtkStateDisabledConstraintsInitial,

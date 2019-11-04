@@ -47,7 +47,7 @@ some of the key steps for you when using MocoCasADiSolver.
    solve the CasOC::Problem.
 5. MocoCasADiSolver::createCasOCProblem(): Create a MocoCasOCProblem, which
    derives from CasOC::Problem. Add states, controls, costs,
-   endpoint constraints, path constraints, etc. to the CasOC::Problem.
+   boundary constraints, path constraints, etc. to the CasOC::Problem.
 6. MocoCasADiSolver::createCasOCSolver(): Copy solver settings from
    MocoCasADiSolver into an instance of CasOC::Solver.
 7. CasOC::Solver::solve().
