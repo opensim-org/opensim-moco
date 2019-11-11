@@ -165,17 +165,17 @@ void runSymmetricTrackingProblem() {
 
 void runInverseProblem() {
     ModelProcessor modelProcessor =
-            ModelProcessor("subject_walk_armless_80musc.osim") |
+            ModelProcessor("subject_walk_armless_80musc_lumbar.osim") |
             ModOpReplaceJointsWithWelds(
                     {"subtalar_r", "mtp_r", "subtalar_l", "mtp_l"}) |
             ModOpAddExternalLoads("grf_walk.xml") |
             ModOpReplaceMusclesWithDeGrooteFregly2016() |
-            ModOpIgnorePassiveFiberForcesDGF() | 
+            ModOpIgnorePassiveFiberForcesDGF(true) | 
             ModOpIgnoreTendonCompliance() |
             //ModOpUseImplicitTendonComplianceDynamicsDGF() |
-            ModOpAddReserves(1, 1000, true);
+            ModOpAddReserves(1, 100, true);
 
-    modelProcessor.process().print("subject_walk_armless_80musc_welded.osim");
+    modelProcessor.process().print("subject_walk_armless_80musc_lumbar_welded.osim");
 
     MocoInverse inverse;
     std::string problemName = "sandbox_inverse_muscles";
@@ -188,7 +188,7 @@ void runInverseProblem() {
 
     inverse.set_initial_time(0.81);
     inverse.set_final_time(1.385);
-    inverse.set_mesh_interval(0.01);
+    inverse.set_mesh_interval(0.02);
 
     MocoSolution solution = inverse.solve().getMocoSolution();
     solution.write(problemName + "_solution.sto");
@@ -254,16 +254,25 @@ void addSymmetryConstraints(Model model, MocoProblem& problem) {
 }
 
 void runTrackingProblemWithMuscles(const double& trackingWeight = 1.0, 
-        const double& controlEffortWeight = 1.0, 
+        const double& effortWeight = 1.0, 
         std::string guessType = "inverse") {
     // Model
     // -----
     ModelProcessor modelProcessor =
-            ModelProcessor("subject_walk_armless_contact_80musc.osim") |
+            ModelProcessor("subject_walk_armless_contact_80musc_lumbar.osim") |
             ModOpReplaceJointsWithWelds(
                     {"subtalar_r", "mtp_r", "subtalar_l", "mtp_l"}) |
-            ModOpIgnorePassiveFiberForcesDGF() |
+            ModOpAddReserves(1, 100, true) |
+            ModOpIgnorePassiveFiberForcesDGF(true) |
             ModOpIgnoreTendonCompliance();
+    Model model = modelProcessor.process();
+    model.print("subject_walk_armless_contact_80musc_lumbar_welded.osim");
+    auto state = model.initSystem();
+    auto muscles = model.getComponentList<Muscle>();
+    auto numMuscles = (int)std::distance(muscles.begin(), muscles.end());
+    auto forces = model.getComponentList<Force>();
+    auto numForces = (int)std::distance(forces.begin(), forces.end());
+    auto bodyMass = model.getTotalMass(state);
 
     // Construct the base tracking problem
     // -----------------------------------
@@ -276,11 +285,16 @@ void runTrackingProblemWithMuscles(const double& trackingWeight = 1.0,
                              TabOpUseAbsoluteStateNames());
     track.set_allow_unused_references(true);
     track.set_track_reference_position_derivatives(true);
+    if (guessType == "bounds") {
+        track.set_apply_tracked_states_to_guess(true);
+    }
     track.set_states_global_tracking_weight(trackingWeight);
-    track.set_control_effort_weight(controlEffortWeight);
+    // Normalized effort weight control effort weight by total number of 
+    // muscles and coordinate actuators.
+    track.set_control_effort_weight(20 * effortWeight / numForces);
     track.set_initial_time(0.81);
     track.set_final_time(1.385);
-    track.set_mesh_interval(0.02);
+    track.set_mesh_interval(0.05);
 
     // Customize the base tracking problem
     // -----------------------------------
@@ -292,14 +306,29 @@ void runTrackingProblemWithMuscles(const double& trackingWeight = 1.0,
     problem.setStateInfo("/jointset/ground_pelvis/pelvis_tx/value", {},
         0.446, 1.156);
 
+    // Penalty on sum of muscle active fiber powers
+    // --------------------------------------------
+    double activeFiberPowerWeight = 5 * effortWeight / (bodyMass * numMuscles);
+    auto* activeFiberPowerGoal = 
+            problem.addGoal<MocoActiveFiberPowerGoal>("active_fiber_power", 
+                activeFiberPowerWeight);
+    activeFiberPowerGoal->setExponent(2);
+    activeFiberPowerGoal->setIgnoreNegativeFiberPower(true);
+
     // Symmetry constraints
     // --------------------
-    Model model = modelProcessor.process();
     addSymmetryConstraints(model, problem);
 
+    // Solver options
+    // --------------
     auto& solver = study.updSolver<MocoCasADiSolver>();
-    solver.set_optim_constraint_tolerance(1e-3);
+    solver.set_optim_constraint_tolerance(1e-2);
     solver.set_optim_convergence_tolerance(1e-2);
+    solver.set_multibody_dynamics_mode("implicit");
+    solver.set_minimize_implicit_multibody_accelerations(true);
+    solver.set_implicit_multibody_accelerations_weight(
+        0.05 * effortWeight / model.getNumCoordinates());
+    solver.set_implicit_multibody_acceleration_bounds({-200, 200});
 
     MocoTrajectory guess;
     if (guessType == "inverse") {
@@ -321,6 +350,8 @@ void runTrackingProblemWithMuscles(const double& trackingWeight = 1.0,
 
     } else if (guessType == "previous") {
         guess = MocoTrajectory(format("%s_solution.sto", problemName));
+    } else if (guessType == "bounds") {
+        guess = solver.getGuess();
     }
     solver.setGuess(guess);
 
@@ -328,24 +359,27 @@ void runTrackingProblemWithMuscles(const double& trackingWeight = 1.0,
     // -------------------------
     MocoSolution solution = study.solve().unseal();
     solution.write(format("%s_solution.sto", problemName));
-    solution.write(format("%s_solution_track%f_control%f.sto", problemName,
-            trackingWeight, controlEffortWeight));
+    solution.write(format("%s_solution_track%f_effort%f.sto", problemName,
+            trackingWeight, effortWeight));
 
     // Create a full gait cycle trajectory from the periodic solution.
     auto fullTraj = createPeriodicTrajectory(solution);
     fullTraj.write(format("%s_solution_fullcycle.sto", problemName));
-    fullTraj.write(format("%s_solution_fullcycle_track%f_control%f.sto", 
-            problemName, trackingWeight, controlEffortWeight));
+    fullTraj.write(format("%s_solution_fullcycle_track%f_effort%f.sto", 
+            problemName, trackingWeight, effortWeight));
 
     // Compute ground reaction forces generated by contact sphere from the full
     // gait cycle trajectory.
-    createExternalLoadsTable(model, fullTraj, problemName);
+    createExternalLoadsTable(model, fullTraj,
+            format("%s_solution_fullcycle_track%f_effort%f", problemName,
+                    trackingWeight, effortWeight));
 
     // Visualize
     // study.visualize(fullTraj);
 }
 
-void runPredictiveProblem(const MocoTrajectory& trackingSolution) {
+void runPredictiveProblem(const MocoTrajectory& trackingSolution, 
+        double weight) {
 
     MocoStudy study;
     std::string problemName = "sandbox_prediction_contact_muscles";
@@ -355,10 +389,20 @@ void runPredictiveProblem(const MocoTrajectory& trackingSolution) {
     // ------------------
     MocoProblem& problem = study.updProblem();
     ModelProcessor modelProcessor =
-            ModelProcessor("subject_walk_armless_contact_80musc.osim") |
-            ModOpReplaceJointsWithWelds(
-                    {"subtalar_r", "mtp_r", "subtalar_l", "mtp_l"}) |
-            ModOpIgnorePassiveFiberForcesDGF() | ModOpIgnoreTendonCompliance();
+            ModelProcessor("subject_walk_armless_contact_80musc_lumbar.osim") |
+            ModOpReplaceJointsWithWelds({"subtalar_r", "mtp_r", "subtalar_l",
+                    "mtp_l"}) |
+            ModOpAddReserves(1, 100, true) |
+            ModOpIgnorePassiveFiberForcesDGF(true) |
+            ModOpIgnoreTendonCompliance();
+    Model model = modelProcessor.process();
+    model.print("subject_walk_contact_80musc_lumbar_welded.osim");
+    auto state = model.initSystem();
+    auto muscles = model.getComponentList<Muscle>();
+    auto numMuscles = (int)std::distance(muscles.begin(), muscles.end());
+    auto forces = model.getComponentList<Force>();
+    auto numForces = (int)std::distance(forces.begin(), forces.end());
+    auto bodyMass = model.getTotalMass(state);
     problem.setModelProcessor(modelProcessor);
 
     // Bounds.
@@ -371,21 +415,33 @@ void runPredictiveProblem(const MocoTrajectory& trackingSolution) {
     auto* speedGoal = problem.addGoal<MocoAverageSpeedGoal>("speed");
     speedGoal->set_desired_average_speed(1.2);
     // Effort over distance.
-    auto* effortGoal = problem.addGoal<MocoControlGoal>("effort", 10);
-    effortGoal->setExponent(3);
+    auto* effortGoal = problem.addGoal<MocoControlGoal>("effort", 
+            20 * weight / numForces);
+    effortGoal->setExponent(2);
     effortGoal->setDivideByDisplacement(true);
+    // Penalty on sum of muscle active fiber powers
+    double activeFiberPowerWeight = 5 * weight / (bodyMass * numMuscles);
+    auto* activeFiberPowerGoal = problem.addGoal<MocoActiveFiberPowerGoal>(
+            "active_fiber_power", activeFiberPowerWeight);
+    activeFiberPowerGoal->setExponent(2);
+    activeFiberPowerGoal->setIgnoreNegativeFiberPower(true);
+    activeFiberPowerGoal->setDivideByDisplacement(true);
 
     // Symmetry constraints
     // --------------------
-    Model model = modelProcessor.process();
     addSymmetryConstraints(model, problem);
 
     // Configure the solver
     // --------------------
     auto& solver = study.initCasADiSolver();
-    solver.set_num_mesh_intervals(25);
-    solver.set_optim_constraint_tolerance(1e-3);
-    solver.set_optim_convergence_tolerance(1e-3);
+    solver.set_num_mesh_intervals(15);
+    solver.set_optim_constraint_tolerance(1e-2);
+    solver.set_optim_convergence_tolerance(1e-2);
+    solver.set_multibody_dynamics_mode("implicit");
+    solver.set_minimize_implicit_multibody_accelerations(true);
+    solver.set_implicit_multibody_accelerations_weight(
+            0.005 * weight / model.getNumCoordinates());
+    solver.set_implicit_multibody_acceleration_bounds({-200, 200});
     solver.setGuess(trackingSolution);
 
     // Solve and print solution.
@@ -410,16 +466,20 @@ int main() {
     //runTrackingProblem();
     //runSymmetricTrackingProblem();
     //runInverseProblem();
-    
-    //runTrackingProblemWithMuscles(1.0, 0.01, "inverse");
+
+    //runTrackingProblemWithMuscles(1.0, 0.0001, "inverse");
+    //runTrackingProblemWithMuscles(1.0, 0.001, "previous");
+    //runTrackingProblemWithMuscles(1.0, 0.01, "previous");
     //runTrackingProblemWithMuscles(1.0, 0.1, "previous");
     //runTrackingProblemWithMuscles(1.0, 1.0, "previous");
     //runTrackingProblemWithMuscles(1.0, 10, "previous");
     //runTrackingProblemWithMuscles(1.0, 100, "previous");
     //runTrackingProblemWithMuscles(1.0, 1000, "previous");
+    //runTrackingProblemWithMuscles(1.0, 10000, "previous");
 
     runPredictiveProblem(MocoTrajectory(
-        "sandbox_tracking_contact_muscles_solution_track1_control1.sto"));
+        "sandbox_tracking_contact_muscles_solution_track1_effort0_01.sto"),
+        1.0);
 
     return EXIT_SUCCESS;
 }

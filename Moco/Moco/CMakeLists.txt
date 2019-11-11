@@ -48,6 +48,8 @@ set(MOCO_SOURCES
         MocoGoal/MocoInitialForceEquilibriumGoal.cpp
         MocoGoal/MocoPeriodicityGoal.h
         MocoGoal/MocoPeriodicityGoal.cpp
+        MocoGoal/MocoActiveFiberPowerGoal.h
+        MocoGoal/MocoActiveFiberPowerGoal.cpp
         MocoSolver.h
         MocoSolver.cpp
         MocoDirectCollocationSolver.h

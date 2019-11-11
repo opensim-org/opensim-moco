@@ -51,8 +51,7 @@ protected:
         const GoalInput& input, SimTK::Vector& goal) const override;
 
 private:
-    mutable std::vector<SimTK::ReferencePtr<const Muscle>>
-        m_muscleRefs;
+    mutable std::vector<SimTK::ReferencePtr<const Muscle>> m_muscleRefs;
 };
 
 } // namespace OpenSim

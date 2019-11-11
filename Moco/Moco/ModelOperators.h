@@ -117,18 +117,24 @@ public:
     }
 };
 
-/// Turn off passive fiber forces for all DeGrooteFregly2016Muscle%s in the
-/// model.
+/// Enable or disable passive fiber forces for all DeGrooteFregly2016Muscle%s 
+/// in the model.
 class OSIMMOCO_API ModOpIgnorePassiveFiberForcesDGF : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(
             ModOpIgnorePassiveFiberForcesDGF, ModelOperator);
-
+    OpenSim_DECLARE_PROPERTY(mode, bool,
+            "The flag to disable passive fiber forces. Default: true.");
 public:
+    ModOpIgnorePassiveFiberForcesDGF() { constructProperty_mode(true); }
+    ModOpIgnorePassiveFiberForcesDGF(bool tf) : 
+            ModOpIgnorePassiveFiberForcesDGF() {
+        set_mode(tf);
+    }
     void operate(Model& model, const std::string&) const override {
         model.finalizeFromProperties();
         for (auto& muscle :
                 model.updComponentList<DeGrooteFregly2016Muscle>()) {
-            muscle.set_ignore_passive_fiber_force(true);
+            muscle.set_ignore_passive_fiber_force(get_mode());
         }
     }
 };
