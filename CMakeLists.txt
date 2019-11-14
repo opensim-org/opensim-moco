@@ -236,8 +236,6 @@ if(MSVC)
     add_compile_options(/WX /w34388) # /W4
 endif()
 
-# TODO add /WX flag for Windows.
-
 enable_testing()
 include(CTest)
 
