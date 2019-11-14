@@ -855,13 +855,13 @@ public:
         VectorXd guess = decorator->make_initial_guess_from_bounds();
         problem.guess = &guess;
         solver.calc_sparsity(guess, jac_sparsity, false, hes_sparsity);
-        REQUIRE(jac_sparsity.row.size() == 3);
-        REQUIRE(jac_sparsity.col.size() == 3);
+        REQUIRE((int)jac_sparsity.row.size() == 3);
+        REQUIRE((int)jac_sparsity.col.size() == 3);
 
         solver.set_sparsity_detection("random");
         solver.calc_sparsity(guess, jac_sparsity, false, hes_sparsity);
-        REQUIRE(jac_sparsity.row.size() == 2);
-        REQUIRE(jac_sparsity.col.size() == 2);
+        REQUIRE((int)jac_sparsity.row.size() == 2);
+        REQUIRE((int)jac_sparsity.col.size() == 2);
 
         REQUIRE_THROWS(solver.set_sparsity_detection("invalid"));
     }

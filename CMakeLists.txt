@@ -227,6 +227,14 @@ if(CMAKE_CXX_COMPILER_ID MATCHES Clang # includes AppleClang
         add_compile_options(-Wno-unused-local-typedef)
     endif()
 endif()
+if(MSVC)
+    # Treat warnings as errors.
+    # Ideally we would increase the warning level to 4 but that generates
+    # lots of warnings in our dependencies.
+    # Convert warning 4388 ('operator' signed/unsigned mismatch) from
+    # level 4 to level 3 for consistency with Clang.
+    add_compile_options(/WX /w34388) # /W4
+endif()
 
 # TODO add /WX flag for Windows.
 

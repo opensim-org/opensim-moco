@@ -1230,7 +1230,7 @@ TEMPLATE_TEST_CASE("Guess", "", MocoTropterSolver, MocoCasADiSolver) {
         CHECK(explicitGuess.getDerivativeNames().empty());
         explicitGuess.generateAccelerationsFromSpeeds();
         // Only one coordinate in the sliding mass model.
-        CHECK(explicitGuess.getDerivativeNames().size() == 1);
+        CHECK((int)explicitGuess.getDerivativeNames().size() == 1);
     }
 
     // TODO ordering of states and controls in MocoTrajectory should not

@@ -18,9 +18,9 @@
 
 #ifdef _MSC_VER
     // Ignore warnings from ADOL-C headers.
-    #pragma warning(push)
+    #pragma warning(push, 0)
     // 'argument': conversion from 'size_t' to 'locint', possible loss of data.
-    #pragma warning(disable: 4267)
+    // #pragma warning(disable: 4267)
 #endif
 #include <adolc/adouble.h>
 #ifdef _MSC_VER
