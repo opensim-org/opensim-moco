@@ -62,6 +62,8 @@ set(MOCO_SOURCES
         MocoConstraint.cpp
         MocoControlBoundConstraint.cpp
         MocoControlBoundConstraint.h
+        Components/Bhargava2004Metabolics.h
+        Components/Bhargava2004Metabolics.cpp
         Components/DeGrooteFregly2016Muscle.h
         Components/DeGrooteFregly2016Muscle.cpp
         Components/SmoothSphereHalfSpaceForce.h
