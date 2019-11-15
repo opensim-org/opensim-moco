@@ -338,7 +338,12 @@ computeProbeInputs(const State& s) const
                 ( (mm.get_maintenance_constant_slow_twitch() * slow_twitch_excitation) + (mm.get_maintenance_constant_fast_twitch() * fast_twitch_excitation) );
         }
 
-
+        // Smooth approximation
+        // fiber_velocity is positive (eccentric contraction)
+        const double b = 10;
+        const double fiber_velocity_ecc = 0.5 + 0.5*tanh(b*(fiber_velocity));
+        // fiber_velocity is negative (concentric contraction)
+        const double fiber_velocity_conc = 1-fiber_velocity_ecc;
 
         // SHORTENING HEAT RATE for muscle i (W)
         // --> note that we define Vm<0 as shortening and Vm>0 as lengthening
@@ -347,13 +352,19 @@ computeProbeInputs(const State& s) const
         {
             if (get_use_force_dependent_shortening_prop_constant())
             {
-                if (fiber_velocity <= 0)    // concentric contraction, Vm<0
-                    alpha = (0.16 * F_iso) + (0.18 * fiber_force_total);
-                else                        // eccentric contraction, Vm>0
-                    alpha = 0.157 * fiber_force_total;
+                // Original unsmooth model
+                //if (fiber_velocity <= 0)    // concentric contraction, Vm<0
+                //    alpha = (0.16 * F_iso) + (0.18 * fiber_force_total);
+                //else                        // eccentric contraction, Vm>0
+                //    alpha = 0.157 * fiber_force_total;
+
+                // Smooth approximation
+                alpha = (0.16 * F_iso) + (0.18 * fiber_force_total);
+                alpha = alpha + (-alpha + 0.157*fiber_force_total) * fiber_velocity_ecc;
             }
             else
             {
+                // TODO unsmooth but not used if get_use_force_dependent_shortening_prop_constant is true
                 if (fiber_velocity <= 0)    // concentric contraction, Vm<0
                     alpha = 0.25 * fiber_force_total;
                 else                        // eccentric contraction, Vm>0
@@ -369,10 +380,17 @@ computeProbeInputs(const State& s) const
         // -------------------------------------------------------------------
         if (get_forbid_negative_total_power() || get_mechanical_work_rate_on())
         {
-            if (get_include_negative_mechanical_work() || fiber_velocity <= 0)
+            // Original unsmooth model
+            //if (get_include_negative_mechanical_work() || fiber_velocity <= 0)
+            //    Wdot = -fiber_force_active*fiber_velocity;
+            //else
+            //    Wdot = 0;
+
+            // Smooth approximation
+            if (get_include_negative_mechanical_work())
                 Wdot = -fiber_force_active*fiber_velocity;
             else
-                Wdot = 0;
+                Wdot = -fiber_force_active*fiber_velocity_conc;
         }
 
 
@@ -392,8 +410,12 @@ computeProbeInputs(const State& s) const
         // power is non-negative.
         if (get_forbid_negative_total_power()) {
             const double Edot_W_beforeClamp = Adot + Mdot + Sdot + Wdot;
-            if (Edot_W_beforeClamp < 0)
-                Sdot -= Edot_W_beforeClamp;
+            // Original unsmooth part
+            //if (Edot_W_beforeClamp < 0)
+            //    Sdot -= Edot_W_beforeClamp;
+            // Smooth approximation
+            const double Edot_W_beforeClamp_neg = 0.5+(0.5*tanh(b*(-Edot_W_beforeClamp)));
+            Sdot = Sdot - Edot_W_beforeClamp * Edot_W_beforeClamp_neg;
         }
 
 
@@ -402,7 +424,19 @@ computeProbeInputs(const State& s) const
         // -----------------------------------------------------------------------
         double totalHeatRate = Adot + Mdot + Sdot;      // (W)
 
-        if(get_enforce_minimum_heat_rate_per_muscle() && totalHeatRate < 1.0 * mm.getMuscleMass()
+        // Original unsmooth part
+        //if(get_enforce_minimum_heat_rate_per_muscle() && totalHeatRate < 1.0 * mm.getMuscleMass()
+        //    && get_activation_rate_on()
+        //    && get_maintenance_rate_on()
+        //    && get_shortening_rate_on()) {
+        //        //cout << "WARNING: " << getName()
+        //        //    << "  (t = " << s.getTime()
+        //        //    << "), the muscle '" << mm.getName()
+        //        //    << "' has a net metabolic energy rate of less than 1.0 W/kg." << endl;
+        //        totalHeatRate = 1.0 * mm.getMuscleMass();           // not allowed to fall below 1.0 W.kg-1
+        //}
+        // Smooth approximation
+        if(get_enforce_minimum_heat_rate_per_muscle()
             && get_activation_rate_on()
             && get_maintenance_rate_on()
             && get_shortening_rate_on()) {
@@ -410,7 +444,10 @@ computeProbeInputs(const State& s) const
                 //    << "  (t = " << s.getTime()
                 //    << "), the muscle '" << mm.getName()
                 //    << "' has a net metabolic energy rate of less than 1.0 W/kg." << endl;
-                totalHeatRate = 1.0 * mm.getMuscleMass();           // not allowed to fall below 1.0 W.kg-1
+
+            totalHeatRate /= mm.getMuscleMass(); // (W/kg)
+            totalHeatRate = totalHeatRate + (-totalHeatRate + totalHeatRate * (0.5+0.5*tanh(b*(1-totalHeatRate)))); // not allowed to fall below 1.0 W.kg-1
+            totalHeatRate *= mm.getMuscleMass(); // (W)
         }
 
 
