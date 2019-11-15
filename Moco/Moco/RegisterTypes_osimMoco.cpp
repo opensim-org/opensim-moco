@@ -124,7 +124,7 @@ OSIMMOCO_API void RegisterTypes_osimMoco() {
         Object::registerType(DeGrooteFregly2016Muscle());
         Object::registerType(SmoothSphereHalfSpaceForce());
         Object::registerType(MultivariatePolynomialFunction());
-        //Object::registerType(Bhargava2004Metabolics());
+        Object::registerType(Bhargava2004MuscleSmoothMetabolicsProbe());
 
         Object::registerType(DiscreteForces());
         Object::registerType(AccelerationMotion());
