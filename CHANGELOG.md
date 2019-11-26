@@ -1,3 +1,6 @@
+- 2019-11-25: Update SmoothSphereHalfSpaceForce to visualize contact forces in
+              the Simbody visualizer (not the OpenSim GUI). 
+
 - 2019-11-20: Added MocoAngularVelocityTrackingGoal and 
               MocoAccelerationTrackingGoal in anticipation of supporting 
               applications using IMU data in the future.
