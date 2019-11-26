@@ -19,6 +19,7 @@ addons:
     packages:
       - openblas
       - doxygen
+      - gcc
     update: true
 
 env: 
