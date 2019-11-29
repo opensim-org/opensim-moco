@@ -1,3 +1,4 @@
+
 /* -------------------------------------------------------------------------- *
  * OpenSim Moco: RegisterTypes_osimMoco.cpp                                   *
  * -------------------------------------------------------------------------- *
@@ -134,7 +135,7 @@ OSIMMOCO_API void RegisterTypes_osimMoco() {
         Object::registerType(Set<MarkerWeight>());
     } catch (const std::exception& e) {
         std::cerr << "ERROR during osimMoco Object registration:\n"
-                  << e.what() << std::endl;
+                << e.what() << std::endl;
     }
 }
 
