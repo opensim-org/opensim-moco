@@ -66,9 +66,55 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
     // Define the optimal control problem.
     // ===================================
     Model baseModel("2D_gait.osim");
-    auto metabolics = make_unique<MinettiAlexander1997Metabolics>();
+
+    // Parameters for metabolics
+    double hamstrings_ratio_slow_twitch_fibers = 0.5425;
+    double bifemsh_ratio_slow_twitch_fibers = 0.529;
+    double glut_max_ratio_slow_twitch_fibers = 0.55;
+    double iliopsoas_ratio_slow_twitch_fibers = 0.50;
+    double rect_fem_ratio_slow_twitch_fibers = 0.3865;
+    double vasti_ratio_slow_twitch_fibers = 0.543;
+    double gastroc_ratio_slow_twitch_fibers = 0.566;
+    double soleus_ratio_slow_twitch_fibers = 0.803;
+    double tib_ant_ratio_slow_twitch_fibers = 0.70;
+
+    double hamstrings_specific_tension = 0.62222;
+    double bifemsh_specific_tension = 1.00500;
+    double glut_max_specific_tension = 0.74455;
+    double iliopsoas_specific_tension = 1.5041;
+    double rect_fem_specific_tension = 0.74936;
+    double vasti_specific_tension = 0.55263;
+    double gastroc_specific_tension = 0.69865;
+    double soleus_specific_tension = 0.62703;
+    double tib_ant_specific_tension = 0.75417;
+
+     double activation_constant_slow_twitch = 40.0;
+     double activation_constant_fast_twitch = 133.0;
+     double maintenance_constant_slow_twitch = 74.0;
+     double maintenance_constant_fast_twitch = 111.0;
+
+    SmoothBhargava2004Metabolics* metabolics =
+        new SmoothBhargava2004Metabolics(true, true, true, true, true);
     metabolics->setName("metabolics");
-    baseModel.addComponent(metabolics.release());
+    metabolics->addMuscle(
+            baseModel.getComponent<Muscle>("hamstrings_r").getName(),
+            hamstrings_ratio_slow_twitch_fibers,
+            activation_constant_slow_twitch,
+            activation_constant_fast_twitch, maintenance_constant_slow_twitch,
+            maintenance_constant_fast_twitch);
+    metabolics->setSpecificTension("hamstrings_r", hamstrings_specific_tension);
+
+
+
+    auto hamstrings_MetabolicParameters =
+        SmoothBhargava2004Metabolics_MetabolicMuscleParameters("hamstrings",
+        hamstrings_ratio_slow_twitch_fibers, SimTK::NaN);
+    hamstrings_MetabolicParameters.set_specific_tension(hamstrings_specific_tension);
+
+
+
+    auto metabolicsM = make_unique<MinettiAlexander1997Metabolics>();
+    baseModel.addComponent(metabolicsM.release());
     ModelProcessor modelprocessor =
             ModelProcessor(baseModel) |
             ModOpSetPathLengthApproximation(setPathLengthApproximation);

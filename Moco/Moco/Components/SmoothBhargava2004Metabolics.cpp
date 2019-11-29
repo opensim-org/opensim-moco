@@ -81,11 +81,11 @@ void SmoothBhargava2004Metabolics_MetabolicMuscleParameters::
 setMuscleMass()
 {
     if (get_use_provided_muscle_mass())
-        m_muscleMass = get_provided_muscle_mass();
+        _muscMass = get_provided_muscle_mass();
     else {
-        m_muscleMass = (
-                m_muscle->getMaxIsometricForce() / get_specific_tension())
-                * get_density() * m_muscle->getOptimalFiberLength();
+        _muscMass = (
+                _musc->getMaxIsometricForce() / get_specific_tension())
+                * get_density() * _musc->getOptimalFiberLength();
         }
 }
 
@@ -185,10 +185,16 @@ void SmoothBhargava2004Metabolics::extendConnectToModel(Model& model) {
     // TODO: Should this be in extendFinalizeFromProperties()?
     m_muscles.clear();
     m_muscleIndices.clear();
-    int i = 0;
-    for (const auto& muscle : model.getComponentList<Muscle>()) {
-        if (muscle.get_appliesForce()) {
-            m_muscleIndices[muscle.getAbsolutePathString()] = i;
+    const int nM =
+        get_SmoothBhargava2004Metabolics_MetabolicMuscleParameterSet()
+        .getSize();
+    for (int i=0; i < nM; ++i) {
+        SmoothBhargava2004Metabolics_MetabolicMuscleParameters& mm =
+            get_SmoothBhargava2004Metabolics_MetabolicMuscleParameterSet()[i];
+        const Muscle* muscle = mm.getMuscle();
+        if (muscle->get_appliesForce()) {
+            m_muscles.emplace_back(muscle, mm);
+            m_muscleIndices[muscle->getAbsolutePathString()] = i;
             ++i;
         }
     }
@@ -220,27 +226,24 @@ void SmoothBhargava2004Metabolics::calcMetabolicRate(
     int i = 0;
     for (const auto& entry : m_muscles) {
 
-        SmoothBhargava2004Metabolics_MetabolicMuscleParameters& mm =
-            get_SmoothBhargava2004Metabolics_MetabolicMuscleParameterSet()[i];
-
-        const double max_isometric_force = entry->getMaxIsometricForce();
+        const double max_isometric_force = entry.first->getMaxIsometricForce();
         const double activation = get_muscle_effort_scaling_factor()
-                                  * entry->getActivation(s);
+                                  * entry.first->getActivation(s);
         const double excitation = get_muscle_effort_scaling_factor()
-                                  * entry->getControl(s);
-        const double fiber_force_passive = entry->getPassiveFiberForce(s);
+                                  * entry.first->getControl(s);
+        const double fiber_force_passive = entry.first->getPassiveFiberForce(s);
         const double fiber_force_active = get_muscle_effort_scaling_factor()
-                                          * entry->getActiveFiberForce(s);
+                                          * entry.first->getActiveFiberForce(s);
         const double fiber_force_total = fiber_force_active
                                          + fiber_force_passive;
         const double fiber_length_normalized =
-            entry->getNormalizedFiberLength(s);
-        const double fiber_velocity = entry->getFiberVelocity(s);
+            entry.first->getNormalizedFiberLength(s);
+        const double fiber_velocity = entry.first->getFiberVelocity(s);
 
-        const double slow_twitch_excitation = mm.get_ratio_slow_twitch_fibers()
+        const double slow_twitch_excitation = entry.second->get_ratio_slow_twitch_fibers()
                                               * sin(SimTK::Pi/2 * excitation);
         const double fast_twitch_excitation =
-            (1 - mm.get_ratio_slow_twitch_fibers())
+            (1 - entry.second->get_ratio_slow_twitch_fibers())
             * (1 - cos(SimTK::Pi/2 * excitation));
         double alpha, fiber_length_dependence;
 
@@ -248,7 +251,7 @@ void SmoothBhargava2004Metabolics::calcMetabolicRate(
         // developed at the current activation and fiber length under isometric
         // conditions (i.e. Vm=0)
         const double F_iso = activation
-                             * entry->getActiveForceLengthMultiplier(s)
+                             * entry.first->getActiveForceLengthMultiplier(s)
                              * max_isometric_force;
 
         // ACTIVATION HEAT RATE (W)
@@ -259,10 +262,10 @@ void SmoothBhargava2004Metabolics::calcMetabolicRate(
             // however, in Bhargava et al., (2004) they assume a function here.
             // We will ignore this function and use 1.0 for now.
             const double decay_function_value = 1.0;
-            Adot = mm.getMuscleMass() * decay_function_value
-                * ( (mm.get_activation_constant_slow_twitch()
+            Adot = entry.second->getMuscleMass() * decay_function_value
+                * ( (entry.second->get_activation_constant_slow_twitch()
                             * slow_twitch_excitation)
-                        + (mm.get_activation_constant_fast_twitch()
+                        + (entry.second->get_activation_constant_fast_twitch()
                                 * fast_twitch_excitation) );
         }
 
@@ -274,10 +277,10 @@ void SmoothBhargava2004Metabolics::calcMetabolicRate(
             fiber_length_dependence =
                 get_normalized_fiber_length_dependence_on_maintenance_rate().
                     calcValue(tmp);
-            Mdot = mm.getMuscleMass() * fiber_length_dependence
-                * ( (mm.get_maintenance_constant_slow_twitch()
+            Mdot = entry.second->getMuscleMass() * fiber_length_dependence
+                * ( (entry.second->get_maintenance_constant_slow_twitch()
                         * slow_twitch_excitation)
-                    + (mm.get_maintenance_constant_fast_twitch()
+                    + (entry.second->get_maintenance_constant_fast_twitch()
                             * fast_twitch_excitation) );
         }
 
@@ -372,8 +375,8 @@ void SmoothBhargava2004Metabolics::calcMetabolicRate(
                 && get_shortening_rate_on())
         {
                 totalHeatRate = totalHeatRate + (-totalHeatRate + 1.0 *
-                        mm.getMuscleMass()) * (0.5 + 0.5 * tanh( b * (1.0 *
-                                mm.getMuscleMass() - totalHeatRate)));
+                        entry.second->getMuscleMass()) * (0.5 + 0.5 * tanh( b * (1.0 *
+                                entry.second->getMuscleMass() - totalHeatRate)));
         }
 
         // TOTAL METABOLIC ENERGY RATE (W)
@@ -399,4 +402,224 @@ void SmoothBhargava2004Metabolics::calcMetabolicRate(
         ratesForMuscles[i] = Edot;
         ++i;
     }
+}
+
+const int SmoothBhargava2004Metabolics::
+    getNumMetabolicMuscles() const
+{
+    return get_SmoothBhargava2004Metabolics_MetabolicMuscleParameterSet()
+        .getSize();
+}
+
+void SmoothBhargava2004Metabolics::
+    addMuscle(const std::string& muscleName,
+    double ratio_slow_twitch_fibers,
+    double muscle_mass)
+{
+    SmoothBhargava2004Metabolics_MetabolicMuscleParameters* mm =
+        new SmoothBhargava2004Metabolics_MetabolicMuscleParameters(
+            muscleName,
+            ratio_slow_twitch_fibers,muscle_mass);
+
+    upd_SmoothBhargava2004Metabolics_MetabolicMuscleParameterSet()
+        .adoptAndAppend(mm); // add to MetabolicMuscleParameterSet in the model
+}
+
+
+void SmoothBhargava2004Metabolics::
+    addMuscle(const std::string& muscleName,
+    double ratio_slow_twitch_fibers,
+    double activation_constant_slow_twitch,
+    double activation_constant_fast_twitch,
+    double maintenance_constant_slow_twitch,
+    double maintenance_constant_fast_twitch,
+    double muscle_mass)
+{
+    SmoothBhargava2004Metabolics_MetabolicMuscleParameters* mm =
+        new SmoothBhargava2004Metabolics_MetabolicMuscleParameters(
+            muscleName,
+            ratio_slow_twitch_fibers,
+            activation_constant_slow_twitch,
+            activation_constant_fast_twitch,
+            maintenance_constant_slow_twitch,
+            maintenance_constant_fast_twitch,
+            muscle_mass);
+
+    upd_SmoothBhargava2004Metabolics_MetabolicMuscleParameterSet()
+        .adoptAndAppend(mm); // add to MetabolicMuscleParameterSet in the model
+}
+
+
+void SmoothBhargava2004Metabolics::
+    useProvidedMass(const std::string& muscleName, double providedMass)
+{
+    SmoothBhargava2004Metabolics_MetabolicMuscleParameters* mm =
+        updMetabolicParameters(muscleName);
+
+    mm->set_use_provided_muscle_mass(true);
+    mm->set_provided_muscle_mass(providedMass);
+    mm->setMuscleMass();
+}
+
+void SmoothBhargava2004Metabolics::
+    useCalculatedMass(const std::string& muscleName)
+{
+    SmoothBhargava2004Metabolics_MetabolicMuscleParameters* mm =
+        updMetabolicParameters(muscleName);
+
+    mm->set_use_provided_muscle_mass(false);
+    mm->setMuscleMass();
+}
+
+bool SmoothBhargava2004Metabolics::
+    isUsingProvidedMass(const std::string& muscleName)
+{
+    return getMetabolicParameters(muscleName)->get_use_provided_muscle_mass();
+}
+
+const double SmoothBhargava2004Metabolics::
+    getMuscleMass(const std::string& muscleName) const
+{
+    return getMetabolicParameters(muscleName)->getMuscleMass();
+}
+
+const double SmoothBhargava2004Metabolics::
+    getRatioSlowTwitchFibers(const std::string& muscleName) const
+{
+    return getMetabolicParameters(muscleName)->get_ratio_slow_twitch_fibers();
+}
+
+void SmoothBhargava2004Metabolics::
+    setRatioSlowTwitchFibers(const std::string& muscleName, const double& ratio)
+{
+    updMetabolicParameters(muscleName)->set_ratio_slow_twitch_fibers(ratio);
+}
+
+const double SmoothBhargava2004Metabolics::
+    getDensity(const std::string& muscleName) const
+{
+    return getMetabolicParameters(muscleName)->get_density();
+}
+
+void SmoothBhargava2004Metabolics::
+    setDensity(const std::string& muscleName, const double& density)
+{
+    updMetabolicParameters(muscleName)->set_density(density);
+}
+
+const double SmoothBhargava2004Metabolics::
+    getSpecificTension(const std::string& muscleName) const
+{
+    return getMetabolicParameters(muscleName)->get_specific_tension();
+}
+
+void SmoothBhargava2004Metabolics::
+    setSpecificTension(const std::string& muscleName, const double& specificTension)
+{
+    updMetabolicParameters(muscleName)->set_specific_tension(specificTension);
+}
+
+const double SmoothBhargava2004Metabolics::
+    getActivationConstantSlowTwitch(const std::string& muscleName) const
+{
+    return getMetabolicParameters(muscleName)->get_activation_constant_slow_twitch();
+}
+
+void SmoothBhargava2004Metabolics::
+    setActivationConstantSlowTwitch(const std::string& muscleName, const double& c)
+{
+    updMetabolicParameters(muscleName)->set_activation_constant_slow_twitch(c);
+}
+
+const double SmoothBhargava2004Metabolics::
+    getActivationConstantFastTwitch(const std::string& muscleName) const
+{
+    return getMetabolicParameters(muscleName)->get_activation_constant_fast_twitch();
+}
+
+void SmoothBhargava2004Metabolics::
+    setActivationConstantFastTwitch(const std::string& muscleName, const double& c)
+{
+    updMetabolicParameters(muscleName)->set_activation_constant_fast_twitch(c);
+}
+
+const double SmoothBhargava2004Metabolics::
+    getMaintenanceConstantSlowTwitch(const std::string& muscleName) const
+{
+    return getMetabolicParameters(muscleName)->get_maintenance_constant_slow_twitch();
+}
+
+void SmoothBhargava2004Metabolics::
+    setMaintenanceConstantSlowTwitch(const std::string& muscleName, const double& c)
+{
+    updMetabolicParameters(muscleName)->set_maintenance_constant_slow_twitch(c);
+}
+
+const double SmoothBhargava2004Metabolics::
+    getMaintenanceConstantFastTwitch(const std::string& muscleName) const
+{
+    return getMetabolicParameters(muscleName)->get_maintenance_constant_fast_twitch();
+}
+
+
+void SmoothBhargava2004Metabolics::
+    setMaintenanceConstantFastTwitch(const std::string& muscleName, const double& c)
+{
+    updMetabolicParameters(muscleName)->set_maintenance_constant_fast_twitch(c);
+}
+
+// TODO: VERY bad implementation
+const SmoothBhargava2004Metabolics_MetabolicMuscleParameters*
+    SmoothBhargava2004Metabolics::getMetabolicParameters(
+    const std::string& muscleName) const
+{
+    //const int nM =
+    //    get_SmoothBhargava2004Metabolics_MetabolicMuscleParameterSet()
+    //    .getSize();
+    //int idx = SimTK::NaN;
+    //for (int i=0; i < nM; ++i) {
+    //    SmoothBhargava2004Metabolics_MetabolicMuscleParameters& mm =
+    //        get_SmoothBhargava2004Metabolics_MetabolicMuscleParameterSet()[i];
+    //    const Muscle* muscle = mm.getMuscle();
+    //    if (muscle->getName == muscleName) {
+    //        idx = i;
+    //    }
+    //}
+    //if (idx == SimTK::NaN) {
+    //    std::stringstream errorMessage;
+    //    errorMessage << getConcreteClassName() << ": Invalid muscle "
+    //        << muscleName << " in the MetabolicMuscleParameter map."
+    //        << std::endl;
+    //    throw (Exception(errorMessage.str()));
+    //}
+
+    return m_muscles[0].second; // TODO, not sure how it should look like
+}
+
+// TODO: VERY bad implementation
+SmoothBhargava2004Metabolics_MetabolicMuscleParameters*
+    SmoothBhargava2004Metabolics::updMetabolicParameters(
+    const std::string& muscleName)
+{
+    //const int nM =
+    //    get_SmoothBhargava2004Metabolics_MetabolicMuscleParameterSet()
+    //    .getSize();
+    //int idx = SimTK::NaN;
+    //for (int i=0; i < nM; ++i) {
+    //    SmoothBhargava2004Metabolics_MetabolicMuscleParameters& mm =
+    //        get_SmoothBhargava2004Metabolics_MetabolicMuscleParameterSet()[i];
+    //    const Muscle* muscle = mm.getMuscle();
+    //    if (muscle->getName == muscleName) {
+    //        idx = i;
+    //    }
+    //}
+    //if (idx == SimTK::NaN) {
+    //    std::stringstream errorMessage;
+    //    errorMessage << getConcreteClassName() << ": Invalid muscle "
+    //        << muscleName << " in the MetabolicMuscleParameter map."
+    //        << std::endl;
+    //    throw (Exception(errorMessage.str()));
+    //}
+
+    return m_muscles[0].second; // TODO, not sure how it should look like
 }

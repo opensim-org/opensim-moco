@@ -69,13 +69,20 @@ public:
         double maintenance_constant_fast_twitch,
         double muscle_mass = SimTK::NaN);
 
-    const double getMuscleMass() const { return m_muscleMass; }
+    const double getMuscleMass() const      { return _muscMass; }
     void setMuscleMass();
+
+    const Muscle* getMuscle() const         { return _musc; }
+    void setMuscle(Muscle* m)               { _musc = m; }
+
+protected:
+    Muscle* _musc;          // Internal pointer to the muscle that corresponds
+                            // to these parameters.
+    double _muscMass;       // The mass of the muscle (depends on if
+                            // <use_provided_muscle_mass> is true or false.
 
 private:
     void constructProperties();
-    mutable SimTK::ReferencePtr<const Muscle> m_muscle;
-    mutable double m_muscleMass;
 };
 
 /// Object class that holds the set of metabolic parameters required to
@@ -154,19 +161,101 @@ public:
             const bool basal_rate_on,
             const bool work_rate_on);
 
+    const int getNumMetabolicMuscles() const;
+
+    void addMuscle(const std::string& muscleName,
+        double ratio_slow_twitch_fibers,
+        double muscle_mass);
+
+    void addMuscle(const std::string& muscleName,
+        double ratio_slow_twitch_fibers,
+        double activation_constant_slow_twitch,
+        double activation_constant_fast_twitch,
+        double maintenance_constant_slow_twitch,
+        double maintenance_constant_fast_twitch,
+        double muscle_mass);
+
+    /// Set an existing muscle to use a provided muscle mass.
+    void useProvidedMass(const std::string& muscleName, double providedMass);
+
+    /// Set an existing muscle to calculate its own mass.
+    void useCalculatedMass(const std::string& muscleName);
+
+    /// Get whether the muscle mass is being explicitly provided.
+    /// True means that it is using the property 'provided_muscle_mass'
+    /// False means that the muscle mass is being calculated from muscle properties.
+    bool isUsingProvidedMass(const std::string& muscleName);
+
+    /// Get the muscle mass used in the metabolic analysis. The value
+    /// returned will depend on if the muscle mass is explicitly provided
+    /// (i.e. isUsingProvidedMass = true), or if it is being automatically
+    /// calculated from muscle data already present in the model
+    /// (i.e. isUsingProvidedMass = true).
+    const double getMuscleMass(const std::string& muscleName) const;
+
+    /// Get the ratio of slow twitch fibers for an existing muscle.
+    const double getRatioSlowTwitchFibers(const std::string& muscleName) const;
+
+    /// Set the ratio of slow twitch fibers for an existing muscle.
+    void setRatioSlowTwitchFibers(const std::string& muscleName, const double& ratio);
+
+    /// Get the density for an existing muscle (kg/m^3).
+    const double getDensity(const std::string& muscleName) const;
+
+    /// Set the density for an existing muscle (kg/m^3).
+    void setDensity(const std::string& muscleName, const double& density);
+
+    /// Get the specific tension for an existing muscle (Pascals (N/m^2)).
+    const double getSpecificTension(const std::string& muscleName) const;
+
+    /// Set the specific tension for an existing muscle (Pascals (N/m^2)).
+    void setSpecificTension(const std::string& muscleName, const double& specificTension);
+
+    /// Get the activation constant for slow twitch fibers for an existing muscle.
+    const double getActivationConstantSlowTwitch(const std::string& muscleName) const;
+
+    /// Set the activation constant for slow twitch fibers for an existing muscle.
+    void setActivationConstantSlowTwitch(const std::string& muscleName, const double& c);
+
+    /// Get the activation constant for fast twitch fibers for an existing muscle.
+    const double getActivationConstantFastTwitch(const std::string& muscleName) const;
+
+    /// Set the activation constant for fast twitch fibers for an existing muscle.
+    void setActivationConstantFastTwitch(const std::string& muscleName, const double& c);
+
+    /// Get the maintenance constant for slow twitch fibers for an existing muscle.
+    const double getMaintenanceConstantSlowTwitch(const std::string& muscleName) const;
+
+    /// Set the maintenance constant for slow twitch fibers for an existing muscle.
+    void setMaintenanceConstantSlowTwitch(const std::string& muscleName, const double& c);
+
+    /// Get the maintenance constant for fast twitch fibers for an existing muscle.
+    const double getMaintenanceConstantFastTwitch(const std::string& muscleName) const;
+
+    /// Set the maintenance constant for fast twitch fibers for an existing muscle.
+    void setMaintenanceConstantFastTwitch(const std::string& muscleName, const double& c);
+
     double getTotalMetabolicRate(const SimTK::State& s) const;
     double getMuscleMetabolicRate(
             const SimTK::State& s, const std::string& channel) const;
 
 private:
+
     void constructProperties();
     void extendConnectToModel(Model&) override;
     void extendAddToSystem(SimTK::MultibodySystem&) const override;
     const SimTK::Vector& getMetabolicRate(const SimTK::State& s) const;
     void calcMetabolicRate(const SimTK::State& s, SimTK::Vector&) const;
-
-    mutable std::vector<SimTK::ReferencePtr<const Muscle>> m_muscles;
+    mutable std::vector<std::pair<SimTK::ReferencePtr<const Muscle>,
+        SimTK::ReferencePtr<SmoothBhargava2004Metabolics_MetabolicMuscleParameters>>> m_muscles;
     mutable std::unordered_map<std::string, int> m_muscleIndices;
+
+    const SmoothBhargava2004Metabolics_MetabolicMuscleParameters*
+        getMetabolicParameters(const std::string& muscleName) const;
+
+    // Get writable MetabolicMuscleParameter from the MuscleMap using a string accessor.
+    SmoothBhargava2004Metabolics_MetabolicMuscleParameters*
+        updMetabolicParameters(const std::string& muscleName);
 };
 
 } // namespace OpenSim
