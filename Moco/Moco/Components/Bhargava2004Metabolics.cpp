@@ -360,7 +360,7 @@ computeProbeInputs(const State& s) const
 
                 // Smooth approximation
                 alpha = (0.16 * F_iso) + (0.18 * fiber_force_total);
-                alpha = alpha + (-alpha + 0.157*fiber_force_total) * fiber_velocity_ecc;
+                alpha = alpha + (-alpha + 0.157 * fiber_force_total) * fiber_velocity_ecc;
             }
             else
             {
@@ -415,7 +415,7 @@ computeProbeInputs(const State& s) const
             //    Sdot -= Edot_W_beforeClamp;
             // Smooth approximation
             const double Edot_W_beforeClamp_neg = 0.5+(0.5*tanh(b*(-Edot_W_beforeClamp)));
-            Sdot = Sdot - Edot_W_beforeClamp * Edot_W_beforeClamp_neg;
+            Sdot -= Edot_W_beforeClamp * Edot_W_beforeClamp_neg;
         }
 
 
@@ -446,6 +446,7 @@ computeProbeInputs(const State& s) const
                 //    << "' has a net metabolic energy rate of less than 1.0 W/kg." << endl;
 
             totalHeatRate /= mm.getMuscleMass(); // (W/kg)
+            // WRONG
             totalHeatRate = totalHeatRate + (-totalHeatRate + totalHeatRate * (0.5+0.5*tanh(b*(1-totalHeatRate)))); // not allowed to fall below 1.0 W.kg-1
             totalHeatRate *= mm.getMuscleMass(); // (W)
         }
