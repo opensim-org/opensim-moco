@@ -26,7 +26,74 @@
 
 namespace OpenSim {
 
-/// https://doi.org/10.1371/journal.pone.0222037
+/// Object class that holds the metabolic parameters required to calculate
+/// metabolic power for a single muscle.
+class OSIMMOCO_API SmoothBhargava2004Metabolics_MetabolicMusclePrameters :
+        public Object {
+    OpenSim_DECLARE_CONCRETE_OBJECT(
+            SmoothBhargava2004Metabolics_MetabolicMusclePrameters, Object);
+public:
+    OpenSim_DECLARE_PROPERTY(specific_tension, double,
+        "The specific tension of the muscle (Pascals (N/m^2)).");
+    OpenSim_DECLARE_PROPERTY(density, double,
+        "The density of the muscle (kg/m^3).");
+    OpenSim_DECLARE_PROPERTY(ratio_slow_twitch_fibers, double,
+        "Ratio of slow twitch fibers in the muscle "
+        "(must be between 0 and 1).");
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(use_provided_muscle_mass, bool,
+        "An optional flag that allows the user to explicitly specify a muscle "
+        "mass. If set to true, the 'provided_muscle_mass' property must be "
+        "specified.");
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(provided_muscle_mass, double,
+        "The user specified muscle mass (kg).");
+    OpenSim_DECLARE_PROPERTY(activation_constant_slow_twitch, double,
+        "Activation constant for slow twitch fibers (W/kg).");
+    OpenSim_DECLARE_PROPERTY(activation_constant_fast_twitch, double,
+        "Activation constant for fast twitch fibers (W/kg).");
+    OpenSim_DECLARE_PROPERTY(maintenance_constant_slow_twitch, double,
+        "Maintenance constant for slow twitch fibers (W/kg).");
+    OpenSim_DECLARE_PROPERTY(maintenance_constant_fast_twitch, double,
+        "Maintenance constant for fast twitch fibers (W/kg).");
+    SmoothBhargava2004Metabolics_MetabolicMusclePrameters();
+    SmoothBhargava2004Metabolics_MetabolicMusclePrameters(
+            const std::string& muscleName,
+            double ratio_slow_twitch_fibers,
+            double muscle_mass = SimTK::NaN);
+    SmoothBhargava2004Metabolics_MetabolicMusclePrameters(
+        const std::string& muscleName,
+        double ratio_slow_twitch_fibers,
+        double activation_constant_slow_twitch,
+        double activation_constant_fast_twitch,
+        double maintenance_constant_slow_twitch,
+        double maintenance_constant_fast_twitch,
+        double muscle_mass = SimTK::NaN);
+
+    const double getMuscleMass() const { return m_muscleMass; }
+    void setMuscleMass();
+
+private:
+    void constructProperties();
+    mutable SimTK::ReferencePtr<const Muscle> m_muscle;
+    mutable double m_muscleMass;
+};
+
+/// Object class that holds the set of metabolic parameters required to
+/// calculate metabolic power for a single muscle.
+class OSIMMOCO_API
+    SmoothBhargava2004Metabolics_MetabolicMusclePrameterSet
+    : public Set<SmoothBhargava2004Metabolics_MetabolicMusclePrameters>
+{
+    OpenSim_DECLARE_CONCRETE_OBJECT(
+        SmoothBhargava2004Metabolics_MetabolicMusclePrameterSet,
+        Set<SmoothBhargava2004Metabolics_MetabolicMusclePrameters>);
+
+public:
+    SmoothBhargava2004Metabolics_MetabolicMusclePrameterSet() {}
+};
+
+
+/// Metabolic energy model from Bhargava et al (2004).
+/// https://doi.org/10.1016/s0021-9290(03)00239-2
 class OSIMMOCO_API SmoothBhargava2004Metabolics : public ModelComponent {
     OpenSim_DECLARE_CONCRETE_OBJECT(
             SmoothBhargava2004Metabolics, ModelComponent);

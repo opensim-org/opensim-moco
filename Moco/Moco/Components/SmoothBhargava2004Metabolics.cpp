@@ -25,6 +25,92 @@
 
 using namespace OpenSim;
 
+//=============================================================================
+//  SmoothBhargava2004Metabolics_MetabolicMusclePrameters
+//=============================================================================
+
+SmoothBhargava2004Metabolics_MetabolicMusclePrameters::
+SmoothBhargava2004Metabolics_MetabolicMusclePrameters() {
+    constructProperties();
+}
+
+SmoothBhargava2004Metabolics_MetabolicMusclePrameters::
+SmoothBhargava2004Metabolics_MetabolicMusclePrameters(
+        const std::string& muscleName, double ratio_slow_twitch_fibers,
+        double muscle_mass) {
+    constructProperties();
+    setName(muscleName);
+    set_ratio_slow_twitch_fibers(ratio_slow_twitch_fibers);
+
+    if (SimTK::isNaN(muscle_mass)) {
+        set_use_provided_muscle_mass(false);
+    }
+    else {
+        set_use_provided_muscle_mass(true);
+        set_provided_muscle_mass(muscle_mass);
+    }
+}
+
+SmoothBhargava2004Metabolics_MetabolicMusclePrameters::
+SmoothBhargava2004Metabolics_MetabolicMusclePrameters(
+        const std::string& muscleName,
+        double ratio_slow_twitch_fibers,
+        double activation_constant_slow_twitch,
+        double activation_constant_fast_twitch,
+        double maintenance_constant_slow_twitch,
+        double maintenance_constant_fast_twitch,
+        double muscle_mass) {
+    constructProperties();
+    setName(muscleName);
+    set_ratio_slow_twitch_fibers(ratio_slow_twitch_fibers);
+    set_activation_constant_slow_twitch(activation_constant_slow_twitch);
+    set_activation_constant_fast_twitch(activation_constant_fast_twitch);
+    set_maintenance_constant_slow_twitch(maintenance_constant_slow_twitch);
+    set_maintenance_constant_fast_twitch(maintenance_constant_fast_twitch);
+
+    if (SimTK::isNaN(muscle_mass)) {
+        set_use_provided_muscle_mass(false);
+    }
+    else {
+        set_use_provided_muscle_mass(true);
+        set_provided_muscle_mass(muscle_mass);
+    }
+}
+
+void SmoothBhargava2004Metabolics_MetabolicMusclePrameters::
+setMuscleMass()
+{
+    if (get_use_provided_muscle_mass())
+        m_muscleMass = get_provided_muscle_mass();
+    else {
+        m_muscleMass = (
+                m_muscle->getMaxIsometricForce() / get_specific_tension())
+                * get_density() * m_muscle->getOptimalFiberLength();
+        }
+}
+
+void SmoothBhargava2004Metabolics_MetabolicMusclePrameters::
+constructProperties()
+{
+    // Specific tension of mammalian muscle (Pascals (N/m^2)).
+    constructProperty_specific_tension(0.25e6);
+    // Density of mammalian muscle (kg/m^3).
+    constructProperty_density(1059.7);
+    constructProperty_ratio_slow_twitch_fibers(0.5);
+    constructProperty_use_provided_muscle_mass(false);
+    constructProperty_provided_muscle_mass(SimTK::NaN);
+
+    // Defaults from Bhargava et al (2004).
+    constructProperty_activation_constant_slow_twitch(40.0);
+    constructProperty_activation_constant_fast_twitch(133.0);
+    constructProperty_maintenance_constant_slow_twitch(74.0);
+    constructProperty_maintenance_constant_fast_twitch(111.0);
+}
+
+//=============================================================================
+//  SmoothBhargava2004Metabolics
+//=============================================================================
+
 double SmoothBhargava2004Metabolics::getTotalMetabolicRate(
         const SimTK::State& s) const {
     return getMetabolicRate(s).sum();
