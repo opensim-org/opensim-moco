@@ -212,5 +212,6 @@ moco_unique_ptr(OpenSim::PositionMotion);
 %include <Moco/Components/SmoothSphereHalfSpaceForce.h>
 %include <Moco/Components/MinettiAlexander1997Metabolics.h>
 %include <Moco/Components/MultivariatePolynomialFunction.h>
+%include <Moco/Components/SmoothBhargava2004Metabolics.h>
 
 %include <Moco/ModelOperators.h>

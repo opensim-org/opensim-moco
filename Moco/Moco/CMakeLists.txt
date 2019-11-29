@@ -82,6 +82,8 @@ set(MOCO_SOURCES
         Components/AccelerationMotion.h
         Components/AccelerationMotion.cpp
         Components/MultivariatePolynomialFunction.h
+        Components/SmoothBhargava2004Metabolics.h
+        Components/SmoothBhargava2004Metabolics.cpp
         MocoCasADiSolver/MocoCasADiSolver.h
         MocoCasADiSolver/MocoCasADiSolver.cpp
         MocoCasADiSolver/MocoCasOCProblem.h
