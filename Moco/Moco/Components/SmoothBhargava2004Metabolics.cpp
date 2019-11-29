@@ -77,6 +77,7 @@ SmoothBhargava2004Metabolics_MetabolicMuscleParameters(
     }
 }
 
+// TODO
 void SmoothBhargava2004Metabolics_MetabolicMuscleParameters::
 setMuscleMass()
 {
@@ -181,6 +182,7 @@ double SmoothBhargava2004Metabolics::getMuscleMetabolicRate(
     return getMetabolicRate(s).get(m_muscleIndices.at(channel));
 }
 
+// TODO
 void SmoothBhargava2004Metabolics::extendConnectToModel(Model& model) {
     // TODO: Should this be in extendFinalizeFromProperties()?
     m_muscles.clear();
@@ -411,6 +413,7 @@ const int SmoothBhargava2004Metabolics::
         .getSize();
 }
 
+// TODO: different from probe, quite weird what is being done there
 void SmoothBhargava2004Metabolics::
     addMuscle(const std::string& muscleName,
     double ratio_slow_twitch_fibers,

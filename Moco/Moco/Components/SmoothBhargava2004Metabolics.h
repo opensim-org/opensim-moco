@@ -69,15 +69,18 @@ public:
         double maintenance_constant_fast_twitch,
         double muscle_mass = SimTK::NaN);
 
+    // TODO
     const double getMuscleMass() const      { return _muscMass; }
     void setMuscleMass();
-
+    // TODO
     const Muscle* getMuscle() const         { return _musc; }
     void setMuscle(Muscle* m)               { _musc = m; }
 
 protected:
+    // TODO
     Muscle* _musc;          // Internal pointer to the muscle that corresponds
                             // to these parameters.
+    // TODO
     double _muscMass;       // The mass of the muscle (depends on if
                             // <use_provided_muscle_mass> is true or false.
 
@@ -246,14 +249,14 @@ private:
     void extendAddToSystem(SimTK::MultibodySystem&) const override;
     const SimTK::Vector& getMetabolicRate(const SimTK::State& s) const;
     void calcMetabolicRate(const SimTK::State& s, SimTK::Vector&) const;
+    // TODO
     mutable std::vector<std::pair<SimTK::ReferencePtr<const Muscle>,
         SimTK::ReferencePtr<SmoothBhargava2004Metabolics_MetabolicMuscleParameters>>> m_muscles;
+    // TODO
     mutable std::unordered_map<std::string, int> m_muscleIndices;
 
     const SmoothBhargava2004Metabolics_MetabolicMuscleParameters*
         getMetabolicParameters(const std::string& muscleName) const;
-
-    // Get writable MetabolicMuscleParameter from the MuscleMap using a string accessor.
     SmoothBhargava2004Metabolics_MetabolicMuscleParameters*
         updMetabolicParameters(const std::string& muscleName);
 };

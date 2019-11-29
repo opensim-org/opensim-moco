@@ -88,29 +88,19 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
     double soleus_specific_tension = 0.62703;
     double tib_ant_specific_tension = 0.75417;
 
-     double activation_constant_slow_twitch = 40.0;
-     double activation_constant_fast_twitch = 133.0;
-     double maintenance_constant_slow_twitch = 74.0;
-     double maintenance_constant_fast_twitch = 111.0;
+     //double activation_constant_slow_twitch = 40.0;
+     //double activation_constant_fast_twitch = 133.0;
+     //double maintenance_constant_slow_twitch = 74.0;
+     //double maintenance_constant_fast_twitch = 111.0;
 
+    // Test for one muscle
     SmoothBhargava2004Metabolics* metabolics =
         new SmoothBhargava2004Metabolics(true, true, true, true, true);
     metabolics->setName("metabolics");
     metabolics->addMuscle(
             baseModel.getComponent<Muscle>("hamstrings_r").getName(),
-            hamstrings_ratio_slow_twitch_fibers,
-            activation_constant_slow_twitch,
-            activation_constant_fast_twitch, maintenance_constant_slow_twitch,
-            maintenance_constant_fast_twitch);
+            hamstrings_ratio_slow_twitch_fibers, SimTK::NaN);
     metabolics->setSpecificTension("hamstrings_r", hamstrings_specific_tension);
-
-
-
-    auto hamstrings_MetabolicParameters =
-        SmoothBhargava2004Metabolics_MetabolicMuscleParameters("hamstrings",
-        hamstrings_ratio_slow_twitch_fibers, SimTK::NaN);
-    hamstrings_MetabolicParameters.set_specific_tension(hamstrings_specific_tension);
-
 
 
     auto metabolicsM = make_unique<MinettiAlexander1997Metabolics>();
