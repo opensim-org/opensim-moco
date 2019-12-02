@@ -67,7 +67,7 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
     // ===================================
     Model baseModel("2D_gait.osim");
 
-    // Parameters for metabolics
+    // Add metabolics
     double hamstrings_ratio_slow_twitch_fibers = 0.5425;
     double bifemsh_ratio_slow_twitch_fibers = 0.529;
     double glut_max_ratio_slow_twitch_fibers = 0.55;
@@ -88,23 +88,122 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
     double soleus_specific_tension = 0.62703;
     double tib_ant_specific_tension = 0.75417;
 
-     //double activation_constant_slow_twitch = 40.0;
-     //double activation_constant_fast_twitch = 133.0;
-     //double maintenance_constant_slow_twitch = 74.0;
-     //double maintenance_constant_fast_twitch = 111.0;
+    SmoothBhargava2004Metabolics_MuscleParameters hamstrings_r_parameters(
+                "hamstrings_r",
+                baseModel.getComponent<Muscle>("hamstrings_r"),
+                hamstrings_ratio_slow_twitch_fibers, SimTK::NaN);
+    hamstrings_r_parameters.set_specific_tension(hamstrings_specific_tension);
+    SmoothBhargava2004Metabolics_MuscleParameters hamstrings_l_parameters(
+                "hamstrings_l",
+                baseModel.getComponent<Muscle>("hamstrings_l"),
+                hamstrings_ratio_slow_twitch_fibers, SimTK::NaN);
+    hamstrings_l_parameters.set_specific_tension(hamstrings_specific_tension);
+    SmoothBhargava2004Metabolics_MuscleParameters bifemsh_r_parameters(
+                "bifemsh_r",
+                baseModel.getComponent<Muscle>("bifemsh_r"),
+                bifemsh_ratio_slow_twitch_fibers, SimTK::NaN);
+    bifemsh_r_parameters.set_specific_tension(bifemsh_specific_tension);
+    SmoothBhargava2004Metabolics_MuscleParameters bifemsh_l_parameters(
+                "bifemsh_l",
+                baseModel.getComponent<Muscle>("bifemsh_l"),
+                bifemsh_ratio_slow_twitch_fibers, SimTK::NaN);
+    bifemsh_l_parameters.set_specific_tension(bifemsh_specific_tension);
+    SmoothBhargava2004Metabolics_MuscleParameters glut_max_r_parameters(
+                "glut_max_r",
+                baseModel.getComponent<Muscle>("glut_max_r"),
+                glut_max_ratio_slow_twitch_fibers, SimTK::NaN);
+    glut_max_r_parameters.set_specific_tension(glut_max_specific_tension);
+    SmoothBhargava2004Metabolics_MuscleParameters glut_max_l_parameters(
+                "glut_max_l",
+                baseModel.getComponent<Muscle>("glut_max_l"),
+                glut_max_ratio_slow_twitch_fibers, SimTK::NaN);
+    glut_max_l_parameters.set_specific_tension(glut_max_specific_tension);
+    SmoothBhargava2004Metabolics_MuscleParameters iliopsoas_r_parameters(
+                "iliopsoas_r",
+                baseModel.getComponent<Muscle>("iliopsoas_r"),
+                iliopsoas_ratio_slow_twitch_fibers, SimTK::NaN);
+    iliopsoas_r_parameters.set_specific_tension(iliopsoas_specific_tension);
+    SmoothBhargava2004Metabolics_MuscleParameters iliopsoas_l_parameters(
+                "iliopsoas_l",
+                baseModel.getComponent<Muscle>("iliopsoas_l"),
+                iliopsoas_ratio_slow_twitch_fibers, SimTK::NaN);
+    iliopsoas_l_parameters.set_specific_tension(iliopsoas_specific_tension);
+    SmoothBhargava2004Metabolics_MuscleParameters rect_fem_r_parameters(
+                "rect_fem_r",
+                baseModel.getComponent<Muscle>("rect_fem_r"),
+                rect_fem_ratio_slow_twitch_fibers, SimTK::NaN);
+    rect_fem_r_parameters.set_specific_tension(rect_fem_specific_tension);
+    SmoothBhargava2004Metabolics_MuscleParameters rect_fem_l_parameters(
+                "rect_fem_l",
+                baseModel.getComponent<Muscle>("rect_fem_l"),
+                rect_fem_ratio_slow_twitch_fibers, SimTK::NaN);
+    rect_fem_l_parameters.set_specific_tension(rect_fem_specific_tension);
+    SmoothBhargava2004Metabolics_MuscleParameters vasti_r_parameters(
+                "vasti_r",
+                baseModel.getComponent<Muscle>("vasti_r"),
+                vasti_ratio_slow_twitch_fibers, SimTK::NaN);
+    vasti_r_parameters.set_specific_tension(vasti_specific_tension);
+    SmoothBhargava2004Metabolics_MuscleParameters vasti_l_parameters(
+                "vasti_l",
+                baseModel.getComponent<Muscle>("vasti_l"),
+                vasti_ratio_slow_twitch_fibers, SimTK::NaN);
+    vasti_l_parameters.set_specific_tension(vasti_specific_tension);
+    SmoothBhargava2004Metabolics_MuscleParameters gastroc_r_parameters(
+                "gastroc_r",
+                baseModel.getComponent<Muscle>("gastroc_r"),
+                gastroc_ratio_slow_twitch_fibers, SimTK::NaN);
+    gastroc_r_parameters.set_specific_tension(gastroc_specific_tension);
+    SmoothBhargava2004Metabolics_MuscleParameters gastroc_l_parameters(
+                "gastroc_l",
+                baseModel.getComponent<Muscle>("gastroc_l"),
+                gastroc_ratio_slow_twitch_fibers, SimTK::NaN);
+    gastroc_l_parameters.set_specific_tension(gastroc_specific_tension);
+    SmoothBhargava2004Metabolics_MuscleParameters soleus_r_parameters(
+                "soleus_r",
+                baseModel.getComponent<Muscle>("soleus_r"),
+                soleus_ratio_slow_twitch_fibers, SimTK::NaN);
+    soleus_r_parameters.set_specific_tension(soleus_specific_tension);
+    SmoothBhargava2004Metabolics_MuscleParameters soleus_l_parameters(
+                "soleus_l",
+                baseModel.getComponent<Muscle>("soleus_l"),
+                soleus_ratio_slow_twitch_fibers, SimTK::NaN);
+    soleus_l_parameters.set_specific_tension(soleus_specific_tension);
+    SmoothBhargava2004Metabolics_MuscleParameters tib_ant_r_parameters(
+                "tib_ant_r",
+                baseModel.getComponent<Muscle>("tib_ant_r"),
+                tib_ant_ratio_slow_twitch_fibers, SimTK::NaN);
+    tib_ant_r_parameters.set_specific_tension(tib_ant_specific_tension);
+    SmoothBhargava2004Metabolics_MuscleParameters tib_ant_l_parameters(
+                "tib_ant_l",
+                baseModel.getComponent<Muscle>("tib_ant_l"),
+                tib_ant_ratio_slow_twitch_fibers, SimTK::NaN);
+    tib_ant_l_parameters.set_specific_tension(tib_ant_specific_tension);
 
-    // Test for one muscle
     SmoothBhargava2004Metabolics* metabolics =
         new SmoothBhargava2004Metabolics(true, true, true, true, true);
-    metabolics->setName("metabolics");
-    metabolics->addMuscle(
-            baseModel.getComponent<Muscle>("hamstrings_r").getName(),
-            hamstrings_ratio_slow_twitch_fibers, SimTK::NaN);
-    metabolics->setSpecificTension("hamstrings_r", hamstrings_specific_tension);
+    metabolics->get_use_fiber_length_dependence_on_maintenance_rate(false);
+    metabolics->addMuscle(hamstrings_r_parameters);
+    metabolics->addMuscle(hamstrings_l_parameters);
+    metabolics->addMuscle(bifemsh_r_parameters);
+    metabolics->addMuscle(bifemsh_l_parameters);
+    metabolics->addMuscle(glut_max_r_parameters);
+    metabolics->addMuscle(glut_max_l_parameters);
+    metabolics->addMuscle(iliopsoas_r_parameters);
+    metabolics->addMuscle(iliopsoas_l_parameters);
+    metabolics->addMuscle(rect_fem_r_parameters);
+    metabolics->addMuscle(rect_fem_l_parameters);
+    metabolics->addMuscle(vasti_r_parameters);
+    metabolics->addMuscle(vasti_l_parameters);
+    metabolics->addMuscle(gastroc_r_parameters);
+    metabolics->addMuscle(gastroc_l_parameters);
+    metabolics->addMuscle(soleus_r_parameters);
+    metabolics->addMuscle(soleus_l_parameters);
+    metabolics->addMuscle(tib_ant_r_parameters);
+    metabolics->addMuscle(tib_ant_l_parameters);
+    baseModel.addComponent(metabolics);
 
-
-    auto metabolicsM = make_unique<MinettiAlexander1997Metabolics>();
-    baseModel.addComponent(metabolicsM.release());
+    //auto metabolicsM = make_unique<MinettiAlexander1997Metabolics>();
+    //baseModel.addComponent(metabolicsM.release());
     ModelProcessor modelprocessor =
             ModelProcessor(baseModel) |
             ModOpSetPathLengthApproximation(setPathLengthApproximation);

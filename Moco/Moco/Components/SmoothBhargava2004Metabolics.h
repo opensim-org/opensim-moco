@@ -1,7 +1,7 @@
 #ifndef MOCO_SMOOTHBHARGAVA2004METABOLICS_H
 #define MOCO_SMOOTHBHARGAVA2004METABOLICS_H
 /* -------------------------------------------------------------------------- *
- * OpenSim Moco: SmoothBhargava2004Metabolics.                              *
+ * OpenSim Moco: SmoothBhargava2004Metabolics.                                *
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2019 Stanford University and the Authors                     *
  *                                                                            *
@@ -29,10 +29,11 @@ namespace OpenSim {
 
 /// Object class that holds the metabolic parameters required to calculate
 /// metabolic power for a single muscle.
-class OSIMMOCO_API SmoothBhargava2004Metabolics_MetabolicMuscleParameters :
-        public Object {
+// TODO: not sure about ModelComponent but I could not use a socket with Object
+class OSIMMOCO_API SmoothBhargava2004Metabolics_MuscleParameters :
+        public ModelComponent {
     OpenSim_DECLARE_CONCRETE_OBJECT(
-            SmoothBhargava2004Metabolics_MetabolicMuscleParameters, Object);
+            SmoothBhargava2004Metabolics_MuscleParameters, ModelComponent);
 public:
     OpenSim_DECLARE_PROPERTY(specific_tension, double,
         "The specific tension of the muscle (Pascals (N/m^2)).");
@@ -55,13 +56,21 @@ public:
         "Maintenance constant for slow twitch fibers (W/kg).");
     OpenSim_DECLARE_PROPERTY(maintenance_constant_fast_twitch, double,
         "Maintenance constant for fast twitch fibers (W/kg).");
-    SmoothBhargava2004Metabolics_MetabolicMuscleParameters();
-    SmoothBhargava2004Metabolics_MetabolicMuscleParameters(
-            const std::string& muscleName,
+
+    // TODO: cannot I have a socket here with Object class?
+    OpenSim_DECLARE_SOCKET(muscle, Muscle,
+            "The muscle to which the SmoothBhargava2004Metabolic is "
+            "connected.");
+
+    SmoothBhargava2004Metabolics_MuscleParameters();
+    SmoothBhargava2004Metabolics_MuscleParameters(
+            const std::string& name,
+            const Muscle& muscle,
             double ratio_slow_twitch_fibers,
             double muscle_mass = SimTK::NaN);
-    SmoothBhargava2004Metabolics_MetabolicMuscleParameters(
-        const std::string& muscleName,
+    SmoothBhargava2004Metabolics_MuscleParameters(
+        const std::string& name,
+        const Muscle& muscle,
         double ratio_slow_twitch_fibers,
         double activation_constant_slow_twitch,
         double activation_constant_fast_twitch,
@@ -69,39 +78,17 @@ public:
         double maintenance_constant_fast_twitch,
         double muscle_mass = SimTK::NaN);
 
-    // TODO
-    const double getMuscleMass() const      { return _muscMass; }
+    const double getMuscleMass() const { return muscleMass; }
     void setMuscleMass();
-    // TODO
-    const Muscle* getMuscle() const         { return _musc; }
-    void setMuscle(Muscle* m)               { _musc = m; }
 
-protected:
-    // TODO
-    Muscle* _musc;          // Internal pointer to the muscle that corresponds
-                            // to these parameters.
-    // TODO
-    double _muscMass;       // The mass of the muscle (depends on if
-                            // <use_provided_muscle_mass> is true or false.
+    const Muscle& getMuscle() const { return getConnectee<Muscle>("muscle"); }
 
 private:
     void constructProperties();
+    // TODO: not sure this is how it should look like
+    mutable double muscleMass;
+    // TODO: should there be things to extend the model etc?
 };
-
-/// Object class that holds the set of metabolic parameters required to
-/// calculate metabolic power for a single muscle.
-class OSIMMOCO_API
-    SmoothBhargava2004Metabolics_MetabolicMuscleParameterSet
-    : public Set<SmoothBhargava2004Metabolics_MetabolicMuscleParameters>
-{
-    OpenSim_DECLARE_CONCRETE_OBJECT(
-        SmoothBhargava2004Metabolics_MetabolicMuscleParameterSet,
-        Set<SmoothBhargava2004Metabolics_MetabolicMuscleParameters>);
-
-public:
-    SmoothBhargava2004Metabolics_MetabolicMuscleParameterSet() {}
-};
-
 
 /// Metabolic energy model from Bhargava et al (2004).
 /// https://doi.org/10.1016/s0021-9290(03)00239-2
@@ -123,6 +110,9 @@ public:
     OpenSim_DECLARE_PROPERTY(enforce_minimum_heat_rate_per_muscle, bool,
         "Specify whether the total heat rate for a muscle will be clamped to "
         "a minimum value of 1.0 W/kg (default is true).");
+    OpenSim_DECLARE_PROPERTY(use_fiber_length_dependence_on_maintenance_rate,
+        bool, "Specify whether to use the normalized fiber length dependence "
+        "on maintenance rate (default is false).");
     OpenSim_DECLARE_PROPERTY(
         normalized_fiber_length_dependence_on_maintenance_rate,
         PiecewiseLinearFunction,
@@ -145,11 +135,26 @@ public:
     OpenSim_DECLARE_PROPERTY(forbid_negative_total_power, bool,
         "Specify whether the total power for each muscle must remain positive "
         "(default is true).");
+    OpenSim_DECLARE_PROPERTY(velocity_smoothing, double,
+            "The parameter that determines the smoothness of the transition "
+            "of the tanh used to smooth the conditions related to contraction "
+            "type (concentric or eccentric). The larger the steeper the "
+            "transition but the worse for optimization, default is 10.");
+    OpenSim_DECLARE_PROPERTY(power_smoothing, double,
+            "The parameter that determines the smoothness of the transition "
+            "of the tanh used to smooth the condition enforcing non-negative "
+            "total power. The larger the steeper the transition but the worse "
+            "for optimization, default is 10.");
+    OpenSim_DECLARE_PROPERTY(heat_rate_smoothing, double,
+            "The parameter that determines the smoothness of the transition "
+            "of the tanh used to smooth the condition enforcing total heat "
+            "rate larger than 1 (W/kg) for a give muscle. The larger the "
+            "steeper the transition but the worse for optimization, default "
+            "is 10.");
 
-    OpenSim_DECLARE_UNNAMED_PROPERTY(
-        SmoothBhargava2004Metabolics_MetabolicMuscleParameterSet,
-        "A set containing, for each muscle, the parameters "
-        "required to calculate muscle metabolic power.");
+    OpenSim_DECLARE_LIST_PROPERTY(
+            muscle_parameters, SmoothBhargava2004Metabolics_MuscleParameters,
+            "Metabolic muscle parameters.");
 
     OpenSim_DECLARE_OUTPUT(total_metabolic_rate, double, getTotalMetabolicRate,
             SimTK::Stage::Velocity);
@@ -166,77 +171,14 @@ public:
 
     const int getNumMetabolicMuscles() const;
 
-    void addMuscle(const std::string& muscleName,
-        double ratio_slow_twitch_fibers,
-        double muscle_mass);
+    // TODO
+    void addMuscle(
+            SmoothBhargava2004Metabolics_MuscleParameters muscle_parameters) {
+        append_muscle_parameters(muscle_parameters);
+    };
 
-    void addMuscle(const std::string& muscleName,
-        double ratio_slow_twitch_fibers,
-        double activation_constant_slow_twitch,
-        double activation_constant_fast_twitch,
-        double maintenance_constant_slow_twitch,
-        double maintenance_constant_fast_twitch,
-        double muscle_mass);
-
-    /// Set an existing muscle to use a provided muscle mass.
-    void useProvidedMass(const std::string& muscleName, double providedMass);
-
-    /// Set an existing muscle to calculate its own mass.
-    void useCalculatedMass(const std::string& muscleName);
-
-    /// Get whether the muscle mass is being explicitly provided.
-    /// True means that it is using the property 'provided_muscle_mass'
-    /// False means that the muscle mass is being calculated from muscle properties.
-    bool isUsingProvidedMass(const std::string& muscleName);
-
-    /// Get the muscle mass used in the metabolic analysis. The value
-    /// returned will depend on if the muscle mass is explicitly provided
-    /// (i.e. isUsingProvidedMass = true), or if it is being automatically
-    /// calculated from muscle data already present in the model
-    /// (i.e. isUsingProvidedMass = true).
-    const double getMuscleMass(const std::string& muscleName) const;
-
-    /// Get the ratio of slow twitch fibers for an existing muscle.
-    const double getRatioSlowTwitchFibers(const std::string& muscleName) const;
-
-    /// Set the ratio of slow twitch fibers for an existing muscle.
-    void setRatioSlowTwitchFibers(const std::string& muscleName, const double& ratio);
-
-    /// Get the density for an existing muscle (kg/m^3).
-    const double getDensity(const std::string& muscleName) const;
-
-    /// Set the density for an existing muscle (kg/m^3).
-    void setDensity(const std::string& muscleName, const double& density);
-
-    /// Get the specific tension for an existing muscle (Pascals (N/m^2)).
-    const double getSpecificTension(const std::string& muscleName) const;
-
-    /// Set the specific tension for an existing muscle (Pascals (N/m^2)).
-    void setSpecificTension(const std::string& muscleName, const double& specificTension);
-
-    /// Get the activation constant for slow twitch fibers for an existing muscle.
-    const double getActivationConstantSlowTwitch(const std::string& muscleName) const;
-
-    /// Set the activation constant for slow twitch fibers for an existing muscle.
-    void setActivationConstantSlowTwitch(const std::string& muscleName, const double& c);
-
-    /// Get the activation constant for fast twitch fibers for an existing muscle.
-    const double getActivationConstantFastTwitch(const std::string& muscleName) const;
-
-    /// Set the activation constant for fast twitch fibers for an existing muscle.
-    void setActivationConstantFastTwitch(const std::string& muscleName, const double& c);
-
-    /// Get the maintenance constant for slow twitch fibers for an existing muscle.
-    const double getMaintenanceConstantSlowTwitch(const std::string& muscleName) const;
-
-    /// Set the maintenance constant for slow twitch fibers for an existing muscle.
-    void setMaintenanceConstantSlowTwitch(const std::string& muscleName, const double& c);
-
-    /// Get the maintenance constant for fast twitch fibers for an existing muscle.
-    const double getMaintenanceConstantFastTwitch(const std::string& muscleName) const;
-
-    /// Set the maintenance constant for fast twitch fibers for an existing muscle.
-    void setMaintenanceConstantFastTwitch(const std::string& muscleName, const double& c);
+    // TODO: I removed a bunch of methods that were in the original code. I do
+    // really see the point of having them. For instance, set_density()...
 
     double getTotalMetabolicRate(const SimTK::State& s) const;
     double getMuscleMetabolicRate(
@@ -249,16 +191,12 @@ private:
     void extendAddToSystem(SimTK::MultibodySystem&) const override;
     const SimTK::Vector& getMetabolicRate(const SimTK::State& s) const;
     void calcMetabolicRate(const SimTK::State& s, SimTK::Vector&) const;
-    // TODO
+    // TODO: not sure syntax
     mutable std::vector<std::pair<SimTK::ReferencePtr<const Muscle>,
-        SimTK::ReferencePtr<SmoothBhargava2004Metabolics_MetabolicMuscleParameters>>> m_muscles;
-    // TODO
+        SimTK::ReferencePtr<SmoothBhargava2004Metabolics_MuscleParameters>>>
+        m_muscles;
+    // TODO: not sure if needed
     mutable std::unordered_map<std::string, int> m_muscleIndices;
-
-    const SmoothBhargava2004Metabolics_MetabolicMuscleParameters*
-        getMetabolicParameters(const std::string& muscleName) const;
-    SmoothBhargava2004Metabolics_MetabolicMuscleParameters*
-        updMetabolicParameters(const std::string& muscleName);
 };
 
 } // namespace OpenSim
