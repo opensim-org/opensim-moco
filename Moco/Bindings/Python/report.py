@@ -43,13 +43,13 @@ def getLabelFromMotionType(motionTypeEnum, level):
     label = ''
     if motionTypeEnum == 1:
         if level == 'value': label = 'angle (rad)'
-        elif level == 'speed': label = 'ang. vel. (rad/s)'
-        elif level == 'accel': label = 'ang. accel. (rad/s^2)'
+        elif level == 'speed': label = 'speed (rad/s)'
+        elif level == 'accel': label = 'accel. (rad/s^2)'
         else: label = 'rotate'
         return label
     elif motionTypeEnum == 2:
         if level == 'value': label = 'position (m)'
-        elif level == 'speed': label = 'velocity (m/s)'
+        elif level == 'speed': label = 'speed (m/s)'
         elif level == 'accel': label = 'accel. (m/s^s)'
         else: label = 'translate'
         return label
@@ -182,18 +182,21 @@ class Report(object):
         all_files = list()
         if ref_files != None: all_files += ref_files
         all_files.append(trajectory_filepath)
+        lw = 8 / len(self.cmap_samples)
+        if lw < 0.5: lw = 0.5
+        if lw > 2: lw = 2
         for sample, file in zip(self.cmap_samples, all_files):
             color = self.cmap(sample)
             import matplotlib.lines as mlines
             if bilateral:
-                r = mlines.Line2D([], [], ls='-', color=color, linewidth=3)
+                r = mlines.Line2D([], [], ls='-', color=color, linewidth=lw)
                 self.legend_handles.append(r)
                 self.legend_labels.append(file + ' (right leg)')
-                l = mlines.Line2D([], [], ls='--', color=color, linewidth=3)
+                l = mlines.Line2D([], [], ls='--', color=color, linewidth=lw)
                 self.legend_handles.append(l)
                 self.legend_labels.append(file + ' (left leg)')
             else:
-                h = mlines.Line2D([], [], ls='-', color=color, linewidth=3)
+                h = mlines.Line2D([], [], ls='-', color=color, linewidth=lw)
                 self.legend_handles.append(h)
                 self.legend_labels.append(file)
 
@@ -259,8 +262,8 @@ class Report(object):
             ymax = -np.inf
             for path, ls in zip(var_dict[key], ls_dict[key]):
                 var = self.getVariable(var_type, path)
-                ymin = np.min(var)
-                ymax = np.max(var)
+                ymin = np.minimum(ymin, np.min(var))
+                ymax = np.maximum(ymax, np.max(var))
                 # If any reference data was provided, that has columns matching
                 # the current variable path, then plot them first.
                 for r, ref in enumerate(self.refs):
@@ -308,10 +311,14 @@ class Report(object):
             # figure as a new page to the PDF. Otherwise, increment the plot
             # counter and keep going.
             if (p % self.plots_per_page == 0) or (i == len(var_dict.keys())-1):
+                legfontsize = 64 / len(self.legend_handles)
+                if legfontsize > 10: legfontsize = 10
                 fig.tight_layout()
                 plt.figlegend(self.legend_handles, self.legend_labels,
-                              loc='upper center', bbox_to_anchor=(0.5, 0.97),
-                              fancybox=True, shadow=True)
+                              loc='lower center',
+                              bbox_to_anchor=(0.5, 0.85),
+                              fancybox=True, shadow=True,
+                              prop={'size': legfontsize})
                 self.pdf.savefig(fig)
                 plt.close()
                 p = 1
@@ -543,9 +550,13 @@ class Report(object):
 
                 plt.subplots_adjust(left=0.2, right=0.8)
 
+                legfontsize = 64 / len(self.legend_handles)
+                if legfontsize > 10: legfontsize = 10
                 plt.figlegend(self.legend_handles, self.legend_labels,
-                    loc='upper center', bbox_to_anchor=(0.5, 0.97),
-                    fancybox=True, shadow=True)
+                              loc='lower center',
+                              bbox_to_anchor=(0.5, 0.85),
+                              fancybox=True, shadow=True,
+                              prop={'size': legfontsize})
                 self.pdf.savefig(fig)
                 plt.close()
 
