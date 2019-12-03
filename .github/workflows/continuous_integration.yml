@@ -20,10 +20,21 @@ jobs:
     steps:
     - uses: actions/checkout@v1
   
+    - name: Initialize Conda for Powershell
+      run: |
+        (Get-Command python).Path
+        C:\Miniconda/condabin/conda.bat update -n base -c defaults conda
+        C:\Miniconda/condabin/conda.bat init powershell
+    - name: Update and Start Conda Env
+      # C:\Miniconda/condabin/conda.bat env update --file environment.yml --name base
+      run: |
+        C:\Miniconda/condabin/conda.bat activate base
+  
     - name: Conda TODO
       run: |
+        echo $env:CONDA
         conda help
-        echo $PATH
+        echo $env:PATH
         which python
         python -V
         python3 -V
