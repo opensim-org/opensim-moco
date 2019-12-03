@@ -75,7 +75,7 @@ public:
     /// evaluated relative `relativeToDirectory`.
     /// If a model is provided, it is used to convert columns from degrees to
     /// radians (if the table has a header with inDegrees=yes) before any
-    /// operations are performed. This model is accessible by any 
+    /// operations are performed. This model is accessible by any
     /// TableOperator%s that require it.
     TimeSeriesTable process(std::string relativeToDirectory,
             const Model* model = nullptr) const {
@@ -159,7 +159,7 @@ public:
     TabOpLowPassFilter(double cutoffFrequency) : TabOpLowPassFilter() {
         set_cutoff_frequency(cutoffFrequency);
     }
-    void operate(TimeSeriesTable& table, const Model* model = nullptr) 
+    void operate(TimeSeriesTable& table, const Model* model = nullptr)
             const override {
         if (get_cutoff_frequency() != -1) {
             OPENSIM_THROW_IF(get_cutoff_frequency() <= 0, Exception,
@@ -178,8 +178,11 @@ public:
 ///   - `pelvis_tilt_u` -> `/jointset/ground_pelvis/pelvis_tilt/speed`
 ///   - `soleus.activation` -> `/forceset/soleus/activation`
 ///   - `soleus.fiber_length` -> `/forceset/soleus/fiber_length`
+/// This can also be used to convert an Inverse Kinematics Tool solution MOT
+/// file to be used as a states file (with only coordinate values).
 /// If a column label does not identify a state in the model,
-/// the column label is not changed. We assume all column labels are unique.
+/// the column label is not changed. Column labels must be unique.
+/// This operator is implemented using updateStateLabels40().
 class OSIMMOCO_API TabOpUseAbsoluteStateNames : public TableOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(TabOpUseAbsoluteStateNames, TableOperator);
 
@@ -187,34 +190,13 @@ public:
     TabOpUseAbsoluteStateNames() {}
 
     void operate(TimeSeriesTable& table, const Model* model) const override {
-        // Storage::getStateIndex() holds the logic for converting between
-        // new-style state names and old-style state names.
 
         OPENSIM_THROW_IF(!model, Exception,
                 "Expected a model, but no model was provided.");
 
-        Array<std::string> labels;
-        labels.append("time");
-        for (const auto& label : table.getColumnLabels()) {
-            labels.append(label);
-        }
-        Storage sto;
-        sto.setColumnLabels(labels);
-
-        const Array<std::string> stateNames = model->getStateVariableNames();
-        for (int isv = 0; isv < stateNames.size(); ++isv) {
-            int isto = sto.getStateIndex(stateNames[isv]);
-            if (isto == -1) continue;
-
-            // Skip over time.
-            labels[isto + 1] = stateNames[isv];
-        }
-
-        std::vector<std::string> newLabels;
-        for (int i = 1; i < labels.size(); ++i) {
-            newLabels.push_back(labels[i]);
-        }
-        table.setColumnLabels(newLabels);
+        auto labels = table.getColumnLabels();
+        updateStateLabels40(*model, labels);
+        table.setColumnLabels(labels);
     }
 };
 

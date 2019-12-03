@@ -139,6 +139,37 @@ Storage OpenSim::convertTableToStorage(const TimeSeriesTable& table) {
     return sto;
 }
 
+void OpenSim::updateStateLabels40(const Model& model,
+        std::vector<std::string>& labels) {
+
+    checkRedundantLabels(labels);
+
+    // Storage::getStateIndex() holds the logic for converting between
+    // new-style state names and old-style state names. When opensim-core is
+    // updated to put the conversion logic in a better place, we should update
+    // the implementation here.
+    Array<std::string> osimLabels;
+    osimLabels.append("time");
+    for (const auto& label : labels) {
+        osimLabels.append(label);
+    }
+    Storage sto;
+    sto.setColumnLabels(osimLabels);
+
+    const Array<std::string> stateNames = model.getStateVariableNames();
+    for (int isv = 0; isv < stateNames.size(); ++isv) {
+        int isto = sto.getStateIndex(stateNames[isv]);
+        if (isto == -1) continue;
+
+        // Skip over time.
+        osimLabels[isto + 1] = stateNames[isv];
+    }
+
+    for (int i = 1; i < osimLabels.size(); ++i) {
+        labels[i - 1] = osimLabels[i];
+    }
+}
+
 TimeSeriesTable OpenSim::filterLowpass(
         const TimeSeriesTable& table, double cutoffFreq, bool padData) {
     OPENSIM_THROW_IF(cutoffFreq < 0, Exception,
@@ -339,7 +370,7 @@ std::unique_ptr<Function> createFunction<GCVSpline>(
 } // anonymous namespace
 
 void OpenSim::prescribeControlsToModel(
-        const MocoTrajectory& iterate, Model& model, std::string functionType) {
+        const MocoTrajectory& trajectory, Model& model, std::string functionType) {
     // Get actuator names.
     model.initSystem();
     OpenSim::Array<std::string> actuNames;
@@ -351,11 +382,11 @@ void OpenSim::prescribeControlsToModel(
     // Add prescribed controllers to actuators in the model, where the control
     // functions are splined versions of the actuator controls from the OCP
     // solution.
-    const SimTK::Vector& time = iterate.getTime();
+    const SimTK::Vector& time = trajectory.getTime();
     auto* controller = new PrescribedController();
     controller->setName("prescribed_controller");
     for (int i = 0; i < actuNames.size(); ++i) {
-        const auto control = iterate.getControl(actuNames[i]);
+        const auto control = trajectory.getControl(actuNames[i]);
         std::unique_ptr<Function> function;
         if (functionType == "GCVSpline") {
             function = createFunction<GCVSpline>(time, control);
@@ -373,10 +404,11 @@ void OpenSim::prescribeControlsToModel(
     model.addController(controller);
 }
 
-MocoTrajectory OpenSim::simulateIterateWithTimeStepping(
-        const MocoTrajectory& iterate, Model model, double integratorAccuracy) {
+MocoTrajectory OpenSim::simulateTrajectoryWithTimeStepping(
+        const MocoTrajectory& trajectory, Model model,
+        double integratorAccuracy) {
 
-    prescribeControlsToModel(iterate, model, "PiecewiseLinearFunction");
+    prescribeControlsToModel(trajectory, model, "PiecewiseLinearFunction");
 
     // Add states reporter to the model.
     auto* statesRep = new StatesTrajectoryReporter();
@@ -385,18 +417,18 @@ MocoTrajectory OpenSim::simulateIterateWithTimeStepping(
     model.addComponent(statesRep);
 
     // Simulate!
-    const SimTK::Vector& time = iterate.getTime();
+    const SimTK::Vector& time = trajectory.getTime();
     SimTK::State state = model.initSystem();
     state.setTime(time[0]);
     Manager manager(model);
 
     // Set the initial state.
     {
-        const auto& matrix = iterate.getStatesTrajectory();
+        const auto& matrix = trajectory.getStatesTrajectory();
         TimeSeriesTable initialStateTable(
-                std::vector<double>{iterate.getInitialTime()},
+                std::vector<double>{trajectory.getInitialTime()},
                 SimTK::Matrix(matrix.block(0, 0, 1, matrix.ncol())),
-                iterate.getStateNames());
+                trajectory.getStateNames());
         auto statesTraj = StatesTrajectory::createFromStatesStorage(
                 model, convertTableToStorage(initialStateTable));
         state.setY(statesTraj.front().getY());
@@ -580,8 +612,7 @@ void OpenSim::checkRedundantLabels(std::vector<std::string> labels) {
     std::sort(labels.begin(), labels.end());
     auto it = std::adjacent_find(labels.begin(), labels.end());
     OPENSIM_THROW_IF(it != labels.end(), Exception,
-            format("Multiple reference data provided for the variable %s.",
-                    *it));
+            format("Label '%s' appears more than once.", *it));
 }
 
 MocoTrajectory OpenSim::createPeriodicTrajectory(
