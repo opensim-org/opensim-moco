@@ -403,7 +403,7 @@ void SmoothBhargava2004Metabolics::calcMetabolicRate(
     }
 }
 
-const int SmoothBhargava2004Metabolics::getNumMetabolicMuscles() const
+int SmoothBhargava2004Metabolics::getNumMetabolicMuscles() const
 {
     return getProperty_muscle_parameters().size();
 }

@@ -77,7 +77,7 @@ public:
         double maintenance_constant_fast_twitch,
         double muscle_mass = SimTK::NaN);
 
-    const double getMuscleMass() const { return muscleMass; }
+    double getMuscleMass() const { return muscleMass; }
     void setMuscleMass();
 
     const Muscle& getMuscle() const { return getConnectee<Muscle>("muscle"); }
@@ -166,7 +166,7 @@ public:
             const bool basal_rate_on,
             const bool work_rate_on);
 
-    const int getNumMetabolicMuscles() const;
+    int getNumMetabolicMuscles() const;
 
     void addMuscle(
             SmoothBhargava2004Metabolics_MuscleParameters muscle_parameters) {
