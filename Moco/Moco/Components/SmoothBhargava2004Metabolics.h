@@ -5,7 +5,8 @@
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2019 Stanford University and the Authors                     *
  *                                                                            *
- * Author(s): Christopher Dembia                                              *
+ * Author(s): Antoine Falisse                                                 *
+ * Contributors: Tim Dorn, Thomas Uchida, Christopher Dembia                  *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may    *
  * not use this file except in compliance with the License. You may obtain a  *
@@ -29,11 +30,10 @@ namespace OpenSim {
 
 /// Object class that holds the metabolic parameters required to calculate
 /// metabolic power for a single muscle.
-// TODO: not sure about ModelComponent but I could not use a socket with Object
 class OSIMMOCO_API SmoothBhargava2004Metabolics_MuscleParameters :
-        public ModelComponent {
+        public Component {
     OpenSim_DECLARE_CONCRETE_OBJECT(
-            SmoothBhargava2004Metabolics_MuscleParameters, ModelComponent);
+            SmoothBhargava2004Metabolics_MuscleParameters, Component);
 public:
     OpenSim_DECLARE_PROPERTY(specific_tension, double,
         "The specific tension of the muscle (Pascals (N/m^2)).");
@@ -57,7 +57,6 @@ public:
     OpenSim_DECLARE_PROPERTY(maintenance_constant_fast_twitch, double,
         "Maintenance constant for fast twitch fibers (W/kg).");
 
-    // TODO: cannot I have a socket here with Object class?
     OpenSim_DECLARE_SOCKET(muscle, Muscle,
             "The muscle to which the SmoothBhargava2004Metabolic is "
             "connected.");
@@ -85,9 +84,7 @@ public:
 
 private:
     void constructProperties();
-    // TODO: not sure this is how it should look like
     mutable double muscleMass;
-    // TODO: should there be things to extend the model etc?
 };
 
 /// Metabolic energy model from Bhargava et al (2004).
@@ -154,7 +151,7 @@ public:
 
     OpenSim_DECLARE_LIST_PROPERTY(
             muscle_parameters, SmoothBhargava2004Metabolics_MuscleParameters,
-            "Metabolic muscle parameters.");
+            "Metabolic parameters for each muscle.");
 
     OpenSim_DECLARE_OUTPUT(total_metabolic_rate, double, getTotalMetabolicRate,
             SimTK::Stage::Velocity);
@@ -171,14 +168,10 @@ public:
 
     const int getNumMetabolicMuscles() const;
 
-    // TODO
     void addMuscle(
             SmoothBhargava2004Metabolics_MuscleParameters muscle_parameters) {
-        append_muscle_parameters(muscle_parameters);
+        append_muscle_parameters(std::move(muscle_parameters));
     };
-
-    // TODO: I removed a bunch of methods that were in the original code. I do
-    // really see the point of having them. For instance, set_density()...
 
     double getTotalMetabolicRate(const SimTK::State& s) const;
     double getMuscleMetabolicRate(
@@ -191,11 +184,8 @@ private:
     void extendAddToSystem(SimTK::MultibodySystem&) const override;
     const SimTK::Vector& getMetabolicRate(const SimTK::State& s) const;
     void calcMetabolicRate(const SimTK::State& s, SimTK::Vector&) const;
-    // TODO: not sure syntax
-    mutable std::vector<std::pair<SimTK::ReferencePtr<const Muscle>,
-        SimTK::ReferencePtr<SmoothBhargava2004Metabolics_MuscleParameters>>>
-        m_muscles;
-    // TODO: not sure if needed
+    mutable std::vector<SimTK::ReferencePtr<const
+        SmoothBhargava2004Metabolics_MuscleParameters>> m_muscleParameters;
     mutable std::unordered_map<std::string, int> m_muscleIndices;
 };
 

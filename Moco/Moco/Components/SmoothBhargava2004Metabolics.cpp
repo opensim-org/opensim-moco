@@ -3,7 +3,8 @@
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2019 Stanford University and the Authors                     *
  *                                                                            *
- * Author(s): Christopher Dembia                                              *
+ * Author(s): Antoine Falisse                                                 *
+ * Contributors: Tim Dorn, Thomas Uchida, Christopher Dembia                  *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may    *
  * not use this file except in compliance with the License. You may obtain a  *
@@ -40,8 +41,8 @@ SmoothBhargava2004Metabolics_MuscleParameters(
         const Muscle& muscle,
         double ratio_slow_twitch_fibers,
         double muscle_mass) {
-    setName(name);
-    connectSocket_muscle(muscle);
+    this->setName(name);
+    this->connectSocket_muscle(muscle);
     constructProperties();
     set_ratio_slow_twitch_fibers(ratio_slow_twitch_fibers);
 
@@ -65,8 +66,8 @@ SmoothBhargava2004Metabolics_MuscleParameters(
         double maintenance_constant_fast_twitch,
         double muscle_mass) {
 
-    setName(name);
-    connectSocket_muscle(muscle);
+    this->setName(name);
+    this->connectSocket_muscle(muscle);
     constructProperties();
     set_ratio_slow_twitch_fibers(ratio_slow_twitch_fibers);
     set_activation_constant_slow_twitch(activation_constant_slow_twitch);
@@ -84,7 +85,6 @@ SmoothBhargava2004Metabolics_MuscleParameters(
 
 }
 
-// TODO
 void SmoothBhargava2004Metabolics_MuscleParameters::
 setMuscleMass()
 {
@@ -175,13 +175,12 @@ void SmoothBhargava2004Metabolics::constructProperties()
 double SmoothBhargava2004Metabolics::getTotalMetabolicRate(
         const SimTK::State& s) const {
 
-    // BASAL METABOLIC RATE (W) (based on whole body mass, not muscle mass)
-    // ------------------------------------------------------------------
+    // BASAL METABOLIC RATE (W) (based on whole body mass, not muscle mass).
+    // ---------------------------------------------------------------------
     double Bdot = 0;
     if (get_basal_rate_on()) {
-        // TODO: can be use _model?
         Bdot = get_basal_coefficient()
-            * pow(_model->getMatterSubsystem().calcSystemMass(s),
+            * pow(getModel().getMatterSubsystem().calcSystemMass(s),
                     get_basal_exponent());
         if (SimTK::isNaN(Bdot))
             std::cout << "WARNING::" << getName();
@@ -196,18 +195,15 @@ double SmoothBhargava2004Metabolics::getMuscleMetabolicRate(
     return getMetabolicRate(s).get(m_muscleIndices.at(channel));
 }
 
-// TODO: not sure about const, &, *
-// TODO: model is no longer needed...
 void SmoothBhargava2004Metabolics::extendConnectToModel(Model& model) {
-    // TODO: Should this be in extendFinalizeFromProperties()?
-    m_muscles.clear();
+    m_muscleParameters.clear();
     m_muscleIndices.clear();
     int nM = getProperty_muscle_parameters().size();
     for (int i=0; i < nM; ++i) {
-        auto muscle_parameters = get_muscle_parameters(i);
-        const Muscle& muscle = muscle_parameters.getMuscle();
+        const auto& muscle_parameters = get_muscle_parameters(i);
+        const auto& muscle = muscle_parameters.getMuscle();
         if (muscle.get_appliesForce()) {
-            m_muscles.emplace_back(muscle, muscle_parameters);
+            m_muscleParameters.emplace_back(&muscle_parameters);
             m_muscleIndices[muscle.getAbsolutePathString()] = i;
             ++i;
         }
@@ -217,7 +213,8 @@ void SmoothBhargava2004Metabolics::extendConnectToModel(Model& model) {
 void SmoothBhargava2004Metabolics::extendAddToSystem(
         SimTK::MultibodySystem&) const {
     addCacheVariable<SimTK::Vector>("metabolic_rate",
-            SimTK::Vector((int)m_muscles.size(), 0.0), SimTK::Stage::Velocity);
+            SimTK::Vector((int)m_muscleParameters.size(), 0.0),
+                    SimTK::Stage::Velocity);
 }
 
 const SimTK::Vector& SmoothBhargava2004Metabolics::getMetabolicRate(
@@ -232,64 +229,61 @@ const SimTK::Vector& SmoothBhargava2004Metabolics::getMetabolicRate(
 
 void SmoothBhargava2004Metabolics::calcMetabolicRate(
         const SimTK::State& s, SimTK::Vector& ratesForMuscles) const {
-    ratesForMuscles.resize((int)m_muscles.size());
-
+    ratesForMuscles.resize((int)m_muscleParameters.size());
     double Adot, Mdot, Sdot, Wdot;
     Adot = Mdot = Sdot = Wdot = 0;
 
     int i = 0;
-    for (const auto& entry : m_muscles) {
+    for (const auto& muscleParameter : m_muscleParameters) {
+        const auto& muscle = muscleParameter->getMuscle();
 
-        const double max_isometric_force = entry.first->getMaxIsometricForce();
+        const double max_isometric_force = muscle.getMaxIsometricForce();
         const double activation = get_muscle_effort_scaling_factor()
-                                  * entry.first->getActivation(s);
+            * muscle.getActivation(s);
         const double excitation = get_muscle_effort_scaling_factor()
-                                  * entry.first->getControl(s);
-        const double fiber_force_passive =
-            entry.first->getPassiveFiberForce(s);
-        const double fiber_force_active =
-            get_muscle_effort_scaling_factor()
-            * entry.first->getActiveFiberForce(s);
-        const double fiber_force_total =
-            fiber_force_active + fiber_force_passive;
+            * muscle.getControl(s);
+        const double fiber_force_passive =  muscle.getPassiveFiberForce(s);
+        const double fiber_force_active = get_muscle_effort_scaling_factor()
+            * muscle.getActiveFiberForce(s);
+        const double fiber_force_total = fiber_force_active
+            + fiber_force_passive;
         const double fiber_length_normalized =
-            entry.first->getNormalizedFiberLength(s);
-        const double fiber_velocity = entry.first->getFiberVelocity(s);
+            muscle.getNormalizedFiberLength(s);
+        const double fiber_velocity = muscle.getFiberVelocity(s);
         const double slow_twitch_excitation =
-            entry.second->get_ratio_slow_twitch_fibers()
+            muscleParameter->get_ratio_slow_twitch_fibers()
             * sin(SimTK::Pi/2 * excitation);
         const double fast_twitch_excitation =
-            (1 - entry.second->get_ratio_slow_twitch_fibers())
+            (1 - muscleParameter->get_ratio_slow_twitch_fibers())
             * (1 - cos(SimTK::Pi/2 * excitation));
         double alpha, fiber_length_dependence;
 
         // Get the unnormalized total active force, F_iso that 'would' be
         // developed at the current activation and fiber length under isometric
-        // conditions (i.e. Vm=0)
+        // conditions (i.e. Vm=0).
         const double F_iso = activation
-                             * entry.first->getActiveForceLengthMultiplier(s)
-                             * max_isometric_force;
+            * muscle.getActiveForceLengthMultiplier(s) * max_isometric_force;
 
-        // ACTIVATION HEAT RATE (W)
-        // ------------------------
+        // ACTIVATION HEAT RATE (W).
+        // -------------------------
         if (get_forbid_negative_total_power() || get_activation_rate_on())
         {
             // This value is set to 1.0, as used by Anderson & Pandy (1999),
             // however, in Bhargava et al., (2004) they assume a function here.
             // We will ignore this function and use 1.0 for now.
             const double decay_function_value = 1.0;
-            Adot = entry.second->getMuscleMass() * decay_function_value
-                * ( (entry.second->get_activation_constant_slow_twitch()
+            Adot = muscleParameter->getMuscleMass() * decay_function_value
+                * ( (muscleParameter->get_activation_constant_slow_twitch()
                             * slow_twitch_excitation)
-                        + (entry.second->get_activation_constant_fast_twitch()
-                                * fast_twitch_excitation) );
+                    + (muscleParameter->get_activation_constant_fast_twitch()
+                            * fast_twitch_excitation) );
         }
 
-        // MAINTENANCE HEAT RATE (W)
-        // -------------------------
+        // MAINTENANCE HEAT RATE (W).
+        // --------------------------
         if (get_forbid_negative_total_power() || get_maintenance_rate_on())
         {
-            // TODO: discuss this addition
+            // TODO: discuss this addition, based on my stuff but not validated
             if (get_use_fiber_length_dependence_on_maintenance_rate()) {
                 SimTK::Vector tmp(1, fiber_length_normalized);
                 fiber_length_dependence =
@@ -299,47 +293,39 @@ void SmoothBhargava2004Metabolics::calcMetabolicRate(
             else {
                 fiber_length_dependence = fiber_length_normalized;
             }
-            Mdot = entry.second->getMuscleMass() * fiber_length_dependence
-                * ( (entry.second->get_maintenance_constant_slow_twitch()
-                        * slow_twitch_excitation)
-                    + (entry.second->get_maintenance_constant_fast_twitch()
+            Mdot = muscleParameter->getMuscleMass() * fiber_length_dependence
+                * ( (muscleParameter->get_maintenance_constant_slow_twitch()
+                            * slow_twitch_excitation)
+                    + (muscleParameter->get_maintenance_constant_fast_twitch()
                             * fast_twitch_excitation) );
         }
 
-        // SHORTENING HEAT RATE (W)
-        // --> note that we define Vm<0 as shortening and Vm>0 as lengthening
+        // SHORTENING HEAT RATE (W).
+        // --> note that we define Vm<0 as shortening and Vm>0 as lengthening.
         // --------------------------------------------------------------------
-
-        // Smooth approximation
-        // fiber_velocity is positive (eccentric contraction)
+        // Variables for smooth approximations between concentric and eccentric
+        // contractions.
         const double bv = get_velocity_smoothing();
+        // fiber_velocity_ecc is 1 if eccentric contraction.
         const double fiber_velocity_ecc =
             0.5 + 0.5 * tanh(bv * fiber_velocity);
-        // fiber_velocity is negative (concentric contraction)
+        // fiber_velocity_conc is 1 if concentric contraction.
         const double fiber_velocity_conc = 1 - fiber_velocity_ecc;
 
         if (get_forbid_negative_total_power() || get_shortening_rate_on())
         {
             if (get_use_force_dependent_shortening_prop_constant())
             {
-                // Original unsmooth model
-                //if (fiber_velocity <= 0)    // concentric contraction, Vm<0
-                //    alpha = (0.16 * F_iso) + (0.18 * fiber_force_total);
-                //else                        // eccentric contraction, Vm>0
-                //    alpha = 0.157 * fiber_force_total;
-                // Smooth approximation
+                // Smooth approximation between concentric and eccentric
+                // contractions.
                 alpha = (0.16 * F_iso) + (0.18 * fiber_force_total);
                 alpha = alpha + (-alpha + 0.157 * fiber_force_total)
                         * fiber_velocity_ecc;
             }
             else
             {
-                // Original unsmooth model
-                //if (fiber_velocity <= 0)    // concentric contraction, Vm<0
-                //    alpha = 0.25 * fiber_force_total;
-                //else                        // eccentric contraction, Vm>0
-                //    alpha = 0.0;
-                // Smooth approximation
+                // Smooth approximation between concentric and eccentric
+                // contractions.
                 alpha = 0.25 * fiber_force_total;
                 alpha = alpha + -alpha * fiber_velocity_ecc;
             }
@@ -351,12 +337,8 @@ void SmoothBhargava2004Metabolics::calcMetabolicRate(
         // -------------------------------------------------------------------
         if (get_forbid_negative_total_power() || get_mechanical_work_rate_on())
         {
-            // Original unsmooth model
-            //if (get_include_negative_mechanical_work() || fiber_velocity <= 0)
-            //    Wdot = -fiber_force_active*fiber_velocity;
-            //else
-            //    Wdot = 0;
-            // Smooth approximation
+            // Smooth approximation between concentric and eccentric
+            // contractions.
             if (get_include_negative_mechanical_work())
                 Wdot = -fiber_force_active*fiber_velocity;
             else
@@ -367,11 +349,10 @@ void SmoothBhargava2004Metabolics::calcMetabolicRate(
         // power is non-negative.
         if (get_forbid_negative_total_power()) {
             const double Edot_W_beforeClamp = Adot + Mdot + Sdot + Wdot;
-            // Original unsmooth model
-            //if (Edot_W_beforeClamp < 0)
-            //    Sdot -= Edot_W_beforeClamp;
-            // Smooth approximation
+            // Variables for smooth approximations between negative and
+            // positive total power.
             const double bp = get_power_smoothing();
+            // Edot_W_beforeClamp_neg is 1 if Edot_W_beforeClamp is negative.
             const double Edot_W_beforeClamp_neg = 0.5 + (
                     0.5 * tanh(bp * -Edot_W_beforeClamp));
             Sdot -= Edot_W_beforeClamp * Edot_W_beforeClamp_neg;
@@ -382,31 +363,23 @@ void SmoothBhargava2004Metabolics::calcMetabolicRate(
         // 1.0 W/kg.
         // --------------------------------------------------------------------
         double totalHeatRate = Adot + Mdot + Sdot;
-
-        // Original unsmooth model
-        //if(get_enforce_minimum_heat_rate_per_muscle()
-        //            && totalHeatRate < 1.0 * mm.getMuscleMass()
-        //            && get_activation_rate_on()
-        //            && get_maintenance_rate_on()
-        //            && get_shortening_rate_on())
-        //{
-        //        totalHeatRate = 1.0 * mm.getMuscleMass();
-        //}
-        // Smooth approximation
         if(get_enforce_minimum_heat_rate_per_muscle()
                 && get_activation_rate_on()
                 && get_maintenance_rate_on()
                 && get_shortening_rate_on())
         {
+            // Variables for smooth approximations between total heat rate for
+            // a given muscle below or above 1.0 W/kg.
             const double bhr = get_heat_rate_smoothing();
+            // totalHeatRate_b is 1 if totalHeatRate is below the muscle mass.
+            const double totalHeatRate_bmm = 0.5 + 0.5 * tanh(bhr * (1.0 *
+                    muscleParameter->getMuscleMass() - totalHeatRate));
             totalHeatRate = totalHeatRate + (-totalHeatRate + 1.0 *
-                    entry.second->getMuscleMass()) * (0.5 + 0.5 * tanh(
-                            bhr * (1.0 * entry.second->getMuscleMass() -
-                            totalHeatRate)));
+                    muscleParameter->getMuscleMass()) * totalHeatRate_bmm;
         }
 
-        // TOTAL METABOLIC ENERGY RATE (W)
-        // -------------------------------
+        // TOTAL METABOLIC ENERGY RATE (W).
+        // --------------------------------
         double Edot = 0;
 
         if (get_activation_rate_on() && get_maintenance_rate_on()

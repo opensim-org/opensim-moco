@@ -202,8 +202,6 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
     metabolics->addMuscle(tib_ant_l_parameters);
     baseModel.addComponent(metabolics);
 
-    //auto metabolicsM = make_unique<MinettiAlexander1997Metabolics>();
-    //baseModel.addComponent(metabolicsM.release());
     ModelProcessor modelprocessor =
             ModelProcessor(baseModel) |
             ModOpSetPathLengthApproximation(setPathLengthApproximation);
