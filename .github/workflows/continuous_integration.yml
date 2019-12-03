@@ -19,6 +19,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
+  
+    - name: Conda TODO
+      run: |
+        conda help
+        echo $PATH
+        which python
+        python -V
+        python3 -V
 
     - name: Install Doxygen
       # choco install doxygen.portable # <-- too unreliable.
