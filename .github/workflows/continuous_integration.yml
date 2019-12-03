@@ -29,15 +29,9 @@ jobs:
       # C:\Miniconda/condabin/conda.bat env update --file environment.yml --name base
       run: |
         C:\Miniconda/condabin/conda.bat activate base
-  
-    - name: Conda TODO
-      run: |
         echo $env:CONDA
-        conda help
         echo $env:PATH
         which python
-        python -V
-        python3 -V
 
     - name: Install Doxygen
       # choco install doxygen.portable # <-- too unreliable.
