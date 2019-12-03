@@ -349,7 +349,8 @@ OSIMMOCO_API void visualize(Model, TimeSeriesTable);
 /// PositionMotion) is.
 /// The output paths must correspond to outputs that match the type provided in
 /// the template argument, otherwise they are not included in the report.
-/// @note Parameters in the MocoTrajectory are **not** applied to the model.
+/// @note Parameters and Lagrange multipliers in the MocoTrajectory are **not**
+///       applied to the model.
 /// @ingroup mocomodelutil
 template <typename T>
 TimeSeriesTable_<T> analyze(Model model, const MocoTrajectory& trajectory,
@@ -493,6 +494,11 @@ OSIMMOCO_API void checkOrderSystemControls(const Model& model);
 /// for redundancies.
 /// @ingroup mocomodelutil
 OSIMMOCO_API void checkRedundantLabels(std::vector<std::string> labels);
+
+/// Throws an exception if any label in the provided list does not match any
+/// state variable names in the model.
+OSIMMOCO_API void checkLabelsMatchModelStates(const Model& model,
+        const std::vector<std::string>& labels);
 
 /// Get a list of reference pointers to all outputs whose names (not paths)
 /// match a substring defined by a provided regex string pattern. The regex

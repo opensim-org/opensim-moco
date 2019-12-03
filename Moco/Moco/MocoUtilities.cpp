@@ -615,6 +615,17 @@ void OpenSim::checkRedundantLabels(std::vector<std::string> labels) {
             format("Label '%s' appears more than once.", *it));
 }
 
+void OpenSim::checkLabelsMatchModelStates(const Model& model,
+        const std::vector<std::string>& labels) {
+    const auto modelStateNames = model.getStateVariableNames();
+    for (const auto& label : labels) {
+        OPENSIM_THROW_IF(modelStateNames.rfindIndex(label) == -1, Exception,
+            format("Expected the provided labels to match the model state "
+                   "names, but label %s does not correspond to any model "
+                    "state.", label));
+    }
+}
+
 MocoTrajectory OpenSim::createPeriodicTrajectory(
         const MocoTrajectory& in, std::vector<std::string> addPatterns,
         std::vector<std::string> negatePatterns,
