@@ -20,6 +20,9 @@ endif()
 
 option(OPENSIM_JAVA_WRAPPING "Build opensim-core Java/MATLAB interface." OFF)
 option(OPENSIM_PYTHON_WRAPPING "Build opensim-core Python interface." OFF)
+option(OPENSIM_INSTALL_UNIX_FHS 
+    "Organize installation according to UNIX Filesystem Hierarchy Standard."
+    OFF)
 set(OPENSIM_PYTHON_VERSION 3 CACHE STRING
     "The major Python version (2 or 3) for opensim-core.")
 # To create a drop-down in the CMake GUI:

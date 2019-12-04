@@ -16,7 +16,7 @@ AddDependency(NAME       opensim-core
                     -DOPENSIM_PYTHON_VERSION:STRING=${OPENSIM_PYTHON_VERSION}
                     -DSIMBODY_HOME:PATH=${CMAKE_INSTALL_PREFIX}/simbody
                     -DCMAKE_PREFIX_PATH:PATH=${CMAKE_INSTALL_PREFIX}/docopt
-                    -DOPENSIM_INSTALL_UNIX_FHS:BOOL=OFF)
+                    -DOPENSIM_INSTALL_UNIX_FHS:BOOL=${OPENSIM_INSTALL_UNIX_FHS})
 
 
 if(SUPERBUILD_opensim-core)
