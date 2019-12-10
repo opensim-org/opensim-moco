@@ -1,3 +1,10 @@
+- 2019-12-04: Updated the version of OpenSim used by Moco. As a result, we
+              removed the utility readTableFromFile(). Use the TimeSeriesTable 
+              constructor instead, which accepts a filename.
+              
+- 2019-12-04: Removed support for approximating GeometryPaths with a generic 
+              function.
+
 - 2019-12-02: Fixed multiple examples by updating "cost" to "goal", and other 
               such changes. Fixed exampleMocoTrack by ignoring tendon 
               compliance.
@@ -22,7 +29,7 @@
 - 2019-11-20: Added MocoAngularVelocityTrackingGoal and 
               MocoAccelerationTrackingGoal in anticipation of supporting 
               applications using IMU data in the future.
-              
+
 - 2019-11-18: Updates to report.py linewidth and legend formatting. 
 
 - 2019-11-18: Added support for automatic activation bounds for 
