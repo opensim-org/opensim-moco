@@ -1,3 +1,7 @@
+- 2019-12-10: Update the Simbody dependency to version 3.7.
+
+- 2019-12-08: Include support for OpenSim's C3DFileAdapter.
+
 - 2019-12-04: Updated the version of OpenSim used by Moco. As a result, we
               removed the utility readTableFromFile(). Use the TimeSeriesTable 
               constructor instead, which accepts a filename.
@@ -31,6 +35,9 @@
               applications using IMU data in the future.
 
 - 2019-11-18: Updates to report.py linewidth and legend formatting. 
+
+- 2019-11-18: Exporting controls to TimeSeriesTable via 
+              MocoTrajectory::exportToControlsTable().
 
 - 2019-11-18: Added support for automatic activation bounds for 
               ActivationCoordinateActuator.
