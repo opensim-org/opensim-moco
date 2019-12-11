@@ -120,6 +120,13 @@ if (MOCO_WITH_TROPTER)
     target_link_libraries(osimMoco PRIVATE tropter)
 endif ()
 
+if(APPLE)
+    find_library(LIBRT rt)
+    if(LIBRT)
+        target_link_libraries(osimMoco PRIVATE ${LIBRT})
+    endif()
+endif()
+
 target_include_directories(osimMoco INTERFACE
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/Moco>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
