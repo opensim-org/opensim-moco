@@ -1,7 +1,7 @@
 # -------------------------------------------------------------------------- #
-# OpenSim Moco: exampleSlidingMass.py                                        #
+# OpenSim Moco: exampleMocoCustomEffortGoal.py                               #
 # -------------------------------------------------------------------------- #
-# Copyright (c) 2017 Stanford University and the Authors                     #
+# Copyright (c) 2019 Stanford University and the Authors                     #
 #                                                                            #
 # Author(s): Christopher Dembia                                              #
 #                                                                            #
@@ -16,33 +16,27 @@
 # limitations under the License.                                             #
 # -------------------------------------------------------------------------- #
 
+# TODO document
+
 import os
 import opensim as osim
 
-model = osim.Model()
-model.setName('sliding_mass')
-model.set_gravity(osim.Vec3(0, 0, 0))
-body = osim.Body('body', 2.0, osim.Vec3(0), osim.Inertia(0))
-model.addComponent(body)
-
-# Allows translation along x.
-joint = osim.SliderJoint('slider', model.getGround(), body)
-coord = joint.updCoordinate()
-coord.setName('position')
-model.addComponent(joint)
-
-actu = osim.CoordinateActuator()
-actu.setCoordinate(coord)
-actu.setName('actuator')
-actu.setOptimalForce(1)
-model.addComponent(actu)
-
-body.attachGeometry(osim.Sphere(0.05))
-
-model.finalizeConnections()
+class MocoCustomEffortGoal(osim.MocoGoal):
+    def clone(self):
+        return MocoCustomEffortGoal(self)
+    def initializeOnModelImpl(self, model):
+        self.setNumIntegralsAndOutputs(1, 1)
+    def calcIntegrandImpl(self, state, integrand):
+        print("DEBUG MocoCustomEffortGoal")
+        self.getModel().realizeVelocity(state)
+        controls = self.getModel().getControls(state)
+        # TODO python: return values don't work like that?
+        integrand = controls.normSqr()
+    def calcGoalImpl(self, input, cost):
+        cost.set(0, input.integral)
 
 # Create MocoStudy.
-# ================
+# =================
 study = osim.MocoStudy()
 study.setName('sliding_mass')
 
@@ -52,7 +46,7 @@ problem = study.updProblem()
 
 # Model (dynamics).
 # -----------------
-problem.setModel(model)
+problem.setModel(osim.ModelFactory.createSlidingPointMass())
 
 # Bounds.
 # -------
@@ -66,19 +60,17 @@ problem.setStateInfo('/slider/position/value', osim.MocoBounds(-5, 5),
 problem.setStateInfo('/slider/position/speed', [-50, 50], [0], [0])
 
 # Applied force must be between -50 and 50.
-problem.setControlInfo('/actuator', osim.MocoBounds(-50, 50))
+problem.setControlInfo('/forceset/actuator', osim.MocoBounds(-50, 50))
 
 # Cost.
 # -----
-problem.addGoal(osim.MocoFinalTimeGoal())
+problem.addGoal(osim.MocoFinalTimeGoal('final_time'))
+# TODO document.
+problem.addGoal(MocoCustomEffortGoal())
 
 # Configure the solver.
 # =====================
-solver = study.initTropterSolver()
-solver.set_num_mesh_intervals(100)
-
-# Now that we've finished setting up the study, print it to a file.
-study.printToXML('sliding_mass.omoco')
+solver = study.initCasADiSolver()
 
 # Solve the problem.
 # ==================

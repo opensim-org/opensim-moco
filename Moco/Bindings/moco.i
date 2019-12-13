@@ -22,9 +22,16 @@ namespace OpenSim {
 %include <Moco/ModelProcessor.h>
 
 namespace OpenSim {
-    %ignore MocoGoal::GoalInput;
-    %ignore MocoGoal::calcGoal;
+    // TODO: Needed for the director.
+    // %ignore MocoGoal::GoalInput;
+    // %ignore MocoGoal::calcGoal;
+    // Avoid SWIG warning 473 about returning pointers/references in directors.
+    // TODO: invoked and necessary!?
+    %ignore MocoGoal::clone;
+    %ignore MocoGoal::getConcreteClassName;
 }
+// Allow creating subclasses of MocoGoal.
+%feature("director") OpenSim::MocoGoal;
 %include <Moco/MocoGoal/MocoGoal.h>
 %template(SetMocoWeight) OpenSim::Set<OpenSim::MocoWeight, OpenSim::Object>;
 %include <Moco/MocoWeightSet.h>

@@ -137,6 +137,8 @@ Model ModelFactory::createSlidingPointMass() {
     auto* body = new Body("body", 1.0, SimTK::Vec3(0), SimTK::Inertia(0));
     model.addComponent(body);
 
+    body->attachGeometry(new Sphere(0.05));
+
     // Allows translation along x.
     auto* joint = new SliderJoint("slider", model.getGround(), *body);
     auto& coord = joint->updCoordinate(SliderJoint::Coord::TranslationX);

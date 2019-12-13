@@ -52,7 +52,8 @@ public:
     /// - 1 body: mass 1.0 kg, `/bodyset/body`.
     /// - 1 joint: SliderJoint along x axis, `/jointset/slider`, with
     ///            coordinate `/jointset/slider/position`.
-    /// - 1 actuator: CoordinateActuator, controls [-10, 10], `/actuator`.
+    /// - 1 actuator: CoordinateActuator, controls [-10, 10],
+    ///               `/forceset/actuator`.
     static Model createSlidingPointMass();
 
     /// @}
