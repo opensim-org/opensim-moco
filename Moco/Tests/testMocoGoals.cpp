@@ -234,7 +234,7 @@ MocoStudy setupMocoStudyDoublePendulumMinimizeEffort() {
 }
 
 template <typename SolverType, typename TrackingType>
-void testDoublePendulumTracking(MocoStudy study, 
+void testDoublePendulumTracking(MocoStudy study,
         const MocoSolution& solutionEffort) {
     // Re-run problem, now setting effort cost function to a low weight and
     // adding a tracking cost.
@@ -247,7 +247,7 @@ void testDoublePendulumTracking(MocoStudy study,
     study.updSolver<SolverType>().resetProblem(problem);
     auto solutionTracking = study.solve();
     solutionTracking.write(
-            "testMocoGoals_" + TrackingType::getClassName() 
+            "testMocoGoals_" + TrackingType::getClassName()
             + "_tracking_solution.sto");
 
     // The tracking solution should match the effort solution.
@@ -666,4 +666,58 @@ TEMPLATE_TEST_CASE("Endpoint constraint with integral", "", MocoCasADiSolver) {
     // The endpoint constraint is that the sum of squared controls integrated
     // over the motion must be 0.
     CHECK(solution.getControlsTrajectory().norm() < 1e-3);
+}
+
+class MySumSquaredControls : public ModelComponent {
+    OpenSim_DECLARE_CONCRETE_OBJECT(MySumSquaredControls, ModelComponent);
+public:
+    OpenSim_DECLARE_OUTPUT(sum_squared_controls, double,
+            calcSumSquaredControls, SimTK::Stage::Velocity);
+    double calcSumSquaredControls(const SimTK::State& state) const {
+        getModel().realizeVelocity(state);
+        return getModel().getControls(state).normSqr();
+    }
+};
+TEST_CASE("MocoOutputGoal") {
+    auto createStudy = []() {
+        MocoStudy study;
+        study.setName("sliding_mass");
+        MocoProblem& problem = study.updProblem();
+        problem.setModel(createSlidingMassModel());
+        problem.setTimeBounds(0, {0, 5});
+        problem.setStateInfo("/slider/position/value", {0, 1}, 0, 1);
+        problem.setStateInfo("/slider/position/speed", {-100, 100}, 0, 0);
+        problem.setControlInfo("/actuator", MocoBounds(-10, 10));
+        return study;
+    };
+
+    MocoSolution solutionControl;
+    {
+        auto study = createStudy();
+        auto& problem = study.updProblem();
+        problem.addGoal<MocoControlGoal>();
+        auto& solver = study.initCasADiSolver();
+        solver.set_num_mesh_intervals(10);
+        solutionControl = study.solve();
+    }
+    MocoSolution solutionOutput;
+    {
+        auto study = createStudy();
+        auto& problem = study.updProblem();
+        auto model = createSlidingMassModel();
+
+        auto* component = new MySumSquaredControls();
+        component->setName("mysumsquaredcontrols");
+        model->addComponent(component);
+        problem.setModel(std::move(model));
+
+        auto* goal = problem.addGoal<MocoOutputGoal>();
+        goal->setOutputPath("/mysumsquaredcontrols|sum_squared_controls");
+
+        auto& solver = study.initCasADiSolver();
+        solver.set_num_mesh_intervals(10);
+        solutionOutput = study.solve();
+    }
+
+    CHECK(solutionControl.isNumericallyEqual(solutionOutput, 1e-5));
 }
