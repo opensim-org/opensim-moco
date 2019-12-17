@@ -920,14 +920,6 @@ StatesTrajectory MocoTrajectory::exportToStatesTrajectory(
 StatesTrajectory MocoTrajectory::exportToStatesTrajectory(
         const Model& model) const {
     ensureUnsealed();
-    // TODO update when we support multiple phases.
-    const auto& model = problem.getPhase(0).getModelProcessor().process();
-    return exportToStatesTrajectory(model);
-}
-
-StatesTrajectory MocoTrajectory::exportToStatesTrajectory(
-        const Model& model) const {
-    ensureUnsealed();
     Storage storage = exportToStatesStorage();
     // TODO update when we support multiple phases.
     return StatesTrajectory::createFromStatesStorage(model, storage, true);
