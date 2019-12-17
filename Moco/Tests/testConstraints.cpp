@@ -1600,7 +1600,7 @@ TEMPLATE_TEST_CASE(
     }
 }
 
-TEMPLATE_TEST_CASE("MocoMinimumDistanceConstraint", "", MocoTropterSolver, 
+TEMPLATE_TEST_CASE("MocoFrameDistanceConstraint", "", MocoTropterSolver, 
         MocoCasADiSolver) {
     using SimTK::Pi;
 
@@ -1644,9 +1644,10 @@ TEMPLATE_TEST_CASE("MocoMinimumDistanceConstraint", "", MocoTropterSolver,
     problem.setStateInfo("/jointset/gimbal/qz/speed", {-10, 10}, 0, 0);
 
     auto* distanceConstraint = 
-        problem.addPathConstraint<MocoMinimumDistanceConstraint>();
+        problem.addPathConstraint<MocoFrameDistanceConstraint>();
     const double distance = 0.1;
-    distanceConstraint->addFramePair({"/ground", "/bodyset/body", distance});
+    distanceConstraint->addFramePair({"/ground", "/bodyset/body", distance,
+        SimTK::Infinity});
 
     auto* finalMarkerGoal =
             problem.addGoal<MocoMarkerFinalGoal>("final_marker");
@@ -1654,7 +1655,7 @@ TEMPLATE_TEST_CASE("MocoMinimumDistanceConstraint", "", MocoTropterSolver,
     finalMarkerGoal->setReferenceLocation(Vec3(0, 0.292893, 0.707107));
 
     study.initSolver<TestType>();
-    MocoSolution solution = study.solve().unseal();
+    MocoSolution solution = study.solve();
     //study.visualize(solution);
 
     TimeSeriesTableVec3 positionTable = analyze<SimTK::Vec3>(model, solution, 
@@ -1662,6 +1663,8 @@ TEMPLATE_TEST_CASE("MocoMinimumDistanceConstraint", "", MocoTropterSolver,
     SimTK::Vec3 position;
     for (int irow = 0; irow < (int)positionTable.getNumRows(); ++irow) {
         position = positionTable.getRowAtIndex(irow)[0];
-        CHECK(position.norm() >= distance);
+        // The margin is looser than the constraint tolerance because the
+        // constraint is on the square of the distance.
+        CHECK(Approx(position.norm()).margin(1e-3) >= distance);
     }
 }

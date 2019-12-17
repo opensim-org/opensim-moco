@@ -30,7 +30,7 @@
 #include "MocoBounds.h"
 #include "MocoCasADiSolver/MocoCasADiSolver.h"
 #include "MocoControlBoundConstraint.h"
-#include "MocoMinimumDistanceConstraint.h"
+#include "MocoFrameDistanceConstraint.h"
 #include "MocoGoal/MocoAccelerationTrackingGoal.h"
 #include "MocoGoal/MocoAngularVelocityTrackingGoal.h"
 #include "MocoGoal/MocoControlGoal.h"
@@ -48,8 +48,6 @@
 #include "MocoGoal/MocoStateTrackingGoal.h"
 #include "MocoGoal/MocoSumSquaredStateGoal.h"
 #include "MocoGoal/MocoTranslationTrackingGoal.h"
-#include "MocoGoal/MocoAngularVelocityTrackingGoal.h"
-#include "MocoGoal/MocoAccelerationTrackingGoal.h"
 #include "MocoInverse.h"
 #include "MocoParameter.h"
 #include "MocoProblem.h"
@@ -104,7 +102,7 @@ OSIMMOCO_API void RegisterTypes_osimMoco() {
         Object::registerType(MocoTropterSolver());
 
         Object::registerType(MocoControlBoundConstraint());
-        Object::registerType(MocoMinimumDistanceConstraint());
+        Object::registerType(MocoFrameDistanceConstraint());
 
         Object::registerType(MocoCasADiSolver());
 

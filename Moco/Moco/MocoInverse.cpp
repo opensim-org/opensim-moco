@@ -18,9 +18,7 @@
 
 #include "MocoInverse.h"
 
-#include "Components/ModelFactory.h"
 #include "Components/PositionMotion.h"
-#include "Components/ModelFactory.h"
 #include "MocoCasADiSolver/MocoCasADiSolver.h"
 #include "MocoGoal/MocoControlGoal.h"
 #include "MocoGoal/MocoInitialActivationGoal.h"
@@ -28,9 +26,6 @@
 #include "MocoProblem.h"
 #include "MocoStudy.h"
 #include "MocoUtilities.h"
-
-#include <OpenSim/Tools/InverseDynamicsTool.h>
-#include <OpenSim/Actuators/CoordinateActuator.h>
 
 using namespace OpenSim;
 
@@ -120,24 +115,6 @@ std::pair<MocoStudy, TimeSeriesTable> MocoInverse::initializeInternal() const {
     if (!getProperty_max_iterations().empty()) {
         solver.set_optim_max_iterations(get_max_iterations());
     }
-
-    // MocoTrajectory guess = solver.createGuess();
-    // int N = guess.getNumTimes();
-    // double guessValue = 0.05;
-    // for (const auto& muscle : model.getComponentList<Muscle>()) {
-    //     if (muscle.get_appliesForce()) {
-    //         // TODO: base on upper and lower bounds.
-    //         guess.setControl(muscle.getAbsolutePathString(),
-    //                 SimTK::Vector(N, guessValue));
-    //         if (!muscle.get_ignore_activation_dynamics()) {
-    //             guess.setState(muscle.getAbsolutePathString() + "/activation",
-    //                     SimTK::Vector(N, guessValue));
-    //         }
-    //     }
-    // }
-    // solver.setGuess(guess);
-
-
     return std::make_pair(
             study, posmotPtr->exportToTable(kinematics.getIndependentColumn()));
 }

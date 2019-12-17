@@ -58,7 +58,7 @@ namespace OpenSim {
 %include <Moco/MocoConstraint.h>
 
 %include <Moco/MocoControlBoundConstraint.h>
-%include <Moco/MocoMinimumDistanceConstraint.h>
+%include <Moco/MocoFrameDistanceConstraint.h>
 
 // unique_ptr
 // ----------
@@ -223,4 +223,3 @@ moco_unique_ptr(OpenSim::PositionMotion);
 %include <Moco/Components/MultivariatePolynomialFunction.h>
 
 %include <Moco/ModelOperators.h>
-

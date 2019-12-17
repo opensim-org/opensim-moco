@@ -14,7 +14,7 @@
 #include <Moco/MocoBounds.h>
 #include <Moco/MocoCasADiSolver/MocoCasADiSolver.h>
 #include <Moco/MocoControlBoundConstraint.h>
-#include <Moco/MocoMinimumDistanceConstraint.h>
+#include <Moco/MocoFrameDistanceConstraint.h>
 #include <Moco/MocoGoal/MocoControlGoal.h>
 #include <Moco/MocoGoal/MocoGoal.h>
 #include <Moco/MocoGoal/MocoInitialActivationGoal.h>
@@ -29,8 +29,6 @@
 #include <Moco/MocoGoal/MocoStateTrackingGoal.h>
 #include <Moco/MocoGoal/MocoSumSquaredStateGoal.h>
 #include <Moco/MocoGoal/MocoTranslationTrackingGoal.h>
-#include <Moco/MocoGoal/MocoInitialForceEquilibriumGoal.h>
-#include <Moco/MocoGoal/MocoInitialVelocityEquilibriumDGFGoal.h>
 #include <Moco/MocoInverse.h>
 #include <Moco/MocoParameter.h>
 #include <Moco/MocoProblem.h>
