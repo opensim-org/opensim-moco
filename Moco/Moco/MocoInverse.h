@@ -84,8 +84,8 @@ private:
 /// - optim_finite_difference_scheme: forward
 ///
 /// MocoInverse minimizes the sum of squared controls and, optionally, the sum
-/// of squared activations. Currently, the costs used by MocoInverse cannot be 
-/// customized. As MocoInverse becomes more mature and general, the costs will 
+/// of squared activations. Currently, the costs used by MocoInverse cannot be
+/// customized. As MocoInverse becomes more mature and general, the costs will
 /// become more flexible.
 ///
 /// Mesh interval
@@ -127,9 +127,9 @@ public:
             "Outputs to compute after solving the problem."
             " Entries can be regular expressions (e.g., '.*activation').");
 
-    OpenSim_DECLARE_PROPERTY(reserves_weight, double, 
-            "The weight applied to the control for any CoordinateActuators in "
-            "model whose names begin with 'reserve_'. This can be used with "
+    OpenSim_DECLARE_PROPERTY(reserves_weight, double,
+            "The weight applied to the controls whose name includes "
+            "'/reserve_'. This can be used with "
             "the model operator ModOpAddReserves, which names each appended "
             "actuator in this format. Default weight: 1.")
 

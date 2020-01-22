@@ -23,7 +23,6 @@
 #include "Components/ActivationCoordinateActuator.h"
 #include "Components/DeGrooteFregly2016Muscle.h"
 #include "Components/DiscreteForces.h"
-#include "Components/MinettiAlexander1997Metabolics.h"
 #include "Components/MultivariatePolynomialFunction.h"
 #include "Components/PositionMotion.h"
 #include "Components/SmoothBhargava2004Metabolics.h"
@@ -32,6 +31,9 @@
 #include "MocoBounds.h"
 #include "MocoCasADiSolver/MocoCasADiSolver.h"
 #include "MocoControlBoundConstraint.h"
+#include "MocoFrameDistanceConstraint.h"
+#include "MocoGoal/MocoAccelerationTrackingGoal.h"
+#include "MocoGoal/MocoAngularVelocityTrackingGoal.h"
 #include "MocoGoal/MocoControlGoal.h"
 #include "MocoGoal/MocoControlTrackingGoal.h"
 #include "MocoGoal/MocoGoal.h"
@@ -42,6 +44,7 @@
 #include "MocoGoal/MocoMarkerFinalGoal.h"
 #include "MocoGoal/MocoMarkerTrackingGoal.h"
 #include "MocoGoal/MocoOrientationTrackingGoal.h"
+#include "MocoGoal/MocoOutputGoal.h"
 #include "MocoGoal/MocoPeriodicityGoal.h"
 #include "MocoGoal/MocoStateTrackingGoal.h"
 #include "MocoGoal/MocoSumSquaredStateGoal.h"
@@ -80,8 +83,11 @@ OSIMMOCO_API void RegisterTypes_osimMoco() {
         Object::registerType(MocoJointReactionGoal());
         Object::registerType(MocoOrientationTrackingGoal());
         Object::registerType(MocoTranslationTrackingGoal());
+        Object::registerType(MocoAngularVelocityTrackingGoal());
+        Object::registerType(MocoAccelerationTrackingGoal());
         Object::registerType(MocoPeriodicityGoalPair());
         Object::registerType(MocoPeriodicityGoal());
+        Object::registerType(MocoOutputGoal());
         Object::registerType(MocoBounds());
         Object::registerType(MocoInitialBounds());
         Object::registerType(MocoFinalBounds());
@@ -97,6 +103,7 @@ OSIMMOCO_API void RegisterTypes_osimMoco() {
         Object::registerType(MocoTropterSolver());
 
         Object::registerType(MocoControlBoundConstraint());
+        Object::registerType(MocoFrameDistanceConstraint());
 
         Object::registerType(MocoCasADiSolver());
 
@@ -105,6 +112,7 @@ OSIMMOCO_API void RegisterTypes_osimMoco() {
         Object::registerType(TableProcessor());
 
         Object::registerType(TabOpLowPassFilter());
+        Object::registerType(TabOpUseAbsoluteStateNames());
 
         Object::registerType(ModelProcessor());
         Object::registerType(ModOpReplaceMusclesWithDeGrooteFregly2016());
@@ -124,7 +132,6 @@ OSIMMOCO_API void RegisterTypes_osimMoco() {
         Object::registerType(PositionMotion());
         Object::registerType(DeGrooteFregly2016Muscle());
         Object::registerType(SmoothSphereHalfSpaceForce());
-        Object::registerType(MinettiAlexander1997Metabolics());
         Object::registerType(MultivariatePolynomialFunction());
         Object::registerType(SmoothBhargava2004Metabolics());
 
@@ -137,7 +144,7 @@ OSIMMOCO_API void RegisterTypes_osimMoco() {
         Object::registerType(Set<MarkerWeight>());
     } catch (const std::exception& e) {
         std::cerr << "ERROR during osimMoco Object registration:\n"
-                << e.what() << std::endl;
+                  << e.what() << std::endl;
     }
 }
 

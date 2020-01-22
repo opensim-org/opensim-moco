@@ -98,6 +98,19 @@ accelerations. These are stored in the trajectory as derivative variables. */
 class OSIMMOCO_API MocoTrajectory {
 public:
     MocoTrajectory() = default;
+    /// Create a trajectory with no data. To add data, use setNumTimes(),
+    /// setTime(), and the other setters.
+    MocoTrajectory(std::vector<std::string> state_names,
+            std::vector<std::string> control_names,
+            std::vector<std::string> multiplier_names,
+            std::vector<std::string> parameter_names);
+    /// Create a trajectory (including columns for derivatives) with no data.
+    /// To add data, use setNumTimes(), setTime(), and the other setters.
+    MocoTrajectory(std::vector<std::string> state_names,
+            std::vector<std::string> control_names,
+            std::vector<std::string> multiplier_names,
+            std::vector<std::string> derivative_names,
+            std::vector<std::string> parameter_names);
     MocoTrajectory(const SimTK::Vector& time,
             std::vector<std::string> state_names,
             std::vector<std::string> control_names,
@@ -159,7 +172,7 @@ public:
             auto leafpos = name.find("/value");
             if (leafpos != std::string::npos) return true;
         }
-        return false;    
+        return false;
     }
 
     /// @name Change the length of the trajectory
@@ -376,8 +389,8 @@ public:
     /// GCV splines to match the times in this trajectory. By default, we do not
     /// overwrite data for controls that already exist in the trajectory; you
     /// can change this behavior with `overwrite`.
-    void insertControlsTrajectory(const TimeSeriesTable& subsetOfControls,
-            bool overwrite = false);
+    void insertControlsTrajectory(
+            const TimeSeriesTable& subsetOfControls, bool overwrite = false);
 
     /// Compute coordinate speeds based on coordinate position values and append
     /// to the trajectory. Coordinate values must exist in the original
@@ -490,11 +503,18 @@ public:
     /// @name Comparisons
     /// @{
 
-    /// Do the state and control names in this trajectory match those in the
-    /// problem? This may not catch all possible incompatibilities.
-    /// The problem and this trajectory can still be compatible even if the
-    /// trajectory contains no derivative columns.
-    bool isCompatible(const MocoProblemRep&, bool throwOnError = false) const;
+    /// Do the state, control, multiplier, derivative, and parameter names in
+    /// this trajectory match those in the problem? This may not catch all
+    /// possible incompatibilities. If the trajectory should have generalized
+    /// accelerations (for implicit multibody dynamics mode), set
+    /// requireAccelerations to true.
+    /// To throw an exception with a detailed message if the problem is not
+    /// compatible, pass throwOnError as true. To get the detailed message
+    /// without an exception, set the Object debug level to a level greater than
+    /// 0 (e.g., `Object::setDebugLevel(1)` in C++, and
+    /// `OpenSimObject.setDebugLevel(1)` in MATLAB/Python).
+    bool isCompatible(const MocoProblemRep&, bool requireAccelerations = false,
+            bool throwOnError = false) const;
     /// Check if this trajectory is numerically equal to another trajectory.
     /// This uses SimTK::Test::numericallyEqual() internally.
     /// Accordingly, the tolerance is both a relative and absolute tolerance
@@ -542,6 +562,13 @@ public:
     double compareContinuousVariablesRMS(const MocoTrajectory& other,
             std::map<std::string, std::vector<std::string>> columnsToUse = {})
             const;
+    /// This is an alternative interface for compareContinuousVariablesRMS()
+    /// that uses regular expression patterns to select columns. The parameter
+    /// columnType is "states", "controls", "multipliers", or "derivatives".
+    /// All columns for the provided column type whose entire name matches the
+    /// provided regular expression are included in the root-mean-square.
+    double compareContinuousVariablesRMSPattern(const MocoTrajectory& other,
+            std::string columnType, std::string pattern) const;
     /// Compute the root-mean-square error between the parameters in this
     /// trajectory and another. The RMS is computed by dividing the the sum of
     /// the squared errors between corresponding parameters and then dividing by
@@ -566,10 +593,15 @@ public:
     Storage exportToStatesStorage() const;
     /// Same as exportToStatesStorage() except using TimeSeriesTable.
     TimeSeriesTable exportToStatesTable() const;
+    /// Export the controls trajectory to a TimeSeriesTable.
+    TimeSeriesTable exportToControlsTable() const;
     /// Controls are not carried over to the StatesTrajectory.
     /// The MocoProblem is necessary because we need the underlying Model to
     /// order the state variables correctly.
     StatesTrajectory exportToStatesTrajectory(const MocoProblem&) const;
+    /// This is similar to the above function but requires only a model, not
+    /// a MocoProblem.
+    StatesTrajectory exportToStatesTrajectory(const Model&) const;
     /// @}
 
     /// @name Modify the data
@@ -685,6 +717,7 @@ private:
     // We use "seal" instead of "lock" because locks have a specific meaning
     // with threading (e.g., std::unique_lock()).
     bool m_sealed = false;
+    static const std::vector<std::string> m_allowedKeys;
 };
 
 /// Return type for MocoStudy::solve(). Use success() to check if the solver
@@ -700,8 +733,9 @@ private:
 /// If the solver was not successful, then this object is "sealed", which
 /// means you cannot do anything with it until calling `unseal()`. This
 /// prevents you from silently proceeding with a failed solution.
-/// Solver success can also be found in the header of a solution (.sto) file
-/// written out by write.
+/// In the file written by write(), the header contains solver success, the
+/// objective, the individual terms in the objective (including the weight),
+/// the breakdown of the objective, and other quantities.
 class OSIMMOCO_API MocoSolution : public MocoTrajectory {
 public:
     /// Returns a dynamically-allocated copy of this solution. You must manage
@@ -713,7 +747,10 @@ public:
     /// Was the problem solved successfully? If not, then you cannot access
     /// the solution until you call unlock().
     bool success() const { return m_success; }
-    double getObjective() const { return m_objective; }
+    double getObjective() const {
+        ensureUnsealed();
+        return m_objective;
+    }
     /// Same as success().
     explicit operator bool() const { return success(); }
     /// Obtain a solver-dependent string describing the return status of the
@@ -721,10 +758,48 @@ public:
     const std::string& getStatus() const { return m_status; }
     /// Number of solver iterations at which this solution was obtained
     /// (-1 if not set).
-    int getNumIterations() const { return m_numIterations; }
+    int getNumIterations() const {
+        ensureUnsealed();
+        return m_numIterations;
+    }
     /// Get the amount of time (clock time, not CPU time) spent within solve().
     /// Units: seconds.
-    double getSolverDuration() const { return m_solverDuration; }
+    double getSolverDuration() const {
+        ensureUnsealed();
+        return m_solverDuration;
+    }
+
+    /// @name Breakdown of objective
+    /// Some solvers provide a breakdown of the terms in the objective. Use
+    /// these functions to access this breakdown. Some terms may come from
+    /// MocoGoals in the problem, while other terms may be added by the solver.
+    /// @{
+
+    /// Returns the number of terms in the objective. If the solver did not
+    /// provide this breakdown, then this returns 0.
+    int getNumObjectiveTerms() const {
+        ensureUnsealed();
+        return (int)m_objectiveBreakdown.size();
+    }
+    /// Get the names of all terms in the objective (either from MocoGoals in
+    /// the problem or added by the solver). Terms from MocoGoals are named with
+    /// the name of the associated MocoGoal. If the solver did not provide this
+    /// breakdown, then this returns an empty vector.
+    std::vector<std::string> getObjectiveTermNames() const;
+
+    /// Get the value of a term in the objective by name. See
+    /// getObjectiveTermNames().
+    /// The value includes the weight on the term.
+    double getObjectiveTerm(const std::string& name) const;
+
+    /// Get the value of a term in the objective, using an index. The order of
+    /// terms is the same as in getObjectiveTermNames().
+    /// The value includes the weight on the term.
+    double getObjectiveTermByIndex(int index) const;
+
+    /// Print to the console the terms in the objective and their values.
+    void printObjectiveBreakdown() const;
+    /// @}
 
     /// @name Access control
     /// @{
@@ -758,6 +833,10 @@ private:
         m_success = success;
     }
     void setObjective(double objective) { m_objective = objective; }
+    void setObjectiveBreakdown(
+            std::vector<std::pair<std::string, double>> breakdown) {
+        m_objectiveBreakdown = std::move(breakdown);
+    }
     void setStatus(std::string status) { m_status = std::move(status); }
     void setNumIterations(int numIterations) {
         m_numIterations = numIterations;
@@ -766,6 +845,7 @@ private:
     void convertToTableImpl(TimeSeriesTable&) const override;
     bool m_success = true;
     double m_objective = -1;
+    std::vector<std::pair<std::string, double>> m_objectiveBreakdown;
     std::string m_status;
     int m_numIterations = -1;
     double m_solverDuration = -1;

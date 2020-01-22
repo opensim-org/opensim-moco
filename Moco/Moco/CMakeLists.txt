@@ -42,6 +42,10 @@ set(MOCO_SOURCES
         MocoGoal/MocoOutputGoal.cpp
         MocoGoal/MocoTranslationTrackingGoal.h
         MocoGoal/MocoTranslationTrackingGoal.cpp
+        MocoGoal/MocoAngularVelocityTrackingGoal.h
+        MocoGoal/MocoAngularVelocityTrackingGoal.cpp
+        MocoGoal/MocoAccelerationTrackingGoal.h
+        MocoGoal/MocoAccelerationTrackingGoal.cpp
         MocoGoal/MocoInitialActivationGoal.cpp
         MocoGoal/MocoInitialActivationGoal.h
         MocoGoal/MocoInitialVelocityEquilibriumDGFGoal.h
@@ -64,6 +68,8 @@ set(MOCO_SOURCES
         MocoConstraint.cpp
         MocoControlBoundConstraint.cpp
         MocoControlBoundConstraint.h
+        MocoFrameDistanceConstraint.h
+        MocoFrameDistanceConstraint.cpp
         Components/DeGrooteFregly2016Muscle.h
         Components/DeGrooteFregly2016Muscle.cpp
         Components/SmoothSphereHalfSpaceForce.h
@@ -73,8 +79,6 @@ set(MOCO_SOURCES
         Components/StationPlaneContactForce.cpp
         Components/PositionMotion.h
         Components/PositionMotion.cpp
-        Components/MinettiAlexander1997Metabolics.h
-        Components/MinettiAlexander1997Metabolics.cpp
         Components/ModelFactory.h
         Components/ModelFactory.cpp
         Components/DiscreteForces.h
@@ -112,7 +116,8 @@ set(MOCO_SOURCES
         MocoTool.cpp
         MocoConstraintInfo.h
         MocoConstraintInfo.cpp
-        )
+        MocoStudyFactory.h
+        MocoStudyFactory.cpp)
 if (MOCO_WITH_TROPTER)
     list(APPEND MOCO_SOURCES
             tropter/TropterProblem.h
@@ -140,7 +145,7 @@ if (MOCO_WITH_TROPTER)
 endif ()
 target_compile_definitions(osimMoco PRIVATE
         OPENSIM_MOCO_VERSION=${MOCO_FULL_VERSION}
-)
+        )
 
 MocoAddInstallRPATHSelf(TARGET osimMoco LOADER)
 MocoAddInstallRPATHSimbody(TARGET osimMoco LOADER

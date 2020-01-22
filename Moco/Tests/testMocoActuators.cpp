@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- *
- * OpenSim Moco: testDeGrooteFregly2016Muscle.cpp                             *
+ * OpenSim Moco: testMocoActuators.cpp                                        *
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2019 Stanford University and the Authors                     *
  *                                                                            *
@@ -931,50 +931,6 @@ TEST_CASE("DeGrooteFregly2016Muscle basics") {
         }
     }
 
-    SECTION("solveBisection()") {
-
-        // solveBisection().
-        // -----------------
-        {
-            auto calcResidual = [](const SimTK::Real& x) { return x - 3.78; };
-            {
-                const auto root =
-                        muscle.solveBisection(calcResidual, -5, 5, 1e-6, 1e-12);
-                SimTK_TEST_EQ_TOL(root, 3.78, 1e-6);
-                // Make sure the x tolerance has an effect.
-                SimTK_TEST_NOTEQ_TOL(root, 3.78, 1e-10);
-            }
-            {
-                const auto root = muscle.solveBisection(
-                        calcResidual, -5, 5, 1e-10, 1e-12);
-                SimTK_TEST_EQ_TOL(root, 3.78, 1e-10);
-            }
-            // Make sure the y tolerance has an effect.
-            {
-                const auto root =
-                        muscle.solveBisection(calcResidual, -5, 5, 1e-12, 1e-4);
-                const auto residual = calcResidual(root);
-                SimTK_TEST_EQ_TOL(residual, 0, 1e-4);
-                // Make sure the x tolerance has an effect.
-                SimTK_TEST_NOTEQ_TOL(residual, 0, 1e-10);
-            }
-            {
-                const auto root = muscle.solveBisection(
-                        calcResidual, -5, 5, 1e-12, 1e-10);
-                const auto residual = calcResidual(root);
-                SimTK_TEST_EQ_TOL(residual, 0, 1e-10);
-            }
-        }
-        // Multiple roots.
-        {
-            auto parabola = [](const SimTK::Real& x) {
-                return SimTK::square(x - 2.5);
-            };
-            REQUIRE_THROWS_AS(
-                    muscle.solveBisection(parabola, -5, 5), Exception);
-        }
-    }
-
     // getActivation(), setActivation()
     // --------------------------------
     SECTION("getActivation(), setActivation()") {
@@ -1027,7 +983,7 @@ Model createHangingMuscleModel(
 TEMPLATE_TEST_CASE("Hanging muscle minimum time", "", MocoCasADiSolver) {
     auto ignoreActivationDynamics = GENERATE(true, false);
     auto ignoreTendonCompliance = GENERATE(true, false);
-    auto isTendonDynamicsExplicit = GENERATE(true, false);
+    auto isTendonDynamicsExplicit = GENERATE(false);
 
     // TODO: Some problem has a bad initial guess and the constraint violation
     // goes to 1e+14. Maybe the bounds on the coordinate should be tighter.
@@ -1203,4 +1159,24 @@ TEMPLATE_TEST_CASE("Hanging muscle minimum time", "", MocoCasADiSolver) {
                 solutionTrack.compareContinuousVariablesRMS(solutionTrajOpt);
         CHECK(error < 0.015);
     }
+}
+
+TEST_CASE("ActivationCoordinateActuator") {
+    // TODO create a problem with ACA and ensure the activation bounds are
+    // set as expected.
+    auto model = ModelFactory::createSlidingPointMass();
+    auto* actu = new ActivationCoordinateActuator();
+    actu->setName("aca");
+    actu->setCoordinate(&model.updCoordinateSet().get("position"));
+    actu->setMinControl(-0.31);
+    actu->setMaxControl(0.78);
+    model.addForce(actu);
+    MocoStudy study;
+    auto& problem = study.updProblem();
+    problem.setModelCopy(model);
+    auto rep = problem.createRep();
+    CHECK(rep.getStateInfo("/forceset/aca/activation").getBounds().getLower() ==
+            Approx(-0.31));
+    CHECK(rep.getStateInfo("/forceset/aca/activation").getBounds().getUpper() ==
+            Approx(0.78));
 }
