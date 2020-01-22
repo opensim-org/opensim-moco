@@ -196,6 +196,7 @@ double SmoothBhargava2004Metabolics::getMuscleMetabolicRate(
 }
 
 void SmoothBhargava2004Metabolics::extendConnectToModel(Model& model) {
+    Super::extendConnectToModel(model);
     m_muscleParameters.clear();
     m_muscleIndices.clear();
     int nM = getProperty_muscle_parameters().size();
@@ -211,7 +212,8 @@ void SmoothBhargava2004Metabolics::extendConnectToModel(Model& model) {
 }
 
 void SmoothBhargava2004Metabolics::extendAddToSystem(
-        SimTK::MultibodySystem&) const {
+        SimTK::MultibodySystem& system) const {
+    Super::extendAddToSystem(system);
     addCacheVariable<SimTK::Vector>("metabolic_rate",
             SimTK::Vector((int)m_muscleParameters.size(), 0.0),
                     SimTK::Stage::Velocity);

@@ -180,10 +180,10 @@ public:
 private:
 
     void constructProperties();
-    void extendConnectToModel(Model&) override;
-    void extendAddToSystem(SimTK::MultibodySystem&) const override;
+    void extendConnectToModel(Model& model) override;
+    void extendAddToSystem(SimTK::MultibodySystem& system) const override;
     const SimTK::Vector& getMetabolicRate(const SimTK::State& s) const;
-    void calcMetabolicRate(const SimTK::State& s, SimTK::Vector&) const;
+    void calcMetabolicRate(const SimTK::State& s, SimTK::Vector& ratesForMuscles) const;
     mutable std::vector<SimTK::ReferencePtr<const
         SmoothBhargava2004Metabolics_MuscleParameters>> m_muscleParameters;
     mutable std::unordered_map<std::string, int> m_muscleIndices;
