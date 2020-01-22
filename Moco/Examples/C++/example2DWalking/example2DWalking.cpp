@@ -196,9 +196,7 @@ MocoSolution gaitTracking() {
     metabolics->addMuscle(tib_ant_l_parameters);
     baseModel.addComponent(metabolics);
 
-    ModelProcessor modelprocessor =
-            ModelProcessor(baseModel) |
-            ModOpSetPathLengthApproximation(setPathLengthApproximation);
+    ModelProcessor modelprocessor = ModelProcessor(baseModel);
     track.setModel(modelprocessor);
     track.setStatesReference(
             TableProcessor("referenceCoordinates.sto") | TabOpLowPassFilter(6));
