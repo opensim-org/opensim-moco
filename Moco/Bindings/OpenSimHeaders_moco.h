@@ -7,7 +7,6 @@
 #include <Moco/Common/TableProcessor.h>
 #include <Moco/Components/ActivationCoordinateActuator.h>
 #include <Moco/Components/DeGrooteFregly2016Muscle.h>
-#include <Moco/Components/MinettiAlexander1997Metabolics.h>
 #include <Moco/Components/ModelFactory.h>
 #include <Moco/Components/MultivariatePolynomialFunction.h>
 #include <Moco/Components/PositionMotion.h>
