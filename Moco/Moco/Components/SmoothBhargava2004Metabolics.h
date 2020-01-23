@@ -66,11 +66,13 @@ public:
             const std::string& name,
             const Muscle& muscle,
             double ratio_slow_twitch_fibers,
+            double specific_tension,
             double muscle_mass = SimTK::NaN);
     SmoothBhargava2004Metabolics_MuscleParameters(
         const std::string& name,
         const Muscle& muscle,
         double ratio_slow_twitch_fibers,
+        double specific_tension,
         double activation_constant_slow_twitch,
         double activation_constant_fast_twitch,
         double maintenance_constant_slow_twitch,
@@ -168,10 +170,20 @@ public:
 
     int getNumMetabolicMuscles() const;
 
-    void addMuscle(
-            SmoothBhargava2004Metabolics_MuscleParameters muscle_parameters) {
+    //void addMuscle(
+    //        SmoothBhargava2004Metabolics_MuscleParameters muscle_parameters) {
+    //    append_muscle_parameters(std::move(muscle_parameters));
+    //};
+
+    void addMuscle(const std::string& name, const Muscle& muscle,
+            double ratio_slow_twitch_fibers, double specific_tension,
+            double muscle_mass = SimTK::NaN) {
+
+        SmoothBhargava2004Metabolics_MuscleParameters muscle_parameters(name,
+                muscle, ratio_slow_twitch_fibers, specific_tension,
+                muscle_mass);
         append_muscle_parameters(std::move(muscle_parameters));
-    };
+    }
 
     double getTotalMetabolicRate(const SimTK::State& s) const;
     double getMuscleMetabolicRate(

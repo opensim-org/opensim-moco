@@ -82,7 +82,15 @@ MocoSolution gaitTracking() {
     double soleus_specific_tension = 0.62703;
     double tib_ant_specific_tension = 0.75417;
 
-    SmoothBhargava2004Metabolics_MuscleParameters hamstrings_r_parameters(
+    SmoothBhargava2004Metabolics* metabolics =
+        new SmoothBhargava2004Metabolics(true, true, true, true, true);
+    metabolics->get_use_fiber_length_dependence_on_maintenance_rate(false);
+    metabolics->addMuscle("hamstrings_r",
+            baseModel.getComponent<Muscle>("hamstrings_r"),
+            hamstrings_ratio_slow_twitch_fibers,
+            hamstrings_specific_tension, SimTK::NaN);
+
+    /*SmoothBhargava2004Metabolics_MuscleParameters hamstrings_r_parameters(
                 "hamstrings_r",
                 baseModel.getComponent<Muscle>("hamstrings_r"),
                 hamstrings_ratio_slow_twitch_fibers, SimTK::NaN);
@@ -193,7 +201,7 @@ MocoSolution gaitTracking() {
     metabolics->addMuscle(soleus_r_parameters);
     metabolics->addMuscle(soleus_l_parameters);
     metabolics->addMuscle(tib_ant_r_parameters);
-    metabolics->addMuscle(tib_ant_l_parameters);
+    metabolics->addMuscle(tib_ant_l_parameters);*/
     baseModel.addComponent(metabolics);
 
     ModelProcessor modelprocessor = ModelProcessor(baseModel);
