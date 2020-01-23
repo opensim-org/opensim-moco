@@ -62,22 +62,22 @@ public:
             "connected.");
 
     SmoothBhargava2004Metabolics_MuscleParameters();
-    SmoothBhargava2004Metabolics_MuscleParameters(
-            const std::string& name,
-            const Muscle& muscle,
-            double ratio_slow_twitch_fibers,
-            double specific_tension,
-            double muscle_mass = SimTK::NaN);
-    SmoothBhargava2004Metabolics_MuscleParameters(
-        const std::string& name,
-        const Muscle& muscle,
-        double ratio_slow_twitch_fibers,
-        double specific_tension,
-        double activation_constant_slow_twitch,
-        double activation_constant_fast_twitch,
-        double maintenance_constant_slow_twitch,
-        double maintenance_constant_fast_twitch,
-        double muscle_mass = SimTK::NaN);
+    //SmoothBhargava2004Metabolics_MuscleParameters(
+    //        const std::string& name,
+    //        const Muscle& muscle,
+    //        double ratio_slow_twitch_fibers,
+    //        double specific_tension,
+    //        double muscle_mass = SimTK::NaN);
+    //SmoothBhargava2004Metabolics_MuscleParameters(
+    //    const std::string& name,
+    //    const Muscle& muscle,
+    //    double ratio_slow_twitch_fibers,
+    //    double specific_tension,
+    //    double activation_constant_slow_twitch,
+    //    double activation_constant_fast_twitch,
+    //    double maintenance_constant_slow_twitch,
+    //    double maintenance_constant_fast_twitch,
+    //    double muscle_mass = SimTK::NaN);
 
     double getMuscleMass() const { return muscleMass; }
     void setMuscleMass();
@@ -175,14 +175,32 @@ public:
     //    append_muscle_parameters(std::move(muscle_parameters));
     //};
 
+    //void addMuscle(const std::string& name, const Muscle& muscle,
+    //        double ratio_slow_twitch_fibers, double specific_tension,
+    //        double muscle_mass = SimTK::NaN) {
+
+    //    SmoothBhargava2004Metabolics_MuscleParameters muscle_parameters(name,
+    //            muscle, ratio_slow_twitch_fibers, specific_tension,
+    //            muscle_mass);
+    //    append_muscle_parameters(std::move(muscle_parameters));
+    //}
+
     void addMuscle(const std::string& name, const Muscle& muscle,
             double ratio_slow_twitch_fibers, double specific_tension,
             double muscle_mass = SimTK::NaN) {
-
-        SmoothBhargava2004Metabolics_MuscleParameters muscle_parameters(name,
-                muscle, ratio_slow_twitch_fibers, specific_tension,
-                muscle_mass);
-        append_muscle_parameters(std::move(muscle_parameters));
+        append_muscle_parameters(std::move(SmoothBhargava2004Metabolics_MuscleParameters()));
+        auto& mp = upd_muscle_parameters(getProperty_muscle_parameters().size() - 1);
+        mp.setName(name);
+        mp.set_ratio_slow_twitch_fibers(ratio_slow_twitch_fibers);
+        mp.set_specific_tension(specific_tension);
+        if (SimTK::isNaN(muscle_mass)) {
+            mp.set_use_provided_muscle_mass(false);
+        }
+        else {
+            mp.set_use_provided_muscle_mass(true);
+            mp.set_provided_muscle_mass(muscle_mass);
+        }
+        mp.connectSocket_muscle(muscle);
     }
 
     double getTotalMetabolicRate(const SimTK::State& s) const;
