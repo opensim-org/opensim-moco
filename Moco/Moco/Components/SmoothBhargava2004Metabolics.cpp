@@ -360,12 +360,12 @@ void SmoothBhargava2004Metabolics::calcMetabolicRate(
                 // contractions. TODO for some reasons, cannot have bv and
                 // fiber_velocity_conc in else
                 const double bv = get_velocity_smoothing();
+                // fiber_velocity_conc=1 if concentric contraction.
                 const double fiber_velocity_conc = 1 - (
                         0.5 + 0.5 * tanh(bv * fiber_velocity));
                 if (get_include_negative_mechanical_work())
                     Wdot = -fiber_force_active*fiber_velocity;
                 else
-                    // fiber_velocity_conc=1 if concentric contraction.
                     Wdot = -fiber_force_active*fiber_velocity
                             *fiber_velocity_conc;
             }

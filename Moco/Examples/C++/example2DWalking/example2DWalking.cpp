@@ -85,7 +85,8 @@ MocoSolution gaitTracking() {
     SmoothBhargava2004Metabolics* metabolics =
         new SmoothBhargava2004Metabolics(true, true, true, true, true);
     metabolics->setName("metabolics");
-    metabolics->get_use_fiber_length_dependence_on_maintenance_rate(false);
+    metabolics->set_use_fiber_length_dependence_on_maintenance_rate(false);
+    metabolics->set_use_smoothing(true);
     metabolics->addMuscle("hamstrings_r",
             baseModel.getComponent<Muscle>("hamstrings_r"),
             hamstrings_ratio_slow_twitch_fibers,
