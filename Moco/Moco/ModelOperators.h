@@ -310,6 +310,34 @@ public:
     }
 };
 
+/// Set the appliesForce property for the specified Force%s.
+/// @ingroup modeloperator
+class OSIMMOCO_API ModOpAppliesForce : public ModelOperator {
+OpenSim_DECLARE_CONCRETE_OBJECT(ModOpAppliesForce, ModelOperator);
+    OpenSim_DECLARE_PROPERTY(appliesForce, bool,
+            "The value to use for appliesForce (default: true).");
+    OpenSim_DECLARE_LIST_PROPERTY(force_paths, std::string,
+            "Paths to Forces whose appliesForce should be affected.");
+
+public:
+    ModOpAppliesForce() {
+        constructProperty_appliesForce(true);
+        constructProperty_force_paths();
+    }
+    ModOpAppliesForce(bool appliesForce, const std::vector<std::string>& paths)
+            : ModOpAppliesForce() {
+        set_appliesForce(appliesForce);
+        for (const auto& path : paths) { append_force_paths(path); }
+    }
+    void operate(Model& model, const std::string&) const override {
+        model.initSystem();
+        for (int i = 0; i < getProperty_force_paths().size(); ++i) {
+            auto& force = model.updComponent<Force>(get_force_paths(i));
+            force.set_appliesForce(get_appliesForce());
+        }
+    }
+};
+
 } // namespace OpenSim
 
 #endif // MOCO_MODELOPERATORS_H

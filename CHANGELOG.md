@@ -1,7 +1,10 @@
 Change Log
 ==========
+
 0.4.0 (in development) 
 ----------------------
+- 2020-01-23: Added ModOpAppliesForce to set the appliesForce property 
+              for multiple Forces.
 
 
 0.3.0 
