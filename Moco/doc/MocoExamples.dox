@@ -122,7 +122,7 @@ MinimizeJointReaction | pendulum | MocoJointReactionGoal, MocoControlGoal, presc
 
 name | model/motion | description | interfaces
 ---- | ------------ | ----------- | ----------
-MocoTrack | lower-limb | Using the MocoTrack tool for walking with marker tracking and state tracking; generating a PDF report | [MATLAB](@ref exampleMocoTrack.m), [Python](@ref exampleMocoTrack.py), [C++](@ref exampleMocoTrack.cpp)
+MocoTrack | lower-limb | Using the MocoTrack tool for walking with marker tracking, state tracking, and contact tracking (MocoContactTrackingGoal); generating a PDF report | [MATLAB](@ref exampleMocoTrack.m), [Python](@ref exampleMocoTrack.py), [C++](@ref exampleMocoTrack.cpp)
 MocoInverse | lower-limb | Using the MocoInverse tool for walking; generating a PDF report | [MATLAB](@ref exampleMocoInverse.m), [Python](@ref exampleMocoInverse.py), [C++](@ref exampleMocoInverse.cpp)
 2DWalking | walking | MocoTrack, MocoStudy prediction, MocoControlGoal, MocoAverageSpeedGoal, MocoPerodicityGoal, createPeriodicSolution | [C++](@ref example2DWalking.cpp)
 MarkerTracking10DOF | walking | MocoControlGoal, MocoMarkerTrackingGoal | [MATLAB](@ref exampleMarkerTracking10DOF.m)

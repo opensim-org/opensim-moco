@@ -29,6 +29,7 @@
 
 namespace OpenSim {
 
+class MocoContactTrackingGoal;
 class MocoWeightSet;
 class MocoProblem;
 class MocoTrajectory;
@@ -70,6 +71,17 @@ class MocoTrajectory;
 /// provided reference data. The `states_weight_set` and `markers_weight_set`
 /// properties give you finer control over the tracking costs, letting you set
 /// weights for individual reference data tracking errors.
+///
+/// Contact tracking
+/// ----------------
+/// If the model contains contact elements and you have experimental contact
+/// data that you would like these contact elements to match, you can use the
+/// MocoContactTrackingGoal property of MocoTrack. Use updContactTrackingGoal()
+/// to access this goal. By default, this goal is disabled; enable it via up
+/// updContactTrackingGoal().setEnabled().
+///
+/// Contact is usually modeled with ExternalLoads data or contact elements in
+/// the model, but not both.
 ///
 /// Control effort minimization
 /// ---------------------------
@@ -227,6 +239,9 @@ public:
             "This "
             "will override any guess information provided via `guess_file`.");
 
+    OpenSim_DECLARE_UNNAMED_PROPERTY(MocoContactTrackingGoal,
+            "TODO");
+
     OpenSim_DECLARE_PROPERTY(minimize_control_effort, bool,
             "Whether or not to minimize actuator control effort in the problem."
             "Default: true.");
@@ -263,6 +278,11 @@ public:
         }
         set_markers_reference(TableProcessor(markersFlat) |
                               TabOpLowPassFilter(lowpassFilterFreq));
+    }
+
+    /// TODO
+    MocoContactTrackingGoal& updContactTrackingGoal() {
+        return upd_MocoContactTrackingGoal();
     }
 
     MocoStudy initialize();

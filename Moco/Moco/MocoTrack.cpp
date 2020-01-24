@@ -19,6 +19,7 @@
 #include "MocoTrack.h"
 
 #include "MocoCasADiSolver/MocoCasADiSolver.h"
+#include "MocoGoal/MocoContactTrackingGoal.h"
 #include "MocoGoal/MocoControlGoal.h"
 #include "MocoGoal/MocoControlTrackingGoal.h"
 #include "MocoGoal/MocoMarkerTrackingGoal.h"
@@ -47,6 +48,13 @@ void MocoTrack::constructProperties() {
     constructProperty_allow_unused_references(false);
     constructProperty_guess_file("");
     constructProperty_apply_tracked_states_to_guess(false);
+    {
+        MocoContactTrackingGoal contactTracking;
+        contactTracking.setName("contact_tracking");
+        contactTracking.setEnabled(false);
+        contactTracking.setWeight(0.1);
+        constructProperty_MocoContactTrackingGoal(contactTracking);
+    }
     constructProperty_minimize_control_effort(true);
     constructProperty_control_effort_weight(0.001);
 }
@@ -58,12 +66,12 @@ MocoStudy MocoTrack::initialize() {
     MocoProblem& problem = study.updProblem();
 
     // Modeling.
-    // ---------
+    // =========
     Model model = get_model().process(getDocumentDirectory());
     model.initSystem();
 
     // Goals.
-    // ------
+    // ======
     // State tracking cost.
     TimeSeriesTable tracked_states;
     if (!get_states_reference().empty()) {
@@ -94,8 +102,15 @@ MocoStudy MocoTrack::initialize() {
         effort->setWeight(get_control_effort_weight());
     }
 
+    // Contact tracking.
+    // -----------------
+    if (get_MocoContactTrackingGoal().getEnabled()) {
+        problem.addGoal(std::unique_ptr<MocoContactTrackingGoal>(
+                get_MocoContactTrackingGoal().clone()));
+    }
+
     // Set the time range.
-    // -------------------
+    // ===================
     if (get_clip_time_range()) {
         m_timeInfo.initial += 1e-3;
         m_timeInfo.final -= 1e-3;
@@ -103,7 +118,7 @@ MocoStudy MocoTrack::initialize() {
     problem.setTimeBounds(m_timeInfo.initial, m_timeInfo.final);
 
     // Configure solver.
-    // -----------------
+    // =================
     MocoCasADiSolver& solver = study.initCasADiSolver();
     solver.set_num_mesh_intervals(m_timeInfo.numMeshIntervals);
     solver.set_multibody_dynamics_mode("explicit");
