@@ -183,12 +183,14 @@ double SmoothBhargava2004Metabolics::getTotalMetabolicRate(
     // ---------------------------------------------------------------------
     double Bdot = 0;
     if (get_basal_rate_on()) {
+
         Bdot = get_basal_coefficient()
             * pow(getModel().getMatterSubsystem().calcSystemMass(s),
                     get_basal_exponent());
+
         if (SimTK::isNaN(Bdot))
-            std::cout << "WARNING::" << getName();
-            std::cout << ": Bdot = NaN!" << std::endl;
+            std::cout << "WARNING::" << getName()
+                    << ": Bdot = NaN!" << std::endl;
     }
 
     return getMetabolicRate(s).sum() + Bdot;
