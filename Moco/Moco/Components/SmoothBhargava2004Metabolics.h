@@ -188,7 +188,7 @@ public:
     void addMuscle(const std::string& name, const Muscle& muscle,
             double ratio_slow_twitch_fibers, double specific_tension,
             double muscle_mass = SimTK::NaN) {
-        append_muscle_parameters(std::move(SmoothBhargava2004Metabolics_MuscleParameters()));
+        append_muscle_parameters(SmoothBhargava2004Metabolics_MuscleParameters());
         auto& mp = upd_muscle_parameters(getProperty_muscle_parameters().size() - 1);
         mp.setName(name);
         mp.set_ratio_slow_twitch_fibers(ratio_slow_twitch_fibers);
@@ -210,7 +210,7 @@ public:
 private:
 
     void constructProperties();
-    void extendConnectToModel(Model& model) override;
+    void extendRealizeTopology(SimTK::State&) const override;
     void extendAddToSystem(SimTK::MultibodySystem& system) const override;
     const SimTK::Vector& getMetabolicRate(const SimTK::State& s) const;
     void calcMetabolicRate(const SimTK::State& s, SimTK::Vector& ratesForMuscles) const;

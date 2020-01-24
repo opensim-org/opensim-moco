@@ -199,8 +199,9 @@ double SmoothBhargava2004Metabolics::getMuscleMetabolicRate(
     return getMetabolicRate(s).get(m_muscleIndices.at(channel));
 }
 
-void SmoothBhargava2004Metabolics::extendConnectToModel(Model& model) {
-    Super::extendConnectToModel(model);
+void SmoothBhargava2004Metabolics::extendRealizeTopology(SimTK::State& state)
+const {
+    Super::extendRealizeTopology(state);
     m_muscleParameters.clear();
     m_muscleIndices.clear();
     int nM = getProperty_muscle_parameters().size();
