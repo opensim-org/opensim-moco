@@ -144,6 +144,53 @@ SmoothBhargava2004Metabolics::SmoothBhargava2004Metabolics(
     set_mechanical_work_rate_on(work_rate_on);
 }
 
+void SmoothBhargava2004Metabolics::addMuscle(const std::string& name,
+        const Muscle& muscle, double ratio_slow_twitch_fibers,
+        double specific_tension, double muscle_mass = SimTK::NaN) {
+    append_muscle_parameters(SmoothBhargava2004Metabolics_MuscleParameters());
+    auto& mp = upd_muscle_parameters(
+            getProperty_muscle_parameters().size() - 1);
+    mp.setName(name);
+    mp.set_ratio_slow_twitch_fibers(ratio_slow_twitch_fibers);
+    mp.set_specific_tension(specific_tension);
+    if (SimTK::isNaN(muscle_mass)) {
+        mp.set_use_provided_muscle_mass(false);
+    }
+    else {
+        mp.set_use_provided_muscle_mass(true);
+        mp.set_provided_muscle_mass(muscle_mass);
+    }
+    mp.connectSocket_muscle(muscle);
+}
+
+void SmoothBhargava2004Metabolics::addMuscle(const std::string& name,
+        const Muscle& muscle, double ratio_slow_twitch_fibers,
+        double specific_tension, double activation_constant_slow_twitch,
+        double activation_constant_fast_twitch,
+        double maintenance_constant_slow_twitch,
+        double maintenance_constant_fast_twitch,
+        double muscle_mass = SimTK::NaN) {
+    append_muscle_parameters(SmoothBhargava2004Metabolics_MuscleParameters());
+    auto& mp = upd_muscle_parameters(
+            getProperty_muscle_parameters().size() - 1);
+    mp.setName(name);
+    mp.set_ratio_slow_twitch_fibers(ratio_slow_twitch_fibers);
+    mp.set_specific_tension(specific_tension);
+    mp.set_activation_constant_slow_twitch(activation_constant_slow_twitch);
+    mp.set_activation_constant_fast_twitch(activation_constant_fast_twitch);
+    mp.set_maintenance_constant_slow_twitch(maintenance_constant_slow_twitch);
+    mp.set_maintenance_constant_fast_twitch(maintenance_constant_fast_twitch);
+
+    if (SimTK::isNaN(muscle_mass)) {
+        mp.set_use_provided_muscle_mass(false);
+    }
+    else {
+        mp.set_use_provided_muscle_mass(true);
+        mp.set_provided_muscle_mass(muscle_mass);
+    }
+    mp.connectSocket_muscle(muscle);
+}
+
 void SmoothBhargava2004Metabolics::constructProperties()
 {
 
