@@ -91,6 +91,22 @@ SmoothBhargava2004Metabolics::SmoothBhargava2004Metabolics(
 }
 
 void SmoothBhargava2004Metabolics::addMuscle(const std::string& name,
+        const Muscle& muscle, double muscle_mass) {
+    append_muscle_parameters(SmoothBhargava2004Metabolics_MuscleParameters());
+    auto& mp = upd_muscle_parameters(
+            getProperty_muscle_parameters().size() - 1);
+    mp.setName(name);
+    if (SimTK::isNaN(muscle_mass)) {
+        mp.set_use_provided_muscle_mass(false);
+    }
+    else {
+        mp.set_use_provided_muscle_mass(true);
+        mp.set_provided_muscle_mass(muscle_mass);
+    }
+    mp.connectSocket_muscle(muscle);
+}
+
+void SmoothBhargava2004Metabolics::addMuscle(const std::string& name,
         const Muscle& muscle, double ratio_slow_twitch_fibers,
         double specific_tension, double muscle_mass) {
     append_muscle_parameters(SmoothBhargava2004Metabolics_MuscleParameters());
@@ -190,6 +206,30 @@ double SmoothBhargava2004Metabolics::getTotalMetabolicRate(
     return getMetabolicRate(s).sum() + Bdot;
 }
 
+double SmoothBhargava2004Metabolics::getTotalActivationRate(
+        const SimTK::State& s) const {
+
+    return getActivationRate(s).sum();
+}
+
+double SmoothBhargava2004Metabolics::getTotalMaintenanceRate(
+        const SimTK::State& s) const {
+
+    return getMaintenanceRate(s).sum();
+}
+
+double SmoothBhargava2004Metabolics::getTotalShorteningRate(
+        const SimTK::State& s) const {
+
+    return getShorteningRate(s).sum();
+}
+
+double SmoothBhargava2004Metabolics::getTotalMechanicalWorkRate(
+        const SimTK::State& s) const {
+
+    return getMechanicalWorkRate(s).sum();
+}
+
 double SmoothBhargava2004Metabolics::getMuscleMetabolicRate(
         const SimTK::State& s, const std::string& channel) const {
     return getMetabolicRate(s).get(m_muscleIndices.at(channel));
@@ -218,21 +258,110 @@ void SmoothBhargava2004Metabolics::extendAddToSystem(
     addCacheVariable<SimTK::Vector>("metabolic_rate",
             SimTK::Vector((int)m_muscleParameters.size(), 0.0),
                     SimTK::Stage::Velocity);
+
+    addCacheVariable<SimTK::Vector>("activation_rate",
+            SimTK::Vector((int)m_muscleParameters.size(), 0.0),
+                    SimTK::Stage::Velocity);
+
+    addCacheVariable<SimTK::Vector>("maintenance_rate",
+            SimTK::Vector((int)m_muscleParameters.size(), 0.0),
+                    SimTK::Stage::Velocity);
+
+    addCacheVariable<SimTK::Vector>("shortening_rate",
+            SimTK::Vector((int)m_muscleParameters.size(), 0.0),
+                    SimTK::Stage::Velocity);
+
+    addCacheVariable<SimTK::Vector>("mechanical_work_rate",
+            SimTK::Vector((int)m_muscleParameters.size(), 0.0),
+                    SimTK::Stage::Velocity);
 }
 
 const SimTK::Vector& SmoothBhargava2004Metabolics::getMetabolicRate(
         const SimTK::State& s) const {
     if (!isCacheVariableValid(s, "metabolic_rate")) {
         calcMetabolicRate(
-                s, updCacheVariableValue<SimTK::Vector>(s, "metabolic_rate"));
+                s, updCacheVariableValue<SimTK::Vector>(s, "metabolic_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "activation_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "maintenance_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "shortening_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "mechanical_work_rate")
+                );
         markCacheVariableValid(s, "metabolic_rate");
     }
     return getCacheVariableValue<SimTK::Vector>(s, "metabolic_rate");
 }
 
+const SimTK::Vector& SmoothBhargava2004Metabolics::getActivationRate(
+        const SimTK::State& s) const {
+    if (!isCacheVariableValid(s, "activation_rate")) {
+        calcMetabolicRate(
+                s, updCacheVariableValue<SimTK::Vector>(s, "metabolic_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "activation_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "maintenance_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "shortening_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "mechanical_work_rate")
+                );
+        markCacheVariableValid(s, "activation_rate");
+    }
+    return getCacheVariableValue<SimTK::Vector>(s, "activation_rate");
+}
+
+const SimTK::Vector& SmoothBhargava2004Metabolics::getMaintenanceRate(
+        const SimTK::State& s) const {
+    if (!isCacheVariableValid(s, "maintenance_rate")) {
+        calcMetabolicRate(
+                s, updCacheVariableValue<SimTK::Vector>(s, "metabolic_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "activation_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "maintenance_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "shortening_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "mechanical_work_rate")
+                );
+        markCacheVariableValid(s, "maintenance_rate");
+    }
+    return getCacheVariableValue<SimTK::Vector>(s, "maintenance_rate");
+}
+
+const SimTK::Vector& SmoothBhargava2004Metabolics::getShorteningRate(
+        const SimTK::State& s) const {
+    if (!isCacheVariableValid(s, "shortening_rate")) {
+        calcMetabolicRate(
+                s, updCacheVariableValue<SimTK::Vector>(s, "metabolic_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "activation_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "maintenance_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "shortening_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "mechanical_work_rate")
+                );
+        markCacheVariableValid(s, "shortening_rate");
+    }
+    return getCacheVariableValue<SimTK::Vector>(s, "shortening_rate");
+}
+
+const SimTK::Vector& SmoothBhargava2004Metabolics::getMechanicalWorkRate(
+        const SimTK::State& s) const {
+    if (!isCacheVariableValid(s, "mechanical_work_rate")) {
+        calcMetabolicRate(
+                s, updCacheVariableValue<SimTK::Vector>(s, "metabolic_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "activation_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "maintenance_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "shortening_rate"),
+                updCacheVariableValue<SimTK::Vector>(s, "mechanical_work_rate")
+                );
+        markCacheVariableValid(s, "mechanical_work_rate");
+    }
+    return getCacheVariableValue<SimTK::Vector>(s, "mechanical_work_rate");
+}
+
 void SmoothBhargava2004Metabolics::calcMetabolicRate(
-        const SimTK::State& s, SimTK::Vector& ratesForMuscles) const {
+        const SimTK::State& s, SimTK::Vector& ratesForMuscles,
+        SimTK::Vector& activationRatesForMuscles,
+        SimTK::Vector& maintenanceRatesForMuscles,
+        SimTK::Vector& shorteningRatesForMuscles,
+        SimTK::Vector& mechanicalWorkRatesForMuscles) const {
     ratesForMuscles.resize((int)m_muscleParameters.size());
+    activationRatesForMuscles.resize((int)m_muscleParameters.size());
+    maintenanceRatesForMuscles.resize((int)m_muscleParameters.size());
+    shorteningRatesForMuscles.resize((int)m_muscleParameters.size());
+    mechanicalWorkRatesForMuscles.resize((int)m_muscleParameters.size());
     double Adot, Mdot, Sdot, Wdot;
     Adot = Mdot = Sdot = Wdot = 0;
 
@@ -466,6 +595,11 @@ void SmoothBhargava2004Metabolics::calcMetabolicRate(
             Edot += Wdot;
 
         ratesForMuscles[i] = Edot;
+        activationRatesForMuscles[i] = Adot;
+        maintenanceRatesForMuscles[i] = Mdot;
+        shorteningRatesForMuscles[i] = Sdot;
+        mechanicalWorkRatesForMuscles[i] = Wdot;
+
         ++i;
     }
 }

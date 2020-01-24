@@ -145,6 +145,15 @@ public:
 
     OpenSim_DECLARE_OUTPUT(total_metabolic_rate, double, getTotalMetabolicRate,
             SimTK::Stage::Velocity);
+    OpenSim_DECLARE_OUTPUT(total_activation_rate, double,
+            getTotalActivationRate, SimTK::Stage::Velocity);
+    OpenSim_DECLARE_OUTPUT(total_maintenance_rate, double,
+            getTotalMaintenanceRate, SimTK::Stage::Velocity);
+    OpenSim_DECLARE_OUTPUT(total_shortening_rate, double,
+            getTotalShorteningRate, SimTK::Stage::Velocity);
+    OpenSim_DECLARE_OUTPUT(total_mechanical_work_rate, double,
+            getTotalMechanicalWorkRate, SimTK::Stage::Velocity);
+
     OpenSim_DECLARE_LIST_OUTPUT(muscle_metabolic_rate, double,
             getMuscleMetabolicRate, SimTK::Stage::Velocity);
 
@@ -159,6 +168,9 @@ public:
     int getNumMetabolicMuscles() const;
 
     void addMuscle(const std::string& name, const Muscle& muscle,
+            double muscle_mass = SimTK::NaN);
+
+    void addMuscle(const std::string& name, const Muscle& muscle,
             double ratio_slow_twitch_fibers, double specific_tension,
             double muscle_mass = SimTK::NaN);
 
@@ -171,6 +183,10 @@ public:
             double muscle_mass = SimTK::NaN);
 
     double getTotalMetabolicRate(const SimTK::State& s) const;
+    double getTotalActivationRate(const SimTK::State& s) const;
+    double getTotalMaintenanceRate(const SimTK::State& s) const;
+    double getTotalShorteningRate(const SimTK::State& s) const;
+    double getTotalMechanicalWorkRate(const SimTK::State& s) const;
     double getMuscleMetabolicRate(
             const SimTK::State& s, const std::string& channel) const;
 
@@ -180,7 +196,16 @@ private:
     void extendRealizeTopology(SimTK::State&) const override;
     void extendAddToSystem(SimTK::MultibodySystem& system) const override;
     const SimTK::Vector& getMetabolicRate(const SimTK::State& s) const;
-    void calcMetabolicRate(const SimTK::State& s, SimTK::Vector& ratesForMuscles) const;
+    const SimTK::Vector& getActivationRate(const SimTK::State& s) const;
+    const SimTK::Vector& getMaintenanceRate(const SimTK::State& s) const;
+    const SimTK::Vector& getShorteningRate(const SimTK::State& s) const;
+    const SimTK::Vector& getMechanicalWorkRate(const SimTK::State& s) const;
+    void calcMetabolicRate(const SimTK::State& s,
+            SimTK::Vector& ratesForMuscles,
+            SimTK::Vector& activationRatesForMuscles,
+            SimTK::Vector& maintenanceRatesForMuscles,
+            SimTK::Vector& shorteningRatesForMuscles,
+            SimTK::Vector& mechanicalWorkRatesForMuscles) const;
     mutable std::vector<SimTK::ReferencePtr<const
         SmoothBhargava2004Metabolics_MuscleParameters>> m_muscleParameters;
     mutable std::unordered_map<std::string, int> m_muscleIndices;
