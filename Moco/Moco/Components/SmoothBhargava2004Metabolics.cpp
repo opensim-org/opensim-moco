@@ -35,60 +35,6 @@ SmoothBhargava2004Metabolics_MuscleParameters() {
     constructProperties();
 }
 
-//SmoothBhargava2004Metabolics_MuscleParameters::
-//SmoothBhargava2004Metabolics_MuscleParameters(
-//        const std::string& name,
-//        const Muscle& muscle,
-//        double ratio_slow_twitch_fibers,
-//        double specific_tension,
-//        double muscle_mass) {
-//    this->setName(name);
-//    this->connectSocket_muscle(muscle);
-//    constructProperties();
-//    set_ratio_slow_twitch_fibers(ratio_slow_twitch_fibers);
-//    set_specific_tension(specific_tension);
-//
-//    if (SimTK::isNaN(muscle_mass)) {
-//        set_use_provided_muscle_mass(false);
-//    }
-//    else {
-//        set_use_provided_muscle_mass(true);
-//        set_provided_muscle_mass(muscle_mass);
-//    }
-//}
-//
-//SmoothBhargava2004Metabolics_MuscleParameters::
-//SmoothBhargava2004Metabolics_MuscleParameters(
-//        const std::string& name,
-//        const Muscle& muscle,
-//        double ratio_slow_twitch_fibers,
-//        double specific_tension,
-//        double activation_constant_slow_twitch,
-//        double activation_constant_fast_twitch,
-//        double maintenance_constant_slow_twitch,
-//        double maintenance_constant_fast_twitch,
-//        double muscle_mass) {
-//
-//    this->setName(name);
-//    this->connectSocket_muscle(muscle);
-//    constructProperties();
-//    set_ratio_slow_twitch_fibers(ratio_slow_twitch_fibers);
-//    set_specific_tension(specific_tension);
-//    set_activation_constant_slow_twitch(activation_constant_slow_twitch);
-//    set_activation_constant_fast_twitch(activation_constant_fast_twitch);
-//    set_maintenance_constant_slow_twitch(maintenance_constant_slow_twitch);
-//    set_maintenance_constant_fast_twitch(maintenance_constant_fast_twitch);
-//
-//    if (SimTK::isNaN(muscle_mass)) {
-//        set_use_provided_muscle_mass(false);
-//    }
-//    else {
-//        set_use_provided_muscle_mass(true);
-//        set_provided_muscle_mass(muscle_mass);
-//    }
-//
-//}
-
 void SmoothBhargava2004Metabolics_MuscleParameters::
 setMuscleMass()
 {
@@ -146,7 +92,7 @@ SmoothBhargava2004Metabolics::SmoothBhargava2004Metabolics(
 
 void SmoothBhargava2004Metabolics::addMuscle(const std::string& name,
         const Muscle& muscle, double ratio_slow_twitch_fibers,
-        double specific_tension, double muscle_mass = SimTK::NaN) {
+        double specific_tension, double muscle_mass) {
     append_muscle_parameters(SmoothBhargava2004Metabolics_MuscleParameters());
     auto& mp = upd_muscle_parameters(
             getProperty_muscle_parameters().size() - 1);
@@ -169,7 +115,7 @@ void SmoothBhargava2004Metabolics::addMuscle(const std::string& name,
         double activation_constant_fast_twitch,
         double maintenance_constant_slow_twitch,
         double maintenance_constant_fast_twitch,
-        double muscle_mass = SimTK::NaN) {
+        double muscle_mass) {
     append_muscle_parameters(SmoothBhargava2004Metabolics_MuscleParameters());
     auto& mp = upd_muscle_parameters(
             getProperty_muscle_parameters().size() - 1);
@@ -193,7 +139,6 @@ void SmoothBhargava2004Metabolics::addMuscle(const std::string& name,
 
 void SmoothBhargava2004Metabolics::constructProperties()
 {
-
     constructProperty_muscle_parameters();
 
     constructProperty_activation_rate_on(true);
@@ -218,6 +163,8 @@ void SmoothBhargava2004Metabolics::constructProperties()
     constructProperty_muscle_effort_scaling_factor(1.0);
     constructProperty_include_negative_mechanical_work(true);
     constructProperty_forbid_negative_total_power(true);
+
+    constructProperty_use_smoothing(false);
     constructProperty_velocity_smoothing(10);
     constructProperty_power_smoothing(10);
     constructProperty_heat_rate_smoothing(10);
@@ -359,31 +306,46 @@ void SmoothBhargava2004Metabolics::calcMetabolicRate(
         // SHORTENING HEAT RATE (W).
         // --> note that we define Vm<0 as shortening and Vm>0 as lengthening.
         // --------------------------------------------------------------------
-        // Variables for smooth approximations between concentric and eccentric
-        // contractions.
-        const double bv = get_velocity_smoothing();
-        // fiber_velocity_ecc is 1 if eccentric contraction.
-        const double fiber_velocity_ecc =
-            0.5 + 0.5 * tanh(bv * fiber_velocity);
-        // fiber_velocity_conc is 1 if concentric contraction.
-        const double fiber_velocity_conc = 1 - fiber_velocity_ecc;
-
         if (get_forbid_negative_total_power() || get_shortening_rate_on())
         {
             if (get_use_force_dependent_shortening_prop_constant())
             {
-                // Smooth approximation between concentric and eccentric
-                // contractions.
-                alpha = (0.16 * F_iso) + (0.18 * fiber_force_total);
-                alpha = alpha + (-alpha + 0.157 * fiber_force_total)
-                        * fiber_velocity_ecc;
+                if (get_use_smoothing()) {
+                    // Smooth approximation between concentric and eccentric
+                    // contractions.
+                    const double bv = get_velocity_smoothing();
+                    // fiber_velocity_ecc=1 if eccentric contraction.
+                    const double fiber_velocity_ecc =
+                        0.5 + 0.5 * tanh(bv * fiber_velocity);
+                    alpha = (0.16 * F_iso) + (0.18 * fiber_force_total);
+                    alpha = alpha + (-alpha + 0.157 * fiber_force_total)
+                            * fiber_velocity_ecc;
+                }
+                else {
+                    if (fiber_velocity <= 0)    // concentric contraction, Vm<0
+                        alpha = (0.16 * F_iso) + (0.18 * fiber_force_total);
+                    else                        // eccentric contraction, Vm>0
+                        alpha = 0.157 * fiber_force_total;
+                }
             }
             else
             {
-                // Smooth approximation between concentric and eccentric
-                // contractions.
-                alpha = 0.25 * fiber_force_total;
-                alpha = alpha + -alpha * fiber_velocity_ecc;
+                if (get_use_smoothing()) {
+                    // Smooth approximation between concentric and eccentric
+                    // contractions.
+                    const double bv = get_velocity_smoothing();
+                    // fiber_velocity_ecc=1 if eccentric contraction.
+                    const double fiber_velocity_ecc =
+                        0.5 + 0.5 * tanh(bv * fiber_velocity);
+                    alpha = 0.25 * fiber_force_total;
+                    alpha = alpha + -alpha * fiber_velocity_ecc;
+                }
+                else {
+                    if (fiber_velocity <= 0)    // concentric contraction, Vm<0
+                        alpha = 0.25 * fiber_force_total;
+                    else                        // eccentric contraction, Vm>0
+                        alpha = 0.0;
+                }
             }
             Sdot = -alpha * fiber_velocity;
         }
@@ -393,25 +355,61 @@ void SmoothBhargava2004Metabolics::calcMetabolicRate(
         // -------------------------------------------------------------------
         if (get_forbid_negative_total_power() || get_mechanical_work_rate_on())
         {
-            // Smooth approximation between concentric and eccentric
-            // contractions.
-            if (get_include_negative_mechanical_work())
-                Wdot = -fiber_force_active*fiber_velocity;
-            else
-                Wdot = -fiber_force_active*fiber_velocity*fiber_velocity_conc;
+            if (get_use_smoothing()) {
+                // Smooth approximation between concentric and eccentric
+                // contractions. TODO for some reasons, cannot have bv and
+                // fiber_velocity_conc in else
+                const double bv = get_velocity_smoothing();
+                const double fiber_velocity_conc = 1 - (
+                        0.5 + 0.5 * tanh(bv * fiber_velocity));
+                if (get_include_negative_mechanical_work())
+                    Wdot = -fiber_force_active*fiber_velocity;
+                else
+                    // fiber_velocity_conc=1 if concentric contraction.
+                    Wdot = -fiber_force_active*fiber_velocity
+                            *fiber_velocity_conc;
+            }
+            else {
+                if (get_include_negative_mechanical_work() ||
+                            fiber_velocity <= 0)
+                    Wdot = -fiber_force_active*fiber_velocity;
+                else
+                    Wdot = 0;
+            }
         }
+
+        // NAN CHECKING
+        // ------------------------------------------
+        if (SimTK::isNaN(Adot))
+            std::cout << "WARNING::" << getName() << ": Adot (" <<
+                    muscleParameter->getName() << ") = NaN!" << std::endl;
+        if (SimTK::isNaN(Mdot))
+            std::cout << "WARNING::" << getName() << ": Mdot (" <<
+                    muscleParameter->getName() << ") = NaN!" << std::endl;
+        if (SimTK::isNaN(Sdot))
+            std::cout << "WARNING::" << getName() << ": Sdot (" <<
+                    muscleParameter->getName() << ") = NaN!" << std::endl;
+        if (SimTK::isNaN(Wdot))
+            std::cout << "WARNING::" << getName() << ": Wdot (" <<
+                    muscleParameter->getName() << ") = NaN!" << std::endl;
 
         // If necessary, increase the shortening heat rate so that the total
         // power is non-negative.
         if (get_forbid_negative_total_power()) {
             const double Edot_W_beforeClamp = Adot + Mdot + Sdot + Wdot;
-            // Variables for smooth approximations between negative and
-            // positive total power.
-            const double bp = get_power_smoothing();
-            // Edot_W_beforeClamp_neg is 1 if Edot_W_beforeClamp is negative.
-            const double Edot_W_beforeClamp_neg = 0.5 + (
-                    0.5 * tanh(bp * -Edot_W_beforeClamp));
-            Sdot -= Edot_W_beforeClamp * Edot_W_beforeClamp_neg;
+            if (get_use_smoothing()) {
+                // Variables for smooth approximations between negative and
+                // positive total power.
+                const double bp = get_power_smoothing();
+                // Edot_W_beforeClamp_neg=1 if Edot_W_beforeClamp is negative.
+                const double Edot_W_beforeClamp_neg = 0.5 + (
+                        0.5 * tanh(bp * -Edot_W_beforeClamp));
+                Sdot -= Edot_W_beforeClamp * Edot_W_beforeClamp_neg;
+            }
+            else {
+                if (Edot_W_beforeClamp < 0)
+                    Sdot -= Edot_W_beforeClamp;
+            }
         }
 
         // This check is adapted from Umberger(2003), page 104: the total heat
@@ -419,19 +417,32 @@ void SmoothBhargava2004Metabolics::calcMetabolicRate(
         // 1.0 W/kg.
         // --------------------------------------------------------------------
         double totalHeatRate = Adot + Mdot + Sdot;
-        if(get_enforce_minimum_heat_rate_per_muscle()
-                && get_activation_rate_on()
-                && get_maintenance_rate_on()
-                && get_shortening_rate_on())
-        {
-            // Variables for smooth approximations between total heat rate for
-            // a given muscle below or above 1.0 W/kg.
-            const double bhr = get_heat_rate_smoothing();
-            // totalHeatRate_b is 1 if totalHeatRate is below the muscle mass.
-            const double totalHeatRate_bmm = 0.5 + 0.5 * tanh(bhr * (1.0 *
-                    muscleParameter->getMuscleMass() - totalHeatRate));
-            totalHeatRate = totalHeatRate + (-totalHeatRate + 1.0 *
-                    muscleParameter->getMuscleMass()) * totalHeatRate_bmm;
+        if (get_use_smoothing()) {
+            if(get_enforce_minimum_heat_rate_per_muscle()
+                    && get_activation_rate_on()
+                    && get_maintenance_rate_on()
+                    && get_shortening_rate_on())
+            {
+                // Variables for smooth approximations between total heat rate
+                // for a given muscle below or above 1.0 W/kg.
+                const double bhr = get_heat_rate_smoothing();
+                // totalHeatRate_bmm= 1 if totalHeatRate is below the muscle
+                // mass.
+                const double totalHeatRate_bmm = 0.5 + 0.5 * tanh(bhr * (1.0 *
+                        muscleParameter->getMuscleMass() - totalHeatRate));
+                totalHeatRate = totalHeatRate + (-totalHeatRate + 1.0 *
+                        muscleParameter->getMuscleMass()) * totalHeatRate_bmm;
+            }
+        }
+        else {
+            if(get_enforce_minimum_heat_rate_per_muscle()
+                    && totalHeatRate < 1.0 * muscleParameter->getMuscleMass()
+                    && get_activation_rate_on()
+                    && get_maintenance_rate_on()
+                    && get_shortening_rate_on())
+            {
+                totalHeatRate = 1.0 * muscleParameter->getMuscleMass();
+            }
         }
 
         // TOTAL METABOLIC ENERGY RATE (W).
@@ -439,7 +450,7 @@ void SmoothBhargava2004Metabolics::calcMetabolicRate(
         double Edot = 0;
 
         if (get_activation_rate_on() && get_maintenance_rate_on()
-            && get_shortening_rate_on())
+                && get_shortening_rate_on())
         {
             Edot += totalHeatRate; // May have been clamped to 1.0 W/kg.
         }

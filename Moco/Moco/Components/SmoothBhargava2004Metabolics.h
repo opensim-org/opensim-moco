@@ -81,54 +81,58 @@ class OSIMMOCO_API SmoothBhargava2004Metabolics : public ModelComponent {
 
 public:
     OpenSim_DECLARE_PROPERTY(activation_rate_on, bool, "Specify whether "
-        "activation heat rate is to be calculated (default is true).");
+            "activation heat rate is to be calculated (default is true).");
     OpenSim_DECLARE_PROPERTY(maintenance_rate_on, bool, "Specify whether "
-        "maintenance heat rate is to be calculated (default is true).");
+            "maintenance heat rate is to be calculated (default is true).");
     OpenSim_DECLARE_PROPERTY(shortening_rate_on, bool, "Specify whether "
-        "shortening heat rate is to be calculated (default is true).");
+            "shortening heat rate is to be calculated (default is true).");
     OpenSim_DECLARE_PROPERTY(basal_rate_on, bool, "Specify whether basal heat "
-        "rate is to be calculated (default is true).");
+            "rate is to be calculated (default is true).");
     OpenSim_DECLARE_PROPERTY(mechanical_work_rate_on, bool, "Specify whether "
-        "mechanical work rate is to be calculated (default is true).");
+            "mechanical work rate is to be calculated (default is true).");
     OpenSim_DECLARE_PROPERTY(enforce_minimum_heat_rate_per_muscle, bool,
-        "Specify whether the total heat rate for a muscle will be clamped to "
-        "a minimum value of 1.0 W/kg (default is true).");
+            "Specify whether the total heat rate for a muscle will be clamped "
+            "to a minimum value of 1.0 W/kg (default is true).");
     OpenSim_DECLARE_PROPERTY(use_fiber_length_dependence_on_maintenance_rate,
-        bool, "Specify whether to use the normalized fiber length dependence "
-        "on maintenance rate (default is false).");
+            bool, "Specify whether to use the normalized fiber length "
+            "dependence on maintenance rate (default is false).");
     OpenSim_DECLARE_PROPERTY(
-        normalized_fiber_length_dependence_on_maintenance_rate,
-        PiecewiseLinearFunction,
-        "Contains a PiecewiseLinearFunction object that describes the "
-        "normalized fiber length dependence on maintenance rate.");
+            normalized_fiber_length_dependence_on_maintenance_rate,
+            PiecewiseLinearFunction,
+            "Contains a PiecewiseLinearFunction object that describes the "
+            "normalized fiber length dependence on maintenance rate.");
     OpenSim_DECLARE_PROPERTY(use_force_dependent_shortening_prop_constant,
-        bool, "Specify whether to use a force dependent shortening "
-        "proportionality constant (default is false).");
+            bool, "Specify whether to use a force dependent shortening "
+            "proportionality constant (default is false).");
     OpenSim_DECLARE_PROPERTY(basal_coefficient, double, "Basal metabolic "
-        "coefficient (default is 1.2).");
+            "coefficient (default is 1.2).");
     OpenSim_DECLARE_PROPERTY(basal_exponent, double, "Basal metabolic "
-        "exponent (default is 1).");
+            "exponent (default is 1).");
     OpenSim_DECLARE_PROPERTY(muscle_effort_scaling_factor, double,
-        "Scale the excitation and activation values to compensate for "
-        "solutions with excessive coactivation (e.g., when a suboptimal "
-        "tracking strategy is used) (default is 1).");
+            "Scale the excitation and activation values to compensate for "
+            "solutions with excessive coactivation (e.g., when a suboptimal "
+            "tracking strategy is used) (default is 1).");
     OpenSim_DECLARE_PROPERTY(include_negative_mechanical_work, bool,
-        "Specify whether negative mechanical work will be included in Wdot "
-        "(default is true).");
+            "Specify whether negative mechanical work will be included in Wdot "
+            "(default is true).");
     OpenSim_DECLARE_PROPERTY(forbid_negative_total_power, bool,
-        "Specify whether the total power for each muscle must remain positive "
-        "(default is true).");
-    OpenSim_DECLARE_PROPERTY(velocity_smoothing, double,
+            "Specify whether the total power for each muscle must remain  "
+            "positive (default is true).");
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(use_smoothing, bool,
+            "An optional flag that allows the user to explicitly specify "
+            "whether a smooth approximation of the metabolic energy model "
+            "should be used (default is false).");
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(velocity_smoothing, double,
             "The parameter that determines the smoothness of the transition "
             "of the tanh used to smooth the conditions related to contraction "
             "type (concentric or eccentric). The larger the steeper the "
             "transition but the worse for optimization, default is 10.");
-    OpenSim_DECLARE_PROPERTY(power_smoothing, double,
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(power_smoothing, double,
             "The parameter that determines the smoothness of the transition "
             "of the tanh used to smooth the condition enforcing non-negative "
             "total power. The larger the steeper the transition but the worse "
             "for optimization, default is 10.");
-    OpenSim_DECLARE_PROPERTY(heat_rate_smoothing, double,
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(heat_rate_smoothing, double,
             "The parameter that determines the smoothness of the transition "
             "of the tanh used to smooth the condition enforcing total heat "
             "rate larger than 1 (W/kg) for a give muscle. The larger the "
