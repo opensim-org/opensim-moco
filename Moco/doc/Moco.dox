@@ -67,6 +67,10 @@ Easily format and log messages; intended for internal use by Moco.
 
 Utilities for parallelism, strings, date/time, and error-checking.
 
+@defgroup modeloperator Model operators
+
+Modify a model using these ModelOperator%s, as part of a ModelProcessor.
+
 */
 
 } // namespace OpenSim

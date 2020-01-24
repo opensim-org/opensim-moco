@@ -19,13 +19,16 @@
  * -------------------------------------------------------------------------- */
 
 #include "Components/DeGrooteFregly2016Muscle.h"
+
 #include "ModelProcessor.h"
 
 #include <OpenSim/Tools/InverseDynamicsTool.h>
 
+
 namespace OpenSim {
 
 /// Invoke DeGrooteFregly2016Muscle::replaceMuscles() on the model.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpReplaceMusclesWithDeGrooteFregly2016
         : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(
@@ -39,6 +42,7 @@ public:
 };
 
 /// Turn off activation dynamics for all muscles in the model.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpIgnoreActivationDynamics : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(
             ModOpIgnoreActivationDynamics, ModelOperator);
@@ -53,6 +57,7 @@ public:
 };
 
 /// Turn off tendon compliance for all muscles in the model.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpIgnoreTendonCompliance : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(ModOpIgnoreTendonCompliance, ModelOperator);
 
@@ -68,7 +73,8 @@ public:
 /// For DeGrooteFregly2016Muscle muscles whose 'ignore_tendon_compliance' 
 /// property is false, set the tendon compliance dynamics mode to either 
 /// 'explicit' or 'implicit'.
-class OSIMMOCO_API ModOpTendonComplianceDynamicsModeDGF 
+/// @ingroup modeloperator
+class OSIMMOCO_API ModOpTendonComplianceDynamicsModeDGF
         : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(
             ModOpTendonComplianceDynamicsModeDGF, ModelOperator);
@@ -100,6 +106,7 @@ public:
 
 /// Set the tendon compliance dynamics mode to "implicit" for all 
 /// DeGrooteFregly2016Muscle%s in the model.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpUseImplicitTendonComplianceDynamicsDGF
         : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(
@@ -119,6 +126,7 @@ public:
 
 /// Turn off passive fiber forces for all DeGrooteFregly2016Muscle%s in the
 /// model.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpIgnorePassiveFiberForcesDGF : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(
             ModOpIgnorePassiveFiberForcesDGF, ModelOperator);
@@ -135,6 +143,7 @@ public:
 
 /// Scale the active fiber force curve width for all DeGrooteFregly2016Muscle%s
 /// in the model.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpScaleActiveFiberForceCurveWidthDGF :
         public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(
@@ -159,6 +168,7 @@ public:
 };
 
 /// Set the fiber damping for all DeGrooteFregly2016Muscle%s in the model.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpFiberDampingDGF : public ModelOperator {
 OpenSim_DECLARE_CONCRETE_OBJECT(ModOpFiberDampingDGF, ModelOperator);
     OpenSim_DECLARE_PROPERTY(fiber_damping, double,
@@ -180,6 +190,7 @@ public:
 };
 
 /// Scale the max isometric force for all muscles in the model.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpScaleMaxIsometricForce : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(ModOpScaleMaxIsometricForce, ModelOperator);
     OpenSim_DECLARE_PROPERTY(scale_factor, double,
@@ -215,6 +226,7 @@ public:
 
 /// Add reserve actuators to the model using
 /// ModelFactory::createReserveActuators.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpAddReserves : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(ModOpAddReserves, ModelOperator);
     OpenSim_DECLARE_PROPERTY(optimal_force, double,
@@ -253,6 +265,7 @@ public:
 
 /// Add external loads (e.g., ground reaction forces) to the model from a
 /// XML file.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpAddExternalLoads : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(ModOpAddExternalLoads, ModelOperator);
     OpenSim_DECLARE_PROPERTY(filepath, std::string,
@@ -277,6 +290,7 @@ public:
     }
 };
 
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpReplaceJointsWithWelds : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(ModOpReplaceJointsWithWelds, ModelOperator);
     OpenSim_DECLARE_LIST_PROPERTY(joint_paths, std::string,
