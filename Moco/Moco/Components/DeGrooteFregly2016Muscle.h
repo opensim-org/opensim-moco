@@ -455,11 +455,14 @@ public:
         activeFiberForce =
                 maxIsometricForce * (activation * activeForceLengthMultiplier *
                                             forceVelocityMultiplier);
-        // conservative passive force
-        conPassiveFiberForce = maxIsometricForce * normPassiveFiberForce;
-        // non-conservative passive force
-        nonConPassiveFiberForce =
-                maxIsometricForce * get_fiber_damping() * normFiberVelocity;
+        // conservative and non-conservative passive force
+        conPassiveFiberForce = 0;
+        nonConPassiveFiberForce = 0;
+        if (!get_ignore_passive_fiber_force()) {
+            conPassiveFiberForce = maxIsometricForce * normPassiveFiberForce;
+            nonConPassiveFiberForce =
+                    maxIsometricForce * get_fiber_damping() * normFiberVelocity;
+        }
         // total force
         totalFiberForce = activeFiberForce + conPassiveFiberForce +
                           nonConPassiveFiberForce;
