@@ -2,7 +2,9 @@ Change Log
 ==========
 0.4.0 (in development) 
 ----------------------
-
+- 2020-01-29: Fixed issue in DeGrooteFregly2016Muscle where non-conservative
+              passive forces weren't being set to zero when the 
+              'ignore_passive_fiber_force' property was enabled.
 
 0.3.0 
 -----
