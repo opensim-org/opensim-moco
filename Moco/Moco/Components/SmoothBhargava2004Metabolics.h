@@ -80,16 +80,6 @@ class OSIMMOCO_API SmoothBhargava2004Metabolics : public ModelComponent {
             SmoothBhargava2004Metabolics, ModelComponent);
 
 public:
-    OpenSim_DECLARE_PROPERTY(activation_rate_on, bool, "Specify whether "
-            "activation heat rate is to be calculated (default is true).");
-    OpenSim_DECLARE_PROPERTY(maintenance_rate_on, bool, "Specify whether "
-            "maintenance heat rate is to be calculated (default is true).");
-    OpenSim_DECLARE_PROPERTY(shortening_rate_on, bool, "Specify whether "
-            "shortening heat rate is to be calculated (default is true).");
-    OpenSim_DECLARE_PROPERTY(basal_rate_on, bool, "Specify whether basal heat "
-            "rate is to be calculated (default is true).");
-    OpenSim_DECLARE_PROPERTY(mechanical_work_rate_on, bool, "Specify whether "
-            "mechanical work rate is to be calculated (default is true).");
     OpenSim_DECLARE_PROPERTY(enforce_minimum_heat_rate_per_muscle, bool,
             "Specify whether the total heat rate for a muscle will be clamped "
             "to a minimum value of 1.0 W/kg (default is true).");
@@ -158,12 +148,6 @@ public:
             getMuscleMetabolicRate, SimTK::Stage::Velocity);
 
     SmoothBhargava2004Metabolics();
-    SmoothBhargava2004Metabolics(
-            const bool activation_rate_on,
-            const bool maintenance_rate_on,
-            const bool shortening_rate_on,
-            const bool basal_rate_on,
-            const bool work_rate_on);
 
     int getNumMetabolicMuscles() const;
 
@@ -201,7 +185,7 @@ private:
     const SimTK::Vector& getShorteningRate(const SimTK::State& s) const;
     const SimTK::Vector& getMechanicalWorkRate(const SimTK::State& s) const;
     void calcMetabolicRate(const SimTK::State& s,
-            SimTK::Vector& ratesForMuscles,
+            SimTK::Vector& totalRatesForMuscles,
             SimTK::Vector& activationRatesForMuscles,
             SimTK::Vector& maintenanceRatesForMuscles,
             SimTK::Vector& shorteningRatesForMuscles,

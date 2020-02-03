@@ -83,7 +83,7 @@ MocoSolution gaitTracking() {
     double tib_ant_specific_tension = 0.75417;
 
     SmoothBhargava2004Metabolics* metabolics =
-        new SmoothBhargava2004Metabolics(true, true, true, true, true);
+        new SmoothBhargava2004Metabolics();
     metabolics->setName("metabolics");
     metabolics->set_use_fiber_length_dependence_on_maintenance_rate(false);
     metabolics->set_use_smoothing(true);
