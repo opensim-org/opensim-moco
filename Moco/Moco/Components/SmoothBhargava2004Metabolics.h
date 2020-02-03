@@ -179,6 +179,7 @@ private:
     void constructProperties();
     void extendRealizeTopology(SimTK::State&) const override;
     void extendAddToSystem(SimTK::MultibodySystem& system) const override;
+    void calcMetabolicRateForCache(const SimTK::State& s) const;
     const SimTK::Vector& getMetabolicRate(const SimTK::State& s) const;
     const SimTK::Vector& getActivationRate(const SimTK::State& s) const;
     const SimTK::Vector& getMaintenanceRate(const SimTK::State& s) const;
@@ -190,8 +191,6 @@ private:
             SimTK::Vector& maintenanceRatesForMuscles,
             SimTK::Vector& shorteningRatesForMuscles,
             SimTK::Vector& mechanicalWorkRatesForMuscles) const;
-    mutable std::vector<SimTK::ReferencePtr<const
-        SmoothBhargava2004Metabolics_MuscleParameters>> m_muscleParameters;
     mutable std::unordered_map<std::string, int> m_muscleIndices;
 };
 
