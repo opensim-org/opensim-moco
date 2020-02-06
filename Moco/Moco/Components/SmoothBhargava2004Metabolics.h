@@ -134,18 +134,18 @@ public:
             "Metabolic parameters for each muscle.");
 
     OpenSim_DECLARE_OUTPUT(total_metabolic_rate, double, getTotalMetabolicRate,
-            SimTK::Stage::Velocity);
+            SimTK::Stage::Dynamics);
     OpenSim_DECLARE_OUTPUT(total_activation_rate, double,
-            getTotalActivationRate, SimTK::Stage::Velocity);
+            getTotalActivationRate, SimTK::Stage::Dynamics);
     OpenSim_DECLARE_OUTPUT(total_maintenance_rate, double,
-            getTotalMaintenanceRate, SimTK::Stage::Velocity);
+            getTotalMaintenanceRate, SimTK::Stage::Dynamics);
     OpenSim_DECLARE_OUTPUT(total_shortening_rate, double,
-            getTotalShorteningRate, SimTK::Stage::Velocity);
+            getTotalShorteningRate, SimTK::Stage::Dynamics);
     OpenSim_DECLARE_OUTPUT(total_mechanical_work_rate, double,
-            getTotalMechanicalWorkRate, SimTK::Stage::Velocity);
+            getTotalMechanicalWorkRate, SimTK::Stage::Dynamics);
 
     OpenSim_DECLARE_LIST_OUTPUT(muscle_metabolic_rate, double,
-            getMuscleMetabolicRate, SimTK::Stage::Velocity);
+            getMuscleMetabolicRate, SimTK::Stage::Dynamics);
 
     SmoothBhargava2004Metabolics();
 

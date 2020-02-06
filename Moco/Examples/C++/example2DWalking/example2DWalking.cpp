@@ -229,9 +229,10 @@ MocoSolution gaitTracking() {
     MocoControlGoal& effort =
             dynamic_cast<MocoControlGoal&>(problem.updGoal("control_effort"));
     effort.setWeight(0.1);
-    auto* metGoal = problem.addGoal<MocoOutputGoal>("met", 10);
+    auto* metGoal = problem.addGoal<MocoOutputGoal>("met", 0.1);
     metGoal->setOutputPath("/metabolics|total_metabolic_rate");
     metGoal->setDivideByDisplacement(true);
+    metGoal->setDivideByMass(true);
 
     // Bounds.
     // =======

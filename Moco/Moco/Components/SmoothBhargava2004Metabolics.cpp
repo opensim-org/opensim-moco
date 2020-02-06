@@ -219,15 +219,15 @@ void SmoothBhargava2004Metabolics::extendAddToSystem(
     Super::extendAddToSystem(system);
     SimTK::Vector rates = SimTK::Vector((int)m_muscleIndices.size(), 0.0);
     addCacheVariable<SimTK::Vector>("metabolic_rate", rates,
-            SimTK::Stage::Velocity);
+            SimTK::Stage::Dynamics);
     addCacheVariable<SimTK::Vector>("activation_rate", rates,
-            SimTK::Stage::Velocity);
+            SimTK::Stage::Dynamics);
     addCacheVariable<SimTK::Vector>("maintenance_rate", rates,
-            SimTK::Stage::Velocity);
+            SimTK::Stage::Dynamics);
     addCacheVariable<SimTK::Vector>("shortening_rate", rates,
-            SimTK::Stage::Velocity);
+            SimTK::Stage::Dynamics);
     addCacheVariable<SimTK::Vector>("mechanical_work_rate", rates,
-            SimTK::Stage::Velocity);
+            SimTK::Stage::Dynamics);
 }
 
 void SmoothBhargava2004Metabolics::calcMetabolicRateForCache(
