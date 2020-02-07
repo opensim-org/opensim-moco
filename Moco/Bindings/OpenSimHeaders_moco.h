@@ -10,7 +10,7 @@
 #include <Moco/Components/ModelFactory.h>
 #include <Moco/Components/MultivariatePolynomialFunction.h>
 #include <Moco/Components/PositionMotion.h>
-#include <Moco/Components/SmoothBhargava2004Metabolics.h>
+#include <Moco/Components/Bhargava2004Metabolics.h>
 #include <Moco/Components/SmoothSphereHalfSpaceForce.h>
 #include <Moco/MocoBounds.h>
 #include <Moco/MocoCasADiSolver/MocoCasADiSolver.h>

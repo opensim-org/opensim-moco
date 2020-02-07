@@ -1,7 +1,7 @@
-#ifndef MOCO_SMOOTHBHARGAVA2004METABOLICS_H
-#define MOCO_SMOOTHBHARGAVA2004METABOLICS_H
+#ifndef MOCO_BHARGAVA2004METABOLICS_H
+#define MOCO_BHARGAVA2004METABOLICS_H
 /* -------------------------------------------------------------------------- *
- * OpenSim Moco: SmoothBhargava2004Metabolics.                                *
+ * OpenSim Moco: Bhargava2004Metabolics.                                *
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2019 Stanford University and the Authors                     *
  *                                                                            *
@@ -30,10 +30,10 @@ namespace OpenSim {
 
 /// Object class that holds the metabolic parameters required to calculate
 /// metabolic power for a single muscle.
-class OSIMMOCO_API SmoothBhargava2004Metabolics_MuscleParameters :
+class OSIMMOCO_API Bhargava2004Metabolics_MuscleParameters :
         public Component {
     OpenSim_DECLARE_CONCRETE_OBJECT(
-            SmoothBhargava2004Metabolics_MuscleParameters, Component);
+            Bhargava2004Metabolics_MuscleParameters, Component);
 public:
     OpenSim_DECLARE_PROPERTY(specific_tension, double,
         "The specific tension of the muscle (Pascals (N/m^2)).");
@@ -58,10 +58,9 @@ public:
         "Maintenance constant for fast twitch fibers (W/kg).");
 
     OpenSim_DECLARE_SOCKET(muscle, Muscle,
-            "The muscle to which the SmoothBhargava2004Metabolic is "
-            "connected.");
+            "The muscle to which the Bhargava2004Metabolic is connected.");
 
-    SmoothBhargava2004Metabolics_MuscleParameters();
+    Bhargava2004Metabolics_MuscleParameters();
 
     double getMuscleMass() const { return muscleMass; }
     void setMuscleMass();
@@ -75,17 +74,14 @@ private:
 
 /// Metabolic energy model from Bhargava et al (2004).
 /// https://doi.org/10.1016/s0021-9290(03)00239-2
-class OSIMMOCO_API SmoothBhargava2004Metabolics : public ModelComponent {
+class OSIMMOCO_API Bhargava2004Metabolics : public ModelComponent {
     OpenSim_DECLARE_CONCRETE_OBJECT(
-            SmoothBhargava2004Metabolics, ModelComponent);
+            Bhargava2004Metabolics, ModelComponent);
 
 public:
     OpenSim_DECLARE_PROPERTY(enforce_minimum_heat_rate_per_muscle, bool,
             "Specify whether the total heat rate for a muscle will be clamped "
             "to a minimum value of 1.0 W/kg (default is true).");
-    OpenSim_DECLARE_PROPERTY(use_fiber_length_dependence_on_maintenance_rate,
-            bool, "Specify whether to use the normalized fiber length "
-            "dependence on maintenance rate (default is false).");
     OpenSim_DECLARE_PROPERTY(
             normalized_fiber_length_dependence_on_maintenance_rate,
             PiecewiseLinearFunction,
@@ -130,7 +126,7 @@ public:
             "is 10.");
 
     OpenSim_DECLARE_LIST_PROPERTY(
-            muscle_parameters, SmoothBhargava2004Metabolics_MuscleParameters,
+            muscle_parameters, Bhargava2004Metabolics_MuscleParameters,
             "Metabolic parameters for each muscle.");
 
     OpenSim_DECLARE_OUTPUT(total_metabolic_rate, double, getTotalMetabolicRate,
@@ -147,7 +143,7 @@ public:
     OpenSim_DECLARE_LIST_OUTPUT(muscle_metabolic_rate, double,
             getMuscleMetabolicRate, SimTK::Stage::Dynamics);
 
-    SmoothBhargava2004Metabolics();
+    Bhargava2004Metabolics();
 
     int getNumMetabolicMuscles() const;
 
@@ -174,8 +170,10 @@ public:
     double getMuscleMetabolicRate(
             const SimTK::State& s, const std::string& channel) const;
 
-private:
+    double tanhSmoothing(const double x, double smoothing_threshold,
+            double smoothing_constant) const;
 
+private:
     void constructProperties();
     void extendRealizeTopology(SimTK::State&) const override;
     void extendAddToSystem(SimTK::MultibodySystem& system) const override;
@@ -196,4 +194,4 @@ private:
 
 } // namespace OpenSim
 
-#endif // MOCO_SMOOTHBHARGAVA2004METABOLICS_H
+#endif // MOCO_BHARGAVA2004METABOLICS_H
