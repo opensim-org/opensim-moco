@@ -1,7 +1,7 @@
 #ifndef MOCO_BHARGAVA2004METABOLICS_H
 #define MOCO_BHARGAVA2004METABOLICS_H
 /* -------------------------------------------------------------------------- *
- * OpenSim Moco: Bhargava2004Metabolics.                                *
+ * OpenSim Moco: Bhargava2004Metabolics.h                                     *
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2019 Stanford University and the Authors                     *
  *                                                                            *

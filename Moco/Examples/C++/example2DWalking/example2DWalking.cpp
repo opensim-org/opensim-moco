@@ -350,76 +350,58 @@ void gaitTrackingMetabolics() {
     metabolics->set_use_smoothing(true);
     metabolics->addMuscle("hamstrings_r",
             baseModel.getComponent<Muscle>("hamstrings_r"),
-            hamstrings_ratio_slow_twitch_fibers,
-            hamstrings_specific_tension, SimTK::NaN);
+            hamstrings_ratio_slow_twitch_fibers, hamstrings_specific_tension);
     metabolics->addMuscle("hamstrings_l",
             baseModel.getComponent<Muscle>("hamstrings_l"),
-            hamstrings_ratio_slow_twitch_fibers,
-            hamstrings_specific_tension, SimTK::NaN);
+            hamstrings_ratio_slow_twitch_fibers, hamstrings_specific_tension);
     metabolics->addMuscle("bifemsh_r",
             baseModel.getComponent<Muscle>("bifemsh_r"),
-            bifemsh_ratio_slow_twitch_fibers,
-            bifemsh_specific_tension, SimTK::NaN);
+            bifemsh_ratio_slow_twitch_fibers, bifemsh_specific_tension);
     metabolics->addMuscle("bifemsh_l",
             baseModel.getComponent<Muscle>("bifemsh_l"),
-            bifemsh_ratio_slow_twitch_fibers,
-            bifemsh_specific_tension, SimTK::NaN);
+            bifemsh_ratio_slow_twitch_fibers, bifemsh_specific_tension);
     metabolics->addMuscle("glut_max_r",
             baseModel.getComponent<Muscle>("glut_max_r"),
-            glut_max_ratio_slow_twitch_fibers,
-            glut_max_specific_tension, SimTK::NaN);
+            glut_max_ratio_slow_twitch_fibers, glut_max_specific_tension);
     metabolics->addMuscle("glut_max_l",
             baseModel.getComponent<Muscle>("glut_max_l"),
-            glut_max_ratio_slow_twitch_fibers,
-            glut_max_specific_tension, SimTK::NaN);
+            glut_max_ratio_slow_twitch_fibers, glut_max_specific_tension);
     metabolics->addMuscle("iliopsoas_r",
             baseModel.getComponent<Muscle>("iliopsoas_r"),
-            iliopsoas_ratio_slow_twitch_fibers,
-            iliopsoas_specific_tension, SimTK::NaN);
+            iliopsoas_ratio_slow_twitch_fibers, iliopsoas_specific_tension);
     metabolics->addMuscle("iliopsoas_l",
             baseModel.getComponent<Muscle>("iliopsoas_l"),
-            iliopsoas_ratio_slow_twitch_fibers,
-            iliopsoas_specific_tension, SimTK::NaN);
+            iliopsoas_ratio_slow_twitch_fibers, iliopsoas_specific_tension);
     metabolics->addMuscle("rect_fem_r",
             baseModel.getComponent<Muscle>("rect_fem_r"),
-            rect_fem_ratio_slow_twitch_fibers,
-            rect_fem_specific_tension, SimTK::NaN);
+            rect_fem_ratio_slow_twitch_fibers, rect_fem_specific_tension);
     metabolics->addMuscle("rect_fem_l",
             baseModel.getComponent<Muscle>("rect_fem_l"),
-            rect_fem_ratio_slow_twitch_fibers,
-            rect_fem_specific_tension, SimTK::NaN);
+            rect_fem_ratio_slow_twitch_fibers, rect_fem_specific_tension);
     metabolics->addMuscle("vasti_r",
             baseModel.getComponent<Muscle>("vasti_r"),
-            vasti_ratio_slow_twitch_fibers,
-            vasti_specific_tension, SimTK::NaN);
+            vasti_ratio_slow_twitch_fibers, vasti_specific_tension);
     metabolics->addMuscle("vasti_l",
             baseModel.getComponent<Muscle>("vasti_l"),
-            vasti_ratio_slow_twitch_fibers,
-            vasti_specific_tension, SimTK::NaN);
+            vasti_ratio_slow_twitch_fibers, vasti_specific_tension);
     metabolics->addMuscle("gastroc_r",
             baseModel.getComponent<Muscle>("gastroc_r"),
-            gastroc_ratio_slow_twitch_fibers,
-            gastroc_specific_tension, SimTK::NaN);
+            gastroc_ratio_slow_twitch_fibers, gastroc_specific_tension);
     metabolics->addMuscle("gastroc_l",
             baseModel.getComponent<Muscle>("gastroc_l"),
-            gastroc_ratio_slow_twitch_fibers,
-            gastroc_specific_tension, SimTK::NaN);
+            gastroc_ratio_slow_twitch_fibers, gastroc_specific_tension);
     metabolics->addMuscle("soleus_r",
             baseModel.getComponent<Muscle>("soleus_r"),
-            soleus_ratio_slow_twitch_fibers,
-            soleus_specific_tension, SimTK::NaN);
+            soleus_ratio_slow_twitch_fibers, soleus_specific_tension);
     metabolics->addMuscle("soleus_l",
             baseModel.getComponent<Muscle>("soleus_l"),
-            soleus_ratio_slow_twitch_fibers,
-            soleus_specific_tension, SimTK::NaN);
+            soleus_ratio_slow_twitch_fibers, soleus_specific_tension);
     metabolics->addMuscle("tib_ant_r",
             baseModel.getComponent<Muscle>("tib_ant_r"),
-            tib_ant_ratio_slow_twitch_fibers,
-            tib_ant_specific_tension, SimTK::NaN);
+            tib_ant_ratio_slow_twitch_fibers, tib_ant_specific_tension);
     metabolics->addMuscle("tib_ant_l",
             baseModel.getComponent<Muscle>("tib_ant_l"),
-            tib_ant_ratio_slow_twitch_fibers,
-            tib_ant_specific_tension, SimTK::NaN);
+            tib_ant_ratio_slow_twitch_fibers, tib_ant_specific_tension);
     baseModel.addComponent(metabolics);
     baseModel.finalizeConnections();
 

@@ -144,7 +144,7 @@ void Bhargava2004Metabolics::constructProperties()
     constructProperty_enforce_minimum_heat_rate_per_muscle(true);
 
     const int curvePoints = 5;
-    const double curveX[] = {0.0, 0.5, 1.0, 1.5, 2.0};
+    const double curveX[] = {0.0, 0.5, 1.0, 1.5, 10.0};
     const double curveY[] = {0.5, 0.5, 1.0, 0.0, 0.0};
     PiecewiseLinearFunction fiberLengthDepCurveDefault(curvePoints, curveX,
             curveY, "defaultCurve");
@@ -399,26 +399,14 @@ void Bhargava2004Metabolics::calcMetabolicRate(
         // MECHANICAL WORK RATE for the contractile element of the muscle (W).
         // --> note that we define Vm<0 as shortening and Vm>0 as lengthening.
         // -------------------------------------------------------------------
-        if (get_use_smoothing()) {
-            // Smooth approximation between concentric and eccentric
-            // contractions.
-            const double bv = get_velocity_smoothing();
-            // fiber_velocity_conc=1 if concentric contraction.
-            const double fiber_velocity_conc = 1 - tanhSmoothing(
-                    fiber_velocity, 0, bv);
-
-            if (get_include_negative_mechanical_work())
-                Wdot = -fiber_force_active*fiber_velocity;
-            else
-                Wdot = -fiber_force_active * fiber_velocity
-                        * fiber_velocity_conc;
-        }
-        else {
-            if (get_include_negative_mechanical_work() ||
-                        fiber_velocity <= 0)
-                Wdot = -fiber_force_active * fiber_velocity;
-            else
-                Wdot = 0;
+        if (get_include_negative_mechanical_work())
+        {
+            Wdot = -fiber_force_active * fiber_velocity;
+        } else {
+            Wdot = m_conditional(fiber_velocity,
+                    -fiber_force_active * fiber_velocity,
+                    0,
+                    get_velocity_smoothing());
         }
 
         // NAN CHECKING
