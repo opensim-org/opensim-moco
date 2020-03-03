@@ -86,12 +86,32 @@ track.set_track_reference_position_derivatives(true);
 track.set_apply_tracked_states_to_guess(true);
 track.set_initial_time(0.0);
 track.set_final_time(0.47008941);
+
+% Optionally, add a contact tracking goal.
+if GRFTrackingWeight ~= 0
+    % Track the right and left vertical and fore-aft ground reaction forces.
+    contactTracking = track.updContactTrackingGoal();
+    contactTracking.setEnabled(true);
+    contactTracking.setWeight(GRFTrackingWeight);
+    contactTracking.setExternalLoadsFile('referenceGRF.xml');
+    forceNamesRightFoot = StdVectorString();
+    forceNamesRightFoot.add('contactSphereHeel_r');
+    forceNamesRightFoot.add('contactSphereFront_r');
+    contactTracking.addContactGroup(forceNamesRightFoot, 'Right_GRF');
+    forceNamesLeftFoot = StdVectorString();
+    forceNamesLeftFoot.add('contactSphereHeel_l');
+    forceNamesLeftFoot.add('contactSphereFront_l');
+    contactTracking.addContactGroup(forceNamesLeftFoot, 'Left_GRF');
+    contactTracking.setProjection('plane');
+    contactTracking.setProjectionVector(Vec3(0, 0, 1));
+end
+
 study = track.initialize();
 problem = study.updProblem();
 
 
-% Goals
-% =====
+% Additional goals
+% ================
 
 % Symmetry (to permit simulating only one step)
 symmetryGoal = MocoPeriodicityGoal('symmetryGoal');
@@ -146,24 +166,6 @@ symmetryGoal.addControlPair(MocoPeriodicityGoalPair('/lumbarAct'));
 % problem by default and change the weight
 effort = MocoControlGoal.safeDownCast(problem.updGoal('control_effort'));
 effort.setWeight(controlEffortWeight);
-
-% Optionally, add a contact tracking goal.
-if GRFTrackingWeight ~= 0
-    % Track the right and left vertical and fore-aft ground reaction forces.
-    contactTracking = MocoContactTrackingGoal('contact', GRFTrackingWeight);
-    contactTracking.setExternalLoadsFile('referenceGRF.xml');
-    forceNamesRightFoot = StdVectorString();
-    forceNamesRightFoot.add('contactSphereHeel_r');
-    forceNamesRightFoot.add('contactSphereFront_r');
-    contactTracking.addContactGroup(forceNamesRightFoot, 'Right_GRF');
-    forceNamesLeftFoot = StdVectorString();
-    forceNamesLeftFoot.add('contactSphereHeel_l');
-    forceNamesLeftFoot.add('contactSphereFront_l');
-    contactTracking.addContactGroup(forceNamesLeftFoot, 'Left_GRF');
-    contactTracking.setProjection('plane');
-    contactTracking.setProjectionVector(Vec3(0, 0, 1));
-    problem.addGoal(contactTracking);
-end
 
 
 % Bounds

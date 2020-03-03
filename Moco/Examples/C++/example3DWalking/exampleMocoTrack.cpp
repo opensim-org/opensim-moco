@@ -19,7 +19,7 @@
 /// This example features two different tracking problems solved using the
 /// MocoTrack tool. 
 ///  - The first problem demonstrates the basic usage of the tool interface
-///    to solve a torque-driven marker and contact tracking problem.
+///    to solve a torque-driven marker tracking problem.
 ///  - The second problem shows how to customize a muscle-driven state tracking 
 ///    problem using more advanced features of the tool interface.
 ///
@@ -29,23 +29,6 @@
 #include <Actuators/CoordinateActuator.h>
 
 using namespace OpenSim;
-
-std::vector<std::string> contacts_r {
-        "/forceset/contactSphereHeel_r",
-        "/forceset/contactLateralRearfoot_r",
-        "/forceset/contactLateralMidfoot_r",
-        "/forceset/contactLateralToe_r",
-        "/forceset/contactMedialToe_r",
-        "/forceset/contactMedialMidfoot_r",
-};
-std::vector<std::string> contacts_l {
-        "/forceset/contactSphereHeel_l",
-        "/forceset/contactLateralRearfoot_l",
-        "/forceset/contactLateralMidfoot_l",
-        "/forceset/contactLateralToe_l",
-        "/forceset/contactMedialToe_l",
-        "/forceset/contactMedialMidfoot_l",
-};
 
 void torqueDrivenMarkerTracking() {
 
@@ -69,10 +52,7 @@ void torqueDrivenMarkerTracking() {
             // Add CoordinateActuators to the model degrees-of-freedom. This
             // ignores the pelvis coordinates which already have residual 
             // CoordinateActuators.
-            ModOpAddReserves(250) |
-            ModOpAppliesForce(false, contacts_r) |
-            ModOpAppliesForce(false, contacts_l)
-            );
+            ModOpAddReserves(250));
 
     // Use this convenience function to set the MocoTrack markers reference
     // directly from a TRC file. By default, the markers data is filtered at
@@ -129,6 +109,7 @@ void muscleDrivenStateTracking() {
     // parameters.
     ModelProcessor modelProcessor =
             ModelProcessor("subject_walk_armless.osim") |
+            ModOpAddExternalLoads("grf_walk.xml") |
             ModOpIgnoreTendonCompliance() |
             ModOpReplaceMusclesWithDeGrooteFregly2016() |
             // Only valid for DeGrooteFregly2016Muscles.
@@ -153,13 +134,6 @@ void muscleDrivenStateTracking() {
     // setting is enabled to fill in the missing coordinate speed data using
     // the derivative of splined position data.
     track.set_track_reference_position_derivatives(true);
-
-    auto& contactTracking = track.updContactTrackingGoal();
-    contactTracking.setEnabled(true);
-    contactTracking.setWeight(0.00001);
-    contactTracking.setExternalLoadsFile("grf_walk.xml");
-    contactTracking.addContactGroup(contacts_r, "Right_GRF");
-    contactTracking.addContactGroup(contacts_l, "Left_GRF");
 
     // Initial time, final time, and mesh interval.
     track.set_initial_time(0.81);
@@ -188,15 +162,8 @@ void muscleDrivenStateTracking() {
         }
     }
     
-    // Solve.
+    // Solve and visualize.
     MocoSolution solution = study.solve();
-
-    // Write simulated ground reaction forces to a file.
-    TimeSeriesTable externalLoads = createExternalLoadsTableForGait(
-            model, solution, contacts_r, contacts_l);
-    writeTableToFile(externalLoads, "example3DWalking_MocoTrack_GRF.sto");
-
-    // Visualize.
     study.visualize(solution);
 }
 

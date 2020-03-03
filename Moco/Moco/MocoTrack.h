@@ -77,7 +77,7 @@ class MocoTrajectory;
 /// If the model contains contact elements and you have experimental contact
 /// data that you would like these contact elements to match, you can use the
 /// MocoContactTrackingGoal property of MocoTrack. Use updContactTrackingGoal()
-/// to access this goal. By default, this goal is disabled; enable it via up
+/// to access this goal. By default, this goal is disabled; enable it via
 /// updContactTrackingGoal().setEnabled().
 ///
 /// Contact is usually modeled with ExternalLoads data or contact elements in

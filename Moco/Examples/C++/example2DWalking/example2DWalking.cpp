@@ -76,11 +76,27 @@ MocoSolution gaitTracking(double controlEffortWeight = 10,
     track.set_apply_tracked_states_to_guess(true);
     track.set_initial_time(0.0);
     track.set_final_time(0.47008941);
+
+    // Optionally, add a contact tracking goal.
+    if (GRFTrackingWeight != 0) {
+        // Track the right and left vertical and fore-aft ground reaction forces.
+        auto& contactTracking = track.updContactTrackingGoal();
+        contactTracking.setEnabled(true);
+        contactTracking.setWeight(GRFTrackingWeight);
+        contactTracking.setExternalLoadsFile("referenceGRF.xml");
+        contactTracking.addContactGroup(
+                {"contactSphereHeel_r", "contactSphereFront_r"},"Right_GRF");
+        contactTracking.addContactGroup(
+                {"contactSphereHeel_l", "contactSphereFront_l"}, "Left_GRF");
+        contactTracking.setProjection("plane");
+        contactTracking.setProjectionVector(SimTK::Vec3(0, 0, 1));
+    }
+
     MocoStudy study = track.initialize();
     MocoProblem& problem = study.updProblem();
 
-    // Goals.
-    // =====
+    // Additional goals.
+    // =================
     // Symmetry.
     auto* symmetryGoal = problem.addGoal<MocoPeriodicityGoal>("symmetryGoal");
     Model model = modelprocessor.process();
@@ -133,20 +149,6 @@ MocoSolution gaitTracking(double controlEffortWeight = 10,
     MocoControlGoal& effort =
             dynamic_cast<MocoControlGoal&>(problem.updGoal("control_effort"));
     effort.setWeight(controlEffortWeight);
-
-    // Optionally, add a contact tracking goal.
-    if (GRFTrackingWeight != 0) {
-        // Track the right and left vertical and fore-aft ground reaction forces.
-        auto* contactTracking = problem.addGoal<MocoContactTrackingGoal>(
-                "contact", GRFTrackingWeight);
-        contactTracking->setExternalLoadsFile("referenceGRF.xml");
-        contactTracking->addContactGroup(
-                {"contactSphereHeel_r", "contactSphereFront_r"},"Right_GRF");
-        contactTracking->addContactGroup(
-                {"contactSphereHeel_l", "contactSphereFront_l"}, "Left_GRF");
-        contactTracking->setProjection("plane");
-        contactTracking->setProjectionVector(SimTK::Vec3(0, 0, 1));
-    }
 
     // Bounds.
     // =======

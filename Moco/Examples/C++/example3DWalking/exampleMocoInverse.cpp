@@ -45,21 +45,7 @@ int main() {
                     ModOpIgnorePassiveFiberForcesDGF() |
                     // Only valid for DeGrooteFregly2016Muscles.
                     ModOpScaleActiveFiberForceCurveWidthDGF(1.5) |
-                    ModOpAddReserves(1.0) |
-                    ModOpAppliesForce(false, {
-                            "/forceset/contactSphereHeel_r",
-                            "/forceset/contactLateralRearfoot_r",
-                            "/forceset/contactLateralMidfoot_r",
-                            "/forceset/contactLateralToe_r",
-                            "/forceset/contactMedialToe_r",
-                            "/forceset/contactMedialMidfoot_r",
-                            "/forceset/contactSphereHeel_l",
-                            "/forceset/contactLateralRearfoot_l",
-                            "/forceset/contactLateralMidfoot_l",
-                            "/forceset/contactLateralToe_l",
-                            "/forceset/contactMedialToe_l",
-                            "/forceset/contactMedialMidfoot_l",
-                    });
+                    ModOpAddReserves(1.0);
     inverse.setModel(modelProcessor);
 
     // Construct a TableProcessor of the coordinate data and pass it to the
