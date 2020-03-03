@@ -175,6 +175,7 @@ public:
 
 private:
     void constructProperties();
+    void extendFinalizeFromProperties() override;
     void extendRealizeTopology(SimTK::State&) const override;
     void extendAddToSystem(SimTK::MultibodySystem& system) const override;
     void calcMetabolicRateForCache(const SimTK::State& s) const;
@@ -190,6 +191,9 @@ private:
             SimTK::Vector& shorteningRatesForMuscles,
             SimTK::Vector& mechanicalWorkRatesForMuscles) const;
     mutable std::unordered_map<std::string, int> m_muscleIndices;
+    using ConditionalFunction =
+            double(const double&, const double&, const double&, const double&);
+    mutable std::function<ConditionalFunction> m_conditional;
 };
 
 } // namespace OpenSim

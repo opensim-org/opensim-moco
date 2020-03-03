@@ -164,6 +164,25 @@ void Bhargava2004Metabolics::constructProperties()
     constructProperty_heat_rate_smoothing(10);
 }
 
+void Bhargava2004Metabolics::extendFinalizeFromProperties() {
+    if (get_use_smoothing()) {
+        m_conditional = [](const double& cond, const double& left,
+                                const double& right, const double& smoothing) {
+            const double smoothed_binary = 0.5 + 0.5 * tanh(smoothing * cond);
+            return left + (-left + right) * smoothed_binary;
+        };
+    } else {
+        m_conditional = [](const double& cond, const double& left,
+                                const double& right, const double&) {
+            if (cond <= 0) {
+                return left;
+            } else {
+                return right;
+            }
+        };
+    }
+}
+
 double Bhargava2004Metabolics::getTotalMetabolicRate(
         const SimTK::State& s) const {
     // BASAL METABOLIC RATE (W) (based on whole body mass, not muscle mass).
@@ -325,7 +344,6 @@ void Bhargava2004Metabolics::calcMetabolicRate(
         const double fast_twitch_excitation =
             (1 - muscleParameter.get_ratio_slow_twitch_fibers())
             * (1 - cos(SimTK::Pi/2 * excitation));
-        double alpha, fiber_length_dependence;
 
         // Get the unnormalized total active force, F_iso that 'would' be
         // developed at the current activation and fiber length under isometric
@@ -348,7 +366,7 @@ void Bhargava2004Metabolics::calcMetabolicRate(
         // MAINTENANCE HEAT RATE (W).
         // --------------------------
         SimTK::Vector tmp(1, fiber_length_normalized);
-        fiber_length_dependence =
+        const double fiber_length_dependence =
         get_normalized_fiber_length_dependence_on_maintenance_rate().
                 calcValue(tmp);
         Mdot = muscleParameter.getMuscleMass() * fiber_length_dependence
@@ -360,46 +378,21 @@ void Bhargava2004Metabolics::calcMetabolicRate(
         // SHORTENING HEAT RATE (W).
         // --> note that we define Vm<0 as shortening and Vm>0 as lengthening.
         // --------------------------------------------------------------------
+        double alpha;
         if (get_use_force_dependent_shortening_prop_constant())
         {
-            if (get_use_smoothing()) {
-                // Smooth approximation between concentric and eccentric
-                // contractions.
-                const double bv = get_velocity_smoothing();
-                // fiber_velocity_ecc=1 if eccentric contraction.
-                const double fiber_velocity_ecc = tanhSmoothing(
-                        fiber_velocity, 0, bv);
-
-                alpha = (0.16 * F_iso) + (0.18 * fiber_force_total);
-                alpha = alpha + (-alpha + 0.157 * fiber_force_total)
-                        * fiber_velocity_ecc;
-            }
-            else {
-                if (fiber_velocity <= 0)    // concentric contraction, Vm<0
-                    alpha = (0.16 * F_iso) + (0.18 * fiber_force_total);
-                else                        // eccentric contraction, Vm>0
-                    alpha = 0.157 * fiber_force_total;
-            }
-        }
-        else
-        {
-            if (get_use_smoothing()) {
-                // Smooth approximation between concentric and eccentric
-                // contractions.
-                const double bv = get_velocity_smoothing();
-                // fiber_velocity_ecc=1 if eccentric contraction.
-                const double fiber_velocity_ecc = tanhSmoothing(
-                        fiber_velocity, 0, bv);
-
-                alpha = 0.25 * fiber_force_total;
-                alpha = alpha + -alpha * fiber_velocity_ecc;
-            }
-            else {
-                if (fiber_velocity <= 0)    // concentric contraction, Vm<0
-                    alpha = 0.25 * fiber_force_total;
-                else                        // eccentric contraction, Vm>0
-                    alpha = 0.0;
-            }
+            alpha = m_conditional(fiber_velocity,
+                    (0.16 * F_iso) + (0.18 * fiber_force_total),
+                    0.157 * fiber_force_total,
+                    get_velocity_smoothing());
+        } else {
+            // This simpler value of alpha comes from Frank Anderson's 1999
+            // dissertation "A Dynamic Optimization Solution for a Complete
+            // Cycle of Normal Gait".
+            alpha = m_conditional(fiber_velocity,
+                    0.25 * fiber_force_total,
+                    0,
+                    get_velocity_smoothing());
         }
         Sdot = -alpha * fiber_velocity;
 
