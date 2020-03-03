@@ -58,6 +58,8 @@
 # https://developer.apple.com/documentation/xcode/notarizing_macos_software_before_distribution
 # https://scriptingosx.com/2019/09/notarize-a-command-line-tool/
 
+# TODO: Integrate into continuous integration.
+
 
 while getopts s:i:f: option
     do
