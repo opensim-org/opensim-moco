@@ -33,7 +33,7 @@ namespace OpenSim {
 /// nonlinear programming. Vol. 19. Siam, 2010.
 ///
 /// Transcription scheme
-/// --------------------
+/// ====================
 /// The `transcription_scheme` setting allows you to choose between
 /// 'trapezoidal' and 'hermite-simpson' transcription schemes. The 'trapezoidal'
 /// option replaces the dynamics differential constraints with finite
@@ -49,7 +49,7 @@ namespace OpenSim {
 /// required (see Kinematic constraints section below).
 ///
 /// Path constraints on controls with Hermite-Simpson transcription
-/// ---------------------------------------------------------------
+/// ===============================================================
 /// For Hermite-Simpson transcription, the direct collocation solvers enforce
 /// the path constraints (e.g., MocoPathConstraint) at only the mesh interval
 /// endpoints (not midpoints), but control signal variables exist at both mesh
@@ -59,7 +59,7 @@ namespace OpenSim {
 /// midpoints may differ greatly from the values at mesh interval endpoints.
 ///
 /// Multibody dynamics mode
-/// -----------------------
+/// =======================
 /// The `multibody_dynamics_mode` setting allows you to choose between
 /// expressing multibody dynamics as explicit differential equations (e.g., \f$
 /// \dot{y} = f(y) \f$) or implicit differential equations (e.g., \f$ 0 = f(y,
@@ -68,7 +68,7 @@ namespace OpenSim {
 /// the model component implementing those dynamics.
 ///
 /// Kinematic constraints
-/// ---------------------
+/// =====================
 /// All kinematic constraints included as OpenSim model constraints are
 /// supported with the 'hermite-simpson' transcription scheme setting. Kinematic
 /// constraints are automatically detected if present in the model and are
@@ -82,7 +82,10 @@ namespace OpenSim {
 /// velocity correction variables that project state variables onto the
 /// constraint manifold when necessary to properly enforce defect constraints
 /// (see Posa et al. 2016 for details).
-
+///
+/// Minimizing Lagrange multipliers
+/// ===============================
+/// TODO
 class OSIMMOCO_API MocoDirectCollocationSolver : public MocoSolver {
     OpenSim_DECLARE_ABSTRACT_OBJECT(MocoDirectCollocationSolver, MocoSolver);
 

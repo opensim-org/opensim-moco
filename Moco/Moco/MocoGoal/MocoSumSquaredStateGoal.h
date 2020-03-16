@@ -29,12 +29,13 @@ namespace OpenSim {
 /// This goal is computed as follows:
 ///
 /// \f[
-/// \int_{t_i}^{t_f} \sum_{s \in S} w_s y_s(t)^2 ~dt
+/// \frac{1}{N_S} \int_{t_i}^{t_f} \sum_{s \in S} w_s y_s(t)^2 ~dt
 /// \f]
 /// We use the following notation:
 /// - \f$ t_i \f$: the initial time of this phase.
 /// - \f$ t_f \f$: the final time of this phase.
 /// - \f$ S \f$: the set of state variables selected for this goal.
+/// - \f$ N_S \f$: the number of state variables selected for this goal.
 /// - \f$ w_s \f$: the weight for state variable \f$ s \f$.
 /// - \f$ y_s(t) \f$: state variable \f$ s \f$.
 ///
@@ -90,7 +91,7 @@ protected:
             const SimTK::State& state, double& integrand) const override;
     void calcGoalImpl(
             const GoalInput& input, SimTK::Vector& cost) const override {
-        cost[0] = input.integral;
+        cost[0] = input.integral / m_state_weights.size();
     }
     void printDescriptionImpl(std::ostream& stream = std::cout) const override;
 

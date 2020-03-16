@@ -89,6 +89,14 @@ class MocoCasOCProblem;
 /// instead, as this allows different users to solve the same problem in their
 /// preferred way.
 ///
+/// Minimizing implicit multibody accelerations
+/// ===========================================
+/// TODO
+///
+/// Minimizing implicit auxiliary derivatives
+/// =========================================
+/// TODO
+///
 /// Parameter variables
 /// ===================
 /// By default, MocoCasADiSolver is much slower than MocoTroperSolver at

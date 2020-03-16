@@ -512,11 +512,12 @@ void Transcription::setObjectiveAndEndpointConstraints() {
 
     // Minimize Lagrange multipliers if specified by the solver.
     if (minimizeLagrangeMultipliers) {
+        const auto& numMults = m_problem.getNumMultipliers();
         const auto mults = m_vars[multipliers];
         const double multiplierWeight = m_solver.getLagrangeMultiplierWeight();
         // Sum across constraints of each multiplier element squared.
         MX integrandTraj = MX::sum1(MX::sq(mults));
-        m_objectiveTerms(iterm++) = multiplierWeight * m_duration *
+        m_objectiveTerms(iterm++) = multiplierWeight / numMults * m_duration *
                        dot(quadCoeffs.T(), integrandTraj);
     }
 
@@ -527,7 +528,7 @@ void Transcription::setObjectiveAndEndpointConstraints() {
         const double accelWeight =
                 m_solver.getImplicitMultibodyAccelerationsWeight();
         MX integrandTraj = MX::sum1(MX::sq(accels));
-        m_objectiveTerms(iterm++) = accelWeight * m_duration *
+        m_objectiveTerms(iterm++) = accelWeight / numAccels * m_duration *
                        dot(quadCoeffs.T(), integrandTraj);
     }
 
@@ -540,7 +541,7 @@ void Transcription::setObjectiveAndEndpointConstraints() {
         const double auxDerivWeight =
                 m_solver.getImplicitAuxiliaryDerivativesWeight();
         MX integrandTraj = MX::sum1(MX::sq(auxDerivs));
-        m_objectiveTerms(iterm++) = auxDerivWeight * m_duration *
+        m_objectiveTerms(iterm++) = auxDerivWeight / numAuxDerivs * m_duration *
                        dot(quadCoeffs.T(), integrandTraj);
     }
 

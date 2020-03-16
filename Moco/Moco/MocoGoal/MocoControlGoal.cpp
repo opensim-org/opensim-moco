@@ -131,7 +131,7 @@ void MocoControlGoal::calcIntegrandImpl(
 
 void MocoControlGoal::calcGoalImpl(
         const GoalInput& input, SimTK::Vector& cost) const {
-    cost[0] = input.integral;
+    cost[0] = input.integral / m_controlIndices.size();
     if (get_divide_by_displacement()) {
         cost[0] /=
                 calcSystemDisplacement(input.initial_state, input.final_state);

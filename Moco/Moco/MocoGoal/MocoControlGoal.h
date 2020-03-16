@@ -37,12 +37,13 @@ namespace OpenSim {
 /// This goal is computed as follows:
 ///
 /// \f[
-/// \frac{1}{d} \int_{t_i}^{t_f} \sum_{c \in C} w_c |x_c(t)|^p ~dt
+/// \frac{1}{d N_C} \int_{t_i}^{t_f} \sum_{c \in C} w_c |x_c(t)|^p ~dt
 /// \f]
 /// We use the following notation:
 /// - \f$ d \f$: displacement of the system, if `divide_by_displacement` is
 ///   true; 1 otherwise.
 /// - \f$ C \f$: the set of control signals.
+/// - \f$ N_C \f$: the number of control signals.
 /// - \f$ w_c \f$: the weight for control \f$ c \f$.
 /// - \f$ x_c(t) \f$: control signal \f$ c \f$.
 /// - \f$ p \f$: the `exponent`.
