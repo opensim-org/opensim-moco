@@ -38,13 +38,13 @@ Bhargava2004Metabolics_MuscleParameters() {
 void Bhargava2004Metabolics_MuscleParameters::
 setMuscleMass()
 {
-    if (get_use_provided_muscle_mass())
+    if (SimTK::isNaN(get_provided_muscle_mass())) {
+        muscleMass =
+            (getMuscle().getMaxIsometricForce() / get_specific_tension())
+            * get_density() * getMuscle().getOptimalFiberLength();
+    } else {
         muscleMass = get_provided_muscle_mass();
-    else {
-        muscleMass = (
-                getMuscle().getMaxIsometricForce() / get_specific_tension())
-                * get_density() * getMuscle().getOptimalFiberLength();
-        }
+    }
 }
 
 void Bhargava2004Metabolics_MuscleParameters::
@@ -54,9 +54,9 @@ constructProperties()
     constructProperty_specific_tension(0.25e6);
     // Density of mammalian muscle (kg/m^3).
     constructProperty_density(1059.7);
+
     constructProperty_ratio_slow_twitch_fibers(0.5);
 
-    constructProperty_use_provided_muscle_mass(false);
     constructProperty_provided_muscle_mass(SimTK::NaN);
 
     // Defaults (W/kg) from Bhargava et al (2004).
@@ -80,12 +80,8 @@ void Bhargava2004Metabolics::addMuscle(const std::string& name,
     auto& mp = upd_muscle_parameters(
             getProperty_muscle_parameters().size() - 1);
     mp.setName(name);
-    if (SimTK::isNaN(muscle_mass)) {
-        mp.set_use_provided_muscle_mass(false);
-    } else {
-        mp.set_use_provided_muscle_mass(true);
+    if (!SimTK::isNaN(muscle_mass))
         mp.set_provided_muscle_mass(muscle_mass);
-    }
     mp.connectSocket_muscle(muscle);
     mp.setMuscleMass();
 }
@@ -99,12 +95,8 @@ void Bhargava2004Metabolics::addMuscle(const std::string& name,
     mp.setName(name);
     mp.set_ratio_slow_twitch_fibers(ratio_slow_twitch_fibers);
     mp.set_specific_tension(specific_tension);
-    if (SimTK::isNaN(muscle_mass)) {
-        mp.set_use_provided_muscle_mass(false);
-    } else {
-        mp.set_use_provided_muscle_mass(true);
+    if (!SimTK::isNaN(muscle_mass))
         mp.set_provided_muscle_mass(muscle_mass);
-    }
     mp.connectSocket_muscle(muscle);
     mp.setMuscleMass();
 }
@@ -126,13 +118,8 @@ void Bhargava2004Metabolics::addMuscle(const std::string& name,
     mp.set_activation_constant_fast_twitch(activation_constant_fast_twitch);
     mp.set_maintenance_constant_slow_twitch(maintenance_constant_slow_twitch);
     mp.set_maintenance_constant_fast_twitch(maintenance_constant_fast_twitch);
-
-    if (SimTK::isNaN(muscle_mass)) {
-        mp.set_use_provided_muscle_mass(false);
-    } else {
-        mp.set_use_provided_muscle_mass(true);
+    if (!SimTK::isNaN(muscle_mass))
         mp.set_provided_muscle_mass(muscle_mass);
-    }
     mp.connectSocket_muscle(muscle);
     mp.setMuscleMass();
 }
