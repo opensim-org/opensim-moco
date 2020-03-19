@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------------- *
- * OpenSim Moco: Bhargava2004Metabolics.cpp                             *
+ * OpenSim Moco: Bhargava2004Metabolics.cpp                                   *
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2019 Stanford University and the Authors                     *
  *                                                                            *
@@ -59,7 +59,7 @@ constructProperties()
     constructProperty_use_provided_muscle_mass(false);
     constructProperty_provided_muscle_mass(SimTK::NaN);
 
-    // Defaults from Bhargava et al (2004).
+    // Defaults (W/kg) from Bhargava et al (2004).
     constructProperty_activation_constant_slow_twitch(40.0);
     constructProperty_activation_constant_fast_twitch(133.0);
     constructProperty_maintenance_constant_slow_twitch(74.0);
@@ -82,8 +82,7 @@ void Bhargava2004Metabolics::addMuscle(const std::string& name,
     mp.setName(name);
     if (SimTK::isNaN(muscle_mass)) {
         mp.set_use_provided_muscle_mass(false);
-    }
-    else {
+    } else {
         mp.set_use_provided_muscle_mass(true);
         mp.set_provided_muscle_mass(muscle_mass);
     }
@@ -101,8 +100,7 @@ void Bhargava2004Metabolics::addMuscle(const std::string& name,
     mp.set_specific_tension(specific_tension);
     if (SimTK::isNaN(muscle_mass)) {
         mp.set_use_provided_muscle_mass(false);
-    }
-    else {
+    } else {
         mp.set_use_provided_muscle_mass(true);
         mp.set_provided_muscle_mass(muscle_mass);
     }
@@ -129,8 +127,7 @@ void Bhargava2004Metabolics::addMuscle(const std::string& name,
 
     if (SimTK::isNaN(muscle_mass)) {
         mp.set_use_provided_muscle_mass(false);
-    }
-    else {
+    } else {
         mp.set_use_provided_muscle_mass(true);
         mp.set_provided_muscle_mass(muscle_mass);
     }
@@ -142,14 +139,6 @@ void Bhargava2004Metabolics::constructProperties()
     constructProperty_muscle_parameters();
 
     constructProperty_enforce_minimum_heat_rate_per_muscle(true);
-
-    const int curvePoints = 5;
-    const double curveX[] = {0.0, 0.5, 1.0, 1.5, 10.0};
-    const double curveY[] = {0.5, 0.5, 1.0, 0.0, 0.0};
-    PiecewiseLinearFunction fiberLengthDepCurveDefault(curvePoints, curveX,
-            curveY, "defaultCurve");
-    constructProperty_normalized_fiber_length_dependence_on_maintenance_rate(
-            fiberLengthDepCurveDefault);
 
     constructProperty_use_force_dependent_shortening_prop_constant(false);
     constructProperty_basal_coefficient(1.2);
@@ -222,8 +211,7 @@ void Bhargava2004Metabolics::extendRealizeTopology(SimTK::State& state)
 const {
     Super::extendRealizeTopology(state);
     m_muscleIndices.clear();
-    int nM = getProperty_muscle_parameters().size();
-    for (int i=0; i < nM; ++i) {
+    for (int i=0; i < getProperty_muscle_parameters().size(); ++i) {
         const auto& muscle = get_muscle_parameters(i).getMuscle();
         if (muscle.get_appliesForce()) {
             m_muscleIndices[muscle.getAbsolutePathString()] = i;
@@ -315,41 +303,44 @@ void Bhargava2004Metabolics::calcMetabolicRate(
     maintenanceRatesForMuscles.resize((int)m_muscleIndices.size());
     shorteningRatesForMuscles.resize((int)m_muscleIndices.size());
     mechanicalWorkRatesForMuscles.resize((int)m_muscleIndices.size());
-    double Adot, Mdot, Sdot, Wdot;
-    Adot = Mdot = Sdot = Wdot = 0;
+    double activationHeatRate, maintenanceHeatRate, shorteningHeatRate;
+    double mechanicalWorkRate;
+    activationHeatRate = maintenanceHeatRate = shorteningHeatRate =
+        mechanicalWorkRate = 0;
 
     int i = 0;
-    for (const auto& muscleIndice : m_muscleIndices) {
+    for (const auto& muscleIndex : m_muscleIndices) {
 
         const auto& muscleParameter =
-                get_muscle_parameters(muscleIndice.second);
+            get_muscle_parameters(muscleIndex.second);
         const auto& muscle = muscleParameter.getMuscle();
 
-        const double max_isometric_force = muscle.getMaxIsometricForce();
-        const double activation = get_muscle_effort_scaling_factor()
-            * muscle.getActivation(s);
-        const double excitation = get_muscle_effort_scaling_factor()
-            * muscle.getControl(s);
-        const double fiber_force_passive =  muscle.getPassiveFiberForce(s);
-        const double fiber_force_active = get_muscle_effort_scaling_factor()
-            * muscle.getActiveFiberForce(s);
-        const double fiber_force_total = fiber_force_active
-            + fiber_force_passive;
-        const double fiber_length_normalized =
+        const double maximalIsometricForce = muscle.getMaxIsometricForce();
+        const double activation =
+            get_muscle_effort_scaling_factor() * muscle.getActivation(s);
+        const double excitation =
+            get_muscle_effort_scaling_factor() * muscle.getControl(s);
+        const double fiberForcePassive =  muscle.getPassiveFiberForce(s);
+        const double fiberForceActive =
+            get_muscle_effort_scaling_factor() * muscle.getActiveFiberForce(s);
+        const double fiberForceTotal =
+            fiberForceActive + fiberForcePassive;
+        const double fiberLengthNormalized =
             muscle.getNormalizedFiberLength(s);
-        const double fiber_velocity = muscle.getFiberVelocity(s);
-        const double slow_twitch_excitation =
+        const double fiberVelocity = muscle.getFiberVelocity(s);
+        const double slowTwitchExcitation =
             muscleParameter.get_ratio_slow_twitch_fibers()
             * sin(SimTK::Pi/2 * excitation);
-        const double fast_twitch_excitation =
+        const double fastTwitchExcitation =
             (1 - muscleParameter.get_ratio_slow_twitch_fibers())
             * (1 - cos(SimTK::Pi/2 * excitation));
 
-        // Get the unnormalized total active force, F_iso that 'would' be
-        // developed at the current activation and fiber length under isometric
-        // conditions (i.e. Vm=0).
-        const double F_iso = activation
-            * muscle.getActiveForceLengthMultiplier(s) * max_isometric_force;
+        // Get the unnormalized total active force, isometricTotalActiveForce
+        // that 'would' be developed at the current activation and fiber length
+        // under isometric conditions (i.e., fiberVelocity=0).
+        const double isometricTotalActiveForce =
+            activation * muscle.getActiveForceLengthMultiplier(s)
+            * maximalIsometricForce;
 
         // ACTIVATION HEAT RATE (W).
         // -------------------------
@@ -357,77 +348,88 @@ void Bhargava2004Metabolics::calcMetabolicRate(
         // however, in Bhargava et al., (2004) they assume a function here.
         // We will ignore this function and use 1.0 for now.
         const double decay_function_value = 1.0;
-        Adot = muscleParameter.getMuscleMass() * decay_function_value
+        activationHeatRate =
+            muscleParameter.getMuscleMass() * decay_function_value
             * ( (muscleParameter.get_activation_constant_slow_twitch()
-                        * slow_twitch_excitation)
+                        * slowTwitchExcitation)
                 + (muscleParameter.get_activation_constant_fast_twitch()
-                        * fast_twitch_excitation) );
+                        * fastTwitchExcitation) );
 
         // MAINTENANCE HEAT RATE (W).
         // --------------------------
-        SimTK::Vector tmp(1, fiber_length_normalized);
+        const int curvePoints = 5;
+        const double curveX[] = {0.0, 0.5, 1.0, 1.5, 10.0};
+        const double curveY[] = {0.5, 0.5, 1.0, 0.0, 0.0};
+        PiecewiseLinearFunction fiberLengthDepCurveDefault(curvePoints, curveX,
+                curveY, "defaultCurve");
         const double fiber_length_dependence =
-        get_normalized_fiber_length_dependence_on_maintenance_rate().
-                calcValue(tmp);
-        Mdot = muscleParameter.getMuscleMass() * fiber_length_dependence
+            fiberLengthDepCurveDefault.calcValue(
+                    SimTK::Vector(1, fiberLengthNormalized));
+        maintenanceHeatRate =
+            muscleParameter.getMuscleMass() * fiber_length_dependence
                 * ( (muscleParameter.get_maintenance_constant_slow_twitch()
-                        * slow_twitch_excitation)
+                            * slowTwitchExcitation)
                 + (muscleParameter.get_maintenance_constant_fast_twitch()
-                        * fast_twitch_excitation) );
+                            * fastTwitchExcitation) );
 
         // SHORTENING HEAT RATE (W).
-        // --> note that we define Vm<0 as shortening and Vm>0 as lengthening.
-        // --------------------------------------------------------------------
+        // --> note that we define fiberVelocity<0 as shortening and
+        //     fiberVelocity>0 as lengthening.
+        // ---------------------------------------------------------
         double alpha;
         if (get_use_force_dependent_shortening_prop_constant())
         {
-            alpha = m_conditional(fiber_velocity,
-                    (0.16 * F_iso) + (0.18 * fiber_force_total),
-                    0.157 * fiber_force_total,
+            alpha = m_conditional(fiberVelocity,
+                    (0.16 * isometricTotalActiveForce)
+                    + (0.18 * fiberForceTotal),
+                    0.157 * fiberForceTotal,
                     get_velocity_smoothing());
         } else {
             // This simpler value of alpha comes from Frank Anderson's 1999
             // dissertation "A Dynamic Optimization Solution for a Complete
             // Cycle of Normal Gait".
-            alpha = m_conditional(fiber_velocity,
-                    0.25 * fiber_force_total,
+            alpha = m_conditional(fiberVelocity,
+                    0.25 * fiberForceTotal,
                     0,
                     get_velocity_smoothing());
         }
-        Sdot = -alpha * fiber_velocity;
+        shorteningHeatRate = -alpha * fiberVelocity;
 
         // MECHANICAL WORK RATE for the contractile element of the muscle (W).
-        // --> note that we define Vm<0 as shortening and Vm>0 as lengthening.
+        // --> note that we define fiberVelocity<0 as shortening and
+        //     fiberVelocity>0 as lengthening.
         // -------------------------------------------------------------------
         if (get_include_negative_mechanical_work())
         {
-            Wdot = -fiber_force_active * fiber_velocity;
+            mechanicalWorkRate = -fiberForceActive * fiberVelocity;
         } else {
-            Wdot = m_conditional(fiber_velocity,
-                    -fiber_force_active * fiber_velocity,
+            mechanicalWorkRate = m_conditional(fiberVelocity,
+                    -fiberForceActive * fiberVelocity,
                     0,
                     get_velocity_smoothing());
         }
 
         // NAN CHECKING
         // ------------------------------------------
-        if (SimTK::isNaN(Adot))
-            std::cout << "WARNING::" << getName() << ": Adot (" <<
-                    muscleParameter.getName() << ") = NaN!" << std::endl;
-        if (SimTK::isNaN(Mdot))
-            std::cout << "WARNING::" << getName() << ": Mdot (" <<
-                    muscleParameter.getName() << ") = NaN!" << std::endl;
-        if (SimTK::isNaN(Sdot))
-            std::cout << "WARNING::" << getName() << ": Sdot (" <<
-                    muscleParameter.getName() << ") = NaN!" << std::endl;
-        if (SimTK::isNaN(Wdot))
-            std::cout << "WARNING::" << getName() << ": Wdot (" <<
-                    muscleParameter.getName() << ") = NaN!" << std::endl;
+        if (SimTK::isNaN(activationHeatRate))
+            std::cout << "WARNING::" << getName() << ": activationHeatRate ("
+                    << muscleParameter.getName() << ") = NaN!" << std::endl;
+        if (SimTK::isNaN(maintenanceHeatRate))
+            std::cout << "WARNING::" << getName() << ": maintenanceHeatRate ("
+                    << muscleParameter.getName() << ") = NaN!" << std::endl;
+        if (SimTK::isNaN(shorteningHeatRate))
+            std::cout << "WARNING::" << getName() << ": shorteningHeatRate ("
+                    << muscleParameter.getName() << ") = NaN!" << std::endl;
+        if (SimTK::isNaN(mechanicalWorkRate))
+            std::cout << "WARNING::" << getName() << ": mechanicalWorkRate ("
+                    <<  muscleParameter.getName() << ") = NaN!" << std::endl;
 
         // If necessary, increase the shortening heat rate so that the total
         // power is non-negative.
         if (get_forbid_negative_total_power()) {
-            const double Edot_W_beforeClamp = Adot + Mdot + Sdot + Wdot;
+            const double Edot_W_beforeClamp = activationHeatRate
+                + maintenanceHeatRate + shorteningHeatRate
+                + mechanicalWorkRate;
             if (get_use_smoothing()) {
                 // Variables for smooth approximations between negative and
                 // positive total power.
@@ -436,21 +438,22 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                 const double Edot_W_beforeClamp_neg = tanhSmoothing(
                         -Edot_W_beforeClamp, 0, bp);
 
-                Sdot -= Edot_W_beforeClamp * Edot_W_beforeClamp_neg;
-            }
-            else {
+                shorteningHeatRate -=
+                    Edot_W_beforeClamp * Edot_W_beforeClamp_neg;
+            } else {
                 if (Edot_W_beforeClamp < 0)
-                    Sdot -= Edot_W_beforeClamp;
+                    shorteningHeatRate -= Edot_W_beforeClamp;
             }
         }
 
         // This check is adapted from Umberger(2003), page 104: the total heat
-        // rate (i.e., Adot + Mdot + Sdot) for a given muscle cannot fall below
-        // 1.0 W/kg.
+        // rate (i.e., activationHeatRate + maintenanceHeatRate
+        // + shorteningHeatRate) for a given muscle cannot fall below 1.0 W/kg.
         // --------------------------------------------------------------------
-        double totalHeatRate = Adot + Mdot + Sdot;
+        double totalHeatRate = activationHeatRate + maintenanceHeatRate
+            + shorteningHeatRate;
         if (get_use_smoothing()) {
-            if(get_enforce_minimum_heat_rate_per_muscle())
+            if (get_enforce_minimum_heat_rate_per_muscle())
             {
                 // Variables for smooth approximations between total heat rate
                 // for a given muscle below or above 1.0 W/kg.
@@ -462,9 +465,8 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                 totalHeatRate = totalHeatRate + (-totalHeatRate + 1.0 *
                         muscleParameter.getMuscleMass()) * totalHeatRate_bmm;
             }
-        }
-        else {
-            if(get_enforce_minimum_heat_rate_per_muscle()
+        } else {
+            if (get_enforce_minimum_heat_rate_per_muscle()
                     && totalHeatRate < 1.0 * muscleParameter.getMuscleMass())
             {
                 totalHeatRate = 1.0 * muscleParameter.getMuscleMass();
@@ -473,13 +475,13 @@ void Bhargava2004Metabolics::calcMetabolicRate(
 
         // TOTAL METABOLIC ENERGY RATE (W).
         // --------------------------------
-        double Edot = totalHeatRate + Wdot;
+        double Edot = totalHeatRate + mechanicalWorkRate;
 
         totalRatesForMuscles[i] = Edot;
-        activationRatesForMuscles[i] = Adot;
-        maintenanceRatesForMuscles[i] = Mdot;
-        shorteningRatesForMuscles[i] = Sdot;
-        mechanicalWorkRatesForMuscles[i] = Wdot;
+        activationRatesForMuscles[i] = activationHeatRate;
+        maintenanceRatesForMuscles[i] = maintenanceHeatRate;
+        shorteningRatesForMuscles[i] = shorteningHeatRate;
+        mechanicalWorkRatesForMuscles[i] = mechanicalWorkRate;
 
         ++i;
     }

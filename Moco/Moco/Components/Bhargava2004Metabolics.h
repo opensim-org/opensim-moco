@@ -36,29 +36,33 @@ class OSIMMOCO_API Bhargava2004Metabolics_MuscleParameters :
             Bhargava2004Metabolics_MuscleParameters, Component);
 public:
     OpenSim_DECLARE_PROPERTY(specific_tension, double,
-        "The specific tension of the muscle (Pascals (N/m^2)).");
+        "The specific tension of the muscle (Pascals (N/m^2), default is "
+        "0.25e6).");
     OpenSim_DECLARE_PROPERTY(density, double,
-        "The density of the muscle (kg/m^3).");
+        "The density of the muscle (kg/m^3, default is 1059.7).");
     OpenSim_DECLARE_PROPERTY(ratio_slow_twitch_fibers, double,
         "Ratio of slow twitch fibers in the muscle "
-        "(must be between 0 and 1).");
+        "(must be between 0 and 1, default is 0.5).");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(use_provided_muscle_mass, bool,
         "An optional flag that allows the user to explicitly specify a muscle "
         "mass. If set to true, the 'provided_muscle_mass' property must be "
-        "specified.");
+        "specified (default is false).");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(provided_muscle_mass, double,
-        "The user specified muscle mass (kg).");
+        "The user specified muscle mass (kg, default is NaN).");
     OpenSim_DECLARE_PROPERTY(activation_constant_slow_twitch, double,
-        "Activation constant for slow twitch fibers (W/kg).");
+        "Activation constant for slow twitch fibers (W/kg, default is 40.0).");
     OpenSim_DECLARE_PROPERTY(activation_constant_fast_twitch, double,
-        "Activation constant for fast twitch fibers (W/kg).");
+        "Activation constant for fast twitch fibers (W/kg, default is "
+        "133.0).");
     OpenSim_DECLARE_PROPERTY(maintenance_constant_slow_twitch, double,
-        "Maintenance constant for slow twitch fibers (W/kg).");
+        "Maintenance constant for slow twitch fibers (W/kg, default is "
+        "74.0).");
     OpenSim_DECLARE_PROPERTY(maintenance_constant_fast_twitch, double,
-        "Maintenance constant for fast twitch fibers (W/kg).");
+        "Maintenance constant for fast twitch fibers (W/kg, default is "
+        "111.0).");
 
     OpenSim_DECLARE_SOCKET(muscle, Muscle,
-            "The muscle to which the Bhargava2004Metabolic is connected.");
+            "The muscle to which the Bhargava2004Metabolics is connected.");
 
     Bhargava2004Metabolics_MuscleParameters();
 
@@ -82,11 +86,6 @@ public:
     OpenSim_DECLARE_PROPERTY(enforce_minimum_heat_rate_per_muscle, bool,
             "Specify whether the total heat rate for a muscle will be clamped "
             "to a minimum value of 1.0 W/kg (default is true).");
-    OpenSim_DECLARE_PROPERTY(
-            normalized_fiber_length_dependence_on_maintenance_rate,
-            PiecewiseLinearFunction,
-            "Contains a PiecewiseLinearFunction object that describes the "
-            "normalized fiber length dependence on maintenance rate.");
     OpenSim_DECLARE_PROPERTY(use_force_dependent_shortening_prop_constant,
             bool, "Specify whether to use a force dependent shortening "
             "proportionality constant (default is false).");
@@ -99,8 +98,8 @@ public:
             "solutions with excessive coactivation (e.g., when a suboptimal "
             "tracking strategy is used) (default is 1).");
     OpenSim_DECLARE_PROPERTY(include_negative_mechanical_work, bool,
-            "Specify whether negative mechanical work will be included in Wdot "
-            "(default is true).");
+            "Specify whether negative mechanical work will be included in "
+            "mechanicalWorkRate (default is true).");
     OpenSim_DECLARE_PROPERTY(forbid_negative_total_power, bool,
             "Specify whether the total power for each muscle must remain  "
             "positive (default is true).");
@@ -112,18 +111,18 @@ public:
             "The parameter that determines the smoothness of the transition "
             "of the tanh used to smooth the conditions related to contraction "
             "type (concentric or eccentric). The larger the steeper the "
-            "transition but the worse for optimization, default is 10.");
+            "transition but the worse for optimization (default is 10).");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(power_smoothing, double,
             "The parameter that determines the smoothness of the transition "
             "of the tanh used to smooth the condition enforcing non-negative "
             "total power. The larger the steeper the transition but the worse "
-            "for optimization, default is 10.");
+            "for optimization (default is 10).");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(heat_rate_smoothing, double,
             "The parameter that determines the smoothness of the transition "
             "of the tanh used to smooth the condition enforcing total heat "
             "rate larger than 1 (W/kg) for a give muscle. The larger the "
-            "steeper the transition but the worse for optimization, default "
-            "is 10.");
+            "steeper the transition but the worse for optimization (default "
+            "is 10).");
 
     OpenSim_DECLARE_LIST_PROPERTY(
             muscle_parameters, Bhargava2004Metabolics_MuscleParameters,
