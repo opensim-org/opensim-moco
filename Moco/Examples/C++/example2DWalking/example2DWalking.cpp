@@ -335,15 +335,15 @@ void gaitTrackingMetabolics() {
     double soleus_ratio_slow_twitch_fibers = 0.803;
     double tib_ant_ratio_slow_twitch_fibers = 0.70;
     // Specific tensions are from Uchida et al. (2016)
-    double hamstrings_specific_tension = 0.62222;
-    double bifemsh_specific_tension = 1.00500;
-    double glut_max_specific_tension = 0.74455;
-    double iliopsoas_specific_tension = 1.5041;
-    double rect_fem_specific_tension = 0.74936;
-    double vasti_specific_tension = 0.55263;
-    double gastroc_specific_tension = 0.69865;
-    double soleus_specific_tension = 0.62703;
-    double tib_ant_specific_tension = 0.75417;
+    double hamstrings_specific_tension = 0.62222e6;
+    double bifemsh_specific_tension = 1.00500e6;
+    double glut_max_specific_tension = 0.74455e6;
+    double iliopsoas_specific_tension = 1.5041e6;
+    double rect_fem_specific_tension = 0.74936e6;
+    double vasti_specific_tension = 0.55263e6;
+    double gastroc_specific_tension = 0.69865e6;
+    double soleus_specific_tension = 0.62703e6;
+    double tib_ant_specific_tension = 0.75417e6;
 
     Bhargava2004Metabolics* metabolics = new Bhargava2004Metabolics();
     metabolics->setName("metabolics");

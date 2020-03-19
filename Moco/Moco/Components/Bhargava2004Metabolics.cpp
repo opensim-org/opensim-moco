@@ -87,6 +87,7 @@ void Bhargava2004Metabolics::addMuscle(const std::string& name,
         mp.set_provided_muscle_mass(muscle_mass);
     }
     mp.connectSocket_muscle(muscle);
+    mp.setMuscleMass();
 }
 
 void Bhargava2004Metabolics::addMuscle(const std::string& name,
@@ -105,6 +106,7 @@ void Bhargava2004Metabolics::addMuscle(const std::string& name,
         mp.set_provided_muscle_mass(muscle_mass);
     }
     mp.connectSocket_muscle(muscle);
+    mp.setMuscleMass();
 }
 
 void Bhargava2004Metabolics::addMuscle(const std::string& name,
@@ -132,6 +134,7 @@ void Bhargava2004Metabolics::addMuscle(const std::string& name,
         mp.set_provided_muscle_mass(muscle_mass);
     }
     mp.connectSocket_muscle(muscle);
+    mp.setMuscleMass();
 }
 
 void Bhargava2004Metabolics::constructProperties()
