@@ -75,7 +75,61 @@ private:
     mutable double muscleMass;
 };
 
-/// Metabolic energy model from Bhargava et al (2004).
+/// This class describes the metabolic energy model of Bhargava et al (2004)
+/// and gives the possibility to use a smooth (i.e., twice continuously
+/// differentiable) approximation. This approximation might be better suited
+/// for gradient-based optimization algorithms, such as used with Moco.
+/// In the proposed smooth implementation, conditional if statements were
+/// approximated by using hyperbolic tangent functions (tanh). For example, the
+/// following if statement:
+/// <pre>     y = 0, if x < d </pre>
+/// <pre>     y = a, if x >= d </pre>
+/// can be approximated by:
+/// <pre>     f = 0.5 + 0.5 tanh(b(x-d)) </pre>
+/// <pre>     y = a f </pre>
+/// where b is a parameter that determines the smoothness of the transition.
+///
+/// The metabolic energy model includes components for activation heat rate,
+/// maintenance heat rate, shortening heat rate, and mechanical work rate.
+///
+/// The shortening heat rate model differs between concentric contractions and
+/// eccentric contractions. We smoothed the transition between both contraction
+/// types using a tanh. The difference between the original (non-smooth) and
+/// the smooth implementations is illustrated in the following figure:
+///
+/// \htmlonly <style>div.image img[src="SmoothShorteningHeatRate.png"]{width:750px;}</style> \endhtmlonly
+/// @image html SmoothShorteningHeatRate.png "Curves produced using isometricTotalActiveForce=350, fiberForceTotal=250, velocity_smoothing=10"
+///
+/// The mechanical work rate model includes negative mechanical work rate
+/// (i.e., work rate resulting from eccentric contraction) by default. However,
+/// if specified by the user, the model only takes positive mechanical work
+/// rate (i.e., work rate resulting from concentric contraction) into account.
+/// In such case, we smoothed the transition between positive rate and zero
+/// using a tanh. The difference between the original (non-smooth) and the
+/// smooth implementations is illustrated in the following figure:
+///
+/// \htmlonly <style>div.image img[src="SmoothMechanicalWorkRate.png"]{width:750px;}</style> \endhtmlonly
+/// @image html SmoothMechanicalWorkRate.png "Curves produced using fiber_force_active=250, velocity_smoothing=10"
+///
+/// The metabolic energy model implementation includes an optional clamping
+/// that prevents the total metabolic rate (i.e., total metabolic power) to be
+/// negative. This clamping is done by increasing the shortening heat rate. We
+/// smoothed the transition between positive and negative total metabolic rate
+/// using a tanh. The difference between the original (non-smooth) and the
+/// smooth implementations is illustrated in the following figure:
+///
+/// \htmlonly <style>div.image img[src="ClampingTotalMetabolicRate.png"]{width:750px;}</style> \endhtmlonly
+/// @image html ClampingTotalMetabolicRate.png "Curves produced using shorteningHeatRate=totalRate/4, power_smoothing=10"
+///
+/// The metabolic energy model implementation includes an optional clamping
+/// that prevents the total heat rate to be lower than 1.0 W/kg. We smoothed
+/// the transition between total heat rate higher and lower than 1.0 W/kg using
+/// a tanh. The difference between the original (non-smooth) and the smooth
+/// implementations is illustrated in the following figure:
+///
+/// \htmlonly <style>div.image img[src="ClampingTotalHeatRate.png"]{width:750px;}</style> \endhtmlonly
+/// @image html ClampingTotalHeatRate.png "Curves produced using muscle_mass=0.4, heat_rate_smoothing=10"
+///
 /// https://doi.org/10.1016/s0021-9290(03)00239-2
 class OSIMMOCO_API Bhargava2004Metabolics : public ModelComponent {
     OpenSim_DECLARE_CONCRETE_OBJECT(
@@ -84,7 +138,10 @@ class OSIMMOCO_API Bhargava2004Metabolics : public ModelComponent {
 public:
     OpenSim_DECLARE_PROPERTY(enforce_minimum_heat_rate_per_muscle, bool,
             "Specify whether the total heat rate for a muscle will be clamped "
-            "to a minimum value of 1.0 W/kg (default is true).");
+            "to a minimum value of 1.0 W/kg (default is true). When set to "
+            "true, the sum of the reported individual heat rates + work rate "
+            "will not equal the reported total metabolic rate if the total "
+            "heat rate falls below 1.0 W/kg.");
     OpenSim_DECLARE_PROPERTY(use_force_dependent_shortening_prop_constant,
             bool, "Specify whether to use a force dependent shortening "
             "proportionality constant (default is false).");
