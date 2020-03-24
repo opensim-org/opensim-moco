@@ -440,7 +440,7 @@ void Bhargava2004Metabolics::calcMetabolicRate(
         // rate (i.e., activationHeatRate + maintenanceHeatRate
         // + shorteningHeatRate) for a given muscle cannot fall below 1.0 W/kg.
         // If the total heat rate falls below 1.0 W/kg, the sum of the reported
-        // individual heat rates + work rate does not equal the reported
+        // individual heat rates and work rate does not equal the reported
         // metabolic rate.
         // --------------------------------------------------------------------
         double totalHeatRate = activationHeatRate + maintenanceHeatRate

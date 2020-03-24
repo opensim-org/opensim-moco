@@ -324,84 +324,45 @@ void gaitTrackingMetabolics() {
     Model baseModel("2D_gait.osim");
 
     // Add metabolics
-    // Ratios are from Uchida et al. (2016)
-    double hamstrings_ratio_slow_twitch_fibers = 0.5425;
-    double bifemsh_ratio_slow_twitch_fibers = 0.529;
-    double glut_max_ratio_slow_twitch_fibers = 0.55;
-    double iliopsoas_ratio_slow_twitch_fibers = 0.50;
-    double rect_fem_ratio_slow_twitch_fibers = 0.3865;
-    double vasti_ratio_slow_twitch_fibers = 0.543;
-    double gastroc_ratio_slow_twitch_fibers = 0.566;
-    double soleus_ratio_slow_twitch_fibers = 0.803;
-    double tib_ant_ratio_slow_twitch_fibers = 0.70;
-    // Specific tensions are from Uchida et al. (2016)
-    double hamstrings_specific_tension = 0.62222e6;
-    double bifemsh_specific_tension = 1.00500e6;
-    double glut_max_specific_tension = 0.74455e6;
-    double iliopsoas_specific_tension = 1.5041e6;
-    double rect_fem_specific_tension = 0.74936e6;
-    double vasti_specific_tension = 0.55263e6;
-    double gastroc_specific_tension = 0.69865e6;
-    double soleus_specific_tension = 0.62703e6;
-    double tib_ant_specific_tension = 0.75417e6;
-
     Bhargava2004Metabolics* metabolics = new Bhargava2004Metabolics();
     metabolics->setName("metabolics");
     metabolics->set_use_smoothing(true);
     metabolics->addMuscle("hamstrings_r",
-            baseModel.getComponent<Muscle>("hamstrings_r"),
-            hamstrings_ratio_slow_twitch_fibers, hamstrings_specific_tension);
+            baseModel.getComponent<Muscle>("hamstrings_r"));
     metabolics->addMuscle("hamstrings_l",
-            baseModel.getComponent<Muscle>("hamstrings_l"),
-            hamstrings_ratio_slow_twitch_fibers, hamstrings_specific_tension);
+            baseModel.getComponent<Muscle>("hamstrings_l"));
     metabolics->addMuscle("bifemsh_r",
-            baseModel.getComponent<Muscle>("bifemsh_r"),
-            bifemsh_ratio_slow_twitch_fibers, bifemsh_specific_tension);
+            baseModel.getComponent<Muscle>("bifemsh_r"));
     metabolics->addMuscle("bifemsh_l",
-            baseModel.getComponent<Muscle>("bifemsh_l"),
-            bifemsh_ratio_slow_twitch_fibers, bifemsh_specific_tension);
+            baseModel.getComponent<Muscle>("bifemsh_l"));
     metabolics->addMuscle("glut_max_r",
-            baseModel.getComponent<Muscle>("glut_max_r"),
-            glut_max_ratio_slow_twitch_fibers, glut_max_specific_tension);
+            baseModel.getComponent<Muscle>("glut_max_r"));
     metabolics->addMuscle("glut_max_l",
-            baseModel.getComponent<Muscle>("glut_max_l"),
-            glut_max_ratio_slow_twitch_fibers, glut_max_specific_tension);
+            baseModel.getComponent<Muscle>("glut_max_l"));
     metabolics->addMuscle("iliopsoas_r",
-            baseModel.getComponent<Muscle>("iliopsoas_r"),
-            iliopsoas_ratio_slow_twitch_fibers, iliopsoas_specific_tension);
+            baseModel.getComponent<Muscle>("iliopsoas_r"));
     metabolics->addMuscle("iliopsoas_l",
-            baseModel.getComponent<Muscle>("iliopsoas_l"),
-            iliopsoas_ratio_slow_twitch_fibers, iliopsoas_specific_tension);
+            baseModel.getComponent<Muscle>("iliopsoas_l"));
     metabolics->addMuscle("rect_fem_r",
-            baseModel.getComponent<Muscle>("rect_fem_r"),
-            rect_fem_ratio_slow_twitch_fibers, rect_fem_specific_tension);
+            baseModel.getComponent<Muscle>("rect_fem_r"));
     metabolics->addMuscle("rect_fem_l",
-            baseModel.getComponent<Muscle>("rect_fem_l"),
-            rect_fem_ratio_slow_twitch_fibers, rect_fem_specific_tension);
+            baseModel.getComponent<Muscle>("rect_fem_l"));
     metabolics->addMuscle("vasti_r",
-            baseModel.getComponent<Muscle>("vasti_r"),
-            vasti_ratio_slow_twitch_fibers, vasti_specific_tension);
+            baseModel.getComponent<Muscle>("vasti_r"));
     metabolics->addMuscle("vasti_l",
-            baseModel.getComponent<Muscle>("vasti_l"),
-            vasti_ratio_slow_twitch_fibers, vasti_specific_tension);
+            baseModel.getComponent<Muscle>("vasti_l"));
     metabolics->addMuscle("gastroc_r",
-            baseModel.getComponent<Muscle>("gastroc_r"),
-            gastroc_ratio_slow_twitch_fibers, gastroc_specific_tension);
+            baseModel.getComponent<Muscle>("gastroc_r"));
     metabolics->addMuscle("gastroc_l",
-            baseModel.getComponent<Muscle>("gastroc_l"),
-            gastroc_ratio_slow_twitch_fibers, gastroc_specific_tension);
+            baseModel.getComponent<Muscle>("gastroc_l"));
     metabolics->addMuscle("soleus_r",
-            baseModel.getComponent<Muscle>("soleus_r"),
-            soleus_ratio_slow_twitch_fibers, soleus_specific_tension);
+            baseModel.getComponent<Muscle>("soleus_r"));
     metabolics->addMuscle("soleus_l",
-            baseModel.getComponent<Muscle>("soleus_l"),
-            soleus_ratio_slow_twitch_fibers, soleus_specific_tension);
+            baseModel.getComponent<Muscle>("soleus_l"));
     metabolics->addMuscle("tib_ant_r",
-            baseModel.getComponent<Muscle>("tib_ant_r"),
-            tib_ant_ratio_slow_twitch_fibers, tib_ant_specific_tension);
+            baseModel.getComponent<Muscle>("tib_ant_r"));
     metabolics->addMuscle("tib_ant_l",
-            baseModel.getComponent<Muscle>("tib_ant_l"),
-            tib_ant_ratio_slow_twitch_fibers, tib_ant_specific_tension);
+            baseModel.getComponent<Muscle>("tib_ant_l"));
     baseModel.addComponent(metabolics);
     baseModel.finalizeConnections();
 

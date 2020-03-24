@@ -44,8 +44,8 @@ public:
         "Ratio of slow twitch fibers in the muscle "
         "(must be between 0 and 1, default is 0.5).");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(provided_muscle_mass, double,
-        "The user specified muscle mass (kg, default is NaN. When this "
-        "property is set to NaN, the muscle mass is calculated as follows: "
+        "The user specified muscle mass (kg, default is NaN). When this "
+        "property is NaN, the muscle mass is calculated as follows: "
         "(volume *density) / specific_tension) where "
         "volume = maximal_isometric_force * optimal_fiber_length).");
     OpenSim_DECLARE_PROPERTY(activation_constant_slow_twitch, double,
@@ -75,10 +75,10 @@ private:
     mutable double muscleMass;
 };
 
-/// This class describes the metabolic energy model of Bhargava et al (2004)
-/// and gives the possibility to use a smooth (i.e., twice continuously
+/// This class implements the metabolic energy model of Bhargava et al (2004)
+/// and provides an option to use a smooth (i.e., twice continuously
 /// differentiable) approximation. This approximation might be better suited
-/// for gradient-based optimization algorithms, such as used with Moco.
+/// for gradient-based optimization algorithms.
 /// In the proposed smooth implementation, conditional if statements were
 /// approximated by using hyperbolic tangent functions (tanh). For example, the
 /// following if statement:
@@ -94,7 +94,7 @@ private:
 ///
 /// The shortening heat rate model differs between concentric contractions and
 /// eccentric contractions. We smoothed the transition between both contraction
-/// types using a tanh. The difference between the original (non-smooth) and
+/// types using our smoothing function. The difference between the original (non-smooth) and
 /// the smooth implementations is illustrated in the following figure:
 ///
 /// \htmlonly <style>div.image img[src="SmoothShorteningHeatRate.png"]{width:750px;}</style> \endhtmlonly
@@ -105,7 +105,7 @@ private:
 /// if specified by the user, the model only takes positive mechanical work
 /// rate (i.e., work rate resulting from concentric contraction) into account.
 /// In such case, we smoothed the transition between positive rate and zero
-/// using a tanh. The difference between the original (non-smooth) and the
+/// using our smoothing function. The difference between the original (non-smooth) and the
 /// smooth implementations is illustrated in the following figure:
 ///
 /// \htmlonly <style>div.image img[src="SmoothMechanicalWorkRate.png"]{width:750px;}</style> \endhtmlonly
@@ -115,16 +115,20 @@ private:
 /// that prevents the total metabolic rate (i.e., total metabolic power) to be
 /// negative. This clamping is done by increasing the shortening heat rate. We
 /// smoothed the transition between positive and negative total metabolic rate
-/// using a tanh. The difference between the original (non-smooth) and the
+/// using our smoothing function. The difference between the original (non-smooth) and the
 /// smooth implementations is illustrated in the following figure:
 ///
 /// \htmlonly <style>div.image img[src="ClampingTotalMetabolicRate.png"]{width:750px;}</style> \endhtmlonly
 /// @image html ClampingTotalMetabolicRate.png "Curves produced using shorteningHeatRate=totalRate/4, power_smoothing=10"
 ///
 /// The metabolic energy model implementation includes an optional clamping
-/// that prevents the total heat rate to be lower than 1.0 W/kg. We smoothed
-/// the transition between total heat rate higher and lower than 1.0 W/kg using
-/// a tanh. The difference between the original (non-smooth) and the smooth
+/// (see Umberger et al (2003), page 104) that prevents the total heat rate
+/// (i.e., activation heat rate + maintenance heat rate + shortening heat rate)
+/// for a given muscle to fall below 1.0 W/kg. Note that, if active, this
+/// clamping will cause the sum of the reported individual heat rates and work
+/// rate to differ from the reported metabolic rate. We smoothed the transition
+/// between total heat rate higher and lower than 1.0 W/kg using our smoothing
+/// function. The difference between the original (non-smooth) and the smooth
 /// implementations is illustrated in the following figure:
 ///
 /// \htmlonly <style>div.image img[src="ClampingTotalHeatRate.png"]{width:750px;}</style> \endhtmlonly
