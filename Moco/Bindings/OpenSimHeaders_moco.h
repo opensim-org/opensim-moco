@@ -18,6 +18,7 @@
 #include <Moco/MocoFrameDistanceConstraint.h>
 #include <Moco/MocoGoal/MocoContactTrackingGoal.h>
 #include <Moco/MocoGoal/MocoControlGoal.h>
+#include <Moco/MocoGoal/MocoControlTrackingGoal.h>
 #include <Moco/MocoGoal/MocoGoal.h>
 #include <Moco/MocoGoal/MocoInitialActivationGoal.h>
 #include <Moco/MocoGoal/MocoInitialForceEquilibriumGoal.h>
