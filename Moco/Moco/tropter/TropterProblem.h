@@ -454,7 +454,7 @@ protected:
             SimTK::Vector mocoParams(
                     (int)parameters.size(), parameters.data(), true);
 
-            m_mocoProbRep.applyParametersToModelProperties(mocoParams, true);
+            m_mocoProbRep.applyParametersToModelProperties(mocoParams, false);
         }
     }
 

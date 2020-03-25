@@ -23,6 +23,7 @@
 #include <OpenSim/Common/Property.h>
 #include <OpenSim/Common/Object.h>
 #include <SimTKcommon/internal/ReferencePtr.h>
+#include <SimTKsimbody.h>
 
 namespace OpenSim {
 
@@ -170,7 +171,11 @@ private:
     };
     mutable DataType m_data_type;
     void constructProperties();
-    
+
+    mutable bool m_isBody = false;
+    mutable bool m_isMass = false;
+    mutable SimTK::ReferencePtr<SimTK::MobilizedBody> m_moBod;
+    mutable SimTK::MassProperties m_massProp;
 };
 
 } // namespace OpenSim

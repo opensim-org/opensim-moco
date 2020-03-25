@@ -88,6 +88,14 @@ void MocoParameter::initializeOnModel(Model& model) const {
         OPENSIM_THROW_IF_FRMOBJ(ap->isListProperty(), Exception, 
             "MocoParameter does not support list properties.");
 
+        if (auto* body = dynamic_cast<Body*>(&component)) { 
+            m_isBody = true;
+            m_isMass = get_property_name() == "mass";
+            m_moBod = &body->updMobilizedBody();
+            auto state = model.getWorkingState();
+            m_massProp = m_moBod->getBodyMassProperties(state);
+        }
+
         // Type detection and property element value error checking.
         if (dynamic_cast<Property<double>*>(ap)) {
             OPENSIM_THROW_IF_FRMOBJ(!getProperty_property_element().empty(),
@@ -153,18 +161,25 @@ void MocoParameter::printDescription(std::ostream& stream) const {
 }
 
 void MocoParameter::applyParameterToModelProperties(const double& value) const {
-    for (auto& propRef : m_property_refs) {
 
-        if (m_data_type == Type_double) {
-            static_cast<Property<double>*>(propRef.get())->setValue(value);
-        } else {
-            int elt = get_property_element();
-            if (m_data_type == Type_Vec3) {
-                static_cast<Property<SimTK::Vec3>*>(
-                    propRef.get())->updValue()[elt] = value;
-            } else if (m_data_type == Type_Vec6) {
-                static_cast<Property<SimTK::Vec6>*>(
-                    propRef.get())->updValue()[elt] = value;
+    if (m_isBody && m_isMass) {
+        m_massProp.setMassProperties(value, m_massProp.getMassCenter(),
+            m_massProp.getInertia());
+        m_moBod->setDefaultMassProperties(m_massProp);
+    } else {
+        for (auto& propRef : m_property_refs) {
+
+            if (m_data_type == Type_double) {
+                static_cast<Property<double>*>(propRef.get())->setValue(value);
+            } else {
+                int elt = get_property_element();
+                if (m_data_type == Type_Vec3) {
+                    static_cast<Property<SimTK::Vec3>*>(propRef.get())
+                            ->updValue()[elt] = value;
+                } else if (m_data_type == Type_Vec6) {
+                    static_cast<Property<SimTK::Vec6>*>(propRef.get())
+                            ->updValue()[elt] = value;
+                }
             }
         }
     }
