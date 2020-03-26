@@ -22,3 +22,85 @@
 #include "Testing.h"
 
 using namespace OpenSim;
+
+TEST_CASE("Bhargava2004Metabolics basics") {
+
+    Model model;
+    model.setName("muscle");
+    auto* body = new Body("body", 0.5, SimTK::Vec3(0), SimTK::Inertia(0));
+    model.addComponent(body);
+    auto* joint = new SliderJoint("joint", model.getGround(), *body);
+    auto& coord = joint->updCoordinate(SliderJoint::Coord::TranslationX);
+    coord.setName("x");
+    model.addComponent(joint);
+    auto* musclePtr = new DeGrooteFregly2016Muscle();
+    musclePtr->set_ignore_tendon_compliance(false);
+    musclePtr->set_fiber_damping(0.1);
+    musclePtr->setName("muscle");
+    musclePtr->addNewPathPoint("origin", model.updGround(), SimTK::Vec3(0));
+    musclePtr->addNewPathPoint("insertion", *body, SimTK::Vec3(0));
+    model.addComponent(musclePtr);
+    auto& muscle = model.getComponent<DeGrooteFregly2016Muscle>("muscle");
+    // Add non-smooth metabolics
+    auto metabolicsPtr_nonsmooth = new Bhargava2004Metabolics();
+    metabolicsPtr_nonsmooth->setName("metabolics_nonsmooth");
+    metabolicsPtr_nonsmooth->set_use_smoothing(false);
+    metabolicsPtr_nonsmooth->set_include_negative_mechanical_work(false);
+    metabolicsPtr_nonsmooth->addMuscle("muscle",  muscle);
+    model.addComponent(metabolicsPtr_nonsmooth);
+    auto& metabolics_nonsmooth =
+        model.getComponent<Bhargava2004Metabolics>("metabolics_nonsmooth");
+    // Add smooth metabolics
+    auto metabolicsPtr_smooth = new Bhargava2004Metabolics();
+    metabolicsPtr_smooth->setName("metabolics_smooth");
+    metabolicsPtr_smooth->set_use_smoothing(true);
+    // TODO: we set a high value for the velocity smoothing parameter so that
+    // the tanh transition is very steep and the smooth model best approximates
+    // the non-smooth model. In pratice we use a lower value (default is 10).
+    metabolicsPtr_smooth->set_velocity_smoothing(1e6);
+    metabolicsPtr_smooth->set_include_negative_mechanical_work(false);
+    metabolicsPtr_smooth->addMuscle("muscle",  muscle);
+    model.addComponent(metabolicsPtr_smooth);
+    auto& metabolics_smooth =
+        model.getComponent<Bhargava2004Metabolics>("metabolics_smooth");
+    model.finalizeConnections();
+
+    SECTION("Verify computed values") {
+        auto state = model.initSystem();
+        SECTION("Smooth vs non-smooth metabolics models") {
+
+            double excitation = 0.8;
+            double activation = 1.0;
+            double fiberLength = muscle.get_optimal_fiber_length() + 0.05;
+            double tendonLength = muscle.get_tendon_slack_length();
+            const double Vmax = muscle.get_optimal_fiber_length() *
+                                muscle.get_max_contraction_velocity();
+
+            for (double speed = -0.1; speed <= 0.1; speed += 0.01) {
+
+                muscle.setActivation(state, activation);
+                coord.setValue(state, fiberLength + tendonLength);
+                coord.setSpeedValue(state, speed * Vmax);
+
+                model.realizeVelocity(state);
+                SimTK::Vector& controls(model.updControls(state));
+                muscle.setControls(SimTK::Vector(1, activation), controls);
+                model.setControls(state, controls);
+
+                model.realizeDynamics(state);
+
+                std::cout << muscle.getNormalizedFiberVelocity(state) << std::endl;
+
+                CHECK(metabolics_nonsmooth.getTotalShorteningRate(state) ==
+                    Approx(metabolics_smooth.getTotalShorteningRate(state)).margin(1e-6));
+
+                CHECK(metabolics_nonsmooth.getTotalMechanicalWorkRate(state) ==
+                    Approx(metabolics_smooth.getTotalMechanicalWorkRate(state)).margin(1e-6));
+
+                CHECK(metabolics_nonsmooth.getTotalMetabolicRate(state) ==
+                    Approx(metabolics_smooth.getTotalMetabolicRate(state)).margin(1e-6));
+            }
+
+        }
+    }
+}
