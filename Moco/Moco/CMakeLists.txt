@@ -72,6 +72,8 @@ set(MOCO_SOURCES
         MocoControlBoundConstraint.h
         MocoFrameDistanceConstraint.h
         MocoFrameDistanceConstraint.cpp
+        MocoNonnegativeMuscleForceConstraint.cpp
+        MocoNonnegativeMuscleForceConstraint.h
         Components/DeGrooteFregly2016Muscle.h
         Components/DeGrooteFregly2016Muscle.cpp
         Components/SmoothSphereHalfSpaceForce.h
@@ -117,7 +119,8 @@ set(MOCO_SOURCES
         MocoConstraintInfo.h
         MocoConstraintInfo.cpp
         MocoStudyFactory.h
-        MocoStudyFactory.cpp)
+        MocoStudyFactory.cpp
+        )
 if (MOCO_WITH_TROPTER)
     list(APPEND MOCO_SOURCES
             tropter/TropterProblem.h
