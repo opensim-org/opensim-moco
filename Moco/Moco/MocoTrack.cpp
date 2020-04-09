@@ -121,9 +121,13 @@ MocoStudy MocoTrack::initialize() {
     // =================
     MocoCasADiSolver& solver = study.initCasADiSolver();
     solver.set_num_mesh_intervals(m_timeInfo.numMeshIntervals);
-    solver.set_multibody_dynamics_mode("explicit");
-    solver.set_optim_convergence_tolerance(1e-2);
-    solver.set_optim_constraint_tolerance(1e-2);
+    solver.set_multibody_dynamics_mode("implicit");
+    solver.set_minimize_implicit_multibody_accelerations(true);
+    solver.set_implicit_multibody_accelerations_weight(
+        1e-4 / model.getNumCoordinates());
+    solver.set_implicit_multibody_acceleration_bounds({-250, 250});
+    solver.set_optim_convergence_tolerance(1e-3);
+    solver.set_optim_constraint_tolerance(1e-3);
     solver.set_optim_finite_difference_scheme("forward");
 
     // Set the problem guess.

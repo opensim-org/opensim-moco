@@ -49,7 +49,22 @@ void solveMocoInverse() {
                     ModOpIgnorePassiveFiberForcesDGF() |
                     // Only valid for DeGrooteFregly2016Muscles.
                     ModOpScaleActiveFiberForceCurveWidthDGF(1.5) |
-                    ModOpAddReserves(1.0);
+                    ModOpAddReserves(1.0) |
+                    // Disable the contact force elements in the model.
+                    ModOpAppliesForce(false, {
+                        "/forceset/contactHeel_r",
+                        "/forceset/contactLateralRearfoot_r",
+                        "/forceset/contactLateralMidfoot_r",
+                        "/forceset/contactLateralToe_r",
+                        "/forceset/contactMedialToe_r",
+                        "/forceset/contactMedialMidfoot_r",
+                        "/forceset/contactHeel_l",
+                        "/forceset/contactLateralRearfoot_l",
+                        "/forceset/contactLateralMidfoot_l",
+                        "/forceset/contactLateralToe_l",
+                        "/forceset/contactMedialToe_l",
+                        "/forceset/contactMedialMidfoot_l"
+                    });
     inverse.setModel(modelProcessor);
 
     // Construct a TableProcessor of the coordinate data and pass it to the
@@ -91,7 +106,22 @@ void solveMocoInverseWithEMG() {
                     ModOpIgnorePassiveFiberForcesDGF() |
                     // Only valid for DeGrooteFregly2016Muscles.
                     ModOpScaleActiveFiberForceCurveWidthDGF(1.5) |
-                    ModOpAddReserves(1.0);
+                    ModOpAddReserves(1.0) |
+                    // Disable the contact force elements in the model.
+                    ModOpAppliesForce(false, {
+                       "/forceset/contactHeel_r",
+                       "/forceset/contactLateralRearfoot_r",
+                       "/forceset/contactLateralMidfoot_r",
+                       "/forceset/contactLateralToe_r",
+                       "/forceset/contactMedialToe_r",
+                       "/forceset/contactMedialMidfoot_r",
+                       "/forceset/contactHeel_l",
+                       "/forceset/contactLateralRearfoot_l",
+                       "/forceset/contactLateralMidfoot_l",
+                       "/forceset/contactLateralToe_l",
+                       "/forceset/contactMedialToe_l",
+                       "/forceset/contactMedialMidfoot_l"
+                    });
     inverse.setModel(modelProcessor);
     inverse.setKinematics(TableProcessor("coordinates.sto"));
     inverse.set_initial_time(0.81);
