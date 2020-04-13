@@ -162,11 +162,11 @@ void muscleDrivenStateTracking(
             // Create the base Model by passing in the model file.
             ModelProcessor("subject_walk_armless.osim") |
             // Remove all the muscles in the model's ForceSet.
-            ModOpRemoveMuscles() |
+            ModOpRemoveMuscles();// |
             // Add CoordinateActuators to the model degrees-of-freedom. This
             // ignores the pelvis coordinates which already have residual
             // CoordinateActuators.
-            ModOpAddReserves(250);
+            //ModOpAddReserves(250);
 
     std::vector<std::string> forceNamesRightFoot = {"forceset/contactHeel_r",
             "forceset/contactLateralRearfoot_r",
@@ -201,13 +201,15 @@ void muscleDrivenStateTracking(
     }
 
     track.setModel(modelProcessor);
+    modelProcessor.process().print("subject_walk_armless_torque_driven.osim");
 
     // Construct a TableProcessor of the coordinate data and pass it to the 
     // tracking tool. TableProcessors can be used in the same way as
     // ModelProcessors by appending TableOperators to modify the base table.
     // A TableProcessor with no operators, as we have here, simply returns the
     // base table.
-    track.setStatesReference(TableProcessor("coordinates.sto"));
+    auto tableProcessor = TableProcessor("coordinates.sto");
+    track.setStatesReference(tableProcessor);
     track.set_states_global_tracking_weight(10);
 
     MocoWeightSet stateWeights;
@@ -227,7 +229,7 @@ void muscleDrivenStateTracking(
     // Initial time, final time, and mesh interval.
     track.set_initial_time(0.81);
     track.set_final_time(1.65);
-    track.set_mesh_interval(0.08);
+    track.set_mesh_interval(0.05);
 
     // Instead of calling solve(), call initialize() to receive a pre-configured
     // MocoStudy object based on the settings above. Use this to customize the
@@ -236,21 +238,32 @@ void muscleDrivenStateTracking(
 
     // Get a reference to the MocoControlGoal that is added to every MocoTrack
     // problem by default.
-    //MocoProblem& problem = study.updProblem();
+    MocoProblem& problem = study.updProblem();
+
+
+    TimeSeriesTable refTable("muscle_driven_state_tracking_tracked_states.sto");
+    auto startIndex = refTable.getNearestRowIndexForTime(0.81);
+    for (auto refLabel : refTable.getColumnLabels()) {
+        if (refLabel.find("/jointset/ground_pelvis") != std::string::npos) {
+            auto refCol = refTable.getDependentColumn(refLabel);
+            problem.setStateInfo(refLabel, {}, refCol[startIndex]);
+        }
+    }
+
     //MocoControlGoal& effort =
     //    dynamic_cast<MocoControlGoal&>(problem.updGoal("control_effort"));
 
     // Put a large weight on the pelvis CoordinateActuators, which act as the
     // residual, or 'hand-of-god', forces which we would like to keep as small
     // as possible.
-    // Model model = modelProcessor.process();
-    // for (const auto& coordAct : model.getComponentList<CoordinateActuator>()) {
-    //    auto coordPath = coordAct.getAbsolutePathString();
-    //    if (coordPath.find("pelvis") != std::string::npos) {
-    //        effort.setWeightForControl(coordPath, 10);
-    //    }
+    //Model model = modelProcessor.process();
+    //for (const auto& coordAct : model.getComponentList<CoordinateActuator>()) {
+    //   auto coordPath = coordAct.getAbsolutePathString();
+    //   if (coordPath.find("pelvis") != std::string::npos) {
+    //       effort.setWeightForControl(coordPath, 10);
+    //   }
     //}
-    
+    //
     // Solve and visualize.
     MocoSolution solution = study.solve();
     study.visualize(solution);
