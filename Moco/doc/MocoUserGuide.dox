@@ -76,7 +76,8 @@ Moco contains utilities for creating models, modifying models,
 working with data, and postprocessing results.
 
 1. ModelFactory: Create standard models and modify existing models.
-2. ModelProcessor: Create a workflow of operations to perform on a model.
+2. ModelProcessor and @ref modeloperator : Create a workflow of operations
+                                          to perform on a model.
 3. TableProcessor: Create a workflow of operations to perform on a table.
 4. @ref mocomodelutil, including visualizing and analyzing a MocoTrajectory.
 5. @ref moconumutil, including interpolating data and reading/writing tables.

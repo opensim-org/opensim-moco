@@ -2,6 +2,11 @@ Change Log
 ==========
 0.5.0 (in development) 
 ----------------------
+- 2020-04-08: Added contact tracking to MocoTrack, and updated exampleMocoTrack 
+              to provide an example of contact tracking.
+
+- 2020-04-08: Added ModOpAppliesForce to set the appliesForce property 
+              for multiple Forces.
 
 0.4.0 
 -----

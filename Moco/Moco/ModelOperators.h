@@ -19,13 +19,16 @@
  * -------------------------------------------------------------------------- */
 
 #include "Components/DeGrooteFregly2016Muscle.h"
+
 #include "ModelProcessor.h"
 
 #include <OpenSim/Tools/InverseDynamicsTool.h>
 
+
 namespace OpenSim {
 
 /// Invoke DeGrooteFregly2016Muscle::replaceMuscles() on the model.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpReplaceMusclesWithDeGrooteFregly2016
         : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(
@@ -39,6 +42,7 @@ public:
 };
 
 /// Turn off activation dynamics for all muscles in the model.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpIgnoreActivationDynamics : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(
             ModOpIgnoreActivationDynamics, ModelOperator);
@@ -53,6 +57,7 @@ public:
 };
 
 /// Turn off tendon compliance for all muscles in the model.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpIgnoreTendonCompliance : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(ModOpIgnoreTendonCompliance, ModelOperator);
 
@@ -68,7 +73,8 @@ public:
 /// For DeGrooteFregly2016Muscle muscles whose 'ignore_tendon_compliance' 
 /// property is false, set the tendon compliance dynamics mode to either 
 /// 'explicit' or 'implicit'.
-class OSIMMOCO_API ModOpTendonComplianceDynamicsModeDGF 
+/// @ingroup modeloperator
+class OSIMMOCO_API ModOpTendonComplianceDynamicsModeDGF
         : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(
             ModOpTendonComplianceDynamicsModeDGF, ModelOperator);
@@ -100,6 +106,7 @@ public:
 
 /// Set the tendon compliance dynamics mode to "implicit" for all 
 /// DeGrooteFregly2016Muscle%s in the model.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpUseImplicitTendonComplianceDynamicsDGF
         : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(
@@ -119,6 +126,7 @@ public:
 
 /// Turn off passive fiber forces for all DeGrooteFregly2016Muscle%s in the
 /// model.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpIgnorePassiveFiberForcesDGF : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(
             ModOpIgnorePassiveFiberForcesDGF, ModelOperator);
@@ -164,6 +172,7 @@ public:
 
 /// Scale the active fiber force curve width for all DeGrooteFregly2016Muscle%s
 /// in the model.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpScaleActiveFiberForceCurveWidthDGF :
         public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(
@@ -188,6 +197,7 @@ public:
 };
 
 /// Set the fiber damping for all DeGrooteFregly2016Muscle%s in the model.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpFiberDampingDGF : public ModelOperator {
 OpenSim_DECLARE_CONCRETE_OBJECT(ModOpFiberDampingDGF, ModelOperator);
     OpenSim_DECLARE_PROPERTY(fiber_damping, double,
@@ -209,6 +219,7 @@ public:
 };
 
 /// Scale the max isometric force for all muscles in the model.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpScaleMaxIsometricForce : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(ModOpScaleMaxIsometricForce, ModelOperator);
     OpenSim_DECLARE_PROPERTY(scale_factor, double,
@@ -247,6 +258,7 @@ public:
 
 /// Add reserve actuators to the model using
 /// ModelFactory::createReserveActuators.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpAddReserves : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(ModOpAddReserves, ModelOperator);
     OpenSim_DECLARE_PROPERTY(optimal_force, double,
@@ -285,6 +297,7 @@ public:
 
 /// Add external loads (e.g., ground reaction forces) to the model from a
 /// XML file.
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpAddExternalLoads : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(ModOpAddExternalLoads, ModelOperator);
     OpenSim_DECLARE_PROPERTY(filepath, std::string,
@@ -309,6 +322,7 @@ public:
     }
 };
 
+/// @ingroup modeloperator
 class OSIMMOCO_API ModOpReplaceJointsWithWelds : public ModelOperator {
     OpenSim_DECLARE_CONCRETE_OBJECT(ModOpReplaceJointsWithWelds, ModelOperator);
     OpenSim_DECLARE_LIST_PROPERTY(joint_paths, std::string,
@@ -324,6 +338,34 @@ public:
         model.initSystem();
         for (int i = 0; i < getProperty_joint_paths().size(); ++i) {
             ModelFactory::replaceJointWithWeldJoint(model, get_joint_paths(i));
+        }
+    }
+};
+
+/// Set the appliesForce property for the specified Force%s.
+/// @ingroup modeloperator
+class OSIMMOCO_API ModOpAppliesForce : public ModelOperator {
+OpenSim_DECLARE_CONCRETE_OBJECT(ModOpAppliesForce, ModelOperator);
+    OpenSim_DECLARE_PROPERTY(appliesForce, bool,
+            "The value to use for appliesForce (default: true).");
+    OpenSim_DECLARE_LIST_PROPERTY(force_paths, std::string,
+            "Paths to Forces whose appliesForce should be affected.");
+
+public:
+    ModOpAppliesForce() {
+        constructProperty_appliesForce(true);
+        constructProperty_force_paths();
+    }
+    ModOpAppliesForce(bool appliesForce, const std::vector<std::string>& paths)
+            : ModOpAppliesForce() {
+        set_appliesForce(appliesForce);
+        for (const auto& path : paths) { append_force_paths(path); }
+    }
+    void operate(Model& model, const std::string&) const override {
+        model.initSystem();
+        for (int i = 0; i < getProperty_force_paths().size(); ++i) {
+            auto& force = model.updComponent<Force>(get_force_paths(i));
+            force.set_appliesForce(get_appliesForce());
         }
     }
 };
