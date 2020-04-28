@@ -73,6 +73,11 @@ constructProperties()
 Bhargava2004Metabolics::Bhargava2004Metabolics()
 {
     constructProperties();
+    const int curvePoints = 5;
+    const double curveX[] = {0.0, 0.5, 1.0, 1.5, 10.0};
+    const double curveY[] = {0.5, 0.5, 1.0, 0.0, 0.0};
+    m_fiberLengthDepCurve = PiecewiseLinearFunction(curvePoints, curveX,
+            curveY, "defaultCurve");
 }
 
 void Bhargava2004Metabolics::addMuscle(const std::string& name,
@@ -360,13 +365,7 @@ void Bhargava2004Metabolics::calcMetabolicRate(
 
         // MAINTENANCE HEAT RATE (W).
         // --------------------------
-        const int curvePoints = 5;
-        const double curveX[] = {0.0, 0.5, 1.0, 1.5, 10.0};
-        const double curveY[] = {0.5, 0.5, 1.0, 0.0, 0.0};
-        PiecewiseLinearFunction fiberLengthDepCurveDefault(curvePoints, curveX,
-                curveY, "defaultCurve");
-        const double fiber_length_dependence =
-            fiberLengthDepCurveDefault.calcValue(
+        const double fiber_length_dependence = m_fiberLengthDepCurve.calcValue(
                     SimTK::Vector(1, fiberLengthNormalized));
         maintenanceHeatRate =
             muscleParameter.getMuscleMass() * fiber_length_dependence

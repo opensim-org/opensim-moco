@@ -98,8 +98,9 @@ private:
 ///
 /// The shortening heat rate model differs between concentric contractions and
 /// eccentric contractions. We smoothed the transition between both contraction
-/// types using our smoothing function. The difference between the original (non-smooth) and
-/// the smooth implementations is illustrated in the following figure:
+/// types using our smoothing function. The difference between the original
+/// (non-smooth) and the smooth implementations is illustrated in the following
+/// figure:
 ///
 /// \htmlonly <style>div.image img[src="SmoothShorteningHeatRate.png"]{width:750px;}</style> \endhtmlonly
 /// @image html SmoothShorteningHeatRate.png "Curves produced using isometricTotalActiveForce=350, fiberForceTotal=250, velocity_smoothing=10"
@@ -109,8 +110,9 @@ private:
 /// if specified by the user, the model only takes positive mechanical work
 /// rate (i.e., work rate resulting from concentric contraction) into account.
 /// In such case, we smoothed the transition between positive rate and zero
-/// using our smoothing function. The difference between the original (non-smooth) and the
-/// smooth implementations is illustrated in the following figure:
+/// using our smoothing function. The difference between the original
+/// (non-smooth) and the smooth implementations is illustrated in the following
+/// figure:
 ///
 /// \htmlonly <style>div.image img[src="SmoothMechanicalWorkRate.png"]{width:750px;}</style> \endhtmlonly
 /// @image html SmoothMechanicalWorkRate.png "Curves produced using fiber_force_active=250, velocity_smoothing=10"
@@ -119,8 +121,9 @@ private:
 /// that prevents the total metabolic rate (i.e., total metabolic power) to be
 /// negative. This clamping is done by increasing the shortening heat rate. We
 /// smoothed the transition between positive and negative total metabolic rate
-/// using our smoothing function. The difference between the original (non-smooth) and the
-/// smooth implementations is illustrated in the following figure:
+/// using our smoothing function. The difference between the original
+/// (non-smooth) and the smooth implementations is illustrated in the following
+/// figure:
 ///
 /// \htmlonly <style>div.image img[src="ClampingTotalMetabolicRate.png"]{width:750px;}</style> \endhtmlonly
 /// @image html ClampingTotalMetabolicRate.png "Curves produced using shorteningHeatRate=totalRate/4, power_smoothing=10"
@@ -137,6 +140,13 @@ private:
 ///
 /// \htmlonly <style>div.image img[src="ClampingTotalHeatRate.png"]{width:750px;}</style> \endhtmlonly
 /// @image html ClampingTotalHeatRate.png "Curves produced using muscle_mass=0.4, heat_rate_smoothing=10"
+///
+/// Note that the maintenance heat rate implementation relies on a
+/// PiecewiseLinearFunction. The first and second order derivatives of this
+/// function can be evaluated but they are discontinuous. This might cause
+/// issues with gradient-based optimization algorithms but has not been
+/// problematic thus far. We therefore kept the original formulation and have
+/// not smoothed that function in this implementation of the model.
 ///
 /// https://doi.org/10.1016/s0021-9290(03)00239-2
 class OSIMMOCO_API Bhargava2004Metabolics : public ModelComponent {
@@ -256,6 +266,7 @@ private:
     mutable std::unordered_map<std::string, int> m_muscleIndices;
     using ConditionalFunction =
             double(const double&, const double&, const double&, const double&);
+    PiecewiseLinearFunction m_fiberLengthDepCurve;
     mutable std::function<ConditionalFunction> m_conditional;
 };
 
