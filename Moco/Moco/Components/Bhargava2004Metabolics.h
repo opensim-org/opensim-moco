@@ -243,9 +243,6 @@ public:
     double getMuscleMetabolicRate(
             const SimTK::State& s, const std::string& channel) const;
 
-    double tanhSmoothing(const double x, double smoothing_threshold,
-            double smoothing_constant) const;
-
 private:
     void constructProperties();
     void extendFinalizeFromProperties() override;

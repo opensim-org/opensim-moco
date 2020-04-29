@@ -433,15 +433,12 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                 + maintenanceHeatRate + shorteningHeatRate
                 + mechanicalWorkRate;
             if (get_use_smoothing()) {
-                // Variables for smooth approximations between negative and
-                // positive total power.
-                const double bp = get_power_smoothing();
-                // Edot_W_beforeClamp_neg=1 if Edot_W_beforeClamp is negative.
-                const double Edot_W_beforeClamp_neg = tanhSmoothing(
-                        -Edot_W_beforeClamp, 0, bp);
-
-                shorteningHeatRate -=
-                    Edot_W_beforeClamp * Edot_W_beforeClamp_neg;
+                const double Edot_W_beforeClamp_smoothed = m_conditional(
+                        -Edot_W_beforeClamp,
+                        0,
+                        Edot_W_beforeClamp,
+                        get_power_smoothing());
+                shorteningHeatRate -= Edot_W_beforeClamp_smoothed;
             } else {
                 if (Edot_W_beforeClamp < 0)
                     shorteningHeatRate -= Edot_W_beforeClamp;
@@ -460,15 +457,11 @@ void Bhargava2004Metabolics::calcMetabolicRate(
         if (get_use_smoothing()) {
             if (get_enforce_minimum_heat_rate_per_muscle())
             {
-                // Variables for smooth approximations between total heat rate
-                // for a given muscle below or above 1.0 W/kg.
-                const double bhr = get_heat_rate_smoothing();
-                // totalHeatRate_bmm=1 if totalHeatRate is below muscle mass.
-                const double totalHeatRate_bmm = tanhSmoothing(-totalHeatRate,
-                        -1.0 *  muscleParameter.getMuscleMass(), bhr);
-
-                totalHeatRate = totalHeatRate + (-totalHeatRate + 1.0 *
-                        muscleParameter.getMuscleMass()) * totalHeatRate_bmm;
+                totalHeatRate = m_conditional(
+                        -totalHeatRate + 1.0 * muscleParameter.getMuscleMass(),
+                        totalHeatRate,
+                        1.0 * muscleParameter.getMuscleMass(),
+                        get_heat_rate_smoothing());
             }
         } else {
             if (get_enforce_minimum_heat_rate_per_muscle()
@@ -495,10 +488,4 @@ void Bhargava2004Metabolics::calcMetabolicRate(
 int Bhargava2004Metabolics::getNumMetabolicMuscles() const
 {
     return getProperty_muscle_parameters().size();
-}
-
-double Bhargava2004Metabolics::tanhSmoothing(const double x,
-        double smoothing_threshold, double smoothing_constant) const
-{
-    return 0.5 + 0.5 * (tanh(smoothing_constant * (x - smoothing_threshold)));
 }
