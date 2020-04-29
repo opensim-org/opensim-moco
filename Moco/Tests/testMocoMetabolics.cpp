@@ -54,7 +54,7 @@ TEST_CASE("Bhargava2004Metabolics basics") {
     auto metabolicsPtr_smooth = new Bhargava2004Metabolics();
     metabolicsPtr_smooth->setName("metabolics_smooth");
     metabolicsPtr_smooth->set_use_smoothing(true);
-    // TODO: we set a high value for the velocity smoothing parameter so that
+    // We set a high value for the velocity smoothing parameter so that
     // the tanh transition is very steep and the smooth model best approximates
     // the non-smooth model. In pratice we use a lower value (default is 10).
     metabolicsPtr_smooth->set_velocity_smoothing(1e6);
@@ -67,40 +67,80 @@ TEST_CASE("Bhargava2004Metabolics basics") {
 
     SECTION("Verify computed values") {
         auto state = model.initSystem();
-        SECTION("Smooth vs non-smooth metabolics models") {
+        double excitation = 0.8;
+        double activation = 1.0;
+        double fiberLength = muscle.get_optimal_fiber_length() + 0.05;
+        double tendonLength = muscle.get_tendon_slack_length();
+        const double Vmax = muscle.get_optimal_fiber_length() *
+                            muscle.get_max_contraction_velocity();
+        muscle.setActivation(state, activation);
+        coord.setValue(state, fiberLength + tendonLength);
 
-            double excitation = 0.8;
-            double activation = 1.0;
-            double fiberLength = muscle.get_optimal_fiber_length() + 0.05;
-            double tendonLength = muscle.get_tendon_slack_length();
-            const double Vmax = muscle.get_optimal_fiber_length() *
-                                muscle.get_max_contraction_velocity();
+        SECTION("Smooth vs non-smooth metabolics models with concentratic "
+                "and eccentric contractions") {
 
             for (double speed = -0.1; speed <= 0.1; speed += 0.01) {
 
-                muscle.setActivation(state, activation);
-                coord.setValue(state, fiberLength + tendonLength);
                 coord.setSpeedValue(state, speed * Vmax);
 
                 model.realizeVelocity(state);
+                muscle.computeInitialFiberEquilibrium(state);
                 SimTK::Vector& controls(model.updControls(state));
-                muscle.setControls(SimTK::Vector(1, activation), controls);
+                muscle.setControls(SimTK::Vector(1, excitation), controls);
                 model.setControls(state, controls);
 
                 model.realizeDynamics(state);
 
-                std::cout << muscle.getNormalizedFiberVelocity(state) << std::endl;
-
                 CHECK(metabolics_nonsmooth.getTotalShorteningRate(state) ==
                     Approx(metabolics_smooth.getTotalShorteningRate(state)).margin(1e-6));
-
                 CHECK(metabolics_nonsmooth.getTotalMechanicalWorkRate(state) ==
                     Approx(metabolics_smooth.getTotalMechanicalWorkRate(state)).margin(1e-6));
-
                 CHECK(metabolics_nonsmooth.getTotalMetabolicRate(state) ==
                     Approx(metabolics_smooth.getTotalMetabolicRate(state)).margin(1e-6));
             }
+        }
 
+        SECTION("mechanicalWorkRate=0 if fiberVelocity=0") {
+
+            double speed = 0;
+            coord.setSpeedValue(state, speed);
+
+            model.realizeVelocity(state);
+            muscle.computeInitialFiberEquilibrium(state);
+            SimTK::Vector& controls(model.updControls(state));
+            muscle.setControls(SimTK::Vector(1, excitation), controls);
+            model.setControls(state, controls);
+
+            model.realizeDynamics(state);
+            CHECK(metabolics_nonsmooth.getTotalMechanicalWorkRate(state) ==
+                    Approx(0).margin(1e-6));
+            CHECK(metabolics_smooth.getTotalMechanicalWorkRate(state) ==
+                    Approx(0).margin(1e-6));
+        }
+
+        SECTION("activationHeatRate=0 and maintenanceHeatRate=0 if "
+            "muscleExcitation=0") {
+
+            double nullExcitation = 0.0;
+            muscle.setActivation(state, activation);
+            double speed = -0.4;
+            coord.setSpeedValue(state, speed);
+
+            model.realizeVelocity(state);
+            muscle.computeInitialFiberEquilibrium(state);
+            SimTK::Vector& controls(model.updControls(state));
+            muscle.setControls(SimTK::Vector(1, nullExcitation), controls);
+            model.setControls(state, controls);
+
+            model.realizeDynamics(state);
+            CHECK(metabolics_nonsmooth.getTotalActivationRate(state) ==
+                    Approx(0.0));
+            CHECK(metabolics_smooth.getTotalActivationRate(state) ==
+                    Approx(0.0));
+            CHECK(metabolics_nonsmooth.getTotalMaintenanceRate(state) ==
+                    Approx(0.0));
+            CHECK(metabolics_smooth.getTotalMaintenanceRate(state) ==
+                    Approx(0.0));
         }
     }
 }
