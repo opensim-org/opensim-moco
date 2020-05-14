@@ -144,9 +144,9 @@ private:
 /// Note that the maintenance heat rate implementation relies on a
 /// PiecewiseLinearFunction. The first and second order derivatives of this
 /// function can be evaluated but they are discontinuous. This might cause
-/// issues with gradient-based optimization algorithms but has not been
-/// problematic thus far. We therefore kept the original formulation and have
-/// not smoothed that function in this implementation of the model.
+/// issues with gradient-based optimization algorithms. Thus far, our problems
+/// converged when using this discontinuous function. We therefore kept it in
+/// this implementation of the model.
 ///
 /// https://doi.org/10.1016/s0021-9290(03)00239-2
 class OSIMMOCO_API Bhargava2004Metabolics : public ModelComponent {

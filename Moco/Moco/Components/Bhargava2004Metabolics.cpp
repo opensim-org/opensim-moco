@@ -35,6 +35,8 @@ Bhargava2004Metabolics_MuscleParameters() {
     constructProperties();
 }
 
+// Set the muscle mass internal member variable muscleMass based on
+// whether the use_provided_muscle_mass property is true or false.
 void Bhargava2004Metabolics_MuscleParameters::
 setMuscleMass()
 {
@@ -80,6 +82,9 @@ Bhargava2004Metabolics::Bhargava2004Metabolics()
             curveY, "defaultCurve");
 }
 
+// Add a muscle with default Bhargava2004Metabolics_MuscleParameters so that it
+// can be included in the metabolics analysis. If no muscle mass is provided
+// (or if set to NaN) a default approximation is used to calculate it.
 void Bhargava2004Metabolics::addMuscle(const std::string& name,
         const Muscle& muscle, double muscle_mass) {
     append_muscle_parameters(Bhargava2004Metabolics_MuscleParameters());
@@ -96,6 +101,10 @@ void Bhargava2004Metabolics::addMuscle(const std::string& name,
     mp.setMuscleMass();
 }
 
+// Add a muscle with default Bhargava2004Metabolics_MuscleParameters except for
+// slow twitch fibers ratio and specific tension so that it can be included in
+// the metabolics analysis. If no muscle mass is provided (or if set to NaN) a
+// default approximation is used to calculate it.
 void Bhargava2004Metabolics::addMuscle(const std::string& name,
         const Muscle& muscle, double ratio_slow_twitch_fibers,
         double specific_tension, double muscle_mass) {
@@ -115,6 +124,9 @@ void Bhargava2004Metabolics::addMuscle(const std::string& name,
     mp.setMuscleMass();
 }
 
+// Add a muscle and specifiy all Bhargava2004Metabolics_MuscleParameters. If
+// no muscle mass is provided (or if set to NaN) a default approximation is
+// used to calculate it.
 void Bhargava2004Metabolics::addMuscle(const std::string& name,
         const Muscle& muscle, double ratio_slow_twitch_fibers,
         double specific_tension, double activation_constant_slow_twitch,
