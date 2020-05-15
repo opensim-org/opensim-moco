@@ -35,7 +35,7 @@ TEST_CASE("Bhargava2004Metabolics basics") {
     model.addComponent(joint);
     auto* musclePtr = new DeGrooteFregly2016Muscle();
     musclePtr->set_ignore_tendon_compliance(false);
-    musclePtr->set_fiber_damping(0.1);
+    musclePtr->set_fiber_damping(0.01);
     musclePtr->setName("muscle");
     musclePtr->addNewPathPoint("origin", model.updGround(), SimTK::Vec3(0));
     musclePtr->addNewPathPoint("insertion", *body, SimTK::Vec3(0));
@@ -256,15 +256,19 @@ TEST_CASE("Bhargava2004Metabolics basics") {
             double Edot_W_beforeClamp = activationHeatRate
                 + maintenanceHeatRate + shorteningHeatRate
                 + mechanicalWorkRate;
-            std::cout << activationHeatRate << std::endl;
-            std::cout << maintenanceHeatRate << std::endl;
-            std::cout << shorteningHeatRate << std::endl;
-            std::cout << mechanicalWorkRate << std::endl;
-            std::cout << muscle.getFiberVelocity(state) << std::endl;
-            std::cout << muscle.getNormalizedFiberLength(state) << std::endl;
-            std::cout << muscle.getActiveFiberForce(state) << std::endl;
-            std::cout << muscle.getFiberForce(state) << std::endl;
-            std::cout << muscle.getPassiveFiberForce(state) << std::endl;
+            CAPTURE(activationHeatRate);
+            CAPTURE(maintenanceHeatRate);
+            CAPTURE(shorteningHeatRate);
+            CAPTURE(mechanicalWorkRate);
+            CAPTURE(muscle.getNormalizedFiberLength(state));
+            CAPTURE(muscle.getFiberVelocity(state));
+            CAPTURE(muscle.getNormalizedFiberVelocity(state));
+            CAPTURE(muscle.getActiveForceLengthMultiplier(state));
+            CAPTURE(muscle.getForceVelocityMultiplier(state));
+            CAPTURE(muscle.getActiveFiberForce(state));
+            CAPTURE(muscle.getFiberForce(state));
+            CAPTURE(muscle.getPassiveFiberForce(state));
+            FAIL("TODO");
 
 
         }
