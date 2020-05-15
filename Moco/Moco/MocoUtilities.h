@@ -26,7 +26,6 @@
 /// When adding a new function to this file, make sure to add it to one of the
 /// groups above.
 
-
 #include "MocoTrajectory.h"
 #include "osimMocoDLL.h"
 #include <Common/Reporter.h>
@@ -63,7 +62,8 @@ std::unique_ptr<T> make_unique(Args&&... args) {
 /// %Y-%m-%dT%H:%M:%S.
 /// See https://en.cppreference.com/w/cpp/io/manip/put_time.
 /// @ingroup mocogenutil
-OSIMMOCO_API std::string getFormattedDateTime(bool appendMicroseconds = false,
+OSIMMOCO_API std::string getMocoFormattedDateTime(
+        bool appendMicroseconds = false,
         std::string format = "%Y-%m-%dT%H%M%S");
 
 /// Determine if `string` starts with the substring `start`.
@@ -86,6 +86,15 @@ inline bool endsWith(const std::string& string, const std::string& ending) {
     }
     return false;
 }
+
+/// An OpenSim XML file may contain file paths that are relative to the
+/// directory containing the XML file; use this function to convert that
+/// relative path into an absolute path.
+/// @ingroup mocogenutil
+OSIMMOCO_API
+std::string getAbsolutePathnameFromXMLDocument(
+        const std::string& documentFileName,
+        const std::string& pathnameRelativeToDocument);
 
 /// @name Filling in a string with variables.
 /// @{
@@ -288,41 +297,6 @@ OSIMMOCO_API void updateStateLabels40(
 OSIMMOCO_API TimeSeriesTable filterLowpass(
         const TimeSeriesTable& table, double cutoffFreq, bool padData = false);
 
-/// Read in a table of type TimeSeriesTable_<T> from file, where T is the type
-/// of the elements contained in the table's columns. The `filepath` argument
-/// should refer to a STO or CSV file (or other file types for which there is a
-/// FileAdapter). This function assumes that only one table is contained in the
-/// file, and will throw an exception otherwise.
-/// @ingroup moconumutil
-template <typename T>
-TimeSeriesTable_<T> readTableFromFileT(const std::string& filepath) {
-    auto tablesFromFile = FileAdapter::readFile(filepath);
-    // There should only be one table.
-    OPENSIM_THROW_IF(tablesFromFile.size() != 1, Exception,
-            format("Expected file '%s' to contain 1 table, but "
-                   "it contains %i tables.",
-                    filepath, tablesFromFile.size()));
-    // Get the first table.
-    auto* firstTable = dynamic_cast<TimeSeriesTable_<T>*>(
-            tablesFromFile.begin()->second.get());
-    OPENSIM_THROW_IF(!firstTable, Exception,
-            "Expected file to contain a TimeSeriesTable_<T> where T is "
-            "the type specified in the template argument, but it contains a "
-            "different type of table.");
-
-    return *firstTable;
-}
-
-/// Read in a TimeSeriesTable from file containing scalar elements. The
-/// `filepath` argument should refer to a STO or CSV file (or other file types
-/// for which there is a FileAdapter). This function assumes that only one table
-/// is contained in the file, and will throw an exception otherwise.
-/// @ingroup moconumutil
-OSIMMOCO_API inline TimeSeriesTable readTableFromFile(
-        const std::string& filepath) {
-    return readTableFromFileT<double>(filepath);
-}
-
 /// Write a single TimeSeriesTable to a file, using the FileAdapter associated
 /// with the provided file extension.
 /// @ingroup moconumutil
@@ -517,7 +491,7 @@ std::vector<SimTK::ReferencePtr<const Output<T>>> getModelOutputReferencePtrs(
     // Initialize outputs array.
     std::vector<SimTK::ReferencePtr<const Output<T>>> outputs;
 
-    std::function<void(const Component&, const std::regex&, bool, 
+    std::function<void(const Component&, const std::regex&, bool,
             std::vector<SimTK::ReferencePtr<const Output<T>>>&)> helper;
     helper = [&helper](const Component& component, const std::regex& regex,
             bool includeDescendents,
@@ -544,7 +518,7 @@ std::vector<SimTK::ReferencePtr<const Output<T>>> getModelOutputReferencePtrs(
             }
         }
     };
-    
+
     helper(component, regex, includeDescendents, outputs);
     return outputs;
 }
@@ -552,11 +526,11 @@ std::vector<SimTK::ReferencePtr<const Output<T>>> getModelOutputReferencePtrs(
 /// Convert a trajectory covering half the period of a symmetric motion into a
 /// trajectory over the full period. This is useful for simulations of half a
 /// gait cycle.
-/// This converts time, states, controls, and derivatives; all other quanties
+/// This converts time, states, controls, and derivatives; all other quantities
 /// from the input trajectory are ignored.
-/// If a column in the trajectory does not match addPatterns, negatePatterns, or
-/// symmetryPatterns, then the second half of the period contains the same
-/// data as the first half.
+/// If a column in the trajectory does not match addPatterns, negatePatterns,
+/// negateAndShiftPatterns, or symmetryPatterns, then the second half of the
+/// period contains the same data as the first half.
 ///
 /// @param halfPeriodTrajectory The input trajectory covering half a period.
 /// @param addPatterns If a column label matches an addPattern, then the second
@@ -578,8 +552,9 @@ std::vector<SimTK::ReferencePtr<const Output<T>>> getModelOutputReferencePtrs(
 ///
 /// The default values for the patterns are intended to handle the column labels
 /// for typical 2D or 3D OpenSim gait models.
-/// The default values for negatePatterns and symmetryPatterns warrant an
-/// explanation. The string pattern before the regex "(?!/value)" is followed by
+/// The default values for negatePatterns, negateAndShiftPatterns, and
+/// symmetryPatterns warrant an explanation. The string pattern before the
+/// regex "(?!/value)" is followed by
 /// anything except "/value" since it is contained in the negative lookahead
 /// "(?!...)".  R"()" is a string literal that permits us to not escape
 /// backslash characters. The regex "_r(\/|_|$)" matches "_r" followed by either
@@ -596,16 +571,14 @@ OSIMMOCO_API MocoTrajectory createPeriodicTrajectory(
         std::vector<std::string> addPatterns = {".*pelvis_tx/value"},
         std::vector<std::string> negatePatterns = {
                                             ".*pelvis_list(?!/value).*",
-                                            ".*pelvis_rotation(?!/value).*",
+                                            ".*pelvis_rotation.*",
                                             ".*pelvis_tz(?!/value).*",
                                             ".*lumbar_bending(?!/value).*",
-                                            ".*lumbar_rotation(?!/value).*"},
+                                            ".*lumbar_rotation.*"},
         std::vector<std::string> negateAndShiftPatterns = {
                                                    ".*pelvis_list/value",
-                                                   ".*pelvis_rotation/value",
                                                    ".*pelvis_tz/value",
-                                                   ".*lumbar_bending/value",
-                                                   ".*lumbar_rotation/value"},
+                                                   ".*lumbar_bending/value"},
         std::vector<std::pair<std::string, std::string>> symmetryPatterns =
                 {{R"(_r(\/|_|$))", "_l$1"}, {R"(_l(\/|_|$))", "_r$1"}});
 
@@ -819,7 +792,7 @@ public:
     FileDeletionThrower()
             : FileDeletionThrower(
                       "OpenSimMoco_delete_this_to_throw_exception_" +
-                      getFormattedDateTime() + ".txt") {}
+                      getMocoFormattedDateTime() + ".txt") {}
     FileDeletionThrower(std::string filepath)
             : m_filepath(std::move(filepath)) {
         std::ofstream f(m_filepath);
@@ -848,11 +821,11 @@ private:
 };
 
 /// Obtain the ground reaction forces, centers of pressure, and torques
-/// resulting from Force elements (e.g., SmoothSphereHalfSpaceForce), using the
-/// model and the trajectory. Forces and torques are expressed in the ground
+/// resulting from Force elements (e.g., SmoothSphereHalfSpaceForce), using a
+/// model and states trajectory. Forces and torques are expressed in the ground
 /// frame with respect to the ground origin. Hence, the centers of pressure are
-/// at the origin. Names of Force elements should be provided separately for
-/// elements of the right and left feet. The output is a table formated for use
+/// at the origin. Paths to Force elements should be provided separately for
+/// elements of the right and left feet. The output is a table formatted for use
 /// with OpenSim tools; the labels of the columns distinguish between right
 /// ("<>_r") and left ("<>_l") forces, centers of pressure, and torques. The
 /// forces and torques used are taken from the first six outputs of
@@ -862,11 +835,31 @@ private:
 /// @ingroup mocomodelutil
 OSIMMOCO_API
 TimeSeriesTable createExternalLoadsTableForGait(Model model,
+        const StatesTrajectory& trajectory,
+        const std::vector<std::string>& forcePathsRightFoot,
+        const std::vector<std::string>& forcePathsLeftFoot);
+
+/// Same as above, but with a MocoTrajectory instead of a StatesTrajectory.
+/// @ingroup mocomodelutil
+OSIMMOCO_API
+TimeSeriesTable createExternalLoadsTableForGait(Model model,
         const MocoTrajectory& trajectory,
-        const std::vector<std::string>& forceNamesRightFoot,
-        const std::vector<std::string>& forceNamesLeftFoot);
+        const std::vector<std::string>& forcePathsRightFoot,
+        const std::vector<std::string>& forcePathsLeftFoot);
 
-
+/// Solve for the root of a scalar function using the bisection method.
+/// @param calcResidual a function that computes the error
+/// @param left lower bound on the root
+/// @param right upper bound on the root
+/// @param tolerance convergence requires that the bisection's "left" and
+///     "right" are less than tolerance apart.
+/// @param maxIterations abort after this many iterations.
+/// @ingroup mocogenutil
+OSIMMOCO_API
+SimTK::Real solveBisection(
+        std::function<double(const double&)> calcResidual,
+        double left, double right, const double& tolerance = 1e-6,
+        int maxIterations = 1000);
 
 } // namespace OpenSim
 

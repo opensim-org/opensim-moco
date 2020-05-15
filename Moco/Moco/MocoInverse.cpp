@@ -18,7 +18,6 @@
 
 #include "MocoInverse.h"
 
-#include "Components/ModelFactory.h"
 #include "Components/PositionMotion.h"
 #include "MocoCasADiSolver/MocoCasADiSolver.h"
 #include "MocoGoal/MocoControlGoal.h"
@@ -27,9 +26,6 @@
 #include "MocoProblem.h"
 #include "MocoStudy.h"
 #include "MocoUtilities.h"
-
-#include <OpenSim/Tools/InverseDynamicsTool.h>
-#include <OpenSim/Actuators/CoordinateActuator.h>
 
 using namespace OpenSim;
 
@@ -91,19 +87,13 @@ std::pair<MocoStudy, TimeSeriesTable> MocoInverse::initializeInternal() const {
 
     // TODO: Allow users to specify costs flexibly.
     auto* effort = problem.addGoal<MocoControlGoal>("excitation_effort");
-    for (const auto& actu : model.getComponentList<CoordinateActuator>()) {
-        auto name = actu.getName();
-        if (std::regex_match(name, std::regex("^reserve_.*"))) {
-            effort->setWeightForControl(actu.getAbsolutePathString(),
-                    get_reserves_weight());
-        }
-    }
+    effort->setWeightForControlPattern(".*/reserve_.*", get_reserves_weight());
 
     // Prevent "free" activation at the beginning of the motion.
     problem.addGoal<MocoInitialActivationGoal>("initial_activation");
 
     if (get_minimize_sum_squared_activations()) {
-        auto* act_goal = 
+        auto* act_goal =
             problem.addGoal<MocoSumSquaredStateGoal>("activation_effort");
         act_goal->setPattern(".*activation$");
     }

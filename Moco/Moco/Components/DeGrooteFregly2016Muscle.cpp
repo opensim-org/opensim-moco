@@ -56,6 +56,7 @@ void DeGrooteFregly2016Muscle::constructProperties() {
     constructProperty_default_normalized_tendon_force(0.5);
     constructProperty_active_force_width_scale(1.0);
     constructProperty_fiber_damping(0.0);
+    constructProperty_passive_fiber_strain_at_one_norm_force(0.6);
     constructProperty_tendon_strain_at_one_norm_force(0.049);
     constructProperty_ignore_passive_fiber_force(false);
     constructProperty_tendon_compliance_dynamics_mode("explicit");
@@ -108,6 +109,12 @@ void DeGrooteFregly2016Muscle::extendFinalizeFromProperties() {
             "%s: fiber_damping must be greater than or equal to zero, "
             "but it is %g.",
             getName().c_str(), get_fiber_damping());
+
+    SimTK_ERRCHK2_ALWAYS(get_passive_fiber_strain_at_one_norm_force() > 0,
+            "DeGrooteFregly2016Muscle::extendFinalizeFromProperties",
+            "%s: passive_fiber_strain_at_one_norm_force must be greater "
+            "than zero, but it is %g.",
+            getName().c_str(), get_passive_fiber_strain_at_one_norm_force());
 
     SimTK_ERRCHK2_ALWAYS(get_tendon_strain_at_one_norm_force() > 0,
             "DeGrooteFregly2016Muscle::extendFinalizeFromProperties",
@@ -210,7 +217,7 @@ void DeGrooteFregly2016Muscle::computeStateVariableDerivatives(
             const auto& fvi = getFiberVelocityInfo(s);
             // calcTendonForceMultiplerDerivative() is with respect to
             // normalized tendon length, so using the chain rule, to get
-            // normalized tendon force derivative with respect to time, we 
+            // normalized tendon force derivative with respect to time, we
             // multiply by normalized fiber velocity.
             normTendonForceDerivative =
                     fvi.normTendonVelocity *
@@ -231,7 +238,7 @@ double DeGrooteFregly2016Muscle::computeActuation(const SimTK::State& s) const {
 }
 
 void DeGrooteFregly2016Muscle::calcMuscleLengthInfoHelper(
-        const SimTK::Real& muscleTendonLength, 
+        const SimTK::Real& muscleTendonLength,
         const bool& ignoreTendonCompliance, MuscleLengthInfo& mli,
         const SimTK::Real& normTendonForce = SimTK::NaN) const {
 
@@ -271,7 +278,7 @@ void DeGrooteFregly2016Muscle::calcFiberVelocityInfoHelper(
         const SimTK::Real& muscleTendonVelocity, const SimTK::Real& activation,
         const bool& ignoreTendonCompliance,
         const bool& isTendonDynamicsExplicit,
-        const MuscleLengthInfo& mli, FiberVelocityInfo& fvi, 
+        const MuscleLengthInfo& mli, FiberVelocityInfo& fvi,
         const SimTK::Real& normTendonForce = SimTK::NaN,
         const SimTK::Real& normTendonForceDerivative = SimTK::NaN) const {
 
@@ -283,11 +290,11 @@ void DeGrooteFregly2016Muscle::calcFiberVelocityInfoHelper(
         fvi.normFiberVelocity =
                 calcForceVelocityInverseCurve(fvi.fiberForceVelocityMultiplier);
         fvi.fiberVelocity =
-                fvi.normFiberVelocity * 
+                fvi.normFiberVelocity *
                 m_maxContractionVelocityInMetersPerSecond;
-        fvi.fiberVelocityAlongTendon = 
+        fvi.fiberVelocityAlongTendon =
                 fvi.fiberVelocity / mli.cosPennationAngle;
-        fvi.tendonVelocity = 
+        fvi.tendonVelocity =
                 muscleTendonVelocity - fvi.fiberVelocityAlongTendon;
         fvi.normTendonVelocity = fvi.tendonVelocity / get_tendon_slack_length();
     } else {
@@ -317,8 +324,8 @@ void DeGrooteFregly2016Muscle::calcFiberVelocityInfoHelper(
 
 void DeGrooteFregly2016Muscle::calcMuscleDynamicsInfoHelper(
         const SimTK::Real& activation, const SimTK::Real& muscleTendonVelocity,
-        const bool& ignoreTendonCompliance, const MuscleLengthInfo& mli, 
-        const FiberVelocityInfo& fvi, MuscleDynamicsInfo& mdi, 
+        const bool& ignoreTendonCompliance, const MuscleLengthInfo& mli,
+        const FiberVelocityInfo& fvi, MuscleDynamicsInfo& mdi,
         const SimTK::Real& normTendonForce = SimTK::NaN) const {
 
     mdi.activation = activation;
@@ -390,12 +397,6 @@ void DeGrooteFregly2016Muscle::calcMuscleDynamicsInfoHelper(
                     mli.fiberLength, mli.sinPennationAngle,
                     mli.cosPennationAngle);
 
-    mdi.userDefinedDynamicsExtras = SimTK::Vector(3);
-    mdi.userDefinedDynamicsExtras[0] = partialPennationAnglePartialFiberLength;
-    mdi.userDefinedDynamicsExtras[1] =
-            partialFiberForceAlongTendonPartialFiberLength;
-    mdi.userDefinedDynamicsExtras[2] = partialTendonForcePartialFiberLength;
-
     // Compute power entries.
     // ----------------------
     // In order for the fiberPassivePower to be zero work, the non-conservative
@@ -407,10 +408,24 @@ void DeGrooteFregly2016Muscle::calcMuscleDynamicsInfoHelper(
     mdi.fiberPassivePower = -conPassiveFiberForce * fvi.fiberVelocity;
     mdi.tendonPower = -mdi.tendonForce * fvi.tendonVelocity;
     mdi.musclePower = -mdi.tendonForce * muscleTendonVelocity;
+
+    mdi.userDefinedDynamicsExtras.resize(5);
+    mdi.userDefinedDynamicsExtras[m_mdi_passiveFiberElasticForce] =
+            conPassiveFiberForce;
+    mdi.userDefinedDynamicsExtras[m_mdi_passiveFiberDampingForce] =
+            nonConPassiveFiberForce;
+    mdi.userDefinedDynamicsExtras[
+                    m_mdi_partialPennationAnglePartialFiberLength] =
+            partialPennationAnglePartialFiberLength;
+    mdi.userDefinedDynamicsExtras[
+            m_mdi_partialFiberForceAlongTendonPartialFiberLength] =
+            partialFiberForceAlongTendonPartialFiberLength;
+    mdi.userDefinedDynamicsExtras[m_mdi_partialTendonForcePartialFiberLength] =
+            partialTendonForcePartialFiberLength;
 }
 
 void DeGrooteFregly2016Muscle::calcMusclePotentialEnergyInfoHelper(
-        const bool& ignoreTendonCompliance, const MuscleLengthInfo& mli, 
+        const bool& ignoreTendonCompliance, const MuscleLengthInfo& mli,
         MusclePotentialEnergyInfo& mpei) const {
 
     // Based on Millard2012EquilibriumMuscle::calcMusclePotentialEnergyInfo().
@@ -447,7 +462,7 @@ void DeGrooteFregly2016Muscle::calcMuscleLengthInfo(
     calcMuscleLengthInfoHelper(muscleTendonLength,
             get_ignore_tendon_compliance(), mli, normTendonForce);
 
-    if (mli.tendonLength < get_tendon_slack_length() && getPrintWarnings()) {
+    if (mli.tendonLength < get_tendon_slack_length() && getDebugLevel() > 0) {
         // TODO the Millard model sets fiber velocity to zero when the
         //       tendon is buckling, but this may create a discontinuity.
         std::cout << "Warning: DeGrooteFregly2016Muscle '" << getName()
@@ -474,7 +489,7 @@ void DeGrooteFregly2016Muscle::calcFiberVelocityInfo(
     }
 
     calcFiberVelocityInfoHelper(muscleTendonVelocity, activation,
-            get_ignore_tendon_compliance(), m_isTendonDynamicsExplicit, mli, 
+            get_ignore_tendon_compliance(), m_isTendonDynamicsExplicit, mli,
             fvi, normTendonForce, normTendonForceDerivative);
 }
 
@@ -528,7 +543,7 @@ void DeGrooteFregly2016Muscle::computeInitialFiberEquilibrium(
 
     // We have to use the implicit form of the model since the explicit form
     // will produce a zero residual for any guess of normalized tendon force.
-    // The implicit form requires a value for normalized tendon force 
+    // The implicit form requires a value for normalized tendon force
     // derivative, so we'll set it to zero for simplicity.
     const SimTK::Real normTendonForceDerivative = 0.0;
 
@@ -540,11 +555,11 @@ void DeGrooteFregly2016Muscle::computeInitialFiberEquilibrium(
                                 &normTendonForceDerivative, &activation, &mli,
                                 &fvi,
                                 &mdi](const SimTK::Real& normTendonForce) {
-        calcMuscleLengthInfoHelper(muscleTendonLength, false, mli, 
+        calcMuscleLengthInfoHelper(muscleTendonLength, false, mli,
                 normTendonForce);
         calcFiberVelocityInfoHelper(muscleTendonVelocity, activation, false,
                 false, mli, fvi, normTendonForce, normTendonForceDerivative);
-        calcMuscleDynamicsInfoHelper(activation, muscleTendonVelocity, false, 
+        calcMuscleDynamicsInfoHelper(activation, muscleTendonVelocity, false,
                 mli, fvi, mdi, normTendonForce);
 
         return calcEquilibriumResidual(
@@ -552,7 +567,7 @@ void DeGrooteFregly2016Muscle::computeInitialFiberEquilibrium(
     };
 
     const auto equilNormTendonForce = solveBisection(calcResidual,
-            m_minNormTendonForce, m_maxNormTendonForce, 1e-10, 1e-10, 100);
+            m_minNormTendonForce, m_maxNormTendonForce, 1e-10, 100);
 
     setNormalizedTendonForce(s, equilNormTendonForce);
 
@@ -562,8 +577,8 @@ void DeGrooteFregly2016Muscle::computeInitialFiberEquilibrium(
     //int maxIterations = 1000;
 
     //try {
-    //    auto result = estimateMuscleFiberState(activation, 
-    //            muscleTendonLength, muscleTendonVelocity, 
+    //    auto result = estimateMuscleFiberState(activation,
+    //            muscleTendonLength, muscleTendonVelocity,
     //            normTendonForceDerivative, tolerance, maxIterations);
 
     //    switch (result.first) {
@@ -607,58 +622,9 @@ void DeGrooteFregly2016Muscle::computeInitialFiberEquilibrium(
     //    OPENSIM_THROW_FRMOBJ(MuscleCannotEquilibrate,
     //            "Internal exception encountered.\n" + std::string{x.what()});
     //}
-    
+
 }
 
-SimTK::Real DeGrooteFregly2016Muscle::solveBisection(
-        std::function<SimTK::Real(const SimTK::Real&)> calcResidual,
-        SimTK::Real left, SimTK::Real right, const SimTK::Real& xTolerance,
-        const SimTK::Real& yTolerance, int maxIterations) const {
-    SimTK::Real midpoint = left;
-
-    OPENSIM_THROW_IF_FRMOBJ(maxIterations < 0, Exception,
-            format("Expected maxIterations to be positive, but got %i.",
-                    maxIterations));
-
-    const bool sameSign = calcResidual(left) * calcResidual(right) >= 0;
-    if (sameSign) {
-        const auto x = createVectorLinspace(1000, left, right);
-        TimeSeriesTable table;
-        table.setColumnLabels({"residual"});
-        SimTK::RowVector row(1);
-        for (int i = 0; i < x.nrow(); ++i) {
-            row[0] = calcResidual(x[i]);
-            table.appendRow(x[i], row);
-        }
-        writeTableToFile(table, "DEBUG_solveBisection_residual.sto");
-    }
-    OPENSIM_THROW_IF_FRMOBJ(sameSign, Exception,
-            format("Function has same sign at bounds of %f and %f.", left,
-                    right));
-
-    SimTK::Real residualMidpoint;
-    SimTK::Real residualLeft = calcResidual(left);
-    int iterCount = 0;
-    while (iterCount < maxIterations && (right - left) >= xTolerance) {
-        midpoint = 0.5 * (left + right);
-        residualMidpoint = calcResidual(midpoint);
-        if (std::abs(residualMidpoint) < yTolerance) {
-            break;
-        } else if (residualMidpoint * residualLeft < 0) {
-            // The solution is to the left of the current midpoint.
-            right = midpoint;
-        } else {
-            left = midpoint;
-            residualLeft = calcResidual(left);
-        }
-        ++iterCount;
-    }
-    if (iterCount == maxIterations)
-        printMessage("Warning: bisection reached max iterations "
-                     "at x = %g (%s %s).\n",
-                midpoint, getConcreteClassName(), getName());
-    return midpoint;
-}
 
 std::pair<DeGrooteFregly2016Muscle::StatusFromEstimateMuscleFiberState,
         DeGrooteFregly2016Muscle::ValuesFromEstimateMuscleFiberState>
@@ -696,14 +662,16 @@ DeGrooteFregly2016Muscle::estimateMuscleFiberState(const double activation,
     };
     // Update velocity and dynamics level quantities and compute residual.
     auto dynamicsFunc = [&] {
-        calcFiberVelocityInfoHelper(muscleTendonVelocity, activation, false, 
+        calcFiberVelocityInfoHelper(muscleTendonVelocity, activation, false,
                 false, mli, fvi, normTendonForce, normTendonForceDerivative);
         calcMuscleDynamicsInfoHelper(activation, muscleTendonVelocity, false,
                 mli, fvi, mdi, normTendonForce);
 
         partialFiberForceAlongTendonPartialFiberLength =
-                mdi.userDefinedDynamicsExtras[1];
-        partialTendonForcePartialFiberLength = mdi.userDefinedDynamicsExtras[2];
+                mdi.userDefinedDynamicsExtras[
+                        m_mdi_partialFiberForceAlongTendonPartialFiberLength];
+        partialTendonForcePartialFiberLength = mdi.userDefinedDynamicsExtras[
+                m_mdi_partialTendonForcePartialFiberLength];
 
         residual = calcEquilibriumResidual(
                 mdi.tendonForce, mdi.fiberForceAlongTendon);
@@ -824,6 +792,29 @@ DeGrooteFregly2016Muscle::estimateMuscleFiberState(const double activation,
     return std::pair<StatusFromEstimateMuscleFiberState,
             ValuesFromEstimateMuscleFiberState>(
             Failure_MaxIterationsReached, resultValues);
+}
+
+double DeGrooteFregly2016Muscle::getPassiveFiberElasticForce(
+        const SimTK::State& s) const {
+    return getMuscleDynamicsInfo(s)
+            .userDefinedDynamicsExtras[m_mdi_passiveFiberElasticForce];
+}
+double DeGrooteFregly2016Muscle::getPassiveFiberElasticForceAlongTendon(
+        const SimTK::State& s) const {
+    return getMuscleDynamicsInfo(s)
+                   .userDefinedDynamicsExtras[m_mdi_passiveFiberElasticForce] *
+           getMuscleLengthInfo(s).cosPennationAngle;
+}
+double DeGrooteFregly2016Muscle::getPassiveFiberDampingForce(
+        const SimTK::State& s) const {
+    return getMuscleDynamicsInfo(s)
+            .userDefinedDynamicsExtras[m_mdi_passiveFiberDampingForce];
+}
+double DeGrooteFregly2016Muscle::getPassiveFiberDampingForceAlongTendon(
+        const SimTK::State& s) const {
+    return getMuscleDynamicsInfo(s)
+                   .userDefinedDynamicsExtras[m_mdi_passiveFiberDampingForce] *
+           getMuscleLengthInfo(s).cosPennationAngle;
 }
 
 double DeGrooteFregly2016Muscle::getImplicitResidualNormalizedTendonForce(
@@ -960,6 +951,9 @@ void DeGrooteFregly2016Muscle::replaceMuscles(
             actu->set_deactivation_time_constant(
                     musc->get_deactivation_time_constant());
             actu->set_fiber_damping(musc->get_fiber_damping());
+            actu->set_passive_fiber_strain_at_one_norm_force(
+                    musc->get_FiberForceLengthCurve()
+                            .get_strain_at_one_norm_force());
             actu->set_tendon_strain_at_one_norm_force(
                     musc->get_TendonForceLengthCurve()
                             .get_strain_at_one_norm_force());
@@ -974,6 +968,9 @@ void DeGrooteFregly2016Muscle::replaceMuscles(
             // Fiber damping needs to be hardcoded at zero since it is not a
             // property of the Thelen2003 muscle.
             actu->set_fiber_damping(0);
+            actu->set_passive_fiber_strain_at_one_norm_force(
+                    musc->get_FmaxMuscleStrain());
+
             actu->set_tendon_strain_at_one_norm_force(
                     musc->get_FmaxTendonStrain());
 

@@ -105,8 +105,8 @@ Model ModelFactory::createPlanarPointMass() {
     model.addJoint(jointX);
 
     // The joint's x axis must point in the global "+y" direction.
-    auto* jointY = new SliderJoint("ty",
-            *intermed, Vec3(0), Vec3(0, 0, 0.5 * SimTK::Pi),
+    auto* jointY = new SliderJoint("ty", 
+            *intermed, Vec3(0), Vec3(0, 0, 0.5 * SimTK::Pi), 
             *body, Vec3(0), Vec3(0, 0, .5 * SimTK::Pi));
     auto& coordY = jointY->updCoordinate(SliderJoint::Coord::TranslationX);
     coordY.setName("ty");
@@ -126,6 +126,32 @@ Model ModelFactory::createPlanarPointMass() {
         model.addForce(forceY);
     }
 
+    model.finalizeConnections();
+
+    return model;
+}
+
+Model ModelFactory::createSlidingPointMass() {
+    Model model;
+    model.setName("sliding_mass");
+    auto* body = new Body("body", 1.0, SimTK::Vec3(0), SimTK::Inertia(0));
+    model.addComponent(body);
+
+    // Allows translation along x.
+    auto* joint = new SliderJoint("slider", model.getGround(), *body);
+    auto& coord = joint->updCoordinate(SliderJoint::Coord::TranslationX);
+    coord.setName("position");
+    model.addComponent(joint);
+
+    auto* actu = new CoordinateActuator();
+    actu->setName("actuator");
+    actu->setCoordinate(&coord);
+    actu->setOptimalForce(1);
+    actu->setMinControl(-10);
+    actu->setMaxControl(10);
+    model.addForce(actu);
+
+    model.finalizeConnections();
     return model;
 }
 

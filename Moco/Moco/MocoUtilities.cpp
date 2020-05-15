@@ -39,7 +39,7 @@
 
 using namespace OpenSim;
 
-std::string OpenSim::getFormattedDateTime(
+std::string OpenSim::getMocoFormattedDateTime(
         bool appendMicroseconds, std::string format) {
     using namespace std::chrono;
     auto now = system_clock::now();
@@ -51,8 +51,20 @@ std::string OpenSim::getFormattedDateTime(
     localtime_r(&time_now, &buf);
 #endif
     if (format == "ISO") { format = "%Y-%m-%dT%H:%M:%S"; }
+
+    // To get the date/time in the desired format, we would ideally use
+    // std::put_time, but that is not available in GCC < 5.
+    // https://stackoverflow.com/questions/30269657/what-is-an-intelligent-way-to-determine-max-size-of-a-strftime-char-array
+    int size = 32;
+    std::unique_ptr<char[]> formatted(new char[size]);
+    while (strftime(formatted.get(), size - 1, format.c_str(), &buf) == 0) {
+        size *= 2;
+        formatted.reset(new char[size]);
+    }
+
     std::stringstream ss;
-    ss << std::put_time(&buf, format.c_str());
+    ss << formatted.get();
+
     if (appendMicroseconds) {
         // Get number of microseconds since last second.
         auto microsec =
@@ -60,6 +72,19 @@ std::string OpenSim::getFormattedDateTime(
         ss << '.' << std::setfill('0') << std::setw(6) << microsec.count();
     }
     return ss.str();
+}
+
+std::string OpenSim::getAbsolutePathnameFromXMLDocument(
+        const std::string& documentFileName,
+        const std::string& pathnameRelativeToDocument) {
+    // Get the directory containing the XML file.
+    std::string directory;
+    bool dontApplySearchPath;
+    std::string fileName, extension;
+    SimTK::Pathname::deconstructPathname(documentFileName, dontApplySearchPath,
+            directory, fileName, extension);
+    return SimTK::Pathname::getAbsolutePathnameUsingSpecifiedWorkingDirectory(
+            directory, pathnameRelativeToDocument);
 }
 
 SimTK::Vector OpenSim::createVectorLinspace(
@@ -232,7 +257,7 @@ void OpenSim::visualize(Model model, Storage statesSto) {
     std::string title = "Visualizing model '" + modelName + "'";
     if (!statesSto.getName().empty() && statesSto.getName() != "UNKNOWN")
         title += " with motion '" + statesSto.getName() + "'";
-    title += " (" + getFormattedDateTime(false, "ISO") + ")";
+    title += " (" + getMocoFormattedDateTime(false, "ISO") + ")";
     viz.setWindowTitle(title);
     viz.setMode(SimTK::Visualizer::RealTime);
     // Buffering causes issues when the user adjusts the "Speed" slider.
@@ -772,24 +797,20 @@ int OpenSim::getMocoParallelEnvironmentVariable() {
 }
 
 TimeSeriesTable OpenSim::createExternalLoadsTableForGait(Model model,
-        const MocoTrajectory& trajectory,
-        const std::vector<std::string>& forceNamesRightFoot,
-        const std::vector<std::string>& forceNamesLeftFoot) {
+        const StatesTrajectory& trajectory,
+        const std::vector<std::string>& forcePathsRightFoot,
+        const std::vector<std::string>& forcePathsLeftFoot) {
     model.initSystem();
-    TimeSeriesTableVec3 externalForcesTable{};
-    Storage storage = trajectory.exportToStatesStorage();
-    StatesTrajectory optStates =
-            StatesTrajectory::createFromStatesStorage(model, storage, true);
-    SimTK::Vector optTime = trajectory.getTime();
+    TimeSeriesTableVec3 externalForcesTable;
     int count = 0;
-    for (const auto& state : optStates) {
+    for (const auto& state : trajectory) {
         model.realizeVelocity(state);
         SimTK::Vec3 forcesRight(0);
         SimTK::Vec3 torquesRight(0);
         // Loop through all Forces of the right side.
-        for (const auto& smoothForce : forceNamesRightFoot) {
+        for (const auto& smoothForce : forcePathsRightFoot) {
             Array<double> forceValues =
-                model.getComponent<Force>(smoothForce).getRecordValues(state);
+                    model.getComponent<Force>(smoothForce).getRecordValues(state);
             forcesRight += SimTK::Vec3(forceValues[0], forceValues[1],
                     forceValues[2]);
             torquesRight += SimTK::Vec3(forceValues[3], forceValues[4],
@@ -798,9 +819,9 @@ TimeSeriesTable OpenSim::createExternalLoadsTableForGait(Model model,
         SimTK::Vec3 forcesLeft(0);
         SimTK::Vec3 torquesLeft(0);
         // Loop through all Forces of the left side.
-        for (const auto& smoothForce : forceNamesLeftFoot) {
+        for (const auto& smoothForce : forcePathsLeftFoot) {
             Array<double> forceValues =
-                model.getComponent<Force>(smoothForce).getRecordValues(state);
+                    model.getComponent<Force>(smoothForce).getRecordValues(state);
             forcesLeft += SimTK::Vec3(forceValues[0], forceValues[1],
                     forceValues[2]);
             torquesLeft += SimTK::Vec3(forceValues[3], forceValues[4],
@@ -814,20 +835,73 @@ TimeSeriesTable OpenSim::createExternalLoadsTableForGait(Model model,
         row(3) = SimTK::Vec3(0);
         row(4) = torquesRight;
         row(5) = torquesLeft;
-        externalForcesTable.appendRow(optTime[count], row);
+        externalForcesTable.appendRow(state.getTime(), row);
         ++count;
     }
     // Create table.
-    std::vector<std::string> labels;
-    labels.push_back("ground_force_r_v");
-    labels.push_back("ground_force_r_p");
-    labels.push_back("ground_force_l_v");
-    labels.push_back("ground_force_l_p");
-    labels.push_back("ground_torque_r_");
-    labels.push_back("ground_torque_l_");
+    std::vector<std::string> labels{"ground_force_r_v", "ground_force_r_p",
+            "ground_force_l_v", "ground_force_l_p", "ground_torque_r_",
+            "ground_torque_l_"};
     externalForcesTable.setColumnLabels(labels);
     TimeSeriesTable externalForcesTableFlat =
             externalForcesTable.flatten({"x", "y", "z"});
 
     return externalForcesTableFlat;
+}
+
+TimeSeriesTable OpenSim::createExternalLoadsTableForGait(Model model,
+        const MocoTrajectory& trajectory,
+        const std::vector<std::string>& forcePathsRightFoot,
+        const std::vector<std::string>& forcePathsLeftFoot) {
+    StatesTrajectory statesTraj = trajectory.exportToStatesTrajectory(model);
+    return createExternalLoadsTableForGait(std::move(model), statesTraj,
+            forcePathsRightFoot, forcePathsLeftFoot);
+}
+
+SimTK::Real OpenSim::solveBisection(
+        std::function<SimTK::Real(const SimTK::Real&)> calcResidual,
+        SimTK::Real left, SimTK::Real right, const SimTK::Real& tolerance,
+        int maxIterations) {
+    SimTK::Real midpoint = left;
+
+    OPENSIM_THROW_IF(maxIterations < 0, Exception,
+            format("Expected maxIterations to be positive, but got %i.",
+                    maxIterations));
+
+    const bool sameSign = calcResidual(left) * calcResidual(right) >= 0;
+    if (sameSign) {
+        const auto x = createVectorLinspace(1000, left, right);
+        TimeSeriesTable table;
+        table.setColumnLabels({"residual"});
+        SimTK::RowVector row(1);
+        for (int i = 0; i < x.nrow(); ++i) {
+            row[0] = calcResidual(x[i]);
+            table.appendRow(x[i], row);
+        }
+        // writeTableToFile(table, "DEBUG_solveBisection_residual.sto");
+    }
+    OPENSIM_THROW_IF(sameSign, Exception,
+            format("Function has same sign at bounds of %f and %f.", left,
+                    right));
+
+    SimTK::Real residualMidpoint;
+    SimTK::Real residualLeft = calcResidual(left);
+    int iterCount = 0;
+    while (iterCount < maxIterations && (right - left) > tolerance) {
+        midpoint = 0.5 * (left + right);
+        residualMidpoint = calcResidual(midpoint);
+        if (residualMidpoint * residualLeft < 0) {
+            // The solution is to the left of the current midpoint.
+            right = midpoint;
+        } else {
+            left = midpoint;
+            residualLeft = calcResidual(left);
+        }
+        ++iterCount;
+    }
+    if (iterCount == maxIterations) {
+        printMessage("Warning: bisection reached max iterations "
+                     "at x = %g.\n", midpoint);
+    }
+    return midpoint;
 }

@@ -151,7 +151,7 @@ public:
             "Default: 1.0.");
     OpenSim_DECLARE_PROPERTY(minimize_implicit_auxiliary_derivatives, bool,
             "Minimize the integral of the squared derivative continuous "
-            "variables for components with implicit multibody dynamics. "
+            "variables for components with implicit auxiliary dynamics. "
             "Default: false.");
     OpenSim_DECLARE_PROPERTY(implicit_auxiliary_derivatives_weight, double,
             "The weight on the cost term added if "
@@ -179,7 +179,10 @@ public:
     /// The number of time points in the trajectory does *not* need to match
     /// `num_mesh_intervals`; the trajectory will be interpolated to the correct
     /// size.
-    /// This clears the `guess_file`, if any.
+    /// If you have updated the problem since the solver was initialized, you
+    /// may need to invoke MocoSolver::resetProblem() for the provided guess to
+    /// be recognized as compatible with the problem.
+    /// This clears the `guess_file`, if one exists.
     void setGuess(MocoTrajectory guess);
     /// Use this convenience function if you want to choose the type of guess
     /// used, but do not want to modify it first.
@@ -211,6 +214,10 @@ protected:
     std::unique_ptr<MocoCasOCProblem> createCasOCProblem() const;
     std::unique_ptr<CasOC::Solver> createCasOCSolver(
             const MocoCasOCProblem&) const;
+
+    /// Check that the provided guess is compatible with the problem and this
+    /// solver.
+    void checkGuess(const MocoTrajectory& guess) const;
 
 private:
     void constructProperties();
