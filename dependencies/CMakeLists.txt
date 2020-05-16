@@ -308,6 +308,10 @@ if(SUPERBUILD_casadi)
                   CMAKE_ARGS -DWITH_IPOPT:BOOL=ON
                              -DWITH_THREAD:BOOL=ON
                              -DWITH_EXAMPLES:BOOL=OFF
+                             -DWITH_BUILD_CSPARSE:BOOL=OFF
+                             -DWITH_CSPARSE:BOOL=OFF
+                             -DWITH_BUILD_SUNDIALS:BOOL=OFF
+                             -DWITH_SUNDIALS:BOOL=OFF
                              -DPKG_CONFIG_USE_CMAKE_PREFIX_PATH:BOOL=ON
                              -DCMAKE_PREFIX_PATH:PATH=${CMAKE_INSTALL_PREFIX}/ipopt
                   )
