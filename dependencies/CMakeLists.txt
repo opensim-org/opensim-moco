@@ -312,6 +312,8 @@ if(SUPERBUILD_casadi)
                              -DWITH_CSPARSE:BOOL=OFF
                              -DWITH_BUILD_SUNDIALS:BOOL=OFF
                              -DWITH_SUNDIALS:BOOL=OFF
+                             -DWITH_BUILD_TINYXML:BOOL=OFF
+                             -DWITH_TINYXML:BOOL=OFF
                              -DPKG_CONFIG_USE_CMAKE_PREFIX_PATH:BOOL=ON
                              -DCMAKE_PREFIX_PATH:PATH=${CMAKE_INSTALL_PREFIX}/ipopt
                   )
