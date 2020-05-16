@@ -24,8 +24,8 @@ if(SUPERBUILD_opensim-core)
     # OpenSim's dependencies.
     AddDependency(NAME       ezc3d
                   DEFAULT    OFF
-                  GIT_URL        https://github.com/pyomeca/ezc3d.git
-                  GIT_TAG        Release_1.3.2
+                  GIT_URL    https://github.com/pyomeca/ezc3d.git
+                  GIT_TAG    Release_1.3.2
                   CMAKE_ARGS -DBUILD_EXAMPLE:BOOL=OFF)
 
     AddDependency(NAME simbody
