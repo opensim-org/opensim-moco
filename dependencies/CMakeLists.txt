@@ -149,6 +149,8 @@ function(AddDependency)
         if(APPLE)
             list(APPEND CMAKE_ARGS
                  -DCMAKE_OSX_DEPLOYMENT_TARGET:STRING=${CMAKE_OSX_DEPLOYMENT_TARGET})
+            list(APPEND CMAKE_ARGS
+                 -DCMAKE_OSX_SYSROOT:STRING=${CMAKE_OSX_SYSROOT})
         endif()
         if(SWIG_EXECUTABLE)
             list(APPEND CMAKE_ARGS -DSWIG_EXECUTABLE:FILEPATH=${SWIG_EXECUTABLE})
