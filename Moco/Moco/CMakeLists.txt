@@ -117,7 +117,7 @@ set(MOCO_SOURCES
         MocoConstraintInfo.cpp
         MocoStudyFactory.h
         MocoStudyFactory.cpp
-        )
+        Components/SynergyController.cpp Components/SynergyController.h)
 if (MOCO_WITH_TROPTER)
     list(APPEND MOCO_SOURCES
             tropter/TropterProblem.h
