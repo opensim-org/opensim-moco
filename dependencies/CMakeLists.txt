@@ -9,13 +9,20 @@ project(MocoDependencies)
 cmake_minimum_required(VERSION 3.2)
 
 if(MSVC)
-    if (${CMAKE_GENERATOR} MATCHES "Win64" OR 
-            "${CMAKE_GENERATOR_PLATFORM}" STREQUAL "x64")
-    else()
-        # This requirement results from the use of 64-bit pre-built binaries for
-        # ADOL-C and Ipopt.
-        message(FATAL_ERROR "Only 64-bit platforms supported.")
+    # https://stackoverflow.com/questions/39258250/how-to-detect-if-64-bit-msvc-with-cmake
+    if (CMAKE_GENERATOR MATCHES "Visual Studio")
+        if (CMAKE_GENERATOR MATCHES "Win64" OR 
+                "${CMAKE_GENERATOR_PLATFORM}" STREQUAL "x64")
+        else()
+            # This requirement results from the use of 64-bit pre-built
+            # binaries for ADOL-C and Ipopt.
+            message(WARNING "Only 64-bit platforms supported.")
+        endif()
     endif()
+    # Otherwise, we may be using the NMake Makefiles or Ninja generators
+    # (perhaps when building a conda package), in which case...how do we check 
+    # the architecture? This scenario is rare enough that perhaps it's okay if
+    # we do not check the architecture.
 endif()
 
 option(OPENSIM_JAVA_WRAPPING "Build opensim-core Java/MATLAB interface." OFF)
