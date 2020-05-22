@@ -41,62 +41,81 @@ TEST_CASE("Bhargava2004Metabolics basics") {
     musclePtr->addNewPathPoint("insertion", *body, SimTK::Vec3(0));
     model.addComponent(musclePtr);
     auto& muscle = model.getComponent<DeGrooteFregly2016Muscle>("muscle");
+
     // Add non-smooth metabolics
-    auto metabolicsPtr_ns = new Bhargava2004Metabolics();
-    metabolicsPtr_ns->setName("metabolics_ns");
-    metabolicsPtr_ns->set_use_smoothing(false);
-    metabolicsPtr_ns->set_include_negative_mechanical_work(false);
-    metabolicsPtr_ns->addMuscle("muscle",  muscle);
-    model.addComponent(metabolicsPtr_ns);
-    auto& metabolics_ns =
-        model.getComponent<Bhargava2004Metabolics>("metabolics_ns");
+    auto metabolicsPtr_nonSmooth = new Bhargava2004Metabolics();
+    metabolicsPtr_nonSmooth->setName("metabolics_nonSmooth");
+    metabolicsPtr_nonSmooth->set_use_smoothing(false);
+    metabolicsPtr_nonSmooth->set_include_negative_mechanical_work(false);
+    metabolicsPtr_nonSmooth->addMuscle("muscle",  muscle);
+    model.addComponent(metabolicsPtr_nonSmooth);
+    auto& metabolics_nonSmooth =
+            model.getComponent<Bhargava2004Metabolics>("metabolics_nonSmooth");
     // Add non-smooth metabolics with force_dependent_shortening_prop_constant.
-    auto metabolicsPtr_fd_ns = new Bhargava2004Metabolics();
-    metabolicsPtr_fd_ns->setName("metabolics_fd_ns");
-    metabolicsPtr_fd_ns->set_use_smoothing(false);
-    metabolicsPtr_fd_ns->
+    auto metabolicsPtr_forceDep_nonSmooth = new Bhargava2004Metabolics();
+    metabolicsPtr_forceDep_nonSmooth->setName("metabolics_forceDep_nonSmooth");
+    metabolicsPtr_forceDep_nonSmooth->set_use_smoothing(false);
+    metabolicsPtr_forceDep_nonSmooth->
             set_use_force_dependent_shortening_prop_constant(true);
-    metabolicsPtr_fd_ns->set_include_negative_mechanical_work(false);
-    metabolicsPtr_fd_ns->addMuscle("muscle",  muscle);
-    model.addComponent(metabolicsPtr_fd_ns);
-    auto& metabolics_fd_ns =
-        model.getComponent<Bhargava2004Metabolics>("metabolics_fd_ns");
+    metabolicsPtr_forceDep_nonSmooth->
+            set_include_negative_mechanical_work(false);
+    metabolicsPtr_forceDep_nonSmooth->addMuscle("muscle",  muscle);
+    model.addComponent(metabolicsPtr_forceDep_nonSmooth);
+    auto& metabolics_forceDep_nonSmooth =
+            model.getComponent<Bhargava2004Metabolics>(
+                    "metabolics_forceDep_nonSmooth");
     // Add non-smooth metabolics with negative mechanical work.
-    auto metabolicsPtr_nw_ns = new Bhargava2004Metabolics();
-    metabolicsPtr_nw_ns->setName("metabolics_nw_ns");
-    metabolicsPtr_nw_ns->set_use_smoothing(false);
-    metabolicsPtr_nw_ns->addMuscle("muscle",  muscle);
-    model.addComponent(metabolicsPtr_nw_ns);
-    auto& metabolics_nw_ns =
-        model.getComponent<Bhargava2004Metabolics>("metabolics_nw_ns");
+    auto metabolicsPtr_negativeWork_nonSmooth = new Bhargava2004Metabolics();
+    metabolicsPtr_negativeWork_nonSmooth->setName(
+            "metabolics_negativeWork_nonSmooth");
+    metabolicsPtr_negativeWork_nonSmooth->set_use_smoothing(false);
+    metabolicsPtr_negativeWork_nonSmooth->addMuscle("muscle",  muscle);
+    model.addComponent(metabolicsPtr_negativeWork_nonSmooth);
+    auto& metabolics_negativeWork_nonSmooth =
+            model.getComponent<Bhargava2004Metabolics>(
+                    "metabolics_negativeWork_nonSmooth");
+
     // Add smooth metabolics
-    auto metabolicsPtr_s = new Bhargava2004Metabolics();
-    metabolicsPtr_s->setName("metabolics_s");
-    metabolicsPtr_s->set_use_smoothing(true);
-    // We set a high value for the velocity smoothing parameter so that
-    // the tanh transition is very steep and the smooth model best approximates
-    // the non-smooth model. In pratice we use a lower value (default is 10).
-    metabolicsPtr_s->set_velocity_smoothing(1e6);
-    metabolicsPtr_s->set_include_negative_mechanical_work(false);
-    metabolicsPtr_s->addMuscle("muscle",  muscle);
-    model.addComponent(metabolicsPtr_s);
-    auto& metabolics_s =
-        model.getComponent<Bhargava2004Metabolics>("metabolics_s");
+    auto metabolicsPtr_smooth = new Bhargava2004Metabolics();
+    metabolicsPtr_smooth->setName("metabolics_smooth");
+    metabolicsPtr_smooth->set_use_smoothing(true);
+    // We set a high value for the velocity and heat rate smoothing parameters
+    // so that the tanh transitions are very steep and the smooth models best
+    // approximate the non-smooth models. In pratice we use lower values
+    // (default is 10).
+    metabolicsPtr_smooth->set_velocity_smoothing(1e6);
+    metabolicsPtr_smooth->set_heat_rate_smoothing(1e6);
+    metabolicsPtr_smooth->set_include_negative_mechanical_work(false);
+    metabolicsPtr_smooth->addMuscle("muscle",  muscle);
+    model.addComponent(metabolicsPtr_smooth);
+    auto& metabolics_smooth =
+            model.getComponent<Bhargava2004Metabolics>("metabolics_smooth");
     // Add smooth metabolics with force_dependent_shortening_prop_constant.
-    auto metabolicsPtr_fd_s = new Bhargava2004Metabolics();
-    metabolicsPtr_fd_s->setName("metabolics_fd_s");
-    metabolicsPtr_fd_s->set_use_smoothing(true);
+    auto metabolicsPtr_forceDep_smooth = new Bhargava2004Metabolics();
+    metabolicsPtr_forceDep_smooth->setName("metabolics_forceDep_smooth");
+    metabolicsPtr_forceDep_smooth->set_use_smoothing(true);
     // We set a high value for the velocity smoothing parameter so that
     // the tanh transition is very steep and the smooth model best approximates
     // the non-smooth model. In pratice we use a lower value (default is 10).
-    metabolicsPtr_fd_s->
+    metabolicsPtr_forceDep_smooth->
             set_use_force_dependent_shortening_prop_constant(true);
-    metabolicsPtr_fd_s->set_velocity_smoothing(1e6);
-    metabolicsPtr_fd_s->set_include_negative_mechanical_work(false);
-    metabolicsPtr_fd_s->addMuscle("muscle",  muscle);
-    model.addComponent(metabolicsPtr_fd_s);
-    auto& metabolics_fd_s =
-        model.getComponent<Bhargava2004Metabolics>("metabolics_fd_s");
+    metabolicsPtr_forceDep_smooth->set_velocity_smoothing(1e6);
+    metabolicsPtr_forceDep_smooth->set_include_negative_mechanical_work(false);
+    metabolicsPtr_forceDep_smooth->addMuscle("muscle",  muscle);
+    model.addComponent(metabolicsPtr_forceDep_smooth);
+    auto& metabolics_forceDep_smooth =
+            model.getComponent<Bhargava2004Metabolics>(
+                    "metabolics_forceDep_smooth");
+    // Add smooth metabolics with negative mechanical work.
+    auto metabolicsPtr_negativeWork_smooth = new Bhargava2004Metabolics();
+    metabolicsPtr_negativeWork_smooth->setName(
+            "metabolics_negativeWork_smooth");
+    metabolicsPtr_negativeWork_smooth->set_use_smoothing(false);
+    metabolicsPtr_negativeWork_smooth->addMuscle("muscle",  muscle);
+    model.addComponent(metabolicsPtr_negativeWork_smooth);
+    auto& metabolics_negativeWork_smooth =
+            model.getComponent<Bhargava2004Metabolics>(
+                    "metabolics_negativeWork_smooth");
     model.finalizeConnections();
 
     SECTION("Verify computed values") {
@@ -110,7 +129,7 @@ TEST_CASE("Bhargava2004Metabolics basics") {
         muscle.setActivation(state, activation);
         coord.setValue(state, fiberLength + tendonLength);
 
-        SECTION("Smooth vs non-smooth metabolics models with concentric "
+        SECTION("Smooth = non-smooth metabolics models with concentric "
                 "and eccentric contractions") {
 
             for (double speed = -0.1; speed <= 0.1; speed += 0.01) {
@@ -126,26 +145,32 @@ TEST_CASE("Bhargava2004Metabolics basics") {
                 model.realizeDynamics(state);
                 // Metabolics not using
                 // force_dependent_shortening_prop_constant.
-                CHECK(metabolics_ns.getTotalShorteningRate(state) ==
-                        Approx(metabolics_s.getTotalShorteningRate(state)).
-                                margin(1e-6));
-                CHECK(metabolics_ns.getTotalMechanicalWorkRate(state) ==
-                        Approx(metabolics_s.getTotalMechanicalWorkRate(state)).
-                                margin(1e-6));
-                CHECK(metabolics_ns.getTotalMetabolicRate(state) ==
-                        Approx(metabolics_s.getTotalMetabolicRate(state)).
-                                margin(1e-6));
-                // Metabolics using force_dependent_shortening_prop_constant.
-                CHECK(metabolics_fd_ns.getTotalShorteningRate(state) ==
-                        Approx(metabolics_fd_s.getTotalShorteningRate(state)).
-                                margin(1e-6));
-                CHECK(metabolics_fd_ns.getTotalMechanicalWorkRate(state) ==
-                        Approx(metabolics_fd_s.
+                CHECK(metabolics_nonSmooth.getTotalShorteningRate(state) ==
+                        Approx(metabolics_smooth.
+                                getTotalShorteningRate(state)).margin(1e-6));
+                CHECK(metabolics_nonSmooth.getTotalMechanicalWorkRate(state) ==
+                        Approx(metabolics_smooth.
                                 getTotalMechanicalWorkRate(state)).
                                         margin(1e-6));
-                CHECK(metabolics_fd_ns.getTotalMetabolicRate(state) ==
-                        Approx(metabolics_fd_s.getTotalMetabolicRate(state)).
+                CHECK(metabolics_nonSmooth.getTotalMetabolicRate(state) ==
+                        Approx(metabolics_smooth.getTotalMetabolicRate(state)).
                                 margin(1e-6));
+                // Metabolics using force_dependent_shortening_prop_constant.
+                CHECK(metabolics_forceDep_nonSmooth.
+                        getTotalShorteningRate(state) == Approx(
+                                metabolics_forceDep_smooth.
+                                        getTotalShorteningRate(state)).
+                                                margin(1e-6));
+                CHECK(metabolics_forceDep_nonSmooth.
+                        getTotalMechanicalWorkRate(state) == Approx(
+                                metabolics_forceDep_smooth.
+                                        getTotalMechanicalWorkRate(state)).
+                                                margin(1e-6));
+                CHECK(metabolics_forceDep_nonSmooth.
+                        getTotalMetabolicRate(state) == Approx(
+                                metabolics_forceDep_smooth.
+                                        getTotalMetabolicRate(state)).
+                                                margin(1e-6));
             }
         }
 
@@ -161,9 +186,11 @@ TEST_CASE("Bhargava2004Metabolics basics") {
             model.setControls(state, controls);
 
             model.realizeDynamics(state);
-            CHECK(metabolics_ns.getTotalMechanicalWorkRate(state) ==
+            // Non-smooth metabolics model.
+            CHECK(metabolics_nonSmooth.getTotalMechanicalWorkRate(state) ==
                     Approx(0).margin(1e-6));
-            CHECK(metabolics_s.getTotalMechanicalWorkRate(state) ==
+            // Smooth metabolics model.
+            CHECK(metabolics_smooth.getTotalMechanicalWorkRate(state) ==
                     Approx(0).margin(1e-6));
         }
 
@@ -181,19 +208,23 @@ TEST_CASE("Bhargava2004Metabolics basics") {
             model.setControls(state, controls);
 
             model.realizeDynamics(state);
-            CHECK(metabolics_ns.getTotalActivationRate(state) ==
+            // Non-smooth metabolics model.
+            CHECK(metabolics_nonSmooth.getTotalActivationRate(state) ==
                     Approx(0.0));
-            CHECK(metabolics_s.getTotalActivationRate(state) ==
+            CHECK(metabolics_nonSmooth.getTotalMaintenanceRate(state) ==
                     Approx(0.0));
-            CHECK(metabolics_ns.getTotalMaintenanceRate(state) ==
+            // Smooth metabolics model.
+            CHECK(metabolics_smooth.getTotalActivationRate(state) ==
                     Approx(0.0));
-            CHECK(metabolics_s.getTotalMaintenanceRate(state) ==
+            CHECK(metabolics_smooth.getTotalMaintenanceRate(state) ==
                     Approx(0.0));
         }
 
         SECTION("mechanicalWorkRate=-fiberForceActive * fiberVelocity with "
-            "concentric contractions") {
+            "concentric and eccentric contractions when negative mechanical "
+            "work rate is allowed") {
 
+            // Concentric contraction
             double speed = -0.1;
             coord.setSpeedValue(state, speed);
 
@@ -205,17 +236,46 @@ TEST_CASE("Bhargava2004Metabolics basics") {
 
             model.realizeDynamics(state);
             double mechanicalWorkRate =
-                - metabolics_s.get_muscle_effort_scaling_factor()
-                * muscle.getActiveFiberForce(state)
-                * muscle.getFiberVelocity(state);
+                    - metabolics_negativeWork_smooth.
+                            get_muscle_effort_scaling_factor() *
+                    muscle.getActiveFiberForce(state) *
+                    muscle.getFiberVelocity(state);
+            // Non-smooth metabolics model.
             CHECK(mechanicalWorkRate ==
-                    metabolics_ns.getTotalMechanicalWorkRate(state));
+                    metabolics_negativeWork_nonSmooth.
+                            getTotalMechanicalWorkRate(state));
+            // Smooth metabolics model.
             CHECK(mechanicalWorkRate ==
-                    metabolics_s.getTotalMechanicalWorkRate(state));
+                    metabolics_negativeWork_smooth.
+                            getTotalMechanicalWorkRate(state));
+
+            // Eccentric contraction
+            speed = 0.1;
+            coord.setSpeedValue(state, speed);
+
+            model.realizeVelocity(state);
+            muscle.computeInitialFiberEquilibrium(state);
+            muscle.setControls(SimTK::Vector(1, excitation), controls);
+            model.setControls(state, controls);
+
+            model.realizeDynamics(state);
+            mechanicalWorkRate =
+                    - metabolics_negativeWork_smooth.
+                            get_muscle_effort_scaling_factor() *
+                    muscle.getActiveFiberForce(state) *
+                    muscle.getFiberVelocity(state);
+            // Non-smooth metabolics model.
+            CHECK(mechanicalWorkRate ==
+                    metabolics_negativeWork_nonSmooth.
+                            getTotalMechanicalWorkRate(state));
+            // Smooth metabolics model.
+            CHECK(mechanicalWorkRate ==
+                    metabolics_negativeWork_smooth.
+                            getTotalMechanicalWorkRate(state));
         }
 
-        SECTION("mechanicalWorkRate=0 with eccentric contractions (negative "
-            "mechanical work not allowed)") {
+        SECTION("mechanicalWorkRate=0 with eccentric contractions when "
+            "negative mechanical work rate is not allowed)") {
 
             double speed = 0.1;
             coord.setSpeedValue(state, speed);
@@ -228,17 +288,22 @@ TEST_CASE("Bhargava2004Metabolics basics") {
 
             model.realizeDynamics(state);
             double mechanicalWorkRate = 0;
+            // Non-smooth metabolics model.
             CHECK(mechanicalWorkRate ==
-                    metabolics_ns.getTotalMechanicalWorkRate(state));
+                    metabolics_nonSmooth.getTotalMechanicalWorkRate(state));
+            // Smooth metabolics model.
             CHECK(mechanicalWorkRate ==
-                    metabolics_s.getTotalMechanicalWorkRate(state));
+                    metabolics_smooth.getTotalMechanicalWorkRate(state));
         }
 
-        SECTION("") {
+        SECTION("Total power is clamped so that it is always non-negative") {
 
-            double speed = -0.1;
+            // Eccentric contraction to have negative mechanical work rate.
+            double speed = 0.02;
             coord.setSpeedValue(state, speed);
-            double activation = 0.025;
+            // Low activation to have |mechanical work| > |heat rates| and
+            // total rate < 0.
+            double activation = 0.001;
             muscle.setActivation(state, activation);
 
             model.realizeVelocity(state);
@@ -249,28 +314,114 @@ TEST_CASE("Bhargava2004Metabolics basics") {
             model.setControls(state, controls);
 
             model.realizeDynamics(state);
-            double activationHeatRate = metabolics_nw_ns.getTotalActivationRate(state);
-            double maintenanceHeatRate = metabolics_nw_ns.getTotalMaintenanceRate(state);
-            double shorteningHeatRate = metabolics_nw_ns.getTotalShorteningRate(state);
-            double mechanicalWorkRate = metabolics_nw_ns.getTotalMechanicalWorkRate(state);
-            double Edot_W_beforeClamp = activationHeatRate
-                + maintenanceHeatRate + shorteningHeatRate
-                + mechanicalWorkRate;
-            CAPTURE(activationHeatRate);
-            CAPTURE(maintenanceHeatRate);
-            CAPTURE(shorteningHeatRate);
-            CAPTURE(mechanicalWorkRate);
-            CAPTURE(muscle.getNormalizedFiberLength(state));
-            CAPTURE(muscle.getFiberVelocity(state));
-            CAPTURE(muscle.getNormalizedFiberVelocity(state));
-            CAPTURE(muscle.getActiveForceLengthMultiplier(state));
-            CAPTURE(muscle.getForceVelocityMultiplier(state));
-            CAPTURE(muscle.getActiveFiberForce(state));
-            CAPTURE(muscle.getFiberForce(state));
-            CAPTURE(muscle.getPassiveFiberForce(state));
-            FAIL("TODO");
+            // Non-smooth metabolics model.
+            double activationHeatRate_nonSmooth =
+                    metabolics_negativeWork_nonSmooth.
+                            getTotalActivationRate(state);
+            double maintenanceHeatRate_nonSmooth =
+                    metabolics_negativeWork_nonSmooth.
+                            getTotalMaintenanceRate(state);
+            double shorteningHeatRate_nonSmooth =
+                    metabolics_negativeWork_nonSmooth.
+                            getTotalShorteningRate(state);
+            double mechanicalWorkRate_nonSmooth =
+                    metabolics_negativeWork_nonSmooth.
+                            getTotalMechanicalWorkRate(state);
+            double Edot_clamped_nonSmooth =
+                    activationHeatRate_nonSmooth +
+                    maintenanceHeatRate_nonSmooth +
+                    shorteningHeatRate_nonSmooth +
+                    mechanicalWorkRate_nonSmooth;
+            // Smooth metabolics model.
+            double activationHeatRate_smooth =
+                    metabolics_negativeWork_smooth.
+                            getTotalActivationRate(state);
+            double maintenanceHeatRate_smooth =
+                    metabolics_negativeWork_smooth.
+                            getTotalMaintenanceRate(state);
+            double shorteningHeatRate_smooth =
+                    metabolics_negativeWork_smooth.
+                            getTotalShorteningRate(state);
+            double mechanicalWorkRate_smooth =
+                    metabolics_negativeWork_smooth.
+                            getTotalMechanicalWorkRate(state);
+            double Edot_clamped_smooth =
+                    activationHeatRate_smooth + maintenanceHeatRate_smooth +
+                    shorteningHeatRate_smooth + mechanicalWorkRate_smooth;
+            double Edot_clamped = 0.0;
+            CHECK(Edot_clamped == Edot_clamped_smooth);
+            CHECK(Edot_clamped == Edot_clamped_nonSmooth);
+        }
 
+        SECTION("The total heat rate (i.e., activationHeatRate + "
+            " maintenanceHeatRate + shorteningHeatRate) for a given muscle "
+            " cannot fall below 1.0 W/kg") {
 
+            // Eccentric contraction to have null mechanical work rate
+            // (negative mechanical work rate is not allowed).
+            double speed = 0.02;
+            coord.setSpeedValue(state, speed);
+            // Low activation to have low heat rates.
+            double activation = 0.001;
+            muscle.setActivation(state, activation);
+
+            model.realizeVelocity(state);
+            muscle.computeInitialFiberEquilibrium(state);
+            SimTK::Vector& controls(model.updControls(state));
+            excitation = 0.02;
+            muscle.setControls(SimTK::Vector(1, excitation), controls);
+            model.setControls(state, controls);
+
+            model.realizeDynamics(state);
+            // Non-smooth metabolics model.
+            double activationHeatRate_nonSmooth =
+                    metabolics_nonSmooth.getTotalActivationRate(state);
+            double maintenanceHeatRate_nonSmooth =
+                    metabolics_nonSmooth.getTotalMaintenanceRate(state);
+            double shorteningHeatRate_nonSmooth =
+                    metabolics_nonSmooth.getTotalShorteningRate(state);
+            double totalHeatRate_nonSmooth = activationHeatRate_nonSmooth +
+                    maintenanceHeatRate_nonSmooth +
+                    shorteningHeatRate_nonSmooth;
+            CHECK(totalHeatRate_nonSmooth <
+                    metabolics_nonSmooth.get_muscle_parameters(0).
+                            getMuscleMass());
+            double mechanicalWorkRate_nonSmooth =
+                    metabolics_nonSmooth.getTotalMechanicalWorkRate(state);
+            double totalMetabolicRate_nonSmooth =
+                    metabolics_nonSmooth.getTotalMetabolicRate(state);
+            double basalRate_nonSmooth =
+                    metabolics_nonSmooth.get_basal_coefficient() *
+                    pow(model.getMatterSubsystem().calcSystemMass(state),
+                            metabolics_nonSmooth.get_basal_exponent());
+            CHECK(totalMetabolicRate_nonSmooth - basalRate_nonSmooth
+                    - mechanicalWorkRate_nonSmooth - metabolics_nonSmooth.
+                            get_muscle_parameters(0).getMuscleMass() ==
+                                    Approx(0.0).margin(1e-6));
+            // Smooth metabolics model.
+            double activationHeatRate_smooth =
+                    metabolics_smooth.getTotalActivationRate(state);
+            double maintenanceHeatRate_smooth =
+                    metabolics_smooth.getTotalMaintenanceRate(state);
+            double shorteningHeatRate_smooth =
+                    metabolics_smooth.getTotalShorteningRate(state);
+            double totalHeatRate_smooth = activationHeatRate_smooth +
+                    maintenanceHeatRate_smooth + shorteningHeatRate_smooth;
+            CHECK(totalHeatRate_smooth <
+                    metabolics_smooth.get_muscle_parameters(0).
+                            getMuscleMass());
+            double mechanicalWorkRate_smooth =
+                    metabolics_smooth.getTotalMechanicalWorkRate(state);
+            double totalMetabolicRate_smooth =
+                    metabolics_smooth.getTotalMetabolicRate(state);
+            double basalRate_smooth =
+                    metabolics_smooth.get_basal_coefficient() *
+                    pow(model.getMatterSubsystem().calcSystemMass(state),
+                            metabolics_smooth.get_basal_exponent());
+            CHECK(totalMetabolicRate_smooth - basalRate_smooth
+                    - mechanicalWorkRate_smooth - metabolics_smooth.
+                            get_muscle_parameters(0).getMuscleMass() ==
+                                    Approx(0.0).margin(1e-6));
         }
 
     }
