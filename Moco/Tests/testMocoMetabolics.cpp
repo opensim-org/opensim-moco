@@ -235,17 +235,22 @@ TEST_CASE("Bhargava2004Metabolics basics") {
             model.setControls(state, controls);
 
             model.realizeDynamics(state);
-            double mechanicalWorkRate =
+            // Non-smooth metabolics model.
+            double mechanicalWorkRate_nonSmooth =
+                    - metabolics_negativeWork_nonSmooth.
+                            get_muscle_effort_scaling_factor() *
+                    muscle.getActiveFiberForce(state) *
+                    muscle.getFiberVelocity(state);
+            CHECK(mechanicalWorkRate_nonSmooth ==
+                    metabolics_negativeWork_nonSmooth.
+                            getTotalMechanicalWorkRate(state));
+            // Smooth metabolics model.
+            double mechanicalWorkRate_smooth =
                     - metabolics_negativeWork_smooth.
                             get_muscle_effort_scaling_factor() *
                     muscle.getActiveFiberForce(state) *
                     muscle.getFiberVelocity(state);
-            // Non-smooth metabolics model.
-            CHECK(mechanicalWorkRate ==
-                    metabolics_negativeWork_nonSmooth.
-                            getTotalMechanicalWorkRate(state));
-            // Smooth metabolics model.
-            CHECK(mechanicalWorkRate ==
+            CHECK(mechanicalWorkRate_smooth ==
                     metabolics_negativeWork_smooth.
                             getTotalMechanicalWorkRate(state));
 
@@ -259,17 +264,22 @@ TEST_CASE("Bhargava2004Metabolics basics") {
             model.setControls(state, controls);
 
             model.realizeDynamics(state);
-            mechanicalWorkRate =
+            // Non-smooth metabolics model.
+            mechanicalWorkRate_nonSmooth =
+                    - metabolics_negativeWork_nonSmooth.
+                            get_muscle_effort_scaling_factor() *
+                    muscle.getActiveFiberForce(state) *
+                    muscle.getFiberVelocity(state);
+            CHECK(mechanicalWorkRate_nonSmooth ==
+                    metabolics_negativeWork_nonSmooth.
+                            getTotalMechanicalWorkRate(state));
+            // Smooth metabolics model.
+            mechanicalWorkRate_smooth =
                     - metabolics_negativeWork_smooth.
                             get_muscle_effort_scaling_factor() *
                     muscle.getActiveFiberForce(state) *
                     muscle.getFiberVelocity(state);
-            // Non-smooth metabolics model.
-            CHECK(mechanicalWorkRate ==
-                    metabolics_negativeWork_nonSmooth.
-                            getTotalMechanicalWorkRate(state));
-            // Smooth metabolics model.
-            CHECK(mechanicalWorkRate ==
+            CHECK(mechanicalWorkRate_smooth ==
                     metabolics_negativeWork_smooth.
                             getTotalMechanicalWorkRate(state));
         }
@@ -383,6 +393,10 @@ TEST_CASE("Bhargava2004Metabolics basics") {
             double totalHeatRate_nonSmooth = activationHeatRate_nonSmooth +
                     maintenanceHeatRate_nonSmooth +
                     shorteningHeatRate_nonSmooth;
+            // Check that the total heat rate before clamping (i.e., activation
+            // heat rate + maintenance heat rate + shortening heat rate) is
+            // below 1.0 W/kg so that it will be clamped to 1.0 W/kg when
+            // enforce_minimum_heat_rate_per_muscle() is true (default).
             CHECK(totalHeatRate_nonSmooth <
                     metabolics_nonSmooth.get_muscle_parameters(0).
                             getMuscleMass());
@@ -394,6 +408,9 @@ TEST_CASE("Bhargava2004Metabolics basics") {
                     metabolics_nonSmooth.get_basal_coefficient() *
                     pow(model.getMatterSubsystem().calcSystemMass(state),
                             metabolics_nonSmooth.get_basal_exponent());
+            // Check that the total heat rate after clamping (i.e., total
+            // metabolic rate - basal rate - mechanical work rate) is
+            // equal to the muscle mass (i.e., clamped to 1.0 W/kg).
             CHECK(totalMetabolicRate_nonSmooth - basalRate_nonSmooth
                     - mechanicalWorkRate_nonSmooth - metabolics_nonSmooth.
                             get_muscle_parameters(0).getMuscleMass() ==
@@ -407,6 +424,10 @@ TEST_CASE("Bhargava2004Metabolics basics") {
                     metabolics_smooth.getTotalShorteningRate(state);
             double totalHeatRate_smooth = activationHeatRate_smooth +
                     maintenanceHeatRate_smooth + shorteningHeatRate_smooth;
+            // Check that the total heat rate before clamping (i.e., activation
+            // heat rate + maintenance heat rate + shortening heat rate) is
+            // below 1.0 W/kg so that it will be clamped to 1.0 W/kg when
+            // enforce_minimum_heat_rate_per_muscle() is true (default).
             CHECK(totalHeatRate_smooth <
                     metabolics_smooth.get_muscle_parameters(0).
                             getMuscleMass());
@@ -418,6 +439,9 @@ TEST_CASE("Bhargava2004Metabolics basics") {
                     metabolics_smooth.get_basal_coefficient() *
                     pow(model.getMatterSubsystem().calcSystemMass(state),
                             metabolics_smooth.get_basal_exponent());
+            // Check that the total heat rate after clamping (i.e., total
+            // metabolic rate - basal rate - mechanical work rate) is
+            // equal to the muscle mass (i.e., clamped to 1.0 W/kg).
             CHECK(totalMetabolicRate_smooth - basalRate_smooth
                     - mechanicalWorkRate_smooth - metabolics_smooth.
                             get_muscle_parameters(0).getMuscleMass() ==
