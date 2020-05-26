@@ -310,12 +310,11 @@ else()
 endif()
 
 if(SUPERBUILD_casadi)
-    # TODO use stanfordnmbl again.
     AddDependency(NAME casadi
                   DEPENDS ipopt
-                  GIT_URL    https://github.com/casadi/casadi.git # stanfordnmbl
+                  GIT_URL    https://github.com/stanfordnmbl/casadi.git
                   # Include threadsafe SharedObject.
-                  GIT_TAG    3.5.1 # 1555e79ea59cbd25d05894f2e9b351d92bacf348
+                  GIT_TAG    1555e79ea59cbd25d05894f2e9b351d92bacf348
                   CMAKE_ARGS -DWITH_IPOPT:BOOL=ON
                              -DWITH_THREAD:BOOL=ON
                              -DWITH_EXAMPLES:BOOL=OFF

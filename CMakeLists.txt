@@ -65,7 +65,7 @@ option(MOCO_WITH_TROPTER
     "Build the tropter optimal control library." ON)
 if(NOT MOCO_WITH_TROPTER)
     # TODO
-    message(WARNING "MOCO_WITH_TROPTER=OFF is not supported yet.")
+    message(WARNING "Moco's tests do not yet support MOCO_WITH_TROPTER=OFF.")
 endif()
 
 
