@@ -34,6 +34,7 @@ set(OPENSIM_PYTHON_VERSION 3 CACHE STRING
     "The major Python version (2 or 3) for opensim-core.")
 # To create a drop-down in the CMake GUI:
 set_property(CACHE OPENSIM_PYTHON_VERSION PROPERTY STRINGS "2" "3")
+set(SIMBODY_HOME "" CACHE PATH "Path to Simbody installation (optional)")
 
 
 include(ExternalProject)

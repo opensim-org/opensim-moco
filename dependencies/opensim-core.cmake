@@ -14,6 +14,7 @@ AddDependency(NAME       opensim-core
                     -DBUILD_JAVA_WRAPPING:BOOL=${OPENSIM_JAVA_WRAPPING}
                     -DBUILD_PYTHON_WRAPPING:BOOL=${OPENSIM_PYTHON_WRAPPING}
                     -DOPENSIM_PYTHON_VERSION:STRING=${OPENSIM_PYTHON_VERSION}
+                    -DSIMBODY_HOME:PATH=${SIMBODY_HOME}
                     -DOPENSIM_DEPENDENCIES_DIR:PATH=${CMAKE_INSTALL_PREFIX}
                     -DOPENSIM_C3D_PARSER:STRING=ezc3d
                     -DOPENSIM_INSTALL_UNIX_FHS:BOOL=${OPENSIM_INSTALL_UNIX_FHS})
@@ -39,7 +40,15 @@ if(SUPERBUILD_opensim-core)
                   GIT_TAG    3dd23e3280f213bacefdf5fcb04857bf52e90917
                   CMAKE_ARGS -DCMAKE_DEBUG_POSTFIX:STRING=_d)
 
-    add_dependencies(opensim-core ezc3d simbody docopt)
+    if(SUPERBUILD_simbody)
+        add_dependencies(opensim-core simbody)
+    endif()
+    if(SUPERBUILD_ezc3d)
+        add_dependencies(opensim-core ezc3d)
+    endif()
+    if(SUPERBUILD_docopt)
+        add_dependencies(opensim-core docopt)
+    endif()
 endif()
 
 
