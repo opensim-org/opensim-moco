@@ -24,6 +24,7 @@ void MocoOutputGoal::constructProperties() {
     constructProperty_output_path("");
     constructProperty_divide_by_displacement(false);
     constructProperty_divide_by_mass(false);
+    constructProperty_negate(false);
 }
 
 void MocoOutputGoal::initializeOnModelImpl(const Model& output) const {
@@ -45,6 +46,9 @@ void MocoOutputGoal::calcIntegrandImpl(
         const SimTK::State& state, double& integrand) const {
     getModel().getSystem().realize(state, m_output->getDependsOnStage());
     integrand = m_output->getValue(state);
+    if (get_negate()) {
+        integrand *= -1.0;
+    }
 }
 
 void MocoOutputGoal::calcGoalImpl(

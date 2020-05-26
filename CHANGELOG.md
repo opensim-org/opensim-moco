@@ -3,6 +3,8 @@ Change Log
 
 0.5.0 (in development) 
 ----------------------
+- 2020-05-25: MocoOutputGoal can now negate the value of an output.
+
 - 2020-05-16: Moved ActivationCoordinateActuator from opensim-moco to
               opensim-core.
 
