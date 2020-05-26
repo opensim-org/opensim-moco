@@ -56,6 +56,11 @@ public:
         return get_divide_by_mass();
     }
 
+    /// Set if the output value should be negated (i.e., to maximize rather
+    /// than minimize its value).
+    void setNegate(bool tf) { set_negate(tf); }
+    bool getNegate() const { return get_negate(); }
+
 protected:
     void initializeOnModelImpl(const Model&) const override;
     void calcIntegrandImpl(
@@ -72,6 +77,10 @@ private:
             "false)");
     OpenSim_DECLARE_PROPERTY(divide_by_mass, bool,
             "Divide by the model's total mass (default: false)");
+    OpenSim_DECLARE_PROPERTY(negate, bool,
+            "Negate the output value (i.e., maximize the output) "
+            "(default: false).");
+
     void constructProperties();
 
     mutable SimTK::ReferencePtr<const Output<double>> m_output;
