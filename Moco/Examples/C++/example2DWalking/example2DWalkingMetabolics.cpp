@@ -218,7 +218,8 @@ void gaitTrackingMetabolics() {
     MocoSolution solution = study.solve();
     auto full = createPeriodicTrajectory(solution);
     full.write("gaitTrackingMetabolics_solution_fullcycle.sto");
-
+    std::cout << "The metabolic cost of transport is: "
+        << solution.getObjectiveTerm("met") << " [J kg-1 m-1]." << std::endl;
     study.visualize(solution);
 
 }
