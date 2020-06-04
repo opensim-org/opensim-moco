@@ -132,8 +132,7 @@ build_script:
   # Install Moco.
   - mkdir ..\build
   - cd ..\build
-  # Turn warnings into errors (/WX)
-  - cmake -E env CXXFLAGS="/WX" cmake ..\opensim-moco -G"Visual Studio 14 2015 Win64" -DCMAKE_INSTALL_PREFIX="C:\opensim-moco" -DADOLC_DIR="..\deps\adol-c" -DCMAKE_PREFIX_PATH="C:\projects\deps\eigen;C:\projects\deps\colpack;C:\projects\deps\opensim-core;C:\projects\deps\ipopt;C:\projects\deps\casadi;C:\projects\deps\casadi\casadi" -DMOCO_PYTHON_BINDINGS=ON -DMOCO_JAVA_BINDINGS=ON
+  - cmake ..\opensim-moco -G"Visual Studio 14 2015 Win64" -DCMAKE_INSTALL_PREFIX="C:\opensim-moco" -DADOLC_DIR="..\deps\adol-c" -DCMAKE_PREFIX_PATH="C:\projects\deps\eigen;C:\projects\deps\colpack;C:\projects\deps\opensim-core;C:\projects\deps\ipopt;C:\projects\deps\casadi;C:\projects\deps\casadi\casadi" -DMOCO_PYTHON_BINDINGS=ON -DMOCO_JAVA_BINDINGS=ON
   #-DCMAKE_TOOLCHAIN_FILE="C:\Tools\vcpkg\scripts\buildsystems\vcpkg.cmake"
   - cmake --build . --config %BTYPE% -- /maxcpucount:4 /verbosity:minimal
 

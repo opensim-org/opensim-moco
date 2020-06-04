@@ -57,7 +57,7 @@ TEST_CASE("TableProcessor") {
 
     SECTION("Operators take effect") {
         TableProcessor proc = TableProcessor(table) | MyTableOperator();
-        CHECK(proc.process().getNumRows() == 4);
+        CHECK((int)proc.process().getNumRows() == 4);
     }
 
     SECTION("Serialization") {
@@ -73,7 +73,7 @@ TEST_CASE("TableProcessor") {
                     "testTableProcessor_TableProcessor.xml"));
             auto* proc = dynamic_cast<TableProcessor*>(obj.get());
             TimeSeriesTable out = proc->process();
-            CHECK(out.getNumRows() == 4);
+            CHECK((int)out.getNumRows() == 4);
         }
     }
 }

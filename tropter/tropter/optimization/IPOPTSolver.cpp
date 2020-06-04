@@ -17,9 +17,16 @@
 #include "Problem.h"
 #include <tropter/SparsityPattern.h>
 #include <tropter/Exception.hpp>
+#ifdef _MSC_VER
+    // Ignore warnings from Ipopt headers.
+    #pragma warning(push, 0)
+#endif
 #include <IpTNLP.hpp>
 #include <IpIpoptApplication.hpp>
 #include <IpIpoptData.hpp>
+#ifdef _MSC_VER
+    #pragma warning(pop)
+#endif
 using Eigen::VectorXd;
 using Eigen::MatrixXd;
 using Eigen::Ref;
