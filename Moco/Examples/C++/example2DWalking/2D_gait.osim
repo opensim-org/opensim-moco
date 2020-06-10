@@ -3,19 +3,9 @@
 	<Model name="2D_gait">
 		<!--List of components that this component owns and serializes.-->
 		<components>
-			<SmoothSphereHalfSpaceForce name="contactSphereHeel_r">
-				<!--Path to a Component that satisfies the Socket 'sphere_frame' of type PhysicalFrame (description: The body to which the contact sphere is attached.).-->
-				<socket_sphere_frame>/bodyset/calcn_r</socket_sphere_frame>
-				<!--Path to a Component that satisfies the Socket 'half_space_frame' of type PhysicalFrame (description: The body to which the contact half space is attached.).-->
-				<socket_half_space_frame>/ground</socket_half_space_frame>
-				<!--The location of the contact sphere in the body frame.-->
-				<contact_sphere_location>0.031307527581931796 0.010435842527310599 0</contact_sphere_location>
-				<!--The radius of the contact sphere.-->
-				<contact_sphere_radius>0.035000000000000003</contact_sphere_radius>
-				<!--The location of the contact half space in the body frame, default is Vec3(0).-->
-				<contact_half_space_location>0 0 0</contact_half_space_location>
-				<!--The orientation of the contact half space in the body frame. (body-fixed XYZ Euler angles), default is Vec3(0).-->
-				<contact_half_space_orientation>0 0 -1.5707963267948966</contact_half_space_orientation>
+			<SmoothSphereHalfSpaceForce name="contactHeel_r">
+				<socket_sphere>/contactgeometryset/heel_r</socket_sphere>
+				<socket_half_space>/contactgeometryset/floor</socket_half_space>
 				<!--The stiffness constant (i.e., plain strain modulus), default is 1 (N/m^2)-->
 				<stiffness>3067776</stiffness>
 				<!--The dissipation coefficient, default is 0 (s/m).-->
@@ -35,19 +25,9 @@
 				<!--The parameter that determines the smoothness of the transition of the tanh used to smooth the Hunt-Crossley force. The larger the steeper the transition but also the more discontinuous-like, default is 50.-->
 				<hunt_crossley_smoothing>50</hunt_crossley_smoothing>
 			</SmoothSphereHalfSpaceForce>
-			<SmoothSphereHalfSpaceForce name="contactSphereHeel_l">
-				<!--Path to a Component that satisfies the Socket 'sphere_frame' of type PhysicalFrame (description: The body to which the contact sphere is attached.).-->
-				<socket_sphere_frame>/bodyset/calcn_l</socket_sphere_frame>
-				<!--Path to a Component that satisfies the Socket 'half_space_frame' of type PhysicalFrame (description: The body to which the contact half space is attached.).-->
-				<socket_half_space_frame>/ground</socket_half_space_frame>
-				<!--The location of the contact sphere in the body frame.-->
-				<contact_sphere_location>0.031307527581931796 0.010435842527310599 0</contact_sphere_location>
-				<!--The radius of the contact sphere.-->
-				<contact_sphere_radius>0.035000000000000003</contact_sphere_radius>
-				<!--The location of the contact half space in the body frame, default is Vec3(0).-->
-				<contact_half_space_location>0 0 0</contact_half_space_location>
-				<!--The orientation of the contact half space in the body frame. (body-fixed XYZ Euler angles), default is Vec3(0).-->
-				<contact_half_space_orientation>0 0 -1.5707963267948966</contact_half_space_orientation>
+			<SmoothSphereHalfSpaceForce name="contactHeel_l">
+				<socket_sphere>/contactgeometryset/heel_l</socket_sphere>
+				<socket_half_space>/contactgeometryset/floor</socket_half_space>
 				<!--The stiffness constant (i.e., plain strain modulus), default is 1 (N/m^2)-->
 				<stiffness>3067776</stiffness>
 				<!--The dissipation coefficient, default is 0 (s/m).-->
@@ -67,19 +47,9 @@
 				<!--The parameter that determines the smoothness of the transition of the tanh used to smooth the Hunt-Crossley force. The larger the steeper the transition but also the more discontinuous-like, default is 50.-->
 				<hunt_crossley_smoothing>50</hunt_crossley_smoothing>
 			</SmoothSphereHalfSpaceForce>
-			<SmoothSphereHalfSpaceForce name="contactSphereFront_r">
-				<!--Path to a Component that satisfies the Socket 'sphere_frame' of type PhysicalFrame (description: The body to which the contact sphere is attached.).-->
-				<socket_sphere_frame>/bodyset/calcn_r</socket_sphere_frame>
-				<!--Path to a Component that satisfies the Socket 'half_space_frame' of type PhysicalFrame (description: The body to which the contact half space is attached.).-->
-				<socket_half_space_frame>/ground</socket_half_space_frame>
-				<!--The location of the contact sphere in the body frame.-->
-				<contact_sphere_location>0.17740932296428019 -0.015653763790965898 0.0052179212636552993</contact_sphere_location>
-				<!--The radius of the contact sphere.-->
-				<contact_sphere_radius>0.014999999999999999</contact_sphere_radius>
-				<!--The location of the contact half space in the body frame, default is Vec3(0).-->
-				<contact_half_space_location>0 0 0</contact_half_space_location>
-				<!--The orientation of the contact half space in the body frame. (body-fixed XYZ Euler angles), default is Vec3(0).-->
-				<contact_half_space_orientation>0 0 -1.5707963267948966</contact_half_space_orientation>
+			<SmoothSphereHalfSpaceForce name="contactFront_r">
+				<socket_sphere>/contactgeometryset/front_r</socket_sphere>
+				<socket_half_space>/contactgeometryset/floor</socket_half_space>
 				<!--The stiffness constant (i.e., plain strain modulus), default is 1 (N/m^2)-->
 				<stiffness>3067776</stiffness>
 				<!--The dissipation coefficient, default is 0 (s/m).-->
@@ -99,19 +69,9 @@
 				<!--The parameter that determines the smoothness of the transition of the tanh used to smooth the Hunt-Crossley force. The larger the steeper the transition but also the more discontinuous-like, default is 50.-->
 				<hunt_crossley_smoothing>50</hunt_crossley_smoothing>
 			</SmoothSphereHalfSpaceForce>
-			<SmoothSphereHalfSpaceForce name="contactSphereFront_l">
-				<!--Path to a Component that satisfies the Socket 'sphere_frame' of type PhysicalFrame (description: The body to which the contact sphere is attached.).-->
-				<socket_sphere_frame>/bodyset/calcn_l</socket_sphere_frame>
-				<!--Path to a Component that satisfies the Socket 'half_space_frame' of type PhysicalFrame (description: The body to which the contact half space is attached.).-->
-				<socket_half_space_frame>/ground</socket_half_space_frame>
-				<!--The location of the contact sphere in the body frame.-->
-				<contact_sphere_location>0.17740932296428019 -0.015653763790965898 -0.0052179212636552993</contact_sphere_location>
-				<!--The radius of the contact sphere.-->
-				<contact_sphere_radius>0.014999999999999999</contact_sphere_radius>
-				<!--The location of the contact half space in the body frame, default is Vec3(0).-->
-				<contact_half_space_location>0 0 0</contact_half_space_location>
-				<!--The orientation of the contact half space in the body frame. (body-fixed XYZ Euler angles), default is Vec3(0).-->
-				<contact_half_space_orientation>0 0 -1.5707963267948966</contact_half_space_orientation>
+			<SmoothSphereHalfSpaceForce name="contactFront_l">
+				<socket_sphere>/contactgeometryset/front_l</socket_sphere>
+				<socket_half_space>/contactgeometryset/floor</socket_half_space>
 				<!--The stiffness constant (i.e., plain strain modulus), default is 1 (N/m^2)-->
 				<stiffness>3067776</stiffness>
 				<!--The dissipation coefficient, default is 0 (s/m).-->
@@ -192,21 +152,6 @@
 						<!--The color, (red, green, blue), [0, 1], used to display the geometry. -->
 						<color>0.80000000000000004 0.10000000000000001 0.10000000000000001</color>
 					</Appearance>
-					<!--An approximation for path length as a function of coordinate values.-->
-					<length_approximation>
-						<MultivariatePolynomialFunction>
-							<!--Coefficients of a multivariate polynomial function in order of ascending powers starting from the last dependent component ( see SimTKMultivariatePolynomial for example)-->
-							<coefficients>0.42049524880528 0.02875525494048 -0.018300167519637998 -0.0069954436391790002 0.053690588126276001 0.002092858497112 0.0011648744240559999 0.016799961996946 0.0001886801073680048 -0.0095763378701470003</coefficients>
-							<!--Number of dimensions (i.e., dependent components) of a multivariate polynomial function.-->
-							<dimension>2</dimension>
-							<!--Order of a multivariate polynomial function.-->
-							<order>3</order>
-						</MultivariatePolynomialFunction>
-					</length_approximation>
-					<!--The component paths of coordinates whose values are inputs to length_approximation. The order must match the order of arguments for length_approximation.-->
-					<approximation_coordinates>/jointset/hip_r/hip_flexion_r /jointset/knee_r/knee_angle_r</approximation_coordinates>
-					<!--Default setting for using the length_approximation to compute length, lengthening speed, and moment arms.-->
-					<use_approximation>true</use_approximation>
                 </GeometryPath>
                 <!--Maximum isometric force that the fibers can generate-->
                 <max_isometric_force>2700</max_isometric_force>
@@ -288,21 +233,6 @@
 						<!--The color, (red, green, blue), [0, 1], used to display the geometry. -->
 						<color>0.80000000000000004 0.10000000000000001 0.10000000000000001</color>
 					</Appearance>
-					<!--An approximation for path length as a function of coordinate values.-->
-					<length_approximation>
-						<MultivariatePolynomialFunction>
-							<!--Coefficients of a multivariate polynomial function in order of ascending powers starting from the last dependent component ( see SimTKMultivariatePolynomial for example)-->
-							<coefficients>0.24491644163455101 0.021846865400467 -0.020950072312086999 -0.0064007115912350001</coefficients>
-							<!--Number of dimensions (i.e., dependent components) of a multivariate polynomial function.-->
-							<dimension>1</dimension>
-							<!--Order of a multivariate polynomial function.-->
-							<order>3</order>
-						</MultivariatePolynomialFunction>
-					</length_approximation>
-					<!--The component paths of coordinates whose values are inputs to length_approximation. The order must match the order of arguments for length_approximation.-->
-					<approximation_coordinates>/jointset/knee_r/knee_angle_r</approximation_coordinates>
-					<!--Default setting for using the length_approximation to compute length, lengthening speed, and moment arms.-->
-					<use_approximation>true</use_approximation>
                 </GeometryPath>
                 <!--Maximum isometric force that the fibers can generate-->
                 <max_isometric_force>804</max_isometric_force>
@@ -388,21 +318,6 @@
 						<!--The color, (red, green, blue), [0, 1], used to display the geometry. -->
 						<color>0.80000000000000004 0.10000000000000001 0.10000000000000001</color>
 					</Appearance>
-                    <!--An approximation for path length as a function of coordinate values.-->
-					<length_approximation>
-						<MultivariatePolynomialFunction>
-							<!--Coefficients of a multivariate polynomial function in order of ascending powers starting from the last dependent component ( see SimTKMultivariatePolynomial for example)-->
-							<coefficients>0.201384070841096 0.056529803505131003 -0.0010072478198650001 -0.013044763452684001 0.0043572794767479999</coefficients>
-							<!--Number of dimensions (i.e., dependent components) of a multivariate polynomial function.-->
-							<dimension>1</dimension>
-							<!--Order of a multivariate polynomial function.-->
-							<order>4</order>
-						</MultivariatePolynomialFunction>
-					</length_approximation>
-					<!--The component paths of coordinates whose values are inputs to length_approximation. The order must match the order of arguments for length_approximation.-->
-					<approximation_coordinates>/jointset/hip_r/hip_flexion_r</approximation_coordinates>
-					<!--Default setting for using the length_approximation to compute length, lengthening speed, and moment arms.-->
-					<use_approximation>true</use_approximation>
                 </GeometryPath>
                 <!--Maximum isometric force that the fibers can generate-->
                 <max_isometric_force>1944</max_isometric_force>
@@ -495,21 +410,6 @@
 						<!--The color, (red, green, blue), [0, 1], used to display the geometry. -->
 						<color>0.80000000000000004 0.10000000000000001 0.10000000000000001</color>
 					</Appearance>
-                    <!--An approximation for path length as a function of coordinate values.-->
-					<length_approximation>
-						<MultivariatePolynomialFunction>
-							<!--Coefficients of a multivariate polynomial function in order of ascending powers starting from the last dependent component ( see SimTKMultivariatePolynomial for example)-->
-							<coefficients>0.254156701045543 -0.038230025226882 -0.0052105322842889998 0.0025341680057849999</coefficients>
-							<!--Number of dimensions (i.e., dependent components) of a multivariate polynomial function.-->
-							<dimension>1</dimension>
-							<!--Order of a multivariate polynomial function.-->
-							<order>3</order>
-						</MultivariatePolynomialFunction>
-					</length_approximation>
-					<!--The component paths of coordinates whose values are inputs to length_approximation. The order must match the order of arguments for length_approximation.-->
-					<approximation_coordinates>/jointset/hip_r/hip_flexion_r</approximation_coordinates>
-					<!--Default setting for using the length_approximation to compute length, lengthening speed, and moment arms.-->
-					<use_approximation>true</use_approximation>
                 </GeometryPath>
                 <!--Maximum isometric force that the fibers can generate-->
                 <max_isometric_force>2342</max_isometric_force>
@@ -629,21 +529,6 @@
 						<!--The color, (red, green, blue), [0, 1], used to display the geometry. -->
 						<color>0.80000000000000004 0.10000000000000001 0.10000000000000001</color>
 					</Appearance>
-                    <!--An approximation for path length as a function of coordinate values.-->
-					<length_approximation>
-						<MultivariatePolynomialFunction>
-							<!--Coefficients of a multivariate polynomial function in order of ascending powers starting from the last dependent component ( see SimTKMultivariatePolynomial for example)-->
-							<coefficients>0.41104121631692397 -0.041901285727185003 0.015455075788113001 0.035343831737395998 0.019052568915166001 0.0034905167397460001 -0.041198556780086 -0.0024951698935939998 -0.0014676451873659999 -0.00080113959175405903 -0.00020629082418143781 -0.014671630141186999 0.001472708873289 0.00047025719818033441 2.2788619203865109e-05 0.0055449302963650002 0.00029218827029413237 6.068963635841811e-05 0.0012148606484999999 -4.5061034180228947e-05 -0.0001110736612700566</coefficients>
-							<!--Number of dimensions (i.e., dependent components) of a multivariate polynomial function.-->
-							<dimension>2</dimension>
-							<!--Order of a multivariate polynomial function.-->
-							<order>5</order>
-						</MultivariatePolynomialFunction>
-					</length_approximation>
-					<!--The component paths of coordinates whose values are inputs to length_approximation. The order must match the order of arguments for length_approximation.-->
-					<approximation_coordinates>/jointset/hip_r/hip_flexion_r /jointset/knee_r/knee_angle_r</approximation_coordinates>
-					<!--Default setting for using the length_approximation to compute length, lengthening speed, and moment arms.-->
-					<use_approximation>true</use_approximation>
                 </GeometryPath>
                 <!--Maximum isometric force that the fibers can generate-->
                 <max_isometric_force>1169</max_isometric_force>
@@ -767,21 +652,6 @@
 						<!--The color, (red, green, blue), [0, 1], used to display the geometry. -->
 						<color>0.80000000000000004 0.10000000000000001 0.10000000000000001</color>
 					</Appearance>
-                    <!--An approximation for path length as a function of coordinate values.-->
-					<length_approximation>
-						<MultivariatePolynomialFunction>
-							<!--Coefficients of a multivariate polynomial function in order of ascending powers starting from the last dependent component ( see SimTKMultivariatePolynomial for example)-->
-							<coefficients>0.184215306369091 -0.040084488603560002 -0.0065245422296069996 0.00031977779633626151</coefficients>
-							<!--Number of dimensions (i.e., dependent components) of a multivariate polynomial function.-->
-							<dimension>1</dimension>
-							<!--Order of a multivariate polynomial function.-->
-							<order>3</order>
-						</MultivariatePolynomialFunction>
-					</length_approximation>
-					<!--The component paths of coordinates whose values are inputs to length_approximation. The order must match the order of arguments for length_approximation.-->
-					<approximation_coordinates>/jointset/knee_r/knee_angle_r</approximation_coordinates>
-					<!--Default setting for using the length_approximation to compute length, lengthening speed, and moment arms.-->
-					<use_approximation>true</use_approximation>
                 </GeometryPath>
                 <!--Maximum isometric force that the fibers can generate-->
                 <max_isometric_force>5000</max_isometric_force>
@@ -865,21 +735,6 @@
 						<!--The color, (red, green, blue), [0, 1], used to display the geometry. -->
 						<color>0.80000000000000004 0.10000000000000001 0.10000000000000001</color>
 					</Appearance>
-                    <!--An approximation for path length as a function of coordinate values.-->
-					<length_approximation>
-						<MultivariatePolynomialFunction>
-							<!--Coefficients of a multivariate polynomial function in order of ascending powers starting from the last dependent component ( see SimTKMultivariatePolynomial for example)-->
-							<coefficients>0.434930944648804 0.043988148379274998 -0.0051550117065550004 -0.0067296672243860002 0.025377138303286001 0.00034508977476767892 0.00074826820351761114 0.0078193673213149996 -3.2787909069390243e-05 6.9581813912187603e-05</coefficients>
-							<!--Number of dimensions (i.e., dependent components) of a multivariate polynomial function.-->
-							<dimension>2</dimension>
-							<!--Order of a multivariate polynomial function.-->
-							<order>3</order>
-						</MultivariatePolynomialFunction>
-					</length_approximation>
-					<!--The component paths of coordinates whose values are inputs to length_approximation. The order must match the order of arguments for length_approximation.-->
-					<approximation_coordinates>/jointset/knee_r/knee_angle_r /jointset/ankle_r/ankle_angle_r</approximation_coordinates>
-					<!--Default setting for using the length_approximation to compute length, lengthening speed, and moment arms.-->
-					<use_approximation>true</use_approximation>
                 </GeometryPath>
                 <!--Maximum isometric force that the fibers can generate-->
                 <max_isometric_force>2500</max_isometric_force>
@@ -957,21 +812,6 @@
 						<!--The color, (red, green, blue), [0, 1], used to display the geometry. -->
 						<color>0.80000000000000004 0.10000000000000001 0.10000000000000001</color>
 					</Appearance>
-                    <!--An approximation for path length as a function of coordinate values.-->
-					<length_approximation>
-						<MultivariatePolynomialFunction>
-							<!--Coefficients of a multivariate polynomial function in order of ascending powers starting from the last dependent component ( see SimTKMultivariatePolynomial for example)-->
-							<coefficients>0.28065936490891402 0.042682272678384002 -0.0070313777560600003 -0.0062617916068270002</coefficients>
-							<!--Number of dimensions (i.e., dependent components) of a multivariate polynomial function.-->
-							<dimension>1</dimension>
-							<!--Order of a multivariate polynomial function.-->
-							<order>3</order>
-						</MultivariatePolynomialFunction>
-					</length_approximation>
-					<!--The component paths of coordinates whose values are inputs to length_approximation. The order must match the order of arguments for length_approximation.-->
-					<approximation_coordinates>/jointset/ankle_r/ankle_angle_r</approximation_coordinates>
-					<!--Default setting for using the length_approximation to compute length, lengthening speed, and moment arms.-->
-					<use_approximation>true</use_approximation>
                 </GeometryPath>
                 <!--Maximum isometric force that the fibers can generate-->
                 <max_isometric_force>5137</max_isometric_force>
@@ -1053,21 +893,6 @@
 						<!--The color, (red, green, blue), [0, 1], used to display the geometry. -->
 						<color>0.80000000000000004 0.10000000000000001 0.10000000000000001</color>
 					</Appearance>
-                    <!--An approximation for path length as a function of coordinate values.-->
-					<length_approximation>
-						<MultivariatePolynomialFunction>
-							<!--Coefficients of a multivariate polynomial function in order of ascending powers starting from the last dependent component ( see SimTKMultivariatePolynomial for example)-->
-							<coefficients>0.29061164380228699 -0.043920949896277997 -0.0043498646867 0.0038464719852620002</coefficients>
-							<!--Number of dimensions (i.e., dependent components) of a multivariate polynomial function.-->
-							<dimension>1</dimension>
-							<!--Order of a multivariate polynomial function.-->
-							<order>3</order>
-						</MultivariatePolynomialFunction>
-					</length_approximation>
-					<!--The component paths of coordinates whose values are inputs to length_approximation. The order must match the order of arguments for length_approximation.-->
-					<approximation_coordinates>/jointset/ankle_r/ankle_angle_r</approximation_coordinates>
-					<!--Default setting for using the length_approximation to compute length, lengthening speed, and moment arms.-->
-					<use_approximation>true</use_approximation>
                 </GeometryPath>
                 <!--Maximum isometric force that the fibers can generate-->
                 <max_isometric_force>3000</max_isometric_force>
@@ -1149,21 +974,6 @@
 						<!--The color, (red, green, blue), [0, 1], used to display the geometry. -->
 						<color>0.80000000000000004 0.10000000000000001 0.10000000000000001</color>
 					</Appearance>
-					<!--An approximation for path length as a function of coordinate values.-->
-					<length_approximation>
-						<MultivariatePolynomialFunction>
-							<!--Coefficients of a multivariate polynomial function in order of ascending powers starting from the last dependent component ( see SimTKMultivariatePolynomial for example)-->
-							<coefficients>0.42049524880528 0.02875525494048 -0.018300167519637998 -0.0069954436391790002 0.053690588126276001 0.002092858497112 0.0011648744240559999 0.016799961996946 0.0001886801073680048 -0.0095763378701470003</coefficients>
-							<!--Number of dimensions (i.e., dependent components) of a multivariate polynomial function.-->
-							<dimension>2</dimension>
-							<!--Order of a multivariate polynomial function.-->
-							<order>3</order>
-						</MultivariatePolynomialFunction>
-					</length_approximation>
-					<!--The component paths of coordinates whose values are inputs to length_approximation. The order must match the order of arguments for length_approximation.-->
-					<approximation_coordinates>/jointset/hip_l/hip_flexion_l /jointset/knee_l/knee_angle_l</approximation_coordinates>
-					<!--Default setting for using the length_approximation to compute length, lengthening speed, and moment arms.-->
-					<use_approximation>true</use_approximation>
                 </GeometryPath>
                 <!--Maximum isometric force that the fibers can generate-->
                 <max_isometric_force>2700</max_isometric_force>
@@ -1245,21 +1055,6 @@
 						<!--The color, (red, green, blue), [0, 1], used to display the geometry. -->
 						<color>0.80000000000000004 0.10000000000000001 0.10000000000000001</color>
 					</Appearance>
-					<!--An approximation for path length as a function of coordinate values.-->
-					<length_approximation>
-						<MultivariatePolynomialFunction>
-							<!--Coefficients of a multivariate polynomial function in order of ascending powers starting from the last dependent component ( see SimTKMultivariatePolynomial for example)-->
-							<coefficients>0.24491644163455101 0.021846865400467 -0.020950072312086999 -0.0064007115912350001</coefficients>
-							<!--Number of dimensions (i.e., dependent components) of a multivariate polynomial function.-->
-							<dimension>1</dimension>
-							<!--Order of a multivariate polynomial function.-->
-							<order>3</order>
-						</MultivariatePolynomialFunction>
-					</length_approximation>
-					<!--The component paths of coordinates whose values are inputs to length_approximation. The order must match the order of arguments for length_approximation.-->
-					<approximation_coordinates>/jointset/knee_l/knee_angle_l</approximation_coordinates>
-					<!--Default setting for using the length_approximation to compute length, lengthening speed, and moment arms.-->
-					<use_approximation>true</use_approximation>
                 </GeometryPath>
                 <!--Maximum isometric force that the fibers can generate-->
                 <max_isometric_force>804</max_isometric_force>
@@ -1345,21 +1140,6 @@
 						<!--The color, (red, green, blue), [0, 1], used to display the geometry. -->
 						<color>0.80000000000000004 0.10000000000000001 0.10000000000000001</color>
 					</Appearance>
-                    <!--An approximation for path length as a function of coordinate values.-->
-					<length_approximation>
-						<MultivariatePolynomialFunction>
-							<!--Coefficients of a multivariate polynomial function in order of ascending powers starting from the last dependent component ( see SimTKMultivariatePolynomial for example)-->
-							<coefficients>0.201384070841096 0.056529803505131003 -0.0010072478198650001 -0.013044763452684001 0.0043572794767479999</coefficients>
-							<!--Number of dimensions (i.e., dependent components) of a multivariate polynomial function.-->
-							<dimension>1</dimension>
-							<!--Order of a multivariate polynomial function.-->
-							<order>4</order>
-						</MultivariatePolynomialFunction>
-					</length_approximation>
-					<!--The component paths of coordinates whose values are inputs to length_approximation. The order must match the order of arguments for length_approximation.-->
-					<approximation_coordinates>/jointset/hip_l/hip_flexion_l</approximation_coordinates>
-					<!--Default setting for using the length_approximation to compute length, lengthening speed, and moment arms.-->
-					<use_approximation>true</use_approximation>
                 </GeometryPath>
                 <!--Maximum isometric force that the fibers can generate-->
                 <max_isometric_force>1944</max_isometric_force>
@@ -1451,21 +1231,6 @@
 						<!--The color, (red, green, blue), [0, 1], used to display the geometry. -->
 						<color>0.80000000000000004 0.10000000000000001 0.10000000000000001</color>
 					</Appearance>
-                    <!--An approximation for path length as a function of coordinate values.-->
-					<length_approximation>
-						<MultivariatePolynomialFunction>
-							<!--Coefficients of a multivariate polynomial function in order of ascending powers starting from the last dependent component ( see SimTKMultivariatePolynomial for example)-->
-							<coefficients>0.254156701045543 -0.038230025226882 -0.0052105322842889998 0.0025341680057849999</coefficients>
-							<!--Number of dimensions (i.e., dependent components) of a multivariate polynomial function.-->
-							<dimension>1</dimension>
-							<!--Order of a multivariate polynomial function.-->
-							<order>3</order>
-						</MultivariatePolynomialFunction>
-					</length_approximation>
-					<!--The component paths of coordinates whose values are inputs to length_approximation. The order must match the order of arguments for length_approximation.-->
-					<approximation_coordinates>/jointset/hip_l/hip_flexion_l</approximation_coordinates>
-					<!--Default setting for using the length_approximation to compute length, lengthening speed, and moment arms.-->
-					<use_approximation>true</use_approximation>
                 </GeometryPath>
                 <!--Maximum isometric force that the fibers can generate-->
                 <max_isometric_force>2342</max_isometric_force>
@@ -1585,21 +1350,6 @@
 						<!--The color, (red, green, blue), [0, 1], used to display the geometry. -->
 						<color>0.80000000000000004 0.10000000000000001 0.10000000000000001</color>
 					</Appearance>
-                    <!--An approximation for path length as a function of coordinate values.-->
-					<length_approximation>
-						<MultivariatePolynomialFunction>
-							<!--Coefficients of a multivariate polynomial function in order of ascending powers starting from the last dependent component ( see SimTKMultivariatePolynomial for example)-->
-							<coefficients>0.41104121631692397 -0.041901285727185003 0.015455075788113001 0.035343831737395998 0.019052568915166001 0.0034905167397460001 -0.041198556780086 -0.0024951698935939998 -0.0014676451873659999 -0.00080113959175405903 -0.00020629082418143781 -0.014671630141186999 0.001472708873289 0.00047025719818033441 2.2788619203865109e-05 0.0055449302963650002 0.00029218827029413237 6.068963635841811e-05 0.0012148606484999999 -4.5061034180228947e-05 -0.0001110736612700566</coefficients>
-							<!--Number of dimensions (i.e., dependent components) of a multivariate polynomial function.-->
-							<dimension>2</dimension>
-							<!--Order of a multivariate polynomial function.-->
-							<order>5</order>
-						</MultivariatePolynomialFunction>
-					</length_approximation>
-					<!--The component paths of coordinates whose values are inputs to length_approximation. The order must match the order of arguments for length_approximation.-->
-					<approximation_coordinates>/jointset/hip_l/hip_flexion_l /jointset/knee_l/knee_angle_l</approximation_coordinates>
-					<!--Default setting for using the length_approximation to compute length, lengthening speed, and moment arms.-->
-					<use_approximation>true</use_approximation>
                 </GeometryPath>
                 <!--Maximum isometric force that the fibers can generate-->
                 <max_isometric_force>1169</max_isometric_force>
@@ -1723,21 +1473,6 @@
 						<!--The color, (red, green, blue), [0, 1], used to display the geometry. -->
 						<color>0.80000000000000004 0.10000000000000001 0.10000000000000001</color>
 					</Appearance>
-                    <!--An approximation for path length as a function of coordinate values.-->
-					<length_approximation>
-						<MultivariatePolynomialFunction>
-							<!--Coefficients of a multivariate polynomial function in order of ascending powers starting from the last dependent component ( see SimTKMultivariatePolynomial for example)-->
-							<coefficients>0.184215306369091 -0.040084488603560002 -0.0065245422296069996 0.00031977779633626151</coefficients>
-							<!--Number of dimensions (i.e., dependent components) of a multivariate polynomial function.-->
-							<dimension>1</dimension>
-							<!--Order of a multivariate polynomial function.-->
-							<order>3</order>
-						</MultivariatePolynomialFunction>
-					</length_approximation>
-					<!--The component paths of coordinates whose values are inputs to length_approximation. The order must match the order of arguments for length_approximation.-->
-					<approximation_coordinates>/jointset/knee_l/knee_angle_l</approximation_coordinates>
-					<!--Default setting for using the length_approximation to compute length, lengthening speed, and moment arms.-->
-					<use_approximation>true</use_approximation>
                 </GeometryPath>
                 <!--Maximum isometric force that the fibers can generate-->
                 <max_isometric_force>5000</max_isometric_force>
@@ -1821,21 +1556,6 @@
 						<!--The color, (red, green, blue), [0, 1], used to display the geometry. -->
 						<color>0.80000000000000004 0.10000000000000001 0.10000000000000001</color>
 					</Appearance>
-                    <!--An approximation for path length as a function of coordinate values.-->
-					<length_approximation>
-						<MultivariatePolynomialFunction>
-							<!--Coefficients of a multivariate polynomial function in order of ascending powers starting from the last dependent component ( see SimTKMultivariatePolynomial for example)-->
-							<coefficients>0.434930944648804 0.043988148379274998 -0.0051550117065550004 -0.0067296672243860002 0.025377138303286001 0.00034508977476767892 0.00074826820351761114 0.0078193673213149996 -3.2787909069390243e-05 6.9581813912187603e-05</coefficients>
-							<!--Number of dimensions (i.e., dependent components) of a multivariate polynomial function.-->
-							<dimension>2</dimension>
-							<!--Order of a multivariate polynomial function.-->
-							<order>3</order>
-						</MultivariatePolynomialFunction>
-					</length_approximation>
-					<!--The component paths of coordinates whose values are inputs to length_approximation. The order must match the order of arguments for length_approximation.-->
-					<approximation_coordinates>/jointset/knee_l/knee_angle_l /jointset/ankle_l/ankle_angle_l</approximation_coordinates>
-					<!--Default setting for using the length_approximation to compute length, lengthening speed, and moment arms.-->
-					<use_approximation>true</use_approximation>
                 </GeometryPath>
                 <!--Maximum isometric force that the fibers can generate-->
                 <max_isometric_force>2500</max_isometric_force>
@@ -1913,21 +1633,6 @@
 						<!--The color, (red, green, blue), [0, 1], used to display the geometry. -->
 						<color>0.80000000000000004 0.10000000000000001 0.10000000000000001</color>
 					</Appearance>
-                    <!--An approximation for path length as a function of coordinate values.-->
-					<length_approximation>
-						<MultivariatePolynomialFunction>
-							<!--Coefficients of a multivariate polynomial function in order of ascending powers starting from the last dependent component ( see SimTKMultivariatePolynomial for example)-->
-							<coefficients>0.28065936490891402 0.042682272678384002 -0.0070313777560600003 -0.0062617916068270002</coefficients>
-							<!--Number of dimensions (i.e., dependent components) of a multivariate polynomial function.-->
-							<dimension>1</dimension>
-							<!--Order of a multivariate polynomial function.-->
-							<order>3</order>
-						</MultivariatePolynomialFunction>
-					</length_approximation>
-					<!--The component paths of coordinates whose values are inputs to length_approximation. The order must match the order of arguments for length_approximation.-->
-					<approximation_coordinates>/jointset/ankle_l/ankle_angle_l</approximation_coordinates>
-					<!--Default setting for using the length_approximation to compute length, lengthening speed, and moment arms.-->
-					<use_approximation>true</use_approximation>
                 </GeometryPath>
                 <!--Maximum isometric force that the fibers can generate-->
                 <max_isometric_force>5137</max_isometric_force>
@@ -2009,21 +1714,6 @@
 						<!--The color, (red, green, blue), [0, 1], used to display the geometry. -->
 						<color>0.80000000000000004 0.10000000000000001 0.10000000000000001</color>
 					</Appearance>
-                    <!--An approximation for path length as a function of coordinate values.-->
-					<length_approximation>
-						<MultivariatePolynomialFunction>
-							<!--Coefficients of a multivariate polynomial function in order of ascending powers starting from the last dependent component ( see SimTKMultivariatePolynomial for example)-->
-							<coefficients>0.29061164380228699 -0.043920949896277997 -0.0043498646867 0.0038464719852620002</coefficients>
-							<!--Number of dimensions (i.e., dependent components) of a multivariate polynomial function.-->
-							<dimension>1</dimension>
-							<!--Order of a multivariate polynomial function.-->
-							<order>3</order>
-						</MultivariatePolynomialFunction>
-					</length_approximation>
-					<!--The component paths of coordinates whose values are inputs to length_approximation. The order must match the order of arguments for length_approximation.-->
-					<approximation_coordinates>/jointset/ankle_l/ankle_angle_l</approximation_coordinates>
-					<!--Default setting for using the length_approximation to compute length, lengthening speed, and moment arms.-->
-					<use_approximation>true</use_approximation>
                 </GeometryPath>
                 <!--Maximum isometric force that the fibers can generate-->
                 <max_isometric_force>3000</max_isometric_force>
@@ -2154,7 +1844,7 @@
 								<color>1 1 1</color>
 							</Appearance>
 							<!--Name of geometry file.-->
-							<mesh_file>l_femur.vtp</mesh_file>
+							<mesh_file>femur_l.vtp</mesh_file>
 						</Mesh>
 					</attached_geometry>
 					<!--The mass of the body (kg)-->
@@ -2187,7 +1877,7 @@
 								<color>1 1 1</color>
 							</Appearance>
 							<!--Name of geometry file.-->
-							<mesh_file>r_femur.vtp</mesh_file>
+							<mesh_file>femur_r.vtp</mesh_file>
 						</Mesh>
 					</attached_geometry>
 					<!--The mass of the body (kg)-->
@@ -2220,7 +1910,7 @@
 								<color>1 1 1</color>
 							</Appearance>
 							<!--Name of geometry file.-->
-							<mesh_file>l_tibia.vtp</mesh_file>
+							<mesh_file>tibia_l.vtp</mesh_file>
 						</Mesh>
                         <Mesh name="fibula_l_geom_1">
 							<!--Path to a Component that satisfies the Socket 'frame' of type Frame.-->
@@ -2268,7 +1958,7 @@
 								<color>1 1 1</color>
 							</Appearance>
 							<!--Name of geometry file.-->
-							<mesh_file>r_tibia.vtp</mesh_file>
+							<mesh_file>tibia_r.vtp</mesh_file>
 						</Mesh>
                         <Mesh name="fibula_r_geom_1">
 							<!--Path to a Component that satisfies the Socket 'frame' of type Frame.-->
@@ -3120,5 +2810,33 @@
 			<objects />
             <groups />
 		</ForceSet>
+        <ContactGeometrySet name="contactgeometryset">
+            <objects>
+                <ContactSphere name="heel_r">
+                    <socket_frame>/bodyset/calcn_r</socket_frame>
+                    <radius>0.035000000000000003</radius>
+                    <location>0.031307527581931796 0.010435842527310599 0</location>
+                </ContactSphere>
+                <ContactSphere name="heel_l">
+                    <socket_frame>/bodyset/calcn_l</socket_frame>
+                    <radius>0.035000000000000003</radius>
+                    <location>0.031307527581931796 0.010435842527310599 0</location>
+                </ContactSphere>
+                <ContactSphere name="front_r">
+                    <socket_frame>/bodyset/calcn_r</socket_frame>
+                    <radius>0.014999999999999999</radius>
+                    <location>0.17740932296428019 -0.015653763790965898 0.0052179212636552993</location>
+                </ContactSphere>
+                <ContactSphere name="front_l">
+                    <socket_frame>/bodyset/calcn_l</socket_frame>
+                    <radius>0.014999999999999999</radius>
+                    <location>0.17740932296428019 -0.015653763790965898 -0.0052179212636552993</location>
+                </ContactSphere>
+                <ContactHalfSpace name="floor">
+                    <socket_frame>/ground</socket_frame>
+                    <orientation>0 0 -1.5707963267948966</orientation>
+                </ContactHalfSpace>
+            </objects>
+        </ContactGeometrySet>
 	</Model>
 </OpenSimDocument>

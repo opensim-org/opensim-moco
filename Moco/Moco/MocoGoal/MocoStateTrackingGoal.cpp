@@ -58,7 +58,7 @@ void MocoStateTrackingGoal::initializeOnModelImpl(const Model& model) const {
         }
     }
 
-    // Populate member variables need to compute cost. Unless the property
+    // Populate member variables needed to compute cost. Unless the property
     // allow_unused_references is set to true, an exception is thrown for
     // names in the references that don't correspond to a state variable.
     for (int iref = 0; iref < allSplines.getSize(); ++iref) {
@@ -97,12 +97,12 @@ void MocoStateTrackingGoal::initializeOnModelImpl(const Model& model) const {
         m_state_names.push_back(refName);
     }
 
-    setNumIntegralsAndOutputs(1, 1);
+    setRequirements(1, 1, SimTK::Stage::Time);
 }
 
-void MocoStateTrackingGoal::calcIntegrandImpl(/*int meshIndex,*/
-        const SimTK::State& state, double& integrand) const {
-    const auto& time = state.getTime();
+void MocoStateTrackingGoal::calcIntegrandImpl(
+        const IntegrandInput& input, SimTK::Real& integrand) const {
+    const auto& time = input.time;
 
     SimTK::Vector timeVec(1, time);
 
@@ -110,7 +110,7 @@ void MocoStateTrackingGoal::calcIntegrandImpl(/*int meshIndex,*/
     // than evaluating the spline.
     integrand = 0;
     for (int iref = 0; iref < m_refsplines.getSize(); ++iref) {
-        const auto& modelValue = state.getY()[m_sysYIndices[iref]];
+        const auto& modelValue = input.state.getY()[m_sysYIndices[iref]];
         const auto& refValue = m_refsplines[iref].calcValue(timeVec);
         integrand += m_state_weights[iref] * pow(modelValue - refValue, 2);
     }

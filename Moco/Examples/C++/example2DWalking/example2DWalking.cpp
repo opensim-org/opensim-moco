@@ -31,31 +31,33 @@
 /// modified version of the 'gait10dof18musc.osim' available within OpenSim. We
 /// replaced the moving knee flexion axis by a fixed flexion axis, replaced the
 /// Millard2012EquilibriumMuscles by DeGrooteFregly2016Muscles, and added
-/// SmoothSphereHalfSpaceForces (two contact spheres per foot) to model the
-/// contact interactions between the feet and the ground. We also added
-/// polynomial approximations of muscle path lengths. We optimized the
-/// polynomial coefficients using custom MATLAB code to fit muscle-tendon
-/// lengths and moment arms (maximal root mean square deviation: 3 mm) obtained
-/// from OpenSim using a wide range of coordinate values.
+/// SmoothSphereHalfSpaceForces (two contacts per foot) to model the
+/// contact interactions between the feet and the ground.
 ///
 /// Data
 /// ----
 /// The coordinate data included in the 'referenceCoordinates.sto' comes from
 /// predictive simulations generated in Falisse et al. 2019.
 
+#include <Moco/MocoGoal/MocoOutputGoal.h>
 #include <Moco/osimMoco.h>
 
 using namespace OpenSim;
 
-// Set a coordinate tracking problem where the goal is to minimize the
-// difference between provided and simulated coordinate values and speeds
-// as well as to minimize an effort cost (squared controls). The provided data
-// represents half a gait cycle. Endpoint constraints enforce periodicity of
-// the coordinate values (except for pelvis tx) and speeds, coordinate
-// actuator controls, and muscle activations. The tracking problem is solved
-// using polynomial approximations of muscle path lengths if true is passed as
-// an input argument, whereas geometry paths are used with the argument false.
-MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
+/// Set a coordinate tracking problem where the goal is to minimize the
+/// difference between provided and simulated coordinate values and speeds
+/// (and ground reaction forces) as well as to minimize an effort cost (squared
+/// controls). The provided data represents half a gait cycle. Endpoint
+/// constraints enforce periodicity of the coordinate values (except for pelvis
+/// tx) and speeds, coordinate actuator controls, and muscle activations.
+///
+/// If GRFTrackingWeight is set to 0 then GRFs will not be tracked. Setting
+/// GRFTrackingWeight to 1 will cause the total tracking error (states + GRF) to
+/// have about the same magnitude as control effort in the final objective
+/// value.
+MocoSolution gaitTracking(double controlEffortWeight = 10,
+        double stateTrackingWeight = 1,
+        double GRFTrackingWeight = 1) {
 
     using SimTK::Pi;
 
@@ -64,13 +66,11 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
 
     // Define the optimal control problem.
     // ===================================
-    ModelProcessor modelprocessor =
-            ModelProcessor("2D_gait.osim") |
-            ModOpSetPathLengthApproximation(setPathLengthApproximation);
+    ModelProcessor modelprocessor = ModelProcessor("2D_gait.osim");
     track.setModel(modelprocessor);
     track.setStatesReference(
             TableProcessor("referenceCoordinates.sto") | TabOpLowPassFilter(6));
-    track.set_states_global_tracking_weight(10.0);
+    track.set_states_global_tracking_weight(stateTrackingWeight);
     track.set_allow_unused_references(true);
     track.set_track_reference_position_derivatives(true);
     track.set_apply_tracked_states_to_guess(true);
@@ -132,7 +132,21 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
     // MocoTrack problem by default.
     MocoControlGoal& effort =
             dynamic_cast<MocoControlGoal&>(problem.updGoal("control_effort"));
-    effort.setWeight(10);
+    effort.setWeight(controlEffortWeight);
+
+    // Optionally, add a contact tracking goal.
+    if (GRFTrackingWeight != 0) {
+        // Track the right and left vertical and fore-aft ground reaction forces.
+        auto* contactTracking = problem.addGoal<MocoContactTrackingGoal>(
+                "contact", GRFTrackingWeight);
+        contactTracking->setExternalLoadsFile("referenceGRF.xml");
+        contactTracking->addContactGroup(
+                {"contactHeel_r", "contactFront_r"},"Right_GRF");
+        contactTracking->addContactGroup(
+                {"contactHeel_l", "contactFront_l"}, "Left_GRF");
+        contactTracking->setProjection("plane");
+        contactTracking->setProjectionVector(SimTK::Vec3(0, 0, 1));
+    }
 
     // Bounds.
     // =======
@@ -171,6 +185,19 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
     auto full = createPeriodicTrajectory(solution);
     full.write("gaitTracking_solution_fullcycle.sto");
 
+    // Extract ground reaction forces.
+    // ===============================
+    std::vector<std::string> contact_r;
+    std::vector<std::string> contact_l;
+    contact_r.push_back("contactHeel_r");
+    contact_r.push_back("contactFront_r");
+    contact_l.push_back("contactHeel_l");
+    contact_l.push_back("contactFront_l");
+    TimeSeriesTable externalForcesTableFlat = createExternalLoadsTableForGait(
+            model, full, contact_r, contact_l);
+    writeTableToFile(externalForcesTableFlat,
+            "gaitTracking_solutionGRF_fullcycle.sto");
+
     // moco.visualize(solution);
 
     return solution;
@@ -180,13 +207,8 @@ MocoSolution gaitTracking(const bool& setPathLengthApproximation) {
 // controls) over distance traveled while enforcing symmetry of the walking
 // cycle and a prescribed average gait speed through endpoint constraints. The
 // solution of the coordinate tracking problem is passed as an input argument
-// and used as an initial guess for the prediction. The predictive problem is
-// solved using polynomial approximations of muscle path lengths if true is
-// passed as an input argument, whereas geometry paths are used with the
-// argument false. Polynomial approximations should improve the computation
-// speeds by about 25% for this problem.
-void gaitPrediction(const MocoSolution& gaitTrackingSolution,
-        const bool& setPathLengthApproximation) {
+// and used as an initial guess for the prediction.
+void gaitPrediction(const MocoSolution& gaitTrackingSolution) {
 
     using SimTK::Pi;
 
@@ -197,8 +219,7 @@ void gaitPrediction(const MocoSolution& gaitTrackingSolution,
     // ===================================
     MocoProblem& problem = study.updProblem();
     ModelProcessor modelprocessor =
-            ModelProcessor("2D_gait.osim") |
-            ModOpSetPathLengthApproximation(setPathLengthApproximation);
+            ModelProcessor("2D_gait.osim");
     problem.setModelProcessor(modelprocessor);
 
     // Goals.
@@ -300,14 +321,14 @@ void gaitPrediction(const MocoSolution& gaitTrackingSolution,
 
     // Extract ground reaction forces.
     // ===============================
-    std::vector<std::string> contactSpheres_r;
-    std::vector<std::string> contactSpheres_l;
-    contactSpheres_r.push_back("contactSphereHeel_r");
-    contactSpheres_r.push_back("contactSphereFront_r");
-    contactSpheres_l.push_back("contactSphereHeel_l");
-    contactSpheres_l.push_back("contactSphereFront_l");
+    std::vector<std::string> contact_r;
+    std::vector<std::string> contact_l;
+    contact_r.push_back("contactHeel_r");
+    contact_r.push_back("contactFront_r");
+    contact_l.push_back("contactHeel_l");
+    contact_l.push_back("contactFront_l");
     TimeSeriesTable externalForcesTableFlat = createExternalLoadsTableForGait(
-            model, full, contactSpheres_r, contactSpheres_l);
+            model, full, contact_r, contact_l);
     writeTableToFile(externalForcesTableFlat,
             "gaitPrediction_solutionGRF_fullcycle.sto");
 
@@ -316,10 +337,8 @@ void gaitPrediction(const MocoSolution& gaitTrackingSolution,
 
 int main() {
     try {
-        // Use polynomial approximations of muscle path lengths (set false to
-        // use GeometryPath).
-        const MocoSolution gaitTrackingSolution = gaitTracking(false);
-        gaitPrediction(gaitTrackingSolution, false);
+        const MocoSolution gaitTrackingSolution = gaitTracking();
+        gaitPrediction(gaitTrackingSolution);
     } catch (const std::exception& e) { std::cout << e.what() << std::endl; }
     return EXIT_SUCCESS;
 }

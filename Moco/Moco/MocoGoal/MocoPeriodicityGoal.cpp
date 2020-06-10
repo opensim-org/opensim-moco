@@ -88,13 +88,14 @@ void MocoPeriodicityGoal::initializeOnModelImpl(const Model& model) const {
                 format("Could not find control '%s'.", path2));
         int controlIndex1 = systemControlIndexMap[path1];
         int controlIndex2 = systemControlIndexMap[path2];
-        m_indices_states.emplace_back(controlIndex1, controlIndex2,
-                get_state_pairs(i).get_negate() ? -1 : 1);
         m_control_names.emplace_back(path1, path2);
+        m_indices_controls.emplace_back(controlIndex1, controlIndex2,
+                get_control_pairs(i).get_negate() ? -1 : 1);
     }
 
-    setNumIntegralsAndOutputs(
-            0, (int)m_indices_states.size() + (int)m_indices_controls.size());
+    setRequirements(
+            0, (int)m_indices_states.size() + (int)m_indices_controls.size(),
+            SimTK::Stage::Time);
 }
 
 void MocoPeriodicityGoal::calcGoalImpl(
@@ -111,8 +112,8 @@ void MocoPeriodicityGoal::calcGoalImpl(
         ++i;
     }
 
-    const auto& initialControls = getModel().getControls(input.initial_state);
-    const auto& finalControls = getModel().getControls(input.final_state);
+    const auto& initialControls = input.initial_controls;
+    const auto& finalControls = input.final_controls;
     int j = 0;
     for (const auto& index_control : m_indices_controls) {
         goal[i + j] = (initialControls[std::get<0>(index_control)] *
@@ -128,14 +129,14 @@ void MocoPeriodicityGoal::printDescriptionImpl(std::ostream& stream) const {
     stream << "state periodicity pairs: " << std::endl;
     for (const auto& pair : m_state_names) {
         stream << "                ";
-        stream << "[" << pair.first
-               << "," << pair.second << "]" << std::endl;
+        stream << "initial: " << pair.first
+               << ", final: " << pair.second << std::endl;
     }
     stream << "        ";
     stream << "control periodicity pairs: " << std::endl;
     for (const auto& pair : m_control_names) {
         stream << "                ";
-        stream << "[" << pair.first
-               << "," << pair.second << "]" << std::endl;
+        stream << "initial: " << pair.first
+               << ", final: " << pair.second << std::endl;
     }
 }

@@ -29,7 +29,8 @@ namespace OpenSim {
 /// measures for a given joint, integrated over the phase. If the magnitude of
 /// the gravity acceleration vector (Model::get_gravity()) is non-zero, then the
 /// goal is normalized by the model's weight; otherwise, the goal is normalized
-/// by the model's mass.
+/// by the model's mass. We assume the system's mass is constant (that is,
+/// MocoParameters do not affect mass).
 ///
 /// In addition to specifying the joint and reaction measures, the user may
 /// also specify the frame the loads are computed from ("parent" or "child"),
@@ -102,8 +103,8 @@ public:
 
 protected:
     void initializeOnModelImpl(const Model&) const override;
-    void calcIntegrandImpl(const SimTK::State& state,
-            double& integrand) const override;
+    void calcIntegrandImpl(
+            const IntegrandInput& input, SimTK::Real& integrand) const override;
     void calcGoalImpl(
             const GoalInput& input, SimTK::Vector& cost) const override {
         cost[0] = input.integral / m_denominator;
