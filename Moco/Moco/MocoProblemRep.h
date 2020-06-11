@@ -69,7 +69,8 @@ public:
     const Model& getModelBase() const { return m_model_base; }
     /// This is a state object that solvers can use along with ModelBase.
     SimTK::State& updStateBase() const { return m_state_base; }
-    /// TODO
+    /// This is a component inside ModelBase that you can use to
+    /// set the value of control signals.
     const DiscreteController& getDiscreteControllerBase() const {
         return m_discrete_controller_base.getRef();
     }
@@ -96,7 +97,8 @@ public:
         assert(index <= 1);
         return m_state_disabled_constraints[index];
     }
-    /// TODO
+    /// This is a component inside ModelDisabledConstraints that you can use to
+    /// set the value of control signals.
     const DiscreteController& getDiscreteControllerDisabledConstraints() const {
         return m_discrete_controller_disabled_constraints.getRef();
     }
@@ -228,9 +230,8 @@ public:
     }
 
     /// Print a description of this problem, including costs and variable
-    /// bounds. By default, the description is printed to the console (cout),
-    /// but you can provide your own stream.
-    void printDescription(std::ostream& stream = std::cout) const;
+    /// bounds. Printing is done using OpenSim::log_cout().
+    void printDescription() const;
 
     /// @name Interface for solvers
     /// These functions are for use by MocoSolver%s, but can also be called
