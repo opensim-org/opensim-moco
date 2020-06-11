@@ -42,10 +42,10 @@ void SynergyController::extendFinalizeFromProperties() {
     OPENSIM_THROW_IF_FRMOBJ(
             numActuatorControls != getProperty_synergy_weights().size(),
             Exception,
-            format("Number of Actuators in this Controller (%i) must "
-                   "match the number of synergy weights vectors (%i).",
+            fmt::format("Number of Actuators in this Controller ({}) must "
+                   "match the number of synergy weights vectors ({}).",
                     numActuatorControls,
-            getProperty_synergy_weights().size()));
+                    getProperty_synergy_weights().size()));
 
     if (numActuatorControls == 0) return;
 
@@ -62,13 +62,13 @@ void SynergyController::extendFinalizeFromProperties() {
         const auto actPath = actuator.getAbsolutePathString();
 
         OPENSIM_THROW_IF_FRMOBJ(!map.count(actPath), Exception,
-                format("No synergy weights provided for Actuator '%s'.",
+                fmt::format("No synergy weights provided for Actuator '{}'.",
                         actPath));
         const auto& weights = get_synergy_weights(map[actPath]).get_weights();
-        OPENSIM_THROW_IF_FRMOBJ(weights.size() != numSynergies,
-                Exception,
-                format("Length of synergy weights vectors is "
-                "inconsistent (%i vs %i).", numSynergies, weights.size()));
+        OPENSIM_THROW_IF_FRMOBJ(weights.size() != numSynergies, Exception,
+                fmt::format("Length of synergy weights vectors is "
+                            "inconsistent ({} vs {}).",
+                        numSynergies, weights.size()));
         m_synergyWeights.updRow(iact) = weights.transpose();
     }
 }
@@ -79,10 +79,14 @@ void SynergyController::computeControls(
 
     const auto synergyControls =
             getInputValue<SimTK::Vector>(s, "synergy_controls");
+
     SimTK::Vector actuatorControls = m_synergyWeights * synergyControls;
+
+    SimTK::Vector thisControl(1);
     for (int iact = 0; iact < getActuatorSet().getSize(); ++iact) {
         const auto& actuator = getActuatorSet().get(iact);
-        actuator.addInControls(createVector({actuatorControls[iact]}),
+        thisControl[0] = actuatorControls[iact];
+        actuator.addInControls(thisControl,
                 // actuatorControls.block()(TODO, 0, actuator.numControls(), 1),
                 controls);
     }

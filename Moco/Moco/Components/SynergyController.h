@@ -26,8 +26,8 @@ namespace OpenSim {
 
 // TODO how to handle stage?
 template <typename T>
-class OSIMMOCO_API Concatenate_ : public Component {
-    OpenSim_DECLARE_CONCRETE_OBJECT_T(Concatenate_, T, Component);
+class OSIMMOCO_API Concatenator_ : public Component {
+    OpenSim_DECLARE_CONCRETE_OBJECT_T(Concatenator_, T, Component);
 public:
     OpenSim_DECLARE_LIST_INPUT(inputs, T, SimTK::Stage::Dynamics, "TODO");
     OpenSim_DECLARE_OUTPUT(output, SimTK::Vector_<T>, getConcatenatedVector,
@@ -44,7 +44,7 @@ public:
     }
 };
 
-using Concatenate = Concatenate_<double>;
+using Concatenator = Concatenator_<double>;
 
 class OSIMMOCO_API SynergyWeightsVector : public Object {
     OpenSim_DECLARE_CONCRETE_OBJECT(SynergyWeightsVector, Object);

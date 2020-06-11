@@ -2049,21 +2049,117 @@ TEMPLATE_TEST_CASE("Controllers in the model", "",
 TEST_CASE("SynergyController") {
     Model model = ModelFactory::createPlanarPointMass();
     model.set_gravity(SimTK::Vec3(0));
+
     auto controller = make_unique<SynergyController>();
     controller->addActuator(model.getActuators().get("force_x"));
     controller->addActuator(model.getActuators().get("force_y"));
     controller->setSynergyWeights("/forceset/force_x", createVector({1.0}));
     controller->setSynergyWeights("/forceset/force_y", createVector({2.0}));
+
     auto signal = make_unique<SignalGenerator>();
     signal->set_function(Constant(1.5));
-    auto concat = make_unique<Concatenate>();
+    auto concat = make_unique<Concatenator>();
     concat->connectInput_inputs(signal->getOutput("signal"));
     controller->connectInput_synergy_controls(concat->getOutput("output"));
     controller->addComponent(signal.release());
     controller->addComponent(concat.release());
     model.addController(controller.release());
 
-    model.setUseVisualizer(true);
-    auto state = model.initSystem();
-    auto finalState = simulate(model, state, 2.0);
+    SECTION("Time-stepping forward simulation") {
+        auto state = model.initSystem();
+        const double finalTime = 2.0;
+        auto finalState = simulate(model, state, finalTime);
+
+        // distance = 1/2*a*t^2
+        CHECK(model.getCoordinateSet().get("tx").getValue(finalState) ==
+                Approx(0.5 * 1.5 * 1.0 * SimTK::square(finalTime)));
+        CHECK(model.getCoordinateSet().get("ty").getValue(finalState) ==
+                Approx(0.5 * 1.5 * 2.0 * SimTK::square(finalTime)));
+    }
+
+    SECTION("MocoStudy: SynergyController only") {
+
+        MocoStudy study;
+        auto& problem = study.updProblem();
+        problem.setModelCopy(model);
+
+        problem.setTimeBound(0, 1);
+        problem.setStateInfo("/jointset/tx/tx/value", {0, 1}, 0, 1.2);
+        problem.setStateInfo("/jointset/ty/ty/value", {0, 1}, 0, 2.4);
+
+        // TODO: Check logic surrounding addControl(), setControlInfo().
+        problem.setAddControlsForActuators(false);
+        // problem.addControlsForActuators(); TODO
+        problem.addControl("synergy_control", {-5, 5});
+
+        problem.addGoal<MocoControlGoal>();
+
+        MocoProblemRep rep = problem.createRep();
+        REQUIRE(rep.createControlInfoNames() ==
+                std::vector<std::string>({"synergy_control"}));
+
+        // TODO: Test Tropter.
+        auto& solver = study.initCasADiSolver();
+        solver.set_num_mesh_intervals(10);
+
+        MocoSolution solution = study.solve();
+
+        REQUIRE(solution.getControlNames() ==
+                std::vector<std::string>({"synergy_control"}));
+
+        OpenSim_CHECK_MATRIX_ABSTOL(solution.getControl("synergy_control"),
+                createVectorLinspace(10, 5.0, -5.0), 1e-5);
+
+        // TODO: Conduct analyze() or visualize() or simulate() using the
+        // solution.
+        // TODO: Must add a PrescribedController or SignalGenerator to the
+        //  model.
+
+    }
+
+    SECTION("MocoStudy: Multiple controllers") {
+        // SynergyController and DefaultController.
+
+        MocoStudy study;
+        auto& problem = study.updProblem();
+        problem.setModelCopy(model);
+
+        // TODO: Let Moco still have control signals for each actuator,
+        // set the control boudns for the force_x controller to 0
+
+        problem.setStateInfo("/jointset/tx/tx/value", {0, 1}, 0, 1.3);
+        problem.setStateInfo("/jointset/ty/ty/value", {0, 1}, 0, 0);
+        problem.setControlInfo("/forceset/force_x", 0);
+        // TODO: If Moco generates a control for each actuator, then there
+        // are redundant control bounds (actuator control bounds, and Moco
+        // control bounds).
+        problem.addControl("synergy_control", {-5, 5});
+
+        // TODO add more tests on MocoProblemRep.
+        MocoProblemRep rep = problem.createRep();
+        REQUIRE(rep.createControlInfoNames() ==
+                std::vector<std::string>({
+                        "/forceset/force_x",
+                        "/forceset/force_y",
+                        "synergy_control"
+                }));
+
+        // TODO: Test Tropter.
+        auto& solver = study.initCasADiSolver();
+        solver.set_num_mesh_intervals(10);
+
+        MocoSolution solution = study.solve();
+
+        REQUIRE(solution.getControlNames() ==
+                std::vector<std::string>({
+                        "/forceset/force_x",
+                        "/forceset/force_y",
+                        "synergy_control"
+                }));
+
+        OpenSim_CHECK_MATRIX_ABSTOL(solution.getControl("/forceset/force_y"),
+                -1.5 * solution.getControl("synergy_control"), 1e-5);
+    }
+
+    // TODO: DiscreteController will use inputs instead of discrete variables.
 }
