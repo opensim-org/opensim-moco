@@ -869,17 +869,17 @@ SimTK::Real OpenSim::solveBisection(
                     maxIterations));
 
     const bool sameSign = calcResidual(left) * calcResidual(right) >= 0;
-    if (sameSign) {
-        const auto x = createVectorLinspace(1000, left, right);
-        TimeSeriesTable table;
-        table.setColumnLabels({"residual"});
-        SimTK::RowVector row(1);
-        for (int i = 0; i < x.nrow(); ++i) {
-            row[0] = calcResidual(x[i]);
-            table.appendRow(x[i], row);
-        }
-        // writeTableToFile(table, "DEBUG_solveBisection_residual.sto");
+    //if (sameSign) {
+    const auto x = createVectorLinspace(1000, left, right);
+    TimeSeriesTable table;
+    table.setColumnLabels({"residual"});
+    SimTK::RowVector row(1);
+    for (int i = 0; i < x.nrow(); ++i) {
+        row[0] = calcResidual(x[i]);
+        table.appendRow(x[i], row);
     }
+    writeTableToFile(table, "DEBUG_solveBisection_residual.sto");
+    //}
     OPENSIM_THROW_IF(sameSign, Exception,
             format("Function has same sign at bounds of %f and %f.", left,
                     right));
