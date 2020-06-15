@@ -494,13 +494,12 @@ void DeGrooteFregly2016Muscle::calcMuscleLengthInfo(
     calcMuscleLengthInfoHelper(muscleTendonLength,
             get_ignore_tendon_compliance(), mli, normTendonForce);
 
-    if (mli.tendonLength < get_tendon_slack_length() && getDebugLevel() > 0) {
+    if (mli.tendonLength < get_tendon_slack_length()) {
         // TODO the Millard model sets fiber velocity to zero when the
         //       tendon is buckling, but this may create a discontinuity.
-        std::cout << "Warning: DeGrooteFregly2016Muscle '" << getName()
-                  << "' is buckling (normFiberLength = " << mli.normFiberLength
-                  << ", normTendonLength = " << mli.normTendonLength << ") " 
-                  << "at time " << s.getTime() << " s." << std::endl;
+        log_info("DeGrooteFregly2016Muscle '{}' is buckling (length < "
+                 "tendon_slack_length) at time {} s.",
+                getName(), s.getTime());
     }
 }
 
@@ -525,10 +524,10 @@ void DeGrooteFregly2016Muscle::calcFiberVelocityInfo(
             get_ignore_tendon_compliance(), m_isTendonDynamicsExplicit, mli,
             fvi, normTendonForce, normTendonForceDerivative);
 
-    if (fvi.normFiberVelocity < -1.0 && getDebugLevel() > 0) {
-        std::cout << "Warning: DeGrooteFregly2016Muscle '" << getName()
-                << "' is exceeding maximum contraction velocity at time "
-                << s.getTime() << " s." << std::endl;
+    if (fvi.normFiberVelocity < -1.0) {
+        log_info("DeGrooteFregly2016Muscle '{}' is exceeding maximum "
+                 "contraction velocity at time {} s.",
+                getName(), s.getTime());
     }
 }
 
@@ -1015,10 +1014,9 @@ void DeGrooteFregly2016Muscle::replaceMuscles(
 
         } else {
             OPENSIM_THROW_IF(!allowUnsupportedMuscles, Exception,
-                    format("Muscle '%s' of type %s is unsupported and "
-                           "allowUnsupportedMuscles=false.",
-                            muscBase.getName(),
-                            muscBase.getConcreteClassName()));
+                    "Muscle '{}' of type {} is unsupported and "
+                    "allowUnsupportedMuscles=false.",
+                    muscBase.getName(), muscBase.getConcreteClassName());
             continue;
         }
 
@@ -1076,13 +1074,11 @@ void DeGrooteFregly2016Muscle::replaceMuscles(
     for (const auto* musc : musclesToDelete) {
         int index = model.getForceSet().getIndex(musc, 0);
         OPENSIM_THROW_IF(index == -1, Exception,
-                format("Muscle with name %s not found in ForceSet.",
-                        musc->getName()));
+                "Muscle with name {} not found in ForceSet.", musc->getName());
         bool success = model.updForceSet().remove(index);
         OPENSIM_THROW_IF(!success, Exception,
-                format("Attempt to remove muscle with "
-                       "name %s was unsuccessful.",
-                        musc->getName()));
+                "Attempt to remove muscle with name {} was unsuccessful.",
+                musc->getName());
     }
 
     model.finalizeFromProperties();

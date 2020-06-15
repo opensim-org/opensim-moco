@@ -59,10 +59,9 @@ void MocoMarkerTrackingGoal::initializeOnModelImpl(const Model& model) const {
             m_refindices.push_back(i);
         } else {
             if (!get_allow_unused_references()) {
-                OPENSIM_THROW_FRMOBJ(
-                        Exception, format("Marker '%s' unrecognized by the "
-                                          "specified model.",
-                                           markRefNames[i]));
+                OPENSIM_THROW_FRMOBJ(Exception,
+                        "Marker '{}' unrecognized by the specified model.",
+                        markRefNames[i]);
             }
         }
     }
@@ -107,17 +106,14 @@ void MocoMarkerTrackingGoal::calcIntegrandImpl(
     }
 }
 
-void MocoMarkerTrackingGoal::printDescriptionImpl(std::ostream& stream) const {
-    stream << "        ";
-    stream << "allow unused references: "
-           << get_allow_unused_references() << std::endl;
-    stream << "        ";
-    stream << "tracked marker(s): " << std::endl;
+void MocoMarkerTrackingGoal::printDescriptionImpl() const {
+    log_cout(
+            "        allow unused references: ", get_allow_unused_references());
+    log_cout("        tracked marker(s):");
     int weightIndex = 0;
-    for (auto name : m_marker_names) {
-        stream << "            ";
-        stream << name << ", weight: " << m_marker_weights[weightIndex]
-               << std::endl;
+    for (const auto& name : m_marker_names) {
+        log_cout("            {}, weight: {}", name,
+                m_marker_weights[weightIndex]);
         weightIndex++;
     }
 

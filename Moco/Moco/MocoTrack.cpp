@@ -71,7 +71,7 @@ MocoStudy MocoTrack::initialize() {
     } else {
         OPENSIM_THROW_IF(get_apply_tracked_states_to_guess(), Exception,
                 "Property 'apply_tracked_states_to_guess' was enabled, but no "
-                "states reference data was provided.")
+                "states reference data was provided.");
     }
 
     // Marker tracking cost.
@@ -86,9 +86,9 @@ MocoStudy MocoTrack::initialize() {
     // ----------------------------
     if (get_minimize_control_effort()) {
         OPENSIM_THROW_IF(get_control_effort_weight() < 0, Exception,
-                format("Expected a non-negative control effort weight, but "
-                       "got a weight with value %d.",
-                        get_control_effort_weight()));
+                "Expected a non-negative control effort weight, "
+                "but got a weight with value {}.",
+                get_control_effort_weight());
 
         auto* effort = problem.addGoal<MocoControlGoal>("control_effort");
         effort->setWeight(get_control_effort_weight());
@@ -225,7 +225,7 @@ TimeSeriesTable MocoTrack::configureStateTracking(
             states.getIndependentColumn().back(), m_timeInfo);
 
     // Write tracked states to file in case any label updates or filtering
-    // occured.
+    // occurred.
     writeTableToFile(states, getName() + "_tracked_states.sto");
 
     // Return tracked states to possibly include in the guess.
@@ -280,10 +280,9 @@ void MocoTrack::applyStatesToGuess(
             guess.setState(label, col);
         } else {
             OPENSIM_THROW_IF(!get_allow_unused_references(), Exception,
-                    format("Tried to apply data for state '%s' to guess, but "
-                           "this "
-                           "state does not exist in the model.",
-                            label));
+                    "Tried to apply data for state '{}' to guess, "
+                    "but this state does not exist in the model.",
+                    label);
         }
     }
 }
