@@ -428,10 +428,13 @@ public:
 
         const double& e0 = get_passive_fiber_strain_at_one_norm_force();
 
-        const double temp1 = exp(kPE * m_minNormFiberLength / e0);
-        const double denom = exp(kPE * (1.0 + 1.0 / e0)) - temp1;
-        const double temp2 = kPE / e0 * normFiberLength;
-        return (e0 / kPE * exp(temp2) - normFiberLength * temp1) / denom;
+        const double temp1 = exp(kPE * normFiberLength / e0);
+        const double temp2 = exp(kPE * m_minNormFiberLength / e0);
+        const double temp3 = exp(kPE * (e0 + 1.0) / e0);
+        const double numer = -e0 * temp1 + kPE * normFiberLength * temp2;
+        const double denom = kPE * (temp2 - temp3);
+
+        return numer / denom;
     }
 
     /// The normalized tendon force as a function of normalized tendon length.
