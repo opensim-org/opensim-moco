@@ -1090,9 +1090,9 @@ TEMPLATE_TEST_CASE("Hanging muscle minimum time", "", MocoCasADiSolver) {
                 "/joint/height/speed", speedBounds, 0, 0);
         problem.setControlInfo("/forceset/actuator", actuBounds);
 
-        auto* initial_equilibrium =
-                problem.addGoal<MocoInitialVelocityEquilibriumDGFGoal>();
-        initial_equilibrium->setName("initial_equilibrium");
+        //auto* initial_equilibrium =
+        //        problem.addGoal<MocoInitialVelocityEquilibriumDGFGoal>();
+        //initial_equilibrium->setName("initial_equilibrium");
 
         problem.addGoal<MocoFinalTimeGoal>("final_time");
 
