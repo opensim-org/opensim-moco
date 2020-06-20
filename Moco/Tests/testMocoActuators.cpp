@@ -31,8 +31,6 @@
 
 using namespace OpenSim;
 
-/*
-
 // Function to compute fiber force (or fiber force along tendon) versus fiber
 // length (or fiber length along tendon). This checks fiber stiffness
 // calculations in DeGrooteFregly2016Muscle.
@@ -1209,7 +1207,6 @@ TEMPLATE_TEST_CASE("Hanging muscle minimum time", "", MocoCasADiSolver) {
     }
 }
 
-*/
  
 TEST_CASE("ActivationCoordinateActuator") {
     auto model = ModelFactory::createSlidingPointMass();
