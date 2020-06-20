@@ -276,9 +276,9 @@ public:
     /// The residual (i.e. error) in the muscle-tendon equilibrium equation:
     ///         residual = tendonForce - fiberForce * cosPennationAngle
     double getEquilibriumResidual(const SimTK::State& s) const {
-        const auto& mdi = getMuscleDynamicsInfo(s);
-        return calcEquilibriumResidual(
-                mdi.tendonForce, mdi.fiberForceAlongTendon);
+        return calcEquilibriumResidual(getLength(s), getLengtheningSpeed(s),
+                getActivation(s), getNormalizedTendonForce(s),
+                getNormalizedTendonForceDerivative(s));
     }
 
     /// The residual (i.e. error) in the time derivative of the linearized
@@ -649,10 +649,25 @@ public:
     }
 
     /// @copydoc getEquilibriumResidual()
-    SimTK::Real calcEquilibriumResidual(const SimTK::Real& tendonForce,
-            const SimTK::Real& fiberForceAlongTendon) const {
+    SimTK::Real calcEquilibriumResidual(const SimTK::Real& muscleTendonLength,
+            const SimTK::Real& muscleTendonVelocity, 
+            const SimTK::Real& activation, 
+            const SimTK::Real& normTendonForce,
+            const SimTK::Real& normTendonForceDerivative) const {
 
-        return tendonForce - fiberForceAlongTendon;
+        MuscleLengthInfo mli;
+        FiberVelocityInfo fvi;
+        MuscleDynamicsInfo mdi;
+     
+        calcMuscleLengthInfoHelper(
+                muscleTendonLength, false, mli, normTendonForce);
+        calcFiberVelocityInfoHelper(muscleTendonVelocity, activation, false,
+                m_isTendonDynamicsExplicit, mli, fvi, normTendonForce, 
+                normTendonForceDerivative);
+        calcMuscleDynamicsInfoHelper(activation, muscleTendonVelocity, false,
+                mli, fvi, mdi, normTendonForce);
+
+        return mdi.tendonForce - mdi.fiberForceAlongTendon;
     }
 
     /// @copydoc getLinearizedEquilibriumResidualDerivative()
