@@ -553,8 +553,7 @@ void DeGrooteFregly2016Muscle::calcMusclePotentialEnergyInfo(
             get_ignore_tendon_compliance(), mli, mpei);
 }
 
-double
-OpenSim::DeGrooteFregly2016Muscle::calcInextensibleTendonActiveFiberForce(
+double DeGrooteFregly2016Muscle::calcInextensibleTendonActiveFiberForce(
         SimTK::State& s, double activation) const {
     MuscleLengthInfo mli;
     FiberVelocityInfo fvi;
@@ -579,6 +578,8 @@ void DeGrooteFregly2016Muscle::computeInitialFiberEquilibrium(
     const auto& muscleTendonVelocity = getLengtheningSpeed(s);
     const auto& activation = getActivation(s);
 
+    // We have to use the implicit form of the model since the explicit form
+    // will produce a zero residual for any guess of normalized tendon force.
     // The implicit form requires a value for normalized tendon force
     // derivative, so we'll set it to zero for simplicity.
     const SimTK::Real normTendonForceDerivative = 0.0;
@@ -651,7 +652,6 @@ void DeGrooteFregly2016Muscle::computeInitialFiberEquilibrium(
     //}
 
 }
-
 
 //std::pair<DeGrooteFregly2016Muscle::StatusFromEstimateMuscleFiberState,
 //        DeGrooteFregly2016Muscle::ValuesFromEstimateMuscleFiberState>

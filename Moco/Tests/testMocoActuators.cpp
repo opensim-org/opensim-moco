@@ -1282,6 +1282,7 @@ TEST_CASE("DeGrooteFregly2016Muscle muscle-tendon equilibrium") {
             mutMuscle.set_tendon_compliance_dynamics_mode("explicit");
             model.realizeDynamics(state);
             muscle.computeEquilibrium(state);
+            model.realizeDynamics(state);
             CHECK(muscle.getEquilibriumResidual(state) ==
                     Approx(0.0).margin(1e-4));
             CHECK(muscle.getNormalizedTendonForceDerivative(state) ==

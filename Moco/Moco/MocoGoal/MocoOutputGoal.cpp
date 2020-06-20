@@ -45,7 +45,6 @@ void MocoOutputGoal::calcIntegrandImpl(
         const IntegrandInput& input, double& integrand) const {
     getModel().getSystem().realize(input.state, m_output->getDependsOnStage());
     integrand = m_output->getValue(input.state);
-    integrand *= integrand;
 }
 
 void MocoOutputGoal::calcGoalImpl(
