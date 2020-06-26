@@ -25,6 +25,8 @@ namespace OpenSim {
 /// This goal allows you to use any (double, or scalar) Output in the model
 /// as the integrand of a goal.
 /// @ingroup mocogoal
+// TODO added Vec3 support, document.
+// TODO setExponent() ?
 class OSIMMOCO_API MocoOutputGoal : public MocoGoal {
     OpenSim_DECLARE_CONCRETE_OBJECT(MocoOutputGoal, MocoGoal);
 
@@ -74,7 +76,12 @@ private:
             "Divide by the model's total mass (default: false)");
     void constructProperties();
 
-    mutable SimTK::ReferencePtr<const Output<double>> m_output;
+    enum DataType {
+        Type_double,
+        Type_Vec3,
+    };
+    mutable DataType m_data_type;
+    mutable SimTK::ReferencePtr<const AbstractOutput> m_output;
 };
 
 } // namespace OpenSim
