@@ -201,8 +201,6 @@ public:
             "TODO (default is false).");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(huber_loss_delta, double,
             "TODO (default is 1).");
-    OpenSim_DECLARE_OPTIONAL_PROPERTY(huber_loss_direction, int,
-            "TODO (default is 1).");
 
     OpenSim_DECLARE_LIST_PROPERTY(
             muscle_parameters, Bhargava2004Metabolics_MuscleParameters,

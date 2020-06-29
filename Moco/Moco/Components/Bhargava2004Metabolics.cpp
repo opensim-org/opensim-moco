@@ -173,7 +173,6 @@ void Bhargava2004Metabolics::constructProperties()
     constructProperty_power_smoothing(10);
     constructProperty_heat_rate_smoothing(10);
     constructProperty_huber_loss_delta(1);
-    constructProperty_huber_loss_direction(1);
 }
 
 void Bhargava2004Metabolics::extendFinalizeFromProperties() {
@@ -433,7 +432,7 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                     0.157 * fiberForceTotal,
                     get_velocity_smoothing(),
                     get_huber_loss_delta(),
-                    get_huber_loss_direction());
+                    -1);
         } else {
             // This simpler value of alpha comes from Frank Anderson's 1999
             // dissertation "A Dynamic Optimization Solution for a Complete
@@ -443,7 +442,7 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                     0,
                     get_velocity_smoothing(),
                     get_huber_loss_delta(),
-                    get_huber_loss_direction());
+                    -1);
         }
         shorteningHeatRate = -alpha * fiberVelocity;
 
@@ -460,7 +459,7 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                     0,
                     get_velocity_smoothing(),
                     get_huber_loss_delta(),
-                    get_huber_loss_direction());
+                    -1);
         }
 
         // NAN CHECKING
@@ -491,7 +490,7 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                         Edot_W_beforeClamp,
                         get_power_smoothing(),
                         get_huber_loss_delta(),
-                        get_huber_loss_direction());
+                        1);
                 shorteningHeatRate -= Edot_W_beforeClamp_smoothed;
             } else {
                 if (Edot_W_beforeClamp < 0)
@@ -517,7 +516,7 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                         1.0 * muscleParameter.getMuscleMass(),
                         get_heat_rate_smoothing(),
                         get_huber_loss_delta(),
-                        get_huber_loss_direction());
+                        1);
             }
         } else {
             if (get_enforce_minimum_heat_rate_per_muscle()
