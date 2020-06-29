@@ -424,6 +424,7 @@ void Bhargava2004Metabolics::calcMetabolicRate(
         //     fiberVelocity>0 as lengthening.
         // ---------------------------------------------------------
         double alpha;
+        // TODO
         if (get_use_force_dependent_shortening_prop_constant())
         {
             alpha = m_conditional(fiberVelocity,
@@ -437,7 +438,7 @@ void Bhargava2004Metabolics::calcMetabolicRate(
             // This simpler value of alpha comes from Frank Anderson's 1999
             // dissertation "A Dynamic Optimization Solution for a Complete
             // Cycle of Normal Gait".
-            alpha = m_conditional(fiberVelocity,
+            alpha = m_conditional(fiberVelocity + 1e-16,
                     0.25 * fiberForceTotal,
                     0,
                     get_velocity_smoothing(),
