@@ -3,8 +3,8 @@
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2019 Stanford University and the Authors                     *
  *                                                                            *
- * Author(s): Antoine Falisse                                                 *
- * Contributors: Tim Dorn, Thomas Uchida, Christopher Dembia                  *
+ * Author(s): Antoine Falisse, Christopher Dembia, Nick Bianco                *
+ * Contributors: Tim Dorn, Thomas Uchida                                      *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may    *
  * not use this file except in compliance with the License. You may obtain a  *
@@ -426,25 +426,74 @@ void Bhargava2004Metabolics::calcMetabolicRate(
         // TODO
         if (get_use_force_dependent_shortening_prop_constant())
         {
-            alpha = m_conditional(fiberVelocity,
-                    (0.16 * isometricTotalActiveForce)
-                    + (0.18 * fiberForceTotal),
-                    0.157 * fiberForceTotal,
-                    get_velocity_smoothing(),
-                    get_huber_loss_delta(),
-                    -1);
+            // TODO
+            if (get_use_huber_loss()) {
+                if (fiberVelocity + 1e-16 <= 0) { // TODO: I have added TODOs when I added this 1e-16 needed to pevent divions by 0.
+                    alpha = (0.16 * isometricTotalActiveForce)
+                            + (0.18 * fiberForceTotal);
+                } else {
+                    alpha = 0.157 * fiberForceTotal;
+                }
+            } else {
+                alpha = m_conditional(fiberVelocity + 1e-16, // TODO
+                            (0.16 * isometricTotalActiveForce)
+                            + (0.18 * fiberForceTotal),
+                            0.157 * fiberForceTotal,
+                            get_velocity_smoothing(),
+                            get_huber_loss_delta(),
+                            -1);
+            }
         } else {
             // This simpler value of alpha comes from Frank Anderson's 1999
             // dissertation "A Dynamic Optimization Solution for a Complete
             // Cycle of Normal Gait".
-            alpha = m_conditional(fiberVelocity + 1e-16,
+            alpha = m_conditional(fiberVelocity + 1e-16, // TODO
                     0.25 * fiberForceTotal,
                     0,
                     get_velocity_smoothing(),
                     get_huber_loss_delta(),
                     -1);
         }
-        shorteningHeatRate = -alpha * fiberVelocity;
+        shorteningHeatRate = -alpha * (fiberVelocity + 1e-16); // TODO
+        // TODO: This is not good yet because for now I still need the value
+        // of the shorteningRate computed with the if-statement.
+        // So this piece of code gives the correct result but it is not the way
+        // to go. This is only one case (and not the default one) so ko for now
+        // when still in the designing phase.
+        if (get_use_force_dependent_shortening_prop_constant() &&
+                get_use_huber_loss()) {
+                // Get angle between horizontale and right-hand side curve.
+                double theta = atan((0.157 * fiberForceTotal));
+                SimTK::Rotation R;
+                R.setRotationFromAngleAboutZ(theta);
+                // Rotate the coordinates corresponding to the shortening heat
+                // rate. This is not good, since it requires pre-computing the
+                // rate with a if-else statement.
+                SimTK::Vec3 coordinates(fiberVelocity + 1e-16, // TODO
+                        shorteningHeatRate, 0);
+                SimTK::Vec3 coordinates_rotated = R * coordinates;
+                // Get the new constant for the left-hand side curve.
+                const double leftConstant = (0.16 * isometricTotalActiveForce)
+                        + (0.18 * fiberForceTotal);
+                SimTK::Vec3 point_on_left_curve(1, -leftConstant, 0);
+                SimTK::Vec3 point_on_left_curve_rotated = (
+                        R * point_on_left_curve);
+                double leftConstant_rotated = (point_on_left_curve_rotated[1] /
+                        (-point_on_left_curve_rotated[0]));
+                // Smooth the curve using the Huber loss function.
+                double alpha_rotated = m_conditional(
+                        coordinates_rotated[0],
+                        leftConstant_rotated,
+                        0,
+                        get_velocity_smoothing(),
+                        get_huber_loss_delta(),
+                        -1);
+                // Rotate back.
+                SimTK::Vec3 coordinates_huber(coordinates_rotated[0],
+                        -alpha_rotated * (coordinates_rotated[0]), 0);
+                SimTK::Vec3 coordinates_huber_rotated = ~R * coordinates_huber;
+                shorteningHeatRate = coordinates_huber_rotated[1];
+        }
 
         // MECHANICAL WORK RATE for the contractile element of the muscle (W).
         // --> note that we define fiberVelocity<0 as shortening and
@@ -454,7 +503,7 @@ void Bhargava2004Metabolics::calcMetabolicRate(
         {
             mechanicalWorkRate = -fiberForceActive * fiberVelocity;
         } else {
-            mechanicalWorkRate = m_conditional(fiberVelocity,
+            mechanicalWorkRate = m_conditional(fiberVelocity + 1e-16, // TODO
                     -fiberForceActive * fiberVelocity,
                     0,
                     get_velocity_smoothing(),
