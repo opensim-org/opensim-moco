@@ -168,21 +168,54 @@ void Bhargava2004Metabolics::constructProperties()
     constructProperty_forbid_negative_total_power(true);
 
     constructProperty_use_smoothing(false);
+    constructProperty_use_huber_loss(false);
     constructProperty_velocity_smoothing(10);
     constructProperty_power_smoothing(10);
     constructProperty_heat_rate_smoothing(10);
+    constructProperty_huber_loss_delta(1);
+    constructProperty_huber_loss_direction(1);
 }
 
 void Bhargava2004Metabolics::extendFinalizeFromProperties() {
     if (get_use_smoothing()) {
         m_conditional = [](const double& cond, const double& left,
-                                const double& right, const double& smoothing) {
+                                const double& right, const double& smoothing,
+                                const double&, const int&) {
             const double smoothed_binary = 0.5 + 0.5 * tanh(smoothing * cond);
             return left + (-left + right) * smoothed_binary;
         };
+    } else if (get_use_huber_loss()) {
+        m_conditional = [](const double& cond, const double& left,
+                                const double& right, const double& smoothing,
+                                const double& delta, const int& direction) {
+
+            double offset = 0.0;
+            double scale = 0.0;
+
+            if (direction == 1) {
+                offset = left;
+                scale = direction * ((right - left) / cond);
+
+            } else if (direction == -1) {
+                offset = right;
+                scale = direction * ((left - right) / cond);
+            }
+
+            const double state = direction * cond;
+            const double shift = 0.5 * (1 / smoothing);
+            const double y = smoothing * (state + shift);
+
+            double f = 0;
+            if (y < 0) f = offset;
+            else if (y <= delta) f = 0.5 * y * y + offset;
+            else  f = delta * (y - 0.5 * delta) + offset;
+
+            return scale * (f / smoothing + offset *  (1.0 - 1.0 / smoothing));
+        };
     } else {
         m_conditional = [](const double& cond, const double& left,
-                                const double& right, const double&) {
+                                const double& right, const double&,
+                                const double&, const int&) {
             if (cond <= 0) {
                 return left;
             } else {
@@ -397,7 +430,9 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                     (0.16 * isometricTotalActiveForce)
                     + (0.18 * fiberForceTotal),
                     0.157 * fiberForceTotal,
-                    get_velocity_smoothing());
+                    get_velocity_smoothing(),
+                    get_huber_loss_delta(),
+                    get_huber_loss_direction());
         } else {
             // This simpler value of alpha comes from Frank Anderson's 1999
             // dissertation "A Dynamic Optimization Solution for a Complete
@@ -405,7 +440,9 @@ void Bhargava2004Metabolics::calcMetabolicRate(
             alpha = m_conditional(fiberVelocity,
                     0.25 * fiberForceTotal,
                     0,
-                    get_velocity_smoothing());
+                    get_velocity_smoothing(),
+                    get_huber_loss_delta(),
+                    get_huber_loss_direction());
         }
         shorteningHeatRate = -alpha * fiberVelocity;
 
@@ -420,7 +457,9 @@ void Bhargava2004Metabolics::calcMetabolicRate(
             mechanicalWorkRate = m_conditional(fiberVelocity,
                     -fiberForceActive * fiberVelocity,
                     0,
-                    get_velocity_smoothing());
+                    get_velocity_smoothing(),
+                    get_huber_loss_delta(),
+                    get_huber_loss_direction());
         }
 
         // NAN CHECKING
@@ -449,7 +488,9 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                         -Edot_W_beforeClamp,
                         0,
                         Edot_W_beforeClamp,
-                        get_power_smoothing());
+                        get_power_smoothing(),
+                        get_huber_loss_delta(),
+                        get_huber_loss_direction());
                 shorteningHeatRate -= Edot_W_beforeClamp_smoothed;
             } else {
                 if (Edot_W_beforeClamp < 0)
@@ -473,7 +514,9 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                         -totalHeatRate + 1.0 * muscleParameter.getMuscleMass(),
                         totalHeatRate,
                         1.0 * muscleParameter.getMuscleMass(),
-                        get_heat_rate_smoothing());
+                        get_heat_rate_smoothing(),
+                        get_huber_loss_delta(),
+                        get_huber_loss_direction());
             }
         } else {
             if (get_enforce_minimum_heat_rate_per_muscle()

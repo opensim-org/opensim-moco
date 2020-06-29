@@ -197,6 +197,12 @@ public:
             "rate larger than 1 (W/kg) for a give muscle. The larger the "
             "steeper the transition but the worse for optimization (default "
             "is 10).");
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(use_huber_loss, bool,
+            "TODO (default is false).");
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(huber_loss_delta, double,
+            "TODO (default is 1).");
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(huber_loss_direction, int,
+            "TODO (default is 1).");
 
     OpenSim_DECLARE_LIST_PROPERTY(
             muscle_parameters, Bhargava2004Metabolics_MuscleParameters,
@@ -262,7 +268,8 @@ private:
             SimTK::Vector& mechanicalWorkRatesForMuscles) const;
     mutable std::unordered_map<std::string, int> m_muscleIndices;
     using ConditionalFunction =
-            double(const double&, const double&, const double&, const double&);
+            double(const double&, const double&, const double&, const double&,
+                    const double&, const int&);
     PiecewiseLinearFunction m_fiberLengthDepCurve;
     mutable std::function<ConditionalFunction> m_conditional;
 };
