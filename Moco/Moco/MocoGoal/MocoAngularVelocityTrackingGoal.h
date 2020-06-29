@@ -137,12 +137,12 @@ public:
 protected:
     void initializeOnModelImpl(const Model& model) const override;
     void calcIntegrandImpl(
-            const SimTK::State& state, double& integrand) const override;
+            const IntegrandInput& input, double& integrand) const override;
     void calcGoalImpl(
             const GoalInput& input, SimTK::Vector& cost) const override {
         cost[0] = input.integral;
     }
-    void printDescriptionImpl(std::ostream& stream = std::cout) const override;
+    void printDescriptionImpl() const override;
 
 private:
     OpenSim_DECLARE_PROPERTY(states_reference, TableProcessor,

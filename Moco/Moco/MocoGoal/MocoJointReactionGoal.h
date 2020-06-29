@@ -103,13 +103,13 @@ public:
 
 protected:
     void initializeOnModelImpl(const Model&) const override;
-    void calcIntegrandImpl(const SimTK::State& state,
-            double& integrand) const override;
+    void calcIntegrandImpl(
+            const IntegrandInput& input, SimTK::Real& integrand) const override;
     void calcGoalImpl(
             const GoalInput& input, SimTK::Vector& cost) const override {
         cost[0] = input.integral / m_denominator;
     }
-    void printDescriptionImpl(std::ostream& stream = std::cout) const override;
+    void printDescriptionImpl() const override;
 
 private:
     OpenSim_DECLARE_PROPERTY(joint_path, std::string, 

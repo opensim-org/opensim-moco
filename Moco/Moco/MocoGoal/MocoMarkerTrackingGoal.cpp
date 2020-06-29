@@ -59,10 +59,9 @@ void MocoMarkerTrackingGoal::initializeOnModelImpl(const Model& model) const {
             m_refindices.push_back(i);
         } else {
             if (!get_allow_unused_references()) {
-                OPENSIM_THROW_FRMOBJ(
-                        Exception, format("Marker '%s' unrecognized by the "
-                                          "specified model.",
-                                           markRefNames[i]));
+                OPENSIM_THROW_FRMOBJ(Exception,
+                        "Marker '{}' unrecognized by the specified model.",
+                        markRefNames[i]);
             }
         }
     }
@@ -80,18 +79,19 @@ void MocoMarkerTrackingGoal::initializeOnModelImpl(const Model& model) const {
     m_refsplines =
             GCVSplineSet(get_markers_reference().getMarkerTable().flatten());
 
-    setNumIntegralsAndOutputs(1, 1);
+    setRequirements(1, 1, SimTK::Stage::Position);
 }
 
- void MocoMarkerTrackingGoal::calcIntegrandImpl(const SimTK::State& state,
-        double& integrand) const {
-     const auto& time = state.getTime();
-     getModel().realizePosition(state);
+void MocoMarkerTrackingGoal::calcIntegrandImpl(
+        const IntegrandInput& input, SimTK::Real& integrand) const {
+     const auto& time = input.state.getTime();
+     getModel().realizePosition(input.state);
      SimTK::Vector timeVec(1, time);
 
     for (int i = 0; i < (int)m_model_markers.size(); ++i) {
-        const auto& modelValue = m_model_markers[i]->getLocationInGround(state);
-        SimTK::Vec3 refValue;
+         const auto& modelValue =
+                 m_model_markers[i]->getLocationInGround(input.state);
+         SimTK::Vec3 refValue;
 
         // Get the markers reference index corresponding to the current
         // model marker and get the reference value.
@@ -106,17 +106,15 @@ void MocoMarkerTrackingGoal::initializeOnModelImpl(const Model& model) const {
     }
 }
 
-void MocoMarkerTrackingGoal::printDescriptionImpl(std::ostream& stream) const {
-    stream << "        ";
-    stream << "allow unused references: "
-           << get_allow_unused_references() << std::endl;
-    stream << "        ";
-    stream << "tracked marker(s): " << std::endl;
+void MocoMarkerTrackingGoal::printDescriptionImpl() const {
+    log_cout(
+            "        allow unused references: ", get_allow_unused_references());
+    log_cout("        tracked marker(s):");
     int weightIndex = 0;
-    for (auto name : m_marker_names) {
-       stream << "            ";
-       stream << name << ", weight: " << m_marker_weights[weightIndex] << std::endl;
-       weightIndex++;
+    for (const auto& name : m_marker_names) {
+        log_cout("            {}, weight: {}", name,
+                m_marker_weights[weightIndex]);
+        weightIndex++;
     }
 
 }

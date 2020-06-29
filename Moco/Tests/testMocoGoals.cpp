@@ -22,7 +22,6 @@
 
 #include <OpenSim/Actuators/CoordinateActuator.h>
 #include <OpenSim/Actuators/PointActuator.h>
-#include <OpenSim/Common/LogManager.h>
 #include <OpenSim/Simulation/SimbodyEngine/PinJoint.h>
 #include <OpenSim/Simulation/SimbodyEngine/SliderJoint.h>
 
@@ -192,19 +191,18 @@ TEMPLATE_TEST_CASE(
 }
 
 TEST_CASE("Enabled Goals", "") {
-    std::cout.rdbuf(LogManager::cout.rdbuf());
-    std::cout.rdbuf(LogManager::cout.rdbuf());
     double x = 23920;
     MocoFinalTimeGoal cost;
     Model model;
     auto state = model.initSystem();
     state.setTime(x);
+    SimTK::Vector controls;
     cost.initializeOnModel(model);
     SimTK::Vector goal;
-    cost.calcGoal({state, state, 0}, goal);
+    cost.calcGoal({0, state, controls, x, state, controls, 0}, goal);
     CHECK(goal[0] == Approx(x));
     cost.setEnabled(false);
-    cost.calcGoal({state, state, 0}, goal);
+    cost.calcGoal({0, state, controls, x, state, controls, 0}, goal);
     CHECK(goal[0] == Approx(0));
 }
 
@@ -259,8 +257,6 @@ void testDoublePendulumTracking(MocoStudy study,
 
 TEMPLATE_TEST_CASE("Test tracking goals", "", MocoTropterSolver,
         MocoCasADiSolver) {
-    std::cout.rdbuf(LogManager::cout.rdbuf());
-    std::cout.rdbuf(LogManager::cout.rdbuf());
 
     // Start with double pendulum problem to minimize control effort to create
     // a controls trajectory to track.
@@ -424,6 +420,7 @@ TEST_CASE("Test MocoSumSquaredStateGoal") {
     std::string q1_str = q1.getAbsolutePathString() + "/value";
 
     SimTK::State state = model.initSystem();
+    MocoGoal::IntegrandInput input {0, state, {}};
     q0.setValue(state, 1.0);
     q1.setValue(state, 0.5);
 
@@ -435,7 +432,7 @@ TEST_CASE("Test MocoSumSquaredStateGoal") {
     // 1.00 + 0.25 = 1.25
     auto* goal = mp.addGoal<MocoSumSquaredStateGoal>();
     goal->initializeOnModel(model);
-    CHECK(goal->calcIntegrand(state) == Approx(1.25).margin(1e-6));
+    CHECK(goal->calcIntegrand(input) == Approx(1.25).margin(1e-6));
 
     // If one state weight given, use that state weight, but then also
     // set weight to all other states as 1.0.
@@ -443,7 +440,7 @@ TEST_CASE("Test MocoSumSquaredStateGoal") {
     auto* goal2 = mp.addGoal<MocoSumSquaredStateGoal>();
     goal2->setWeightForState(q1_str, 10.0);
     goal2->initializeOnModel(model);
-    CHECK(goal2->calcIntegrand(state) == Approx(3.5).margin(1e-6));
+    CHECK(goal2->calcIntegrand(input) == Approx(3.5).margin(1e-6));
 
     MocoWeightSet moco_weight_set;
     moco_weight_set.cloneAndAppend({q0_str, 0.5});
@@ -453,14 +450,14 @@ TEST_CASE("Test MocoSumSquaredStateGoal") {
     auto* goal3 = mp.addGoal<MocoSumSquaredStateGoal>();
     goal3->setWeightSet(moco_weight_set);
     goal3->initializeOnModel(model);
-    CHECK(goal3->calcIntegrand(state) == Approx(3.0).margin(1e-6));
+    CHECK(goal3->calcIntegrand(input) == Approx(3.0).margin(1e-6));
 
     // 0.5 * 1.00 + 10.0 * 0.25 = 3.0
     auto* goal4 = mp.addGoal<MocoSumSquaredStateGoal>();
     goal4->setWeightSet(moco_weight_set);
     goal4->setPattern(".*value$");
     goal4->initializeOnModel(model);
-    CHECK(goal4->calcIntegrand(state) == Approx(3.0).margin(1e-6));
+    CHECK(goal4->calcIntegrand(input) == Approx(3.0).margin(1e-6));
 
     // Throws since weight set has some names that don't match pattern.
     auto* goal5 = mp.addGoal<MocoSumSquaredStateGoal>();
@@ -484,7 +481,7 @@ public:
         return Mode::EndpointConstraint;
     }
     void initializeOnModelImpl(const Model&) const override {
-        setNumIntegralsAndOutputs(0, 2);
+        setRequirements(0, 2);
     }
     void calcGoalImpl(
             const GoalInput& in, SimTK::Vector& values) const override {
@@ -499,8 +496,6 @@ public:
 
 TEMPLATE_TEST_CASE("Endpoint constraints", "", MocoCasADiSolver) {
     // TODO test with Tropter.
-    std::cout.rdbuf(LogManager::cout.rdbuf());
-    std::cout.rdbuf(LogManager::cout.rdbuf());
 
     MocoStudy study;
     auto& problem = study.updProblem();
@@ -554,8 +549,6 @@ TEMPLATE_TEST_CASE("Endpoint constraints", "", MocoCasADiSolver) {
 }
 
 TEMPLATE_TEST_CASE("MocoPeriodicityGoal", "", MocoCasADiSolver) {
-    std::cout.rdbuf(LogManager::cout.rdbuf());
-    std::cout.rdbuf(LogManager::cout.rdbuf());
 
     MocoStudy study;
     auto& problem = study.updProblem();
@@ -616,13 +609,12 @@ public:
         return Mode::EndpointConstraint;
     }
     void initializeOnModelImpl(const Model&) const override {
-        setNumIntegralsAndOutputs(1, 1);
+        setRequirements(1, 1, SimTK::Stage::Model);
     }
     void calcIntegrandImpl(
-            const SimTK::State& state, double& integrand) const override {
-        getModel().realizeVelocity(state);
-        const auto& controls = getModel().getControls(state);
-        integrand = controls.normSqr();
+            const IntegrandInput& input,
+            SimTK::Real& integrand) const override {
+        integrand = input.controls.normSqr();
     }
     void calcGoalImpl(
             const GoalInput& in, SimTK::Vector& values) const override {
@@ -721,4 +713,56 @@ TEST_CASE("MocoOutputGoal") {
     }
 
     CHECK(solutionControl.isNumericallyEqual(solutionOutput, 1e-5));
+}
+
+/// This goal violates the rule that calcIntegrandImpl() and calcGoalImpl()
+/// cannot realize the state's stage beyond the stage dependency.
+class MocoStageTestingGoal : public MocoGoal {
+OpenSim_DECLARE_CONCRETE_OBJECT(MocoStageTestingGoal, MocoGoal);
+public:
+    MocoStageTestingGoal() = default;
+    void setRealizeInitialState(bool tf) { m_realizeInitialState = tf; }
+protected:
+    void initializeOnModelImpl(const Model&) const override {
+        setRequirements(1, 1, SimTK::Stage::Position);
+    }
+    void calcIntegrandImpl(const IntegrandInput& input,
+            SimTK::Real& integrand) const override {
+        getModel().realizeVelocity(input.state);
+    }
+    void calcGoalImpl(
+            const GoalInput& in, SimTK::Vector& values) const override {
+        if (m_realizeInitialState) {
+            getModel().realizeVelocity(in.initial_state);
+        } else {
+            getModel().realizeVelocity(in.final_state);
+        }
+    }
+private:
+    bool m_realizeInitialState = true;
+};
+
+// Ensure that goals do not internally realize beyond the stage they say
+// they depend on.
+TEST_CASE("MocoGoal stage dependency") {
+    Model model;
+    SimTK::State state = model.initSystem();
+    MocoStageTestingGoal goal;
+    goal.initializeOnModel(model);
+    state.invalidateAll(SimTK::Stage::Instance);
+    CHECK_THROWS_WITH(goal.calcIntegrand({0, state, SimTK::Vector()}),
+            Catch::Contains("calcIntegrand()"));
+
+    goal.setRealizeInitialState(true);
+    state.invalidateAll(SimTK::Stage::Instance);
+    auto initialState = state;
+    auto finalState = state;
+    MocoGoal::GoalInput input{0, initialState, SimTK::Vector(), 0, finalState,
+            SimTK::Vector(), 0};
+    SimTK::Vector goalValue;
+    CHECK_THROWS_WITH(goal.calcGoal(input, goalValue),
+            Catch::Contains("calcGoal()") && Catch::Contains("initial_state"));
+    goal.setRealizeInitialState(false);
+    CHECK_THROWS_WITH(goal.calcGoal(input, goalValue),
+            Catch::Contains("calcGoal()") && Catch::Contains("final_state"));
 }

@@ -80,8 +80,8 @@ void MocoJointReactionGoal::initializeOnModelImpl(const Model& model) const {
                         get_reaction_measures(i)) == allowedMeasures.end()) {
 
                 OPENSIM_THROW_FRMOBJ(Exception,
-                        format("Reaction measure '%s' not recognized.",
-                                get_reaction_measures(i)));
+                        "Reaction measure '{}' not recognized.",
+                        get_reaction_measures(i));
             }
             reactionMeasures.push_back(get_reaction_measures(i));
         }
@@ -111,22 +111,22 @@ void MocoJointReactionGoal::initializeOnModelImpl(const Model& model) const {
         m_measureWeights.push_back(compWeight);
     }
 
-    setNumIntegralsAndOutputs(1, 1);
+    setRequirements(1, 1);
 }
 
 void MocoJointReactionGoal::calcIntegrandImpl(
-        const SimTK::State& state, double& integrand) const {
+        const IntegrandInput& input, SimTK::Real& integrand) const {
 
-    getModel().realizeAcceleration(state);
+    getModel().realizeAcceleration(input.state);
     const auto& ground = getModel().getGround();
 
     // Compute the reaction loads on the parent or child frame.
     SimTK::SpatialVec reactionInGround;
     if (m_isParentFrame) {
         reactionInGround =
-                m_joint->calcReactionOnParentExpressedInGround(state);
+                m_joint->calcReactionOnParentExpressedInGround(input.state);
     } else {
-        reactionInGround = m_joint->calcReactionOnChildExpressedInGround(state);
+        reactionInGround = m_joint->calcReactionOnChildExpressedInGround(input.state);
     }
 
     // Re-express the reactions into the proper frame and repackage into a new
@@ -138,9 +138,9 @@ void MocoJointReactionGoal::calcIntegrandImpl(
         force = reactionInGround[1];
     } else {
         moment = ground.expressVectorInAnotherFrame(
-                state, reactionInGround[0], *m_frame);
+                input.state, reactionInGround[0], *m_frame);
         force = ground.expressVectorInAnotherFrame(
-                state, reactionInGround[1], *m_frame);
+                input.state, reactionInGround[1], *m_frame);
     }
     SimTK::SpatialVec reaction(moment, force);
 
@@ -153,25 +153,16 @@ void MocoJointReactionGoal::calcIntegrandImpl(
     }
 }
 
-void MocoJointReactionGoal::printDescriptionImpl(std::ostream& stream) const {
-    stream << "        ";
-    stream << "joint path: " << get_joint_path() << std::endl;
-    stream << "        ";
-    stream << "loads frame: " << get_loads_frame() << std::endl;
-    stream << "        ";
-    stream << "expressed: " << get_expressed_in_frame_path() << std::endl;
-    stream << "        ";
-    stream << "reaction measures: ";
-    for (int i = 0; i < getProperty_reaction_measures().size(); i++) {
-        stream << get_reaction_measures(i);
-        if (i < getProperty_reaction_measures().size() - 1) { stream << ", "; }
+void MocoJointReactionGoal::printDescriptionImpl() const {
+    log_cout("        joint path: ", get_joint_path());
+    log_cout("        loads frame: ", get_loads_frame());
+    log_cout("        expressed: ", get_expressed_in_frame_path());
+
+    std::vector<std::string> measures(getProperty_reaction_measures().size());
+    for (int i = 0; i < (int)measures.size(); i++) {
+        measures[i] = get_reaction_measures(i);
     }
-    stream << std::endl;
-    stream << "        ";
-    stream << "reaction weights: ";
-    for (int i = 0; i < (int)m_measureWeights.size(); ++i) {
-        stream << m_measureWeights[i];
-        if (i < (int)m_measureWeights.size() - 1) { stream << ", "; }
-    }
-    stream << std::endl;
+    log_cout("        reaction measures: {}", fmt::join(measures, ", "));
+
+    log_cout("        reaction weights: {}", fmt::join(m_measureWeights, ", "));
 }

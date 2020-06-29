@@ -196,8 +196,7 @@ public:
             }
         }
         OPENSIM_THROW_FRMOBJ(Exception,
-                format("No reference label provided for control '%s'.",
-                        control));
+                "No reference label provided for control '{}'.", control);
     }
 
     bool getAllowUnusedReferences() const {
@@ -208,12 +207,12 @@ protected:
     // TODO check that the reference covers the entire possible time range.
     void initializeOnModelImpl(const Model& model) const override;
     void calcIntegrandImpl(
-            const SimTK::State& state, double& integrand) const override;
+            const IntegrandInput& input, SimTK::Real& integrand) const override;
     void calcGoalImpl(
             const GoalInput& input, SimTK::Vector& cost) const override {
         cost[0] = input.integral;
     }
-    void printDescriptionImpl(std::ostream& stream = std::cout) const override;
+    void printDescriptionImpl() const override;
 
 private:
     OpenSim_DECLARE_PROPERTY(reference, TableProcessor,

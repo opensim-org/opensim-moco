@@ -46,15 +46,16 @@ void MocoStateTrackingGoal::initializeOnModelImpl(const Model& model) const {
         const auto& weightName = get_state_weights().get(i).getName();
         if (allSysYIndices.count(weightName) == 0) {
             OPENSIM_THROW_FRMOBJ(Exception,
-                "Weight provided with name '" + weightName + "' but this is "
-                "not a recognized state.");
+                    "Weight provided with name '{}' but this is "
+                    "not a recognized state.",
+                    weightName);
         }
         if (getProperty_pattern().size() &&
                 !std::regex_match(weightName, regex)) {
             OPENSIM_THROW_FRMOBJ(Exception,
-                    format("Weight provided with name '%s' but this name does "
-                           "not match the pattern '%s'.",
-                            weightName, get_pattern()));
+                    "Weight provided with name '{}' but this name "
+                    "does not match the pattern '{}'.",
+                    weightName, get_pattern());
         }
     }
 
@@ -67,18 +68,17 @@ void MocoStateTrackingGoal::initializeOnModelImpl(const Model& model) const {
             if (get_allow_unused_references()) {
                 continue;
             }
-            OPENSIM_THROW_FRMOBJ(Exception,
-                 "State reference '" + refName + "' unrecognized.");
+            OPENSIM_THROW_FRMOBJ(
+                    Exception, "State reference '{}' unrecognized.", refName);
         }
         if (getProperty_pattern().size() &&
                 !std::regex_match(refName, regex)) {
             if (get_allow_unused_references()) {
                 continue;
             }
-            OPENSIM_THROW_FRMOBJ(
-                    Exception, format("State reference '%s' does not match the "
-                                      "pattern '%s'.",
-                                       refName, get_pattern()));
+            OPENSIM_THROW_FRMOBJ(Exception,
+                    "State reference '{}' does not match the pattern '{}'.",
+                    refName, get_pattern());
         }
 
         m_sysYIndices.push_back(allSysYIndices[refName]);
@@ -97,12 +97,12 @@ void MocoStateTrackingGoal::initializeOnModelImpl(const Model& model) const {
         m_state_names.push_back(refName);
     }
 
-    setNumIntegralsAndOutputs(1, 1);
+    setRequirements(1, 1, SimTK::Stage::Time);
 }
 
-void MocoStateTrackingGoal::calcIntegrandImpl(/*int meshIndex,*/
-        const SimTK::State& state, double& integrand) const {
-    const auto& time = state.getTime();
+void MocoStateTrackingGoal::calcIntegrandImpl(
+        const IntegrandInput& input, SimTK::Real& integrand) const {
+    const auto& time = input.time;
 
     SimTK::Vector timeVec(1, time);
 
@@ -110,17 +110,16 @@ void MocoStateTrackingGoal::calcIntegrandImpl(/*int meshIndex,*/
     // than evaluating the spline.
     integrand = 0;
     for (int iref = 0; iref < m_refsplines.getSize(); ++iref) {
-        const auto& modelValue = state.getY()[m_sysYIndices[iref]];
+        const auto& modelValue = input.state.getY()[m_sysYIndices[iref]];
         const auto& refValue = m_refsplines[iref].calcValue(timeVec);
         integrand += m_state_weights[iref] * pow(modelValue - refValue, 2);
     }
 }
 
-void MocoStateTrackingGoal::printDescriptionImpl(std::ostream& stream) const {
+void MocoStateTrackingGoal::printDescriptionImpl() const {
     for (int i = 0; i < (int) m_state_names.size(); i++) {
-        stream << "        ";
-        stream << "state: " << m_state_names[i] << ", "
-               << "weight: " << m_state_weights[i] << std::endl;
+        log_cout("        state: {}, weight: {}", m_state_names[i],
+                m_state_weights[i]);
     }
 }
 

@@ -29,7 +29,6 @@ using Catch::Contains;
 #include <OpenSim/Common/Constant.h>
 #include <OpenSim/Common/GCVSpline.h>
 #include <OpenSim/Common/LinearFunction.h>
-#include <OpenSim/Common/LogManager.h>
 #include <OpenSim/Common/Sine.h>
 #include <OpenSim/Common/TimeSeriesTable.h>
 #include <OpenSim/Simulation/osimSimulation.h>
@@ -620,8 +619,6 @@ void testDoublePendulumPointOnLine(
 template <typename SolverType>
 void testDoublePendulumCoordinateCoupler(MocoSolution& solution,
         bool enforce_constraint_derivatives, std::string dynamics_mode) {
-    std::cout.rdbuf(LogManager::cout.rdbuf());
-    std::cerr.rdbuf(LogManager::cerr.rdbuf());
     MocoStudy study;
     study.setName("double_pendulum_coordinate_coupler");
 
@@ -933,8 +930,6 @@ protected:
 /// actuators must produce an equal control trajectory.
 TEMPLATE_TEST_CASE(
         "DoublePendulumEqualControl", "", MocoTropterSolver, MocoCasADiSolver) {
-    std::cout.rdbuf(LogManager::cout.rdbuf());
-    std::cerr.rdbuf(LogManager::cerr.rdbuf());
     OpenSim::Object::registerType(EqualControlConstraint());
     MocoStudy study;
     study.setName("double_pendulum_equal_control");
@@ -1002,8 +997,6 @@ TEMPLATE_TEST_CASE(
 TEMPLATE_TEST_CASE(
         "Parameters are set properly for Base and DisabledConstraints", "",
         MocoTropterSolver /*, too damn slow: MocoCasADiSolver*/) {
-    std::cout.rdbuf(LogManager::cout.rdbuf());
-    std::cerr.rdbuf(LogManager::cerr.rdbuf());
     Model model;
     auto* body = new Body("b", 0.7, SimTK::Vec3(0), SimTK::Inertia(1));
     model.addBody(body);
@@ -1032,14 +1025,15 @@ class MocoJointReactionComponentGoal : public MocoGoal {
 
 public:
     void initializeOnModelImpl(const Model&) const override {
-        setNumIntegralsAndOutputs(1, 1);
+        setRequirements(1, 1);
     }
-    void calcIntegrandImpl(
-            const SimTK::State& state, double& integrand) const override {
-        getModel().realizeAcceleration(state);
+    void calcIntegrandImpl(const IntegrandInput& input,
+            SimTK::Real& integrand) const override {
+        getModel().realizeAcceleration(input.state);
         const auto& joint = getModel().getComponent<Joint>("jointset/j1");
         // Minus sign since we are maximizing.
-        integrand = -joint.calcReactionOnChildExpressedInGround(state)[0][0];
+        integrand =
+                -joint.calcReactionOnChildExpressedInGround(input.state)[0][0];
     }
     void calcGoalImpl(
             const GoalInput& input, SimTK::Vector& cost) const override {
@@ -1138,7 +1132,7 @@ public:
             std::shared_ptr<AccelerationsAndJointReaction> data)
             : m_jointName(jointName), m_data(data) {}
     void initializeOnModelImpl(const Model&) const override {
-        setNumIntegralsAndOutputs(0, 1);
+        setRequirements(0, 1);
     }
     void calcGoalImpl(
             const GoalInput& input, SimTK::Vector& cost) const override {
@@ -1163,8 +1157,6 @@ private:
 // accelerations. This test ensures that these accelerations and multipliers are
 // those that Moco specified, not what Simbody computes.
 TEST_CASE("Goals use Moco-defined accelerations and multipliers") {
-    std::cout.rdbuf(LogManager::cout.rdbuf());
-    std::cerr.rdbuf(LogManager::cerr.rdbuf());
     MocoStudy study;
     study.setName("mass_welded");
     MocoProblem& problem = study.updProblem();
@@ -1320,8 +1312,6 @@ TEST_CASE("Goals use Moco-defined accelerations and multipliers") {
 
 
 TEST_CASE("Multipliers are correct", "") {
-    std::cout.rdbuf(LogManager::cout.rdbuf());
-    std::cerr.rdbuf(LogManager::cerr.rdbuf());
     SECTION("Body welded to ground") {
         auto dynamics_mode =
                 GENERATE(as<std::string>{}, "implicit", "explicit");
@@ -1426,8 +1416,6 @@ TEST_CASE("Multipliers are correct", "") {
 // (PositionMotion) and kinematic constraints. This test is similar to the one
 // above except that we prescribe motions for tx and ty.
 TEST_CASE("Prescribed kinematics with kinematic constraints", "") {
-    std::cout.rdbuf(LogManager::cout.rdbuf());
-    std::cerr.rdbuf(LogManager::cerr.rdbuf());
     Model model = ModelFactory::createPlanarPointMass();
     model.set_gravity(Vec3(0));
     CoordinateCouplerConstraint* constraint = new CoordinateCouplerConstraint();

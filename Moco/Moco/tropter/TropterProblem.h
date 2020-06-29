@@ -19,6 +19,7 @@
  * -------------------------------------------------------------------------- */
 
 #include "../Components/AccelerationMotion.h"
+#include "../Components/DiscreteController.h"
 #include "../Components/DiscreteForces.h"
 #include "../MocoBounds.h"
 #include "../MocoTropterSolver.h"
@@ -56,20 +57,25 @@ protected:
               m_stateDisabledConstraints(
                       m_mocoProbRep.updStateDisabledConstraints()),
               m_implicit(implicit) {
-        // TODO set name properly.
-        // Disable all controllers.
-        // TODO temporary; don't want to actually do this.
-        auto controllers = m_modelBase.getComponentList<Controller>();
-        for (auto& controller : controllers) {
-            OPENSIM_THROW_IF(controller.get_enabled(), Exception,
-                    "MocoTropterSolver does not support OpenSim Controllers. "
-                    "Disable all controllers in the model.");
-        }
 
         // It is sufficient to perform this check only on the original model.
         OPENSIM_THROW_IF(!m_modelBase.getMatterSubsystem().getUseEulerAngles(
                                  m_stateBase),
                 Exception, "Quaternions are not supported.");
+
+        // Ensure the model does not have user-provided controllers.
+        int numControllers = 0;
+        for (const auto& controller :
+                m_modelBase.template getComponentList<Controller>()) {
+            // Avoid unused variable warning.
+            (void)&controller;
+            ++numControllers;
+        }
+        // The model has a DiscreteController added by MocoProblemRep; any other
+        // controllers were added by the user.
+        OPENSIM_THROW_IF(numControllers > 1, Exception,
+                "MocoCasADiSolver does not support models with Controllers.");
+
         // It is sufficient to create these containers from the original model
         // since the discrete variables added to the model with disabled
         // constraints wouldn't show up anyway.
@@ -86,7 +92,7 @@ protected:
 
         std::string formattedTimeString(getMocoFormattedDateTime(true));
         m_fileDeletionThrower = OpenSim::make_unique<FileDeletionThrower>(
-                format("delete_this_to_stop_optimization_%s_%s.txt",
+                fmt::format("delete_this_to_stop_optimization_{}_{}.txt",
                         m_mocoProbRep.getName(), formattedTimeString));
     }
 
@@ -168,23 +174,17 @@ protected:
             // constraint derivatives? For now, disallow enforcing derivatives
             // if non-holonomic or acceleration constraints present.
             OPENSIM_THROW_IF(enforceConstraintDerivs && mv != 0, Exception,
-                    format("Enforcing constraint derivatives is supported only "
-                           "for "
-                           "holonomic (position-level) constraints. "
-                           "There are %i velocity-level "
-                           "scalar constraints associated with the model "
-                           "Constraint "
-                           "at ConstraintIndex %i.",
-                            mv, cid));
+                    "Enforcing constraint derivatives is supported "
+                    "only for holonomic (position-level) constraints. There "
+                    "are {} velocity-level scalar constraints associated with "
+                    "the model Constraint at ConstraintIndex {}.",
+                    mv, cid);
             OPENSIM_THROW_IF(enforceConstraintDerivs && ma != 0, Exception,
-                    format("Enforcing constraint derivatives is supported only "
-                           "for "
-                           "holonomic (position-level) constraints. "
-                           "There are %i acceleration-level "
-                           "scalar constraints associated with the model "
-                           "Constraint "
-                           "at ConstraintIndex %i.",
-                            ma, cid));
+                    "Enforcing constraint derivatives is supported only for "
+                    "holonomic (position-level) constraints. There are {} "
+                    "acceleration-level scalar constraints associated with the "
+                    "model Constraint at ConstraintIndex {}.",
+                    ma, cid);
 
             m_total_mp += mp;
             m_total_mv += mv;
@@ -227,11 +227,10 @@ protected:
                         OPENSIM_THROW_IF(
                                 multInfo.getName().substr(0, 6) != "lambda",
                                 Exception,
-                                format("Expected the multiplier name for this "
-                                       "constraint to begin with 'lambda' but "
-                                       "it "
-                                       "begins with '%s'.",
-                                        multInfo.getName().substr(0, 6)));
+                                "Expected the multiplier name for "
+                                "this constraint to begin with "
+                                "'lambda' but it begins with '{}'.",
+                                multInfo.getName().substr(0, 6));
                         this->add_diffuse(std::string(multInfo.getName())
                                                   .replace(0, 6, "gamma"),
                                 convertBounds(
@@ -339,15 +338,12 @@ protected:
             // Set the controls for actuators in the OpenSim model with disabled
             // constraints. The base model never gets realized past
             // Stage::Velocity, so we don't ever need to set its controls.
-            auto& osimControls = modelDisabledConstraints.updControls(
-                    simTKStateDisabledConstraints);
+            auto& osimControls =
+                    m_mocoProbRep.getDiscreteControllerDisabledConstraints()
+                            .updDiscreteControls(simTKStateDisabledConstraints);
             for (int ic = 0; ic < controls.size(); ++ic) {
                 osimControls[m_modelControlIndices[ic]] = controls[ic];
             }
-            modelDisabledConstraints.realizeVelocity(
-                    simTKStateDisabledConstraints);
-            modelDisabledConstraints.setControls(
-                    simTKStateDisabledConstraints, osimControls);
         }
 
         // If enabled constraints exist in the model, compute constraint forces
@@ -379,9 +375,15 @@ protected:
         // point, so that each can preserve their cache?
         this->setSimTKState(in);
 
+        const auto& discreteController =
+                m_mocoProbRep.getDiscreteControllerDisabledConstraints();
+        const auto& rawControls = discreteController.getDiscreteControls(
+                this->m_stateDisabledConstraints);
+
         // Compute the integrand for this cost term.
         const auto& cost = m_mocoProbRep.getCostByIndex(cost_index);
-        integrand = cost.calcIntegrand(this->m_stateDisabledConstraints);
+        integrand = cost.calcIntegrand(
+                {in.time, this->m_stateDisabledConstraints, rawControls});
     }
 
     void calc_cost(int cost_index, const tropter::CostInput<T>& in,
@@ -398,10 +400,20 @@ protected:
         const auto& initialState = m_mocoProbRep.updStateDisabledConstraints(0);
         const auto& finalState = m_mocoProbRep.updStateDisabledConstraints(1);
 
+        const auto& discreteController =
+                m_mocoProbRep.getDiscreteControllerDisabledConstraints();
+        const auto& initialRawControls = discreteController.getDiscreteControls(
+                initialState);
+        const auto& finalRawControls = discreteController.getDiscreteControls(
+                finalState);
+
         // Compute the cost for this cost term.
         const auto& cost = m_mocoProbRep.getCostByIndex(cost_index);
         SimTK::Vector costVector(cost.getNumOutputs());
-        cost.calcGoal({initialState, finalState, in.integral}, costVector);
+        cost.calcGoal({in.initial_time, initialState, initialRawControls,
+                              in.final_time, finalState, finalRawControls,
+                              in.integral},
+                costVector);
         cost_value = costVector.sum();
     }
 
@@ -490,11 +502,11 @@ protected:
             const auto& enforceConstraintDerivatives =
                     m_mocoTropterSolver.get_enforce_constraint_derivatives();
             if (enforceConstraintDerivatives || m_total_ma) {
-                // Calculuate udoterr. We cannot use State::getUDotErr()
-                // because that uses Simbody's multiplilers and UDot,
+                // Calculate udoterr. We cannot use State::getUDotErr()
+                // because that uses Simbody's multipliers and UDot,
                 // whereas we have our own multipliers and UDot. Here, we use
                 // the udot computed from the model with disabled constraints
-                // since we cannot use (nor do we have availabe) udot computed
+                // since we cannot use (nor do we have available) udot computed
                 // from the original model.
                 const auto& matterBase = m_modelBase.getMatterSubsystem();
                 matterBase.calcConstraintAccelerationErrors(
@@ -648,7 +660,7 @@ public:
             OPENSIM_THROW_IF(
                     leafpos == std::string::npos, Exception, "Internal error.");
             name.replace(leafpos, name.size(), "accel");
-            this->add_adjunct(name, 
+            this->add_adjunct(name,
                 convertBounds(
                     solver.get_implicit_multibody_acceleration_bounds()));
             this->add_path_constraint(name.substr(0, leafpos) + "residual", 0);

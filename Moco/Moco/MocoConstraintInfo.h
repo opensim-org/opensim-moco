@@ -91,7 +91,7 @@ public:
 
     /// Print the name, type, number of scalar equations, and bounds for this
     /// constraint.
-    void printDescription(std::ostream& stream = std::cout) const;
+    void printDescription() const;
 
 private:
     OpenSim_DECLARE_LIST_PROPERTY(bounds, MocoBounds,
@@ -126,9 +126,9 @@ private:
     void checkPropertySize(const AbstractProperty& prop) {
         if (!prop.empty()) {
             OPENSIM_THROW_IF(m_num_equations != prop.size(), Exception,
-                    format("Size of property %s is not consistent with "
-                           "current number of constraint equations.",
-                            prop.getName()));
+                    "Size of property {} is not consistent with "
+                    "current number of constraint equations.",
+                    prop.getName());
         }
     }
 };

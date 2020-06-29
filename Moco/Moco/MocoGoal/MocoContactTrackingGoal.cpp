@@ -112,10 +112,9 @@ void MocoContactTrackingGoal::initializeOnModelImpl(const Model& model) const {
         const auto& group = get_contact_groups(ig);
 
         OPENSIM_THROW_IF_FRMOBJ(
-                !extLoads->contains(group.get_external_force_name()),
-                Exception,
-                format("External force '%s' not found.",
-                        group.get_external_force_name()));
+                !extLoads->contains(group.get_external_force_name()), Exception,
+                "External force '{}' not found.",
+                group.get_external_force_name());
         const auto& extForce =
                 extLoads->get(group.get_external_force_name());
 
@@ -156,10 +155,9 @@ void MocoContactTrackingGoal::initializeOnModelImpl(const Model& model) const {
                         &model.getComponent<PhysicalFrame>(
                                 "./bodyset/" + forceExpressedInBody);
             } else {
-                OPENSIM_THROW_FRMOBJ(
-                        Exception, format("Could not find '%s' in the model or "
-                                          "the BodySet.",
-                                           forceExpressedInBody));
+                OPENSIM_THROW_FRMOBJ(Exception,
+                        "Could not find '{}' in the model or the BodySet.",
+                        forceExpressedInBody);
             }
         }
 
@@ -172,10 +170,10 @@ void MocoContactTrackingGoal::initializeOnModelImpl(const Model& model) const {
     } else if (get_projection() == "plane") {
         m_projectionType = ProjectionType::Plane;
     } else if (get_projection() != "none") {
-        OPENSIM_THROW_FRMOBJ(
-                Exception, format("Expected 'projection' to be 'none', "
-                                  "'vector', or 'plane', but got '%s'.",
-                                   get_projection()));
+        OPENSIM_THROW_FRMOBJ(Exception,
+                "Expected 'projection' to be 'none', 'vector', or 'plane', but "
+                "got '{}'.",
+                get_projection());
     }
     if (m_projectionType != ProjectionType::None) {
         OPENSIM_THROW_IF_FRMOBJ(getProperty_projection_vector().empty(),
@@ -183,7 +181,7 @@ void MocoContactTrackingGoal::initializeOnModelImpl(const Model& model) const {
         m_projectionVector = SimTK::UnitVec3(get_projection_vector());
     }
 
-    setNumIntegralsAndOutputs(1, 1);
+    setRequirements(1, 1, SimTK::Stage::Velocity);
 }
 
 int MocoContactTrackingGoal::findRecordOffset(
@@ -231,18 +229,17 @@ int MocoContactTrackingGoal::findRecordOffset(
     }
 
     OPENSIM_THROW_FRMOBJ(Exception,
-            format("Contact force '%s' has sphere base frame '%s' "
-                  "and half space base frame '%s'. One of these "
-                   "frames should match the applied_to_body "
-                   "setting ('%s') of ExternalForce '%s', or match one of "
-                   "the alternative_frame_paths, but no match found.",
-                    contactForce.getAbsolutePathString(),
-                    sphereBaseName, halfSpaceBaseName, appliedToBody,
-                    group.get_external_force_name()));
+            "Contact force '{}' has sphere base frame '{}' and half space base "
+            "frame '{}'. One of these frames should match the applied_to_body "
+            "setting ('{}') of ExternalForce '{}', or match one of the "
+            "alternative_frame_paths, but no match found.",
+            contactForce.getAbsolutePathString(), sphereBaseName,
+            halfSpaceBaseName, appliedToBody, group.get_external_force_name());
 }
 
 void MocoContactTrackingGoal::calcIntegrandImpl(
-        const SimTK::State& state, double& integrand) const {
+        const IntegrandInput& input, double& integrand) const {
+    const auto& state = input.state;
     const auto& time = state.getTime();
     getModel().realizeVelocity(state);
     SimTK::Vector timeVec(1, time);
@@ -289,25 +286,19 @@ void MocoContactTrackingGoal::calcIntegrandImpl(
     }
 }
 
-void MocoContactTrackingGoal::printDescriptionImpl(std::ostream& stream) const {
-    stream << "        ";
-    stream << "projection type: " << get_projection() << std::endl;
+void MocoContactTrackingGoal::printDescriptionImpl() const {
+    log_cout("        projection type: {}", get_projection());
     if (m_projectionType != ProjectionType::None) {
-        stream << "        ";
-        stream << "projection vector: " << get_projection_vector() << std::endl;
+        log_cout("        projection vector: {}", get_projection_vector());
     }
     for (int ig = 0; ig < getProperty_contact_groups().size(); ++ig) {
         const auto& group = get_contact_groups(ig);
-        stream << "        ";
-        stream << "group " << ig
-               << ": ExternalForce: " << group.get_external_force_name()
-               << std::endl;
-        stream << "            ";
-        stream << "forces: " << std::endl;
+        log_cout("        group {}: ExternalForce: {}",
+                ig, group.get_external_force_name());
+        log_cout("            forces:");
         for (int ic = 0; ic < group.getProperty_contact_force_paths().size();
                 ++ic) {
-            stream << "                ";
-            stream << group.get_contact_force_paths(ic) << std::endl;
+            log_cout("                {}", group.get_contact_force_paths(ic));
         }
     }
 }

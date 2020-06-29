@@ -56,19 +56,18 @@ void MocoAccelerationTrackingGoal::initializeOnModelImpl(
             const auto& labels = accelerationTableToUse.getColumnLabels();
             for (int i = 0; i < getProperty_frame_paths().size(); ++i) {
                 const auto& path = get_frame_paths(i);
-                OPENSIM_THROW_IF_FRMOBJ(
-                    std::find(labels.begin(), labels.end(), path) == 
-                        labels.end(),
-                    Exception,
-                    format("Expected frame_paths to match one of the "
-                       "column labels in the acceleration reference, but frame "
-                       "path '%s' not found in the reference labels.", path));
+                OPENSIM_THROW_IF_FRMOBJ(std::find(labels.begin(), labels.end(),
+                                                path) == labels.end(),
+                        Exception,
+                        "Expected frame_paths to match one of the column "
+                        "labels in the acceleration reference, but frame path "
+                        "'{}' not found in the reference labels.",
+                        path);
                 m_frame_paths.push_back(path);
                 accelerationTable.appendColumn(path, 
                     accelerationTableToUse.getDependentColumn(path));
             }
         }
-
     }
 
     // Check that there are no redundant columns in the reference data.
@@ -91,11 +90,12 @@ void MocoAccelerationTrackingGoal::initializeOnModelImpl(
     m_ref_splines = GCVSplineSet(accelerationTable.flatten(
         {"/acceleration_x", "/acceleration_y", "/acceleration_z"}));
 
-    setNumIntegralsAndOutputs(1, 1);
+    setRequirements(1, 1);
 }
 
-void MocoAccelerationTrackingGoal::calcIntegrandImpl(const SimTK::State& state, 
-        double& integrand) const {
+void MocoAccelerationTrackingGoal::calcIntegrandImpl(
+        const IntegrandInput& input, double& integrand) const {
+    const auto& state = input.state;
     const auto& time = state.getTime();
     getModel().realizeAcceleration(state);
     SimTK::Vector timeVec(1, time);
@@ -119,15 +119,11 @@ void MocoAccelerationTrackingGoal::calcIntegrandImpl(const SimTK::State& state,
     }
 }
 
-void MocoAccelerationTrackingGoal::printDescriptionImpl(
-        std::ostream& stream) const {
-    stream << "        ";
-    stream << "acceleration reference file: " 
-           << get_acceleration_reference_file()
-           << std::endl;
+void MocoAccelerationTrackingGoal::printDescriptionImpl() const {
+    log_cout("        acceleration reference file: {}",
+            get_acceleration_reference_file());
     for (int i = 0; i < (int)m_frame_paths.size(); i++) {
-        stream << "        ";
-        stream << "frame " << i << ": " << m_frame_paths[i] << ", ";
-        stream << "weight: " << m_acceleration_weights[i] << std::endl;
+        log_cout("        frame {}: {}, weight: {}", i, m_frame_paths[i],
+                m_acceleration_weights[i]);
     }
 }
