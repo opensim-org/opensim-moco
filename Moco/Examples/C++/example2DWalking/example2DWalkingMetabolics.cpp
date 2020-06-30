@@ -67,7 +67,8 @@ void gaitTrackingMetabolics() {
     // Add metabolics
     Bhargava2004Metabolics* metabolics = new Bhargava2004Metabolics();
     metabolics->setName("metabolics");
-    metabolics->set_use_huber_loss(true);
+    metabolics->set_use_tanh_smoothing(true);
+    metabolics->set_use_force_dependent_shortening_prop_constant(true);
     metabolics->addMuscle("hamstrings_r",
             baseModel.getComponent<Muscle>("hamstrings_r"));
     metabolics->addMuscle("hamstrings_l",
@@ -212,6 +213,7 @@ void gaitTrackingMetabolics() {
     solver.set_optim_convergence_tolerance(1e-4);
     solver.set_optim_constraint_tolerance(1e-4);
     solver.set_optim_max_iterations(10000);
+    solver.set_parallel(20);
 
     // Solve problem.
     // ==============

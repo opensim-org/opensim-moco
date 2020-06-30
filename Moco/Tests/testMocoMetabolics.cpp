@@ -45,7 +45,6 @@ TEST_CASE("Bhargava2004Metabolics basics") {
     // Add non-smooth metabolics
     auto metabolicsPtr_nonSmooth = new Bhargava2004Metabolics();
     metabolicsPtr_nonSmooth->setName("metabolics_nonSmooth");
-    metabolicsPtr_nonSmooth->set_use_smoothing(false);
     metabolicsPtr_nonSmooth->set_include_negative_mechanical_work(false);
     metabolicsPtr_nonSmooth->addMuscle("muscle",  muscle);
     model.addComponent(metabolicsPtr_nonSmooth);
@@ -54,7 +53,6 @@ TEST_CASE("Bhargava2004Metabolics basics") {
     // Add non-smooth metabolics with force_dependent_shortening_prop_constant.
     auto metabolicsPtr_forceDep_nonSmooth = new Bhargava2004Metabolics();
     metabolicsPtr_forceDep_nonSmooth->setName("metabolics_forceDep_nonSmooth");
-    metabolicsPtr_forceDep_nonSmooth->set_use_smoothing(false);
     metabolicsPtr_forceDep_nonSmooth->
             set_use_force_dependent_shortening_prop_constant(true);
     metabolicsPtr_forceDep_nonSmooth->
@@ -68,7 +66,6 @@ TEST_CASE("Bhargava2004Metabolics basics") {
     auto metabolicsPtr_negativeWork_nonSmooth = new Bhargava2004Metabolics();
     metabolicsPtr_negativeWork_nonSmooth->setName(
             "metabolics_negativeWork_nonSmooth");
-    metabolicsPtr_negativeWork_nonSmooth->set_use_smoothing(false);
     metabolicsPtr_negativeWork_nonSmooth->addMuscle("muscle",  muscle);
     model.addComponent(metabolicsPtr_negativeWork_nonSmooth);
     auto& metabolics_negativeWork_nonSmooth =
@@ -78,13 +75,13 @@ TEST_CASE("Bhargava2004Metabolics basics") {
     // Add smooth metabolics
     auto metabolicsPtr_smooth = new Bhargava2004Metabolics();
     metabolicsPtr_smooth->setName("metabolics_smooth");
-    metabolicsPtr_smooth->set_use_huber_loss(true);
+    metabolicsPtr_smooth->set_use_huber_loss_smoothing(true);
     // We set a high value for the velocity and heat rate smoothing parameters
     // so that the tanh transitions are very steep and the smooth models best
     // approximate the non-smooth models. In pratice we use lower values
     // (default is 10).
-    metabolicsPtr_smooth->set_velocity_smoothing(1e6);
-    metabolicsPtr_smooth->set_heat_rate_smoothing(1e6);
+    metabolicsPtr_smooth->set_huber_loss_velocity_smoothing(1e6);
+    metabolicsPtr_smooth->set_huber_loss_heat_rate_smoothing(1e6);
     metabolicsPtr_smooth->set_include_negative_mechanical_work(false);
     metabolicsPtr_smooth->addMuscle("muscle",  muscle);
     model.addComponent(metabolicsPtr_smooth);
@@ -93,13 +90,14 @@ TEST_CASE("Bhargava2004Metabolics basics") {
     // Add smooth metabolics with force_dependent_shortening_prop_constant.
     auto metabolicsPtr_forceDep_smooth = new Bhargava2004Metabolics();
     metabolicsPtr_forceDep_smooth->setName("metabolics_forceDep_smooth");
-    metabolicsPtr_forceDep_smooth->set_use_huber_loss(true);
+    metabolicsPtr_forceDep_smooth->set_use_huber_loss_smoothing(true);
     // We set a high value for the velocity smoothing parameter so that
     // the tanh transition is very steep and the smooth model best approximates
     // the non-smooth model. In pratice we use a lower value (default is 10).
     metabolicsPtr_forceDep_smooth->
             set_use_force_dependent_shortening_prop_constant(true);
-    metabolicsPtr_forceDep_smooth->set_velocity_smoothing(1e6);
+    metabolicsPtr_forceDep_smooth->set_tanh_velocity_smoothing(1e6);
+    metabolicsPtr_forceDep_smooth->set_huber_loss_velocity_smoothing(1e6);
     metabolicsPtr_forceDep_smooth->set_include_negative_mechanical_work(false);
     metabolicsPtr_forceDep_smooth->addMuscle("muscle",  muscle);
     model.addComponent(metabolicsPtr_forceDep_smooth);
@@ -110,10 +108,10 @@ TEST_CASE("Bhargava2004Metabolics basics") {
     auto metabolicsPtr_negativeWork_smooth = new Bhargava2004Metabolics();
     metabolicsPtr_negativeWork_smooth->setName(
             "metabolics_negativeWork_smooth");
-    metabolicsPtr_negativeWork_smooth->set_use_huber_loss(true);
-    metabolicsPtr_negativeWork_smooth->set_velocity_smoothing(1e6);
-    metabolicsPtr_negativeWork_smooth->set_heat_rate_smoothing(1e6);
-    metabolicsPtr_negativeWork_smooth->set_power_smoothing(1e6);
+    metabolicsPtr_negativeWork_smooth->set_use_huber_loss_smoothing(true);
+    metabolicsPtr_negativeWork_smooth->set_huber_loss_velocity_smoothing(1e6);
+    metabolicsPtr_negativeWork_smooth->set_huber_loss_heat_rate_smoothing(1e6);
+    metabolicsPtr_negativeWork_smooth->set_huber_loss_power_smoothing(1e6);
     metabolicsPtr_negativeWork_smooth->addMuscle("muscle",  muscle);
     model.addComponent(metabolicsPtr_negativeWork_smooth);
     auto& metabolics_negativeWork_smooth =

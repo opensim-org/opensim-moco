@@ -177,28 +177,34 @@ public:
     OpenSim_DECLARE_PROPERTY(forbid_negative_total_power, bool,
             "Specify whether the total power for each muscle must remain  "
             "positive (default is true).");
-    OpenSim_DECLARE_OPTIONAL_PROPERTY(use_smoothing, bool,
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(use_tanh_smoothing, bool,
             "An optional flag that allows the user to explicitly specify "
             "whether a smooth approximation of the metabolic energy model "
             "should be used (default is false).");
-    OpenSim_DECLARE_OPTIONAL_PROPERTY(velocity_smoothing, double,
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(tanh_velocity_smoothing, double,
             "The parameter that determines the smoothness of the transition "
             "of the tanh used to smooth the conditions related to contraction "
             "type (concentric or eccentric). The larger the steeper the "
             "transition but the worse for optimization (default is 10).");
-    OpenSim_DECLARE_OPTIONAL_PROPERTY(power_smoothing, double,
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(tanh_power_smoothing, double,
             "The parameter that determines the smoothness of the transition "
             "of the tanh used to smooth the condition enforcing non-negative "
             "total power. The larger the steeper the transition but the worse "
             "for optimization (default is 10).");
-    OpenSim_DECLARE_OPTIONAL_PROPERTY(heat_rate_smoothing, double,
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(tanh_heat_rate_smoothing, double,
             "The parameter that determines the smoothness of the transition "
             "of the tanh used to smooth the condition enforcing total heat "
             "rate larger than 1 (W/kg) for a give muscle. The larger the "
             "steeper the transition but the worse for optimization (default "
             "is 10).");
-    OpenSim_DECLARE_OPTIONAL_PROPERTY(use_huber_loss, bool,
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(use_huber_loss_smoothing, bool,
             "TODO (default is false).");
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(huber_loss_velocity_smoothing, double,
+        "TODO (default is 5).");
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(huber_loss_power_smoothing, double,
+        "TODO (default is 5).");
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(huber_loss_heat_rate_smoothing, double,
+        "TODO (default is 5).");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(huber_loss_delta, double,
             "TODO (default is 1).");
 
@@ -268,8 +274,11 @@ private:
     using ConditionalFunction =
             double(const double&, const double&, const double&, const double&,
                     const double&, const int&);
+    using SmoothConditionalFunction =
+        double(const double&, const double&, const double&, const double&);
     PiecewiseLinearFunction m_fiberLengthDepCurve;
     mutable std::function<ConditionalFunction> m_conditional;
+    mutable std::function<SmoothConditionalFunction> m_tanh_conditional;
 };
 
 } // namespace OpenSim
