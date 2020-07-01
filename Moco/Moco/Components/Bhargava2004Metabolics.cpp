@@ -172,24 +172,23 @@ void Bhargava2004Metabolics::constructProperties()
     constructProperty_tanh_power_smoothing(10);
     constructProperty_tanh_heat_rate_smoothing(10);
     constructProperty_use_huber_loss_smoothing(false);
-    constructProperty_huber_loss_velocity_smoothing(5);
-    constructProperty_huber_loss_power_smoothing(5);
-    constructProperty_huber_loss_heat_rate_smoothing(5);
-    constructProperty_huber_loss_delta(1);
+    constructProperty_huber_loss_velocity_smoothing(10);
+    constructProperty_huber_loss_power_smoothing(10);
+    constructProperty_huber_loss_heat_rate_smoothing(10);
 }
 
 void Bhargava2004Metabolics::extendFinalizeFromProperties() {
     if (get_use_tanh_smoothing()) {
         m_conditional = [](const double& cond, const double& left,
                                 const double& right, const double& smoothing,
-                                const double&, const int&) {
+                                const int&) {
             const double smoothed_binary = 0.5 + 0.5 * tanh(smoothing * cond);
             return left + (-left + right) * smoothed_binary;
         };
     } else if (get_use_huber_loss_smoothing()) {
         m_conditional = [](const double& cond, const double& left,
                                 const double& right, const double& smoothing,
-                                const double& delta, const int& direction) {
+                                const int& direction) {
             double offset = 0.0;
             double scale = 0.0;
             if (direction == 1) {
@@ -199,6 +198,7 @@ void Bhargava2004Metabolics::extendFinalizeFromProperties() {
                 offset = right;
                 scale = direction * ((left - right) / cond);
             }
+            const double delta = 1.0;
             const double state = direction * cond;
             const double shift = 0.5 * (1 / smoothing);
             const double y = smoothing * (state + shift);
@@ -217,8 +217,8 @@ void Bhargava2004Metabolics::extendFinalizeFromProperties() {
         };
     } else {
         m_conditional = [](const double& cond, const double& left,
-                                const double& right, const double&,
-                                const double&, const int&) {
+                                const double& right, const double& smoothing,
+                                const int&) {
             if (cond <= 0) {
                 return left;
             } else {
@@ -456,7 +456,6 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                         + (0.18 * fiberForceTotal),
                         0.157 * fiberForceTotal,
                         get_tanh_velocity_smoothing(),
-                        get_huber_loss_delta(),
                         -1);
             }            
         } else {
@@ -467,7 +466,6 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                     0.25 * fiberForceTotal,
                     0,
                     velocity_smoothing,
-                    get_huber_loss_delta(),
                     -1);
         }
         shorteningHeatRate = -alpha * (fiberVelocity + eps);        
@@ -484,7 +482,6 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                     -fiberForceActive * fiberVelocity,
                     0,
                     velocity_smoothing,
-                    get_huber_loss_delta(),
                     -1);
         }
 
@@ -520,7 +517,6 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                         0,
                         Edot_W_beforeClamp,
                         power_smoothing,
-                        get_huber_loss_delta(),
                         1);
                 shorteningHeatRate -= Edot_W_beforeClamp_smoothed;
             } else {
@@ -551,7 +547,6 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                         totalHeatRate,
                         1.0 * muscleParameter.getMuscleMass(),
                         heat_rate_smoothing,
-                        get_huber_loss_delta(),
                         1);
             }
         } else {

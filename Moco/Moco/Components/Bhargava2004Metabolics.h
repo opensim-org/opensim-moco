@@ -205,8 +205,6 @@ public:
         "TODO (default is 5).");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(huber_loss_heat_rate_smoothing, double,
         "TODO (default is 5).");
-    OpenSim_DECLARE_OPTIONAL_PROPERTY(huber_loss_delta, double,
-            "TODO (default is 1).");
 
     OpenSim_DECLARE_LIST_PROPERTY(
             muscle_parameters, Bhargava2004Metabolics_MuscleParameters,
@@ -273,7 +271,7 @@ private:
     mutable std::unordered_map<std::string, int> m_muscleIndices;
     using ConditionalFunction =
             double(const double&, const double&, const double&, const double&,
-                    const double&, const int&);
+                    const int&);
     using SmoothConditionalFunction =
         double(const double&, const double&, const double&, const double&);
     PiecewiseLinearFunction m_fiberLengthDepCurve;
