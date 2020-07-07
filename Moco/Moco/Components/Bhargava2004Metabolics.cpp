@@ -80,6 +80,7 @@ Bhargava2004Metabolics::Bhargava2004Metabolics()
     const double curveY[] = {0.5, 0.5, 1.0, 0.0, 0.0};
     m_fiberLengthDepCurve = PiecewiseLinearFunction(curvePoints, curveX,
             curveY, "defaultCurve");
+
 }
 
 // Add a muscle with default Bhargava2004Metabolics_MuscleParameters so that it
@@ -173,6 +174,7 @@ void Bhargava2004Metabolics::constructProperties()
     constructProperty_tanh_velocity_smoothing(10);
     constructProperty_power_smoothing(10);
     constructProperty_heat_rate_smoothing(10);
+
 }
 
 void Bhargava2004Metabolics::extendFinalizeFromProperties() {
@@ -224,6 +226,9 @@ void Bhargava2004Metabolics::extendFinalizeFromProperties() {
             }
         };
     }
+    OPENSIM_THROW_IF_FRMOBJ(get_use_tanh_smoothing() &&
+            get_use_huber_loss_smoothing(), Exception,
+            "use_tanh_smoothing and use_huber_loss_smoothing are both true.");
 }
 
 double Bhargava2004Metabolics::getTotalMetabolicRate(

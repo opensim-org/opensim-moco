@@ -80,8 +80,8 @@ TEST_CASE("Bhargava2004Metabolics basics") {
     // so that the tanh transitions are very steep and the smooth models best
     // approximate the non-smooth models. In pratice we use lower values
     // (default is 10).
-    metabolicsPtr_smooth->set_huber_loss_velocity_smoothing(1e6);
-    metabolicsPtr_smooth->set_huber_loss_heat_rate_smoothing(1e6);
+    metabolicsPtr_smooth->set_velocity_smoothing(1e6);
+    metabolicsPtr_smooth->set_heat_rate_smoothing(1e6);
     metabolicsPtr_smooth->set_include_negative_mechanical_work(false);
     metabolicsPtr_smooth->addMuscle("muscle",  muscle);
     model.addComponent(metabolicsPtr_smooth);
@@ -97,7 +97,7 @@ TEST_CASE("Bhargava2004Metabolics basics") {
     metabolicsPtr_forceDep_smooth->
             set_use_force_dependent_shortening_prop_constant(true);
     metabolicsPtr_forceDep_smooth->set_tanh_velocity_smoothing(1e6);
-    metabolicsPtr_forceDep_smooth->set_huber_loss_velocity_smoothing(1e6);
+    metabolicsPtr_forceDep_smooth->set_velocity_smoothing(1e6);
     metabolicsPtr_forceDep_smooth->set_include_negative_mechanical_work(false);
     metabolicsPtr_forceDep_smooth->addMuscle("muscle",  muscle);
     model.addComponent(metabolicsPtr_forceDep_smooth);
@@ -109,9 +109,9 @@ TEST_CASE("Bhargava2004Metabolics basics") {
     metabolicsPtr_negativeWork_smooth->setName(
             "metabolics_negativeWork_smooth");
     metabolicsPtr_negativeWork_smooth->set_use_huber_loss_smoothing(true);
-    metabolicsPtr_negativeWork_smooth->set_huber_loss_velocity_smoothing(1e6);
-    metabolicsPtr_negativeWork_smooth->set_huber_loss_heat_rate_smoothing(1e6);
-    metabolicsPtr_negativeWork_smooth->set_huber_loss_power_smoothing(1e6);
+    metabolicsPtr_negativeWork_smooth->set_velocity_smoothing(1e6);
+    metabolicsPtr_negativeWork_smooth->set_heat_rate_smoothing(1e6);
+    metabolicsPtr_negativeWork_smooth->set_power_smoothing(1e6);
     metabolicsPtr_negativeWork_smooth->addMuscle("muscle",  muscle);
     model.addComponent(metabolicsPtr_negativeWork_smooth);
     auto& metabolics_negativeWork_smooth =
