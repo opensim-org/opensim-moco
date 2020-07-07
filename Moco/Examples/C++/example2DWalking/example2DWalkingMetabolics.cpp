@@ -68,7 +68,6 @@ void gaitTrackingMetabolics() {
     Bhargava2004Metabolics* metabolics = new Bhargava2004Metabolics();
     metabolics->setName("metabolics");
     metabolics->set_use_tanh_smoothing(true);
-    //metabolics->set_use_force_dependent_shortening_prop_constant(true);
     metabolics->addMuscle("hamstrings_r",
             baseModel.getComponent<Muscle>("hamstrings_r"));
     metabolics->addMuscle("hamstrings_l",
@@ -112,7 +111,7 @@ void gaitTrackingMetabolics() {
     track.setModel(modelprocessor);
     track.setStatesReference(
             TableProcessor("referenceCoordinates.sto") | TabOpLowPassFilter(6));
-    track.set_states_global_tracking_weight(10.0);
+    track.set_states_global_tracking_weight(30.0);
     track.set_allow_unused_references(true);
     track.set_track_reference_position_derivatives(true);
     track.set_apply_tracked_states_to_guess(true);
@@ -213,7 +212,7 @@ void gaitTrackingMetabolics() {
     solver.set_optim_convergence_tolerance(1e-4);
     solver.set_optim_constraint_tolerance(1e-4);
     solver.set_optim_max_iterations(10000);
-    solver.set_parallel(4);
+    solver.set_parallel(8);
 
     // Solve problem.
     // ==============
