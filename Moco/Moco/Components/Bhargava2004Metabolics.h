@@ -179,33 +179,45 @@ public:
             "positive (default is true).");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(use_tanh_smoothing, bool,
             "An optional flag that allows the user to explicitly specify "
-            "whether a smooth approximation of the metabolic energy model "
-            "should be used (default is false).");
-    OpenSim_DECLARE_OPTIONAL_PROPERTY(tanh_velocity_smoothing, double,
-            "The parameter that determines the smoothness of the transition "
-            "of the tanh used to smooth the conditions related to contraction "
-            "type (concentric or eccentric). The larger the steeper the "
-            "transition but the worse for optimization (default is 10).");
-    OpenSim_DECLARE_OPTIONAL_PROPERTY(tanh_power_smoothing, double,
-            "The parameter that determines the smoothness of the transition "
-            "of the tanh used to smooth the condition enforcing non-negative "
-            "total power. The larger the steeper the transition but the worse "
-            "for optimization (default is 10).");
-    OpenSim_DECLARE_OPTIONAL_PROPERTY(tanh_heat_rate_smoothing, double,
-            "The parameter that determines the smoothness of the transition "
-            "of the tanh used to smooth the condition enforcing total heat "
-            "rate larger than 1 (W/kg) for a give muscle. The larger the "
-            "steeper the transition but the worse for optimization (default "
-            "is 10).");
+            "whether a smooth approximation, using tanh functions, of the "
+            "metabolic energy model should be used (default is false).");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(use_huber_loss_smoothing, bool,
-            "TODO (default is false).");
-    OpenSim_DECLARE_OPTIONAL_PROPERTY(huber_loss_velocity_smoothing, double,
-        "TODO (default is 5).");
-    OpenSim_DECLARE_OPTIONAL_PROPERTY(huber_loss_power_smoothing, double,
-        "TODO (default is 5).");
-    OpenSim_DECLARE_OPTIONAL_PROPERTY(huber_loss_heat_rate_smoothing, double,
-        "TODO (default is 5).");
-
+            "An optional flag that allows the user to explicitly specify "
+            "whether a smooth approximation, using Huber loss functions, of "
+            "the metabolic energy model should be used (default is false).");
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(velocity_smoothing, double,
+            "The parameter that determines the smoothness of the transition "
+            "of the tanh or Huber loss function used to smooth the conditions "
+            "related to contraction type (concentric or eccentric). When "
+            "computing the shortening heat rate while using the force "
+            "dependent shortening proportionality constant, a tanh "
+            "approximation is used even when using the Huber loss smoothing "
+            "approach. The smoothness of the transition of that tanh function "
+            "is determined by the tanh_velocity_smoothing parameter. The "
+            "larger the steeper the transition but the worse for optimization "
+            "(default is 10).");
+     OpenSim_DECLARE_OPTIONAL_PROPERTY(tanh_velocity_smoothing, double,
+            "The parameter that determines the smoothness of the transition "
+            "of the tanh used to smooth the condition related to contraction "
+            "type (concentric or eccentric) when computing the shortening "
+            "heat rate while using the force dependent shortening "
+            "proportionality constant. In such case, a tanh approximation is "
+            "used even when using the Huber loss smoothing approach. For the "
+            "other conditions related to contraction type, the smoothness is "
+            "determined by the velocity_smoothing parameter. The larger the "
+            "steeper the transition but the worse for optimization "
+            "(default is 10)");
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(power_smoothing, double,
+            "The parameter that determines the smoothness of the transition "
+            "of the tanh or Huber loss function used to smooth the condition "
+            "enforcing non-negative total power. The larger the steeper the "
+            "transition but the worse for optimization (default is 10).");
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(heat_rate_smoothing, double,
+            "The parameter that determines the smoothness of the transition "
+            "of the tanh or Huber loss function used to smooth the condition "
+            "enforcing total heat rate larger than 1 (W/kg) for a give muscle "
+            ". The larger the steeper the transition but the worse for "
+            "optimization (default is 10).");
     OpenSim_DECLARE_LIST_PROPERTY(
             muscle_parameters, Bhargava2004Metabolics_MuscleParameters,
             "Metabolic parameters for each muscle.");

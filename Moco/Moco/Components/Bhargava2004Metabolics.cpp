@@ -167,14 +167,12 @@ void Bhargava2004Metabolics::constructProperties()
     constructProperty_include_negative_mechanical_work(true);
     constructProperty_forbid_negative_total_power(true);
 
-    constructProperty_use_tanh_smoothing(false);    
-    constructProperty_tanh_velocity_smoothing(10);
-    constructProperty_tanh_power_smoothing(10);
-    constructProperty_tanh_heat_rate_smoothing(10);
+    constructProperty_use_tanh_smoothing(false);
     constructProperty_use_huber_loss_smoothing(false);
-    constructProperty_huber_loss_velocity_smoothing(10);
-    constructProperty_huber_loss_power_smoothing(10);
-    constructProperty_huber_loss_heat_rate_smoothing(10);
+    constructProperty_velocity_smoothing(10);
+    constructProperty_tanh_velocity_smoothing(10);
+    constructProperty_power_smoothing(10);
+    constructProperty_heat_rate_smoothing(10);
 }
 
 void Bhargava2004Metabolics::extendFinalizeFromProperties() {
@@ -428,15 +426,10 @@ void Bhargava2004Metabolics::calcMetabolicRate(
         //     fiberVelocity>0 as lengthening.
         // ---------------------------------------------------------
         double alpha;
-        double velocity_smoothing;
-        if (get_use_tanh_smoothing()) 
-            velocity_smoothing = get_tanh_velocity_smoothing();
-        if (get_use_huber_loss_smoothing()) 
-            velocity_smoothing = get_huber_loss_velocity_smoothing();
         if (get_use_force_dependent_shortening_prop_constant())
         {
             if (get_use_huber_loss_smoothing()) {
-                // When using the Huber loss smoothing approach, we still rely
+                // When using the Huber loss smoothing approach, we rely
                 // on a tanh approximation for the shortening heat rate when
                 // using the force dependent shortening proportional constant.
                 // This is motivated by the fact that the shortening heat rate
@@ -455,9 +448,9 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                         (0.16 * isometricTotalActiveForce)
                         + (0.18 * fiberForceTotal),
                         0.157 * fiberForceTotal,
-                        get_tanh_velocity_smoothing(),
+                        get_velocity_smoothing(),
                         -1);
-            }            
+            }
         } else {
             // This simpler value of alpha comes from Frank Anderson's 1999
             // dissertation "A Dynamic Optimization Solution for a Complete
@@ -465,10 +458,10 @@ void Bhargava2004Metabolics::calcMetabolicRate(
             alpha = m_conditional(fiberVelocity + eps,
                     0.25 * fiberForceTotal,
                     0,
-                    velocity_smoothing,
+                    get_velocity_smoothing(),
                     -1);
         }
-        shorteningHeatRate = -alpha * (fiberVelocity + eps);        
+        shorteningHeatRate = -alpha * (fiberVelocity + eps);
 
         // MECHANICAL WORK RATE for the contractile element of the muscle (W).
         // --> note that we define fiberVelocity<0 as shortening and
@@ -481,7 +474,7 @@ void Bhargava2004Metabolics::calcMetabolicRate(
             mechanicalWorkRate = m_conditional(fiberVelocity + eps,
                     -fiberForceActive * fiberVelocity,
                     0,
-                    velocity_smoothing,
+                    get_velocity_smoothing(),
                     -1);
         }
 
@@ -507,16 +500,11 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                 + maintenanceHeatRate + shorteningHeatRate
                 + mechanicalWorkRate;
             if (get_use_tanh_smoothing() || get_use_huber_loss_smoothing()) {
-                double power_smoothing;
-                if (get_use_tanh_smoothing())
-                    power_smoothing = get_tanh_power_smoothing();
-                if (get_use_huber_loss_smoothing())
-                    power_smoothing = get_huber_loss_power_smoothing();
                 const double Edot_W_beforeClamp_smoothed = m_conditional(
                         -Edot_W_beforeClamp,
                         0,
                         Edot_W_beforeClamp,
-                        power_smoothing,
+                        get_power_smoothing(),
                         1);
                 shorteningHeatRate -= Edot_W_beforeClamp_smoothed;
             } else {
@@ -537,16 +525,11 @@ void Bhargava2004Metabolics::calcMetabolicRate(
         if (get_use_tanh_smoothing() || get_use_huber_loss_smoothing()) {
             if (get_enforce_minimum_heat_rate_per_muscle())
             {
-                double heat_rate_smoothing;
-                if (get_use_tanh_smoothing())
-                    heat_rate_smoothing = get_tanh_heat_rate_smoothing();
-                if (get_use_huber_loss_smoothing())
-                    heat_rate_smoothing = get_huber_loss_heat_rate_smoothing();
                 totalHeatRate = m_conditional(
                         -totalHeatRate + 1.0 * muscleParameter.getMuscleMass(),
                         totalHeatRate,
                         1.0 * muscleParameter.getMuscleMass(),
-                        heat_rate_smoothing,
+                        get_heat_rate_smoothing(),
                         1);
             }
         } else {
