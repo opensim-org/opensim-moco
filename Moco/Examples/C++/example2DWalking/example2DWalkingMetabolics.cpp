@@ -68,7 +68,6 @@ void gaitTrackingMetabolics() {
     Bhargava2004Metabolics* metabolics = new Bhargava2004Metabolics();
     metabolics->setName("metabolics");
     metabolics->set_use_smoothing(true);
-    metabolics->set_smoothing_type("tanh");
     metabolics->addMuscle("hamstrings_r",
             baseModel.getComponent<Muscle>("hamstrings_r"));
     metabolics->addMuscle("hamstrings_l",

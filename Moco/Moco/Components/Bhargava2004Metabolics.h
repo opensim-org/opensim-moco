@@ -187,14 +187,12 @@ public:
     OpenSim_DECLARE_OPTIONAL_PROPERTY(velocity_smoothing, double,
             "The parameter that determines the smoothness of the transition "
             "of the tanh or Huber loss function used to smooth the conditions "
-            "related to contraction type (concentric or eccentric). When "
-            "computing the shortening heat rate while using the force "
+            "related to contraction type (concentric or eccentric). Note that "
+            "when computing the shortening heat rate while using the force "
             "dependent shortening proportionality constant, a tanh "
             "approximation is used even when using the Huber loss smoothing "
-            "approach. The smoothness of the transition of that tanh function "
-            "is determined by the tanh_velocity_smoothing parameter. The "
-            "larger the steeper the transition but the worse for optimization "
-            "(default is 10).");
+            "approach. The larger the steeper the transition but the worse "
+            "for optimization (default is 10).");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(power_smoothing, double,
             "The parameter that determines the smoothness of the transition "
             "of the tanh or Huber loss function used to smooth the condition "
