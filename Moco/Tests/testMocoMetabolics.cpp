@@ -72,51 +72,109 @@ TEST_CASE("Bhargava2004Metabolics basics") {
             model.getComponent<Bhargava2004Metabolics>(
                     "metabolics_negativeWork_nonSmooth");
 
-    // Add smooth metabolics
-    auto metabolicsPtr_smooth = new Bhargava2004Metabolics();
-    metabolicsPtr_smooth->setName("metabolics_smooth");
-    metabolicsPtr_smooth->set_use_huber_loss_smoothing(true);
+    // Add smooth (using tanh function) metabolics
+    auto metabolicsPtr_smooth_tanh = new Bhargava2004Metabolics();
+    metabolicsPtr_smooth_tanh->setName("metabolics_smooth_tanh");
+    metabolicsPtr_smooth_tanh->set_use_smoothing(true);
     // We set a high value for the velocity and heat rate smoothing parameters
     // so that the tanh transitions are very steep and the smooth models best
     // approximate the non-smooth models. In pratice we use lower values
     // (default is 10).
-    metabolicsPtr_smooth->set_velocity_smoothing(1e6);
-    metabolicsPtr_smooth->set_heat_rate_smoothing(1e6);
-    metabolicsPtr_smooth->set_include_negative_mechanical_work(false);
-    metabolicsPtr_smooth->addMuscle("muscle",  muscle);
-    model.addComponent(metabolicsPtr_smooth);
-    auto& metabolics_smooth =
-            model.getComponent<Bhargava2004Metabolics>("metabolics_smooth");
-    // Add smooth metabolics with force_dependent_shortening_prop_constant.
-    auto metabolicsPtr_forceDep_smooth = new Bhargava2004Metabolics();
-    metabolicsPtr_forceDep_smooth->setName("metabolics_forceDep_smooth");
-    metabolicsPtr_forceDep_smooth->set_use_huber_loss_smoothing(true);
+    metabolicsPtr_smooth_tanh->set_velocity_smoothing(1e6);
+    metabolicsPtr_smooth_tanh->set_heat_rate_smoothing(1e6);
+    metabolicsPtr_smooth_tanh->set_include_negative_mechanical_work(false);
+    metabolicsPtr_smooth_tanh->addMuscle("muscle",  muscle);
+    model.addComponent(metabolicsPtr_smooth_tanh);
+    auto& metabolics_smooth_tanh =
+            model.getComponent<Bhargava2004Metabolics>(
+                    "metabolics_smooth_tanh");
+    // Add smooth (using tanh function) metabolics with
+    // force_dependent_shortening_prop_constant.
+    auto metabolicsPtr_forceDep_smooth_tanh = new Bhargava2004Metabolics();
+    metabolicsPtr_forceDep_smooth_tanh->setName(
+            "metabolics_forceDep_smooth_tanh");
+    metabolicsPtr_forceDep_smooth_tanh->set_use_smoothing(true);
     // We set a high value for the velocity smoothing parameter so that
     // the tanh transition is very steep and the smooth model best approximates
     // the non-smooth model. In pratice we use a lower value (default is 10).
-    metabolicsPtr_forceDep_smooth->
+    metabolicsPtr_forceDep_smooth_tanh->
             set_use_force_dependent_shortening_prop_constant(true);
-    metabolicsPtr_forceDep_smooth->set_tanh_velocity_smoothing(1e6);
-    metabolicsPtr_forceDep_smooth->set_velocity_smoothing(1e6);
-    metabolicsPtr_forceDep_smooth->set_include_negative_mechanical_work(false);
-    metabolicsPtr_forceDep_smooth->addMuscle("muscle",  muscle);
-    model.addComponent(metabolicsPtr_forceDep_smooth);
-    auto& metabolics_forceDep_smooth =
+    metabolicsPtr_forceDep_smooth_tanh->set_velocity_smoothing(1e6);
+    metabolicsPtr_forceDep_smooth_tanh->set_include_negative_mechanical_work(
+            false);
+    metabolicsPtr_forceDep_smooth_tanh->addMuscle("muscle",  muscle);
+    model.addComponent(metabolicsPtr_forceDep_smooth_tanh);
+    auto& metabolics_forceDep_smooth_tanh =
             model.getComponent<Bhargava2004Metabolics>(
-                    "metabolics_forceDep_smooth");
-    // Add smooth metabolics with negative mechanical work.
-    auto metabolicsPtr_negativeWork_smooth = new Bhargava2004Metabolics();
-    metabolicsPtr_negativeWork_smooth->setName(
-            "metabolics_negativeWork_smooth");
-    metabolicsPtr_negativeWork_smooth->set_use_huber_loss_smoothing(true);
-    metabolicsPtr_negativeWork_smooth->set_velocity_smoothing(1e6);
-    metabolicsPtr_negativeWork_smooth->set_heat_rate_smoothing(1e6);
-    metabolicsPtr_negativeWork_smooth->set_power_smoothing(1e6);
-    metabolicsPtr_negativeWork_smooth->addMuscle("muscle",  muscle);
-    model.addComponent(metabolicsPtr_negativeWork_smooth);
-    auto& metabolics_negativeWork_smooth =
+                    "metabolics_forceDep_smooth_tanh");
+    // Add smooth (using tanh function) metabolics with negative mechanical
+    // work.
+    auto metabolicsPtr_negativeWork_smooth_tanh = new Bhargava2004Metabolics();
+    metabolicsPtr_negativeWork_smooth_tanh->setName(
+            "metabolics_negativeWork_smooth_tanh");
+    metabolicsPtr_negativeWork_smooth_tanh->set_use_smoothing(true);
+    metabolicsPtr_negativeWork_smooth_tanh->set_velocity_smoothing(1e6);
+    metabolicsPtr_negativeWork_smooth_tanh->set_heat_rate_smoothing(1e6);
+    metabolicsPtr_negativeWork_smooth_tanh->set_power_smoothing(1e6);
+    metabolicsPtr_negativeWork_smooth_tanh->addMuscle("muscle",  muscle);
+    model.addComponent(metabolicsPtr_negativeWork_smooth_tanh);
+    auto& metabolics_negativeWork_smooth_tanh =
             model.getComponent<Bhargava2004Metabolics>(
-                    "metabolics_negativeWork_smooth");
+                    "metabolics_negativeWork_smooth_tanh");
+    // Add smooth (using Huber loss function) metabolics
+    auto metabolicsPtr_smooth_huber = new Bhargava2004Metabolics();
+    metabolicsPtr_smooth_huber->setName("metabolics_smooth_huber");
+    metabolicsPtr_smooth_huber->set_use_smoothing(true);
+    metabolicsPtr_smooth_huber->set_smoothing_type("huber");
+    // We set a high value for the velocity and heat rate smoothing parameters
+    // so that the Huber loss transitions are very steep and the smooth models
+    // best approximate the non-smooth models. In pratice we use lower values
+    // (default is 10).
+    metabolicsPtr_smooth_huber->set_velocity_smoothing(1e6);
+    metabolicsPtr_smooth_huber->set_heat_rate_smoothing(1e6);
+    metabolicsPtr_smooth_huber->set_include_negative_mechanical_work(false);
+    metabolicsPtr_smooth_huber->addMuscle("muscle",  muscle);
+    model.addComponent(metabolicsPtr_smooth_huber);
+    auto& metabolics_smooth_huber =
+            model.getComponent<Bhargava2004Metabolics>(
+                    "metabolics_smooth_huber");
+    // Add smooth (using Huber loss function) metabolics with
+    // force_dependent_shortening_prop_constant.
+    auto metabolicsPtr_forceDep_smooth_huber = new Bhargava2004Metabolics();
+    metabolicsPtr_forceDep_smooth_huber->setName(
+            "metabolics_forceDep_smooth_huber");
+    metabolicsPtr_forceDep_smooth_huber->set_use_smoothing(true);
+    metabolicsPtr_forceDep_smooth_huber->set_smoothing_type("huber");
+    // We set a high value for the velocity smoothing parameter so that
+    // the Huber loss transition is very steep and the smooth model best
+    // approximates the non-smooth model. In pratice we use a lower value
+    // (default is 10).
+    metabolicsPtr_forceDep_smooth_huber->
+            set_use_force_dependent_shortening_prop_constant(true);
+    metabolicsPtr_forceDep_smooth_huber->set_velocity_smoothing(1e6);
+    metabolicsPtr_forceDep_smooth_huber->set_include_negative_mechanical_work(
+            false);
+    metabolicsPtr_forceDep_smooth_huber->addMuscle("muscle",  muscle);
+    model.addComponent(metabolicsPtr_forceDep_smooth_huber);
+    auto& metabolics_forceDep_smooth_huber =
+            model.getComponent<Bhargava2004Metabolics>(
+                    "metabolics_forceDep_smooth_huber");
+    // Add smooth (using Huber loss function) metabolics with negative
+    // mechanical work.
+    auto metabolicsPtr_negativeWork_smooth_huber =
+            new Bhargava2004Metabolics();
+    metabolicsPtr_negativeWork_smooth_huber->setName(
+            "metabolics_negativeWork_smooth_huber");
+    metabolicsPtr_negativeWork_smooth_huber->set_use_smoothing(true);
+    metabolicsPtr_negativeWork_smooth_huber->set_smoothing_type("huber");
+    metabolicsPtr_negativeWork_smooth_huber->set_velocity_smoothing(1e6);
+    metabolicsPtr_negativeWork_smooth_huber->set_heat_rate_smoothing(1e6);
+    metabolicsPtr_negativeWork_smooth_huber->set_power_smoothing(1e6);
+    metabolicsPtr_negativeWork_smooth_huber->addMuscle("muscle",  muscle);
+    model.addComponent(metabolicsPtr_negativeWork_smooth_huber);
+    auto& metabolics_negativeWork_smooth_huber =
+            model.getComponent<Bhargava2004Metabolics>(
+                    "metabolics_negativeWork_smooth_huber");
     model.finalizeConnections();
 
     SECTION("Verify computed values") {
@@ -147,29 +205,54 @@ TEST_CASE("Bhargava2004Metabolics basics") {
                 // Metabolics not using
                 // force_dependent_shortening_prop_constant.
                 CHECK(metabolics_nonSmooth.getTotalShorteningRate(state) ==
-                        Approx(metabolics_smooth.
+                        Approx(metabolics_smooth_tanh.
+                                getTotalShorteningRate(state)).margin(1e-4));
+                CHECK(metabolics_nonSmooth.getTotalShorteningRate(state) ==
+                        Approx(metabolics_smooth_huber.
                                 getTotalShorteningRate(state)).margin(1e-4));
                 CHECK(metabolics_nonSmooth.getTotalMechanicalWorkRate(state) ==
-                        Approx(metabolics_smooth.
+                        Approx(metabolics_smooth_tanh.
+                                getTotalMechanicalWorkRate(state)).
+                                        margin(1e-4));
+                CHECK(metabolics_nonSmooth.getTotalMechanicalWorkRate(state) ==
+                        Approx(metabolics_smooth_huber.
                                 getTotalMechanicalWorkRate(state)).
                                         margin(1e-4));
                 CHECK(metabolics_nonSmooth.getTotalMetabolicRate(state) ==
-                        Approx(metabolics_smooth.getTotalMetabolicRate(state)).
-                                margin(1e-4));
+                        Approx(metabolics_smooth_tanh.getTotalMetabolicRate(
+                                state)).margin(1e-4));
+                CHECK(metabolics_nonSmooth.getTotalMetabolicRate(state) ==
+                        Approx(metabolics_smooth_huber.getTotalMetabolicRate(
+                                state)).margin(1e-4));
                 // Metabolics using force_dependent_shortening_prop_constant.
                 CHECK(metabolics_forceDep_nonSmooth.
                         getTotalShorteningRate(state) == Approx(
-                                metabolics_forceDep_smooth.
+                                metabolics_forceDep_smooth_tanh.
+                                        getTotalShorteningRate(state)).
+                                                margin(1e-4));
+                CHECK(metabolics_forceDep_nonSmooth.
+                        getTotalShorteningRate(state) == Approx(
+                                metabolics_forceDep_smooth_huber.
                                         getTotalShorteningRate(state)).
                                                 margin(1e-4));
                 CHECK(metabolics_forceDep_nonSmooth.
                         getTotalMechanicalWorkRate(state) == Approx(
-                                metabolics_forceDep_smooth.
+                                metabolics_forceDep_smooth_tanh.
+                                        getTotalMechanicalWorkRate(state)).
+                                                margin(1e-4));
+                CHECK(metabolics_forceDep_nonSmooth.
+                        getTotalMechanicalWorkRate(state) == Approx(
+                                metabolics_forceDep_smooth_huber.
                                         getTotalMechanicalWorkRate(state)).
                                                 margin(1e-4));
                 CHECK(metabolics_forceDep_nonSmooth.
                         getTotalMetabolicRate(state) == Approx(
-                                metabolics_forceDep_smooth.
+                                metabolics_forceDep_smooth_tanh.
+                                        getTotalMetabolicRate(state)).
+                                                margin(1e-4));
+                CHECK(metabolics_forceDep_nonSmooth.
+                        getTotalMetabolicRate(state) == Approx(
+                                metabolics_forceDep_smooth_huber.
                                         getTotalMetabolicRate(state)).
                                                 margin(1e-4));
             }
@@ -190,8 +273,10 @@ TEST_CASE("Bhargava2004Metabolics basics") {
             // Non-smooth metabolics model.
             CHECK(metabolics_nonSmooth.getTotalMechanicalWorkRate(state) ==
                     Approx(0).margin(1e-4));
-            // Smooth metabolics model.
-            CHECK(metabolics_smooth.getTotalMechanicalWorkRate(state) ==
+            // Smooth metabolics models.
+            CHECK(metabolics_smooth_tanh.getTotalMechanicalWorkRate(state) ==
+                    Approx(0).margin(1e-4));
+            CHECK(metabolics_smooth_huber.getTotalMechanicalWorkRate(state) ==
                     Approx(0).margin(1e-4));
         }
 
@@ -214,11 +299,16 @@ TEST_CASE("Bhargava2004Metabolics basics") {
                     Approx(0.0));
             CHECK(metabolics_nonSmooth.getTotalMaintenanceRate(state) ==
                     Approx(0.0));
-            // Smooth metabolics model.
-            CHECK(metabolics_smooth.getTotalActivationRate(state) ==
+            // Smooth metabolics models.
+            CHECK(metabolics_smooth_tanh.getTotalActivationRate(state) ==
                     Approx(0.0));
-            CHECK(metabolics_smooth.getTotalMaintenanceRate(state) ==
+            CHECK(metabolics_smooth_huber.getTotalActivationRate(state) ==
                     Approx(0.0));
+            CHECK(metabolics_smooth_tanh.getTotalMaintenanceRate(state) ==
+                    Approx(0.0));
+            CHECK(metabolics_smooth_huber.getTotalMaintenanceRate(state) ==
+                    Approx(0.0));
+
         }
 
         SECTION("mechanicalWorkRate=-fiberForceActive * fiberVelocity with "
@@ -245,14 +335,22 @@ TEST_CASE("Bhargava2004Metabolics basics") {
             CHECK(mechanicalWorkRate_nonSmooth ==
                     metabolics_negativeWork_nonSmooth.
                             getTotalMechanicalWorkRate(state));
-            // Smooth metabolics model.
-            double mechanicalWorkRate_smooth =
-                    - metabolics_negativeWork_smooth.
+            // Smooth metabolics models.
+            double mechanicalWorkRate_smooth_tanh =
+                    - metabolics_negativeWork_smooth_tanh.
                             get_muscle_effort_scaling_factor() *
                     muscle.getActiveFiberForce(state) *
                     muscle.getFiberVelocity(state);
-            CHECK(mechanicalWorkRate_smooth ==
-                    metabolics_negativeWork_smooth.
+            CHECK(mechanicalWorkRate_smooth_tanh ==
+                    metabolics_negativeWork_smooth_tanh.
+                            getTotalMechanicalWorkRate(state));
+            double mechanicalWorkRate_smooth_huber =
+                    - metabolics_negativeWork_smooth_huber.
+                            get_muscle_effort_scaling_factor() *
+                    muscle.getActiveFiberForce(state) *
+                    muscle.getFiberVelocity(state);
+            CHECK(mechanicalWorkRate_smooth_huber ==
+                    metabolics_negativeWork_smooth_huber.
                             getTotalMechanicalWorkRate(state));
 
             // Eccentric contraction
@@ -274,14 +372,22 @@ TEST_CASE("Bhargava2004Metabolics basics") {
             CHECK(mechanicalWorkRate_nonSmooth ==
                     metabolics_negativeWork_nonSmooth.
                             getTotalMechanicalWorkRate(state));
-            // Smooth metabolics model.
-            mechanicalWorkRate_smooth =
-                    - metabolics_negativeWork_smooth.
+            // Smooth metabolics models.
+            mechanicalWorkRate_smooth_tanh =
+                    - metabolics_negativeWork_smooth_tanh.
                             get_muscle_effort_scaling_factor() *
                     muscle.getActiveFiberForce(state) *
                     muscle.getFiberVelocity(state);
-            CHECK(mechanicalWorkRate_smooth ==
-                    metabolics_negativeWork_smooth.
+            CHECK(mechanicalWorkRate_smooth_tanh ==
+                    metabolics_negativeWork_smooth_tanh.
+                            getTotalMechanicalWorkRate(state));
+            mechanicalWorkRate_smooth_huber =
+                    - metabolics_negativeWork_smooth_huber.
+                            get_muscle_effort_scaling_factor() *
+                    muscle.getActiveFiberForce(state) *
+                    muscle.getFiberVelocity(state);
+            CHECK(mechanicalWorkRate_smooth_huber ==
+                    metabolics_negativeWork_smooth_huber.
                             getTotalMechanicalWorkRate(state));
         }
 
@@ -302,9 +408,11 @@ TEST_CASE("Bhargava2004Metabolics basics") {
             // Non-smooth metabolics model.
             CHECK(mechanicalWorkRate ==
                     metabolics_nonSmooth.getTotalMechanicalWorkRate(state));
-            // Smooth metabolics model.
+            // smooth metabolics models.
             CHECK(mechanicalWorkRate ==
-                    metabolics_smooth.getTotalMechanicalWorkRate(state));
+                    metabolics_smooth_tanh.getTotalMechanicalWorkRate(state));
+            CHECK(mechanicalWorkRate ==
+                    metabolics_smooth_huber.getTotalMechanicalWorkRate(state));
         }
 
         SECTION("Total power is clamped so that it is always non-negative") {
@@ -343,24 +451,44 @@ TEST_CASE("Bhargava2004Metabolics basics") {
                     maintenanceHeatRate_nonSmooth +
                     shorteningHeatRate_nonSmooth +
                     mechanicalWorkRate_nonSmooth;
-            // Smooth metabolics model.
-            double activationHeatRate_smooth =
-                    metabolics_negativeWork_smooth.
+            // Smooth metabolics models.
+            double activationHeatRate_smooth_tanh =
+                    metabolics_negativeWork_smooth_tanh.
                             getTotalActivationRate(state);
-            double maintenanceHeatRate_smooth =
-                    metabolics_negativeWork_smooth.
+            double maintenanceHeatRate_smooth_tanh =
+                    metabolics_negativeWork_smooth_tanh.
                             getTotalMaintenanceRate(state);
-            double shorteningHeatRate_smooth =
-                    metabolics_negativeWork_smooth.
+            double shorteningHeatRate_smooth_tanh =
+                    metabolics_negativeWork_smooth_tanh.
                             getTotalShorteningRate(state);
-            double mechanicalWorkRate_smooth =
-                    metabolics_negativeWork_smooth.
+            double mechanicalWorkRate_smooth_tanh =
+                    metabolics_negativeWork_smooth_tanh.
                             getTotalMechanicalWorkRate(state);
-            double Edot_clamped_smooth =
-                    activationHeatRate_smooth + maintenanceHeatRate_smooth +
-                    shorteningHeatRate_smooth + mechanicalWorkRate_smooth;
+            double Edot_clamped_smooth_tanh =
+                    activationHeatRate_smooth_tanh +
+                    maintenanceHeatRate_smooth_tanh +
+                    shorteningHeatRate_smooth_tanh +
+                    mechanicalWorkRate_smooth_tanh;
+             double activationHeatRate_smooth_huber =
+                    metabolics_negativeWork_smooth_huber.
+                            getTotalActivationRate(state);
+            double maintenanceHeatRate_smooth_huber =
+                    metabolics_negativeWork_smooth_huber.
+                            getTotalMaintenanceRate(state);
+            double shorteningHeatRate_smooth_huber =
+                    metabolics_negativeWork_smooth_huber.
+                            getTotalShorteningRate(state);
+            double mechanicalWorkRate_smooth_huber =
+                    metabolics_negativeWork_smooth_huber.
+                            getTotalMechanicalWorkRate(state);
+            double Edot_clamped_smooth_huber =
+                    activationHeatRate_smooth_huber +
+                    maintenanceHeatRate_smooth_huber +
+                    shorteningHeatRate_smooth_huber +
+                    mechanicalWorkRate_smooth_huber;
             double Edot_clamped = 0.0;
-            CHECK(Edot_clamped == Edot_clamped_smooth);
+            CHECK(Edot_clamped == Edot_clamped_smooth_tanh);
+            CHECK(Edot_clamped == Edot_clamped_smooth_huber);
             CHECK(Edot_clamped == Edot_clamped_nonSmooth);
         }
 
@@ -416,37 +544,63 @@ TEST_CASE("Bhargava2004Metabolics basics") {
                     - mechanicalWorkRate_nonSmooth - metabolics_nonSmooth.
                             get_muscle_parameters(0).getMuscleMass() ==
                                     Approx(0.0).margin(1e-4));
-            // Smooth metabolics model.
-            double activationHeatRate_smooth =
-                    metabolics_smooth.getTotalActivationRate(state);
-            double maintenanceHeatRate_smooth =
-                    metabolics_smooth.getTotalMaintenanceRate(state);
-            double shorteningHeatRate_smooth =
-                    metabolics_smooth.getTotalShorteningRate(state);
-            double totalHeatRate_smooth = activationHeatRate_smooth +
-                    maintenanceHeatRate_smooth + shorteningHeatRate_smooth;
+            // Smooth metabolics models.
+            double activationHeatRate_smooth_tanh =
+                    metabolics_smooth_tanh.getTotalActivationRate(state);
+            double maintenanceHeatRate_smooth_tanh =
+                    metabolics_smooth_tanh.getTotalMaintenanceRate(state);
+            double shorteningHeatRate_smooth_tanh =
+                    metabolics_smooth_tanh.getTotalShorteningRate(state);
+            double totalHeatRate_smooth_tanh = activationHeatRate_smooth_tanh +
+                    maintenanceHeatRate_smooth_tanh +
+                    shorteningHeatRate_smooth_tanh;
+            double activationHeatRate_smooth_huber =
+                    metabolics_smooth_huber.getTotalActivationRate(state);
+            double maintenanceHeatRate_smooth_huber =
+                    metabolics_smooth_huber.getTotalMaintenanceRate(state);
+            double shorteningHeatRate_smooth_huber =
+                    metabolics_smooth_huber.getTotalShorteningRate(state);
+            double totalHeatRate_smooth_huber =
+                    activationHeatRate_smooth_huber +
+                    maintenanceHeatRate_smooth_huber +
+                    shorteningHeatRate_smooth_huber;
             // Check that the total heat rate before clamping (i.e., activation
             // heat rate + maintenance heat rate + shortening heat rate) is
             // below 1.0 W/kg so that it will be clamped to 1.0 W/kg when
             // enforce_minimum_heat_rate_per_muscle() is true (default).
-            CHECK(totalHeatRate_smooth <
-                    metabolics_smooth.get_muscle_parameters(0).
+            CHECK(totalHeatRate_smooth_tanh <
+                    metabolics_smooth_tanh.get_muscle_parameters(0).
                             getMuscleMass());
-            double mechanicalWorkRate_smooth =
-                    metabolics_smooth.getTotalMechanicalWorkRate(state);
-            double totalMetabolicRate_smooth =
-                    metabolics_smooth.getTotalMetabolicRate(state);
-            double basalRate_smooth =
-                    metabolics_smooth.get_basal_coefficient() *
+            CHECK(totalHeatRate_smooth_huber <
+                    metabolics_smooth_huber.get_muscle_parameters(0).
+                            getMuscleMass());
+            double mechanicalWorkRate_smooth_tanh =
+                    metabolics_smooth_tanh.getTotalMechanicalWorkRate(state);
+            double totalMetabolicRate_smooth_tanh =
+                    metabolics_smooth_tanh.getTotalMetabolicRate(state);
+            double basalRate_smooth_tanh =
+                    metabolics_smooth_tanh.get_basal_coefficient() *
                     pow(model.getMatterSubsystem().calcSystemMass(state),
-                            metabolics_smooth.get_basal_exponent());
+                            metabolics_smooth_tanh.get_basal_exponent());
+            double mechanicalWorkRate_smooth_huber =
+                    metabolics_smooth_huber.getTotalMechanicalWorkRate(state);
+            double totalMetabolicRate_smooth_huber =
+                    metabolics_smooth_huber.getTotalMetabolicRate(state);
+            double basalRate_smooth_huber =
+                    metabolics_smooth_huber.get_basal_coefficient() *
+                    pow(model.getMatterSubsystem().calcSystemMass(state),
+                            metabolics_smooth_huber.get_basal_exponent());
             // Check that the total heat rate after clamping (i.e., total
             // metabolic rate - basal rate - mechanical work rate) is
             // equal to the muscle mass (i.e., clamped to 1.0 W/kg).
-            CHECK(totalMetabolicRate_smooth - basalRate_smooth
-                    - mechanicalWorkRate_smooth - metabolics_smooth.
+            CHECK(totalMetabolicRate_smooth_tanh - basalRate_smooth_tanh
+                    - mechanicalWorkRate_smooth_tanh - metabolics_smooth_tanh.
                             get_muscle_parameters(0).getMuscleMass() ==
                                     Approx(0.0).margin(1e-4));
+            CHECK(totalMetabolicRate_smooth_huber - basalRate_smooth_huber
+                    - mechanicalWorkRate_smooth_huber -
+                            metabolics_smooth_huber.get_muscle_parameters(0).
+                            getMuscleMass() == Approx(0.0).margin(1e-4));
         }
 
     }

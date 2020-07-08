@@ -177,14 +177,13 @@ public:
     OpenSim_DECLARE_PROPERTY(forbid_negative_total_power, bool,
             "Specify whether the total power for each muscle must remain  "
             "positive (default is true).");
-    OpenSim_DECLARE_OPTIONAL_PROPERTY(use_tanh_smoothing, bool,
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(use_smoothing, bool,
             "An optional flag that allows the user to explicitly specify "
-            "whether a smooth approximation, using tanh functions, of the "
-            "metabolic energy model should be used (default is false).");
-    OpenSim_DECLARE_OPTIONAL_PROPERTY(use_huber_loss_smoothing, bool,
+            "whether a smooth approximation of the metabolic energy model "
+            "should be used (default is false).");
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(smoothing_type, std::string,
             "An optional flag that allows the user to explicitly specify "
-            "whether a smooth approximation, using Huber loss functions, of "
-            "the metabolic energy model should be used (default is false).");
+            "what type of smoothing to use (tanh or huber; default is tanh).");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(velocity_smoothing, double,
             "The parameter that determines the smoothness of the transition "
             "of the tanh or Huber loss function used to smooth the conditions "
@@ -193,33 +192,19 @@ public:
             "dependent shortening proportionality constant, a tanh "
             "approximation is used even when using the Huber loss smoothing "
             "approach. The smoothness of the transition of that tanh function "
-            "is determined by the tanh_velocity_smoothing parameter. With the "
-            "tanh (Huber loss) function, the larger the steeper (smoother) "
-            "the transition but (and) the worse (better) for optimization "
-            "(default is 10).");
-     OpenSim_DECLARE_OPTIONAL_PROPERTY(tanh_velocity_smoothing, double,
-            "The parameter that determines the smoothness of the transition "
-            "of the tanh used to smooth the condition related to contraction "
-            "type (concentric or eccentric) when computing the shortening "
-            "heat rate while using the force dependent shortening "
-            "proportionality constant. In such case, a tanh approximation is "
-            "used even when using the Huber loss smoothing approach. For the "
-            "other conditions related to contraction type, the smoothness is "
-            "determined by the velocity_smoothing parameter. The larger the "
-            "steeper the transition but the worse for optimization "
+            "is determined by the tanh_velocity_smoothing parameter. The "
+            "larger the steeper the transition but the worse for optimization "
             "(default is 10).");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(power_smoothing, double,
             "The parameter that determines the smoothness of the transition "
             "of the tanh or Huber loss function used to smooth the condition "
-            "enforcing non-negative total power. With the tanh (Huber loss) "
-            "function, the larger the steeper (smoother) the transition but "
-            "(and) the worse (better) for optimization (default is 10).");
+            "enforcing non-negative total power. The larger the steeper the "
+            "transition but the worse for optimization (default is 10).");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(heat_rate_smoothing, double,
             "The parameter that determines the smoothness of the transition "
             "of the tanh or Huber loss function used to smooth the condition "
             "enforcing total heat rate larger than 1 (W/kg) for a give muscle "
-            ". With the tanh (Huber loss) function, the larger the steeper "
-            "(smoother) the transition but (and) the worse (better) for "
+            ". The larger the steeper the transition but the worse for "
             "optimization (default is 10).");
     OpenSim_DECLARE_LIST_PROPERTY(
             muscle_parameters, Bhargava2004Metabolics_MuscleParameters,
@@ -287,11 +272,9 @@ private:
     using ConditionalFunction =
             double(const double&, const double&, const double&, const double&,
                     const int&);
-    using SmoothConditionalFunction =
-        double(const double&, const double&, const double&, const double&);
     PiecewiseLinearFunction m_fiberLengthDepCurve;
     mutable std::function<ConditionalFunction> m_conditional;
-    mutable std::function<SmoothConditionalFunction> m_tanh_conditional;
+    mutable std::function<ConditionalFunction> m_tanh_conditional;
 };
 
 } // namespace OpenSim

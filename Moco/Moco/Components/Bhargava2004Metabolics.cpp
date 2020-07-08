@@ -167,66 +167,52 @@ void Bhargava2004Metabolics::constructProperties()
     constructProperty_include_negative_mechanical_work(true);
     constructProperty_forbid_negative_total_power(true);
 
-    constructProperty_use_tanh_smoothing(false);
-    constructProperty_use_huber_loss_smoothing(false);
+    constructProperty_use_smoothing(false);
+    constructProperty_smoothing_type("tanh");
     constructProperty_velocity_smoothing(10);
-    constructProperty_tanh_velocity_smoothing(10);
     constructProperty_power_smoothing(10);
     constructProperty_heat_rate_smoothing(10);
 }
 
 void Bhargava2004Metabolics::extendFinalizeFromProperties() {
-    if (get_use_tanh_smoothing()) {
-        m_conditional = [](const double& cond, const double& left,
-                                const double& right, const double& smoothing,
-                                const int&) {
-            const double smoothed_binary = 0.5 + 0.5 * tanh(smoothing * cond);
-            return left + (-left + right) * smoothed_binary;
-        };
-    } else if (get_use_huber_loss_smoothing()) {
-        m_conditional = [](const double& cond, const double& left,
-                                const double& right, const double& smoothing,
-                                const int& direction) {
-            double offset = 0.0;
-            double scale = 0.0;
-            if (direction == 1) {
-                offset = left;
-                scale = direction * ((right - left) / cond);
-            } else if (direction == -1) {
-                offset = right;
-                scale = direction * ((left - right) / cond);
-            }
-            const double delta = 1.0;
-            const double state = direction * cond;
-            const double shift = 0.5 * (1 / smoothing);
-            const double y = smoothing * (state + shift);
-            double f = 0;
-            if (y < 0) f = offset;
-            else if (y <= delta) f = 0.5 * y * y + offset;
-            else  f = delta * (y - 0.5 * delta) + offset;
-
-            return scale * (f / smoothing + offset *  (1.0 - 1.0 / smoothing));
-        };
+    if (get_use_smoothing()) {
         m_tanh_conditional = [](const double& cond, const double& left,
-                                        const double& right,
-                                        const double& smoothing) {
+                const double& right, const double& smoothing, const int&) {
             const double smoothed_binary = 0.5 + 0.5 * tanh(smoothing * cond);
+            std::cout << "tanh" << std::endl;
             return left + (-left + right) * smoothed_binary;
         };
+        if (get_smoothing_type().compare("tanh") == 0) {
+            m_conditional = m_tanh_conditional;
+
+        } else if (get_smoothing_type().compare("huber") == 0) {
+            m_conditional = [](const double& cond, const double& left,
+                    const double& right, const double& smoothing,
+                    const int& direction) {
+                const double offset = (direction == 1) ? left : right;
+                const double scale = (right - left) / cond;
+                const double delta = 1.0;
+                const double state = direction * cond;
+                const double shift = 0.5 * (1 / smoothing);
+                const double y = smoothing * (state + shift);
+                double f = 0;
+                if (y < 0) f = offset;
+                else if (y <= delta) f = 0.5 * y * y + offset;
+                else  f = delta * (y - 0.5 * delta) + offset;
+                return scale * (f/smoothing + offset * (1.0 - 1.0/smoothing));
+            };
+        }
     } else {
         m_conditional = [](const double& cond, const double& left,
-                                const double& right, const double& smoothing,
-                                const int&) {
+                const double& right, const double& smoothing, const int&) {
             if (cond <= 0) {
                 return left;
             } else {
                 return right;
             }
         };
+        m_tanh_conditional = m_conditional;
     }
-    OPENSIM_THROW_IF_FRMOBJ(get_use_tanh_smoothing() &&
-            get_use_huber_loss_smoothing(), Exception,
-            "use_tanh_smoothing and use_huber_loss_smoothing are both true.");
 }
 
 double Bhargava2004Metabolics::getTotalMetabolicRate(
@@ -391,6 +377,9 @@ void Bhargava2004Metabolics::calcMetabolicRate(
         const double fastTwitchExcitation =
             (1 - muscleParameter.get_ratio_slow_twitch_fibers())
             * (1 - cos(SimTK::Pi/2 * excitation));
+        // This small constant is added to the fiber velocity to prevent
+        // dividing by 0 (in case the actual fiber velocity is null) when using
+        // the Huber loss smoothing approach, thereby preventing singularities.
         const double eps = 1e-16;
 
         // Get the unnormalized total active force, isometricTotalActiveForce
@@ -429,31 +418,22 @@ void Bhargava2004Metabolics::calcMetabolicRate(
         //     fiberVelocity>0 as lengthening.
         // ---------------------------------------------------------
         double alpha;
-        if (get_use_force_dependent_shortening_prop_constant())
-        {
-            if (get_use_huber_loss_smoothing()) {
-                // When using the Huber loss smoothing approach, we rely
-                // on a tanh approximation for the shortening heat rate when
-                // using the force dependent shortening proportional constant.
-                // This is motivated by the fact that the shortening heat rate
-                // is defined by linear functions but with different non-null
-                // constants of proportionality for concentric and eccentric
-                // contractions. It is therefore easier to smooth the
-                // transition between both contraction types with a tanh
-                // function than with a Huber loss function.
-                alpha = m_tanh_conditional(fiberVelocity + eps,
+        if (get_use_force_dependent_shortening_prop_constant()) {
+            // When using the Huber loss smoothing approach, we rely on a tanh
+            // approximation for the shortening heat rate when using the force
+            // dependent shortening proportional constant. This is motivated by
+            // the fact that the shortening heat rate is defined by linear
+            // functions but with different non-null constants of
+            // proportionality for concentric and eccentric contractions. It is
+            // therefore easier to smooth the transition between both
+            // contraction types with a tanh function than with a Huber loss
+            // function.
+            alpha = m_tanh_conditional(fiberVelocity + eps,
                     (0.16 * isometricTotalActiveForce)
                     + (0.18 * fiberForceTotal),
                     0.157 * fiberForceTotal,
-                    get_tanh_velocity_smoothing());
-            } else {
-                alpha = m_conditional(fiberVelocity + eps,
-                        (0.16 * isometricTotalActiveForce)
-                        + (0.18 * fiberForceTotal),
-                        0.157 * fiberForceTotal,
-                        get_velocity_smoothing(),
-                        -1);
-            }
+                    get_velocity_smoothing(),
+                    -1);
         } else {
             // This simpler value of alpha comes from Frank Anderson's 1999
             // dissertation "A Dynamic Optimization Solution for a Complete
@@ -502,7 +482,7 @@ void Bhargava2004Metabolics::calcMetabolicRate(
             const double Edot_W_beforeClamp = activationHeatRate
                 + maintenanceHeatRate + shorteningHeatRate
                 + mechanicalWorkRate;
-            if (get_use_tanh_smoothing() || get_use_huber_loss_smoothing()) {
+            if (get_use_smoothing()) {
                 const double Edot_W_beforeClamp_smoothed = m_conditional(
                         -Edot_W_beforeClamp,
                         0,
@@ -525,7 +505,7 @@ void Bhargava2004Metabolics::calcMetabolicRate(
         // --------------------------------------------------------------------
         double totalHeatRate = activationHeatRate + maintenanceHeatRate
             + shorteningHeatRate;
-        if (get_use_tanh_smoothing() || get_use_huber_loss_smoothing()) {
+        if (get_use_smoothing()) {
             if (get_enforce_minimum_heat_rate_per_muscle())
             {
                 totalHeatRate = m_conditional(
