@@ -181,10 +181,10 @@ void Bhargava2004Metabolics::extendFinalizeFromProperties() {
             const double smoothed_binary = 0.5 + 0.5 * tanh(smoothing * cond);
             return left + (-left + right) * smoothed_binary;
         };
-        if (get_smoothing_type().compare("tanh") == 0) {
+        if (get_smoothing_type() == "tanh") {
             m_conditional = m_tanh_conditional;
 
-        } else if (get_smoothing_type().compare("huber") == 0) {
+        } else if (get_smoothing_type() == "huber") {
             m_conditional = [](const double& cond, const double& left,
                     const double& right, const double& smoothing,
                     const int& direction) {
@@ -418,11 +418,11 @@ void Bhargava2004Metabolics::calcMetabolicRate(
         // ---------------------------------------------------------
         double alpha;
         if (get_use_force_dependent_shortening_prop_constant()) {
-            // When using the Huber loss smoothing approach, we rely on a tanh
-            // approximation for the shortening heat rate when using the force
-            // dependent shortening proportional constant. This is motivated by
-            // the fact that the shortening heat rate is defined by linear
-            // functions but with different non-null constants of
+            // Even when using the Huber loss smoothing approach, we still rely
+            // on a tanh approximation for the shortening heat rate when using
+            // the force dependent shortening proportional constant. This is
+            // motivated by the fact that the shortening heat rate is defined
+            // by linear functions but with different non-zero constants of
             // proportionality for concentric and eccentric contractions. It is
             // therefore easier to smooth the transition between both
             // contraction types with a tanh function than with a Huber loss

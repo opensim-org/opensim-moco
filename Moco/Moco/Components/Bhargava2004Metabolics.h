@@ -183,7 +183,8 @@ public:
             "should be used (default is false).");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(smoothing_type, std::string,
             "An optional flag that allows the user to explicitly specify "
-            "what type of smoothing to use (tanh or huber; default is tanh).");
+            "what type of smoothing to use ('tanh' or 'huber'; default is "
+            "'tanh').");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(velocity_smoothing, double,
             "The parameter that determines the smoothness of the transition "
             "of the tanh or Huber loss function used to smooth the conditions "
