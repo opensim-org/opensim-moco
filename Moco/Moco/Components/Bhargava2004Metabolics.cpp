@@ -3,8 +3,8 @@
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2019 Stanford University and the Authors                     *
  *                                                                            *
- * Author(s): Antoine Falisse                                                 *
- * Contributors: Tim Dorn, Thomas Uchida, Christopher Dembia                  *
+ * Author(s): Antoine Falisse, Christopher Dembia, Nick Bianco                *
+ * Contributors: Tim Dorn, Thomas Uchida                                      *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may    *
  * not use this file except in compliance with the License. You may obtain a  *
@@ -168,6 +168,7 @@ void Bhargava2004Metabolics::constructProperties()
     constructProperty_forbid_negative_total_power(true);
 
     constructProperty_use_smoothing(false);
+    constructProperty_smoothing_type("tanh");
     constructProperty_velocity_smoothing(10);
     constructProperty_power_smoothing(10);
     constructProperty_heat_rate_smoothing(10);
@@ -175,20 +176,41 @@ void Bhargava2004Metabolics::constructProperties()
 
 void Bhargava2004Metabolics::extendFinalizeFromProperties() {
     if (get_use_smoothing()) {
-        m_conditional = [](const double& cond, const double& left,
-                                const double& right, const double& smoothing) {
+        m_tanh_conditional = [](const double& cond, const double& left,
+                const double& right, const double& smoothing, const int&) {
             const double smoothed_binary = 0.5 + 0.5 * tanh(smoothing * cond);
             return left + (-left + right) * smoothed_binary;
         };
+        if (get_smoothing_type() == "tanh") {
+            m_conditional = m_tanh_conditional;
+
+        } else if (get_smoothing_type() == "huber") {
+            m_conditional = [](const double& cond, const double& left,
+                    const double& right, const double& smoothing,
+                    const int& direction) {
+                const double offset = (direction == 1) ? left : right;
+                const double scale = (right - left) / cond;
+                const double delta = 1.0;
+                const double state = direction * cond;
+                const double shift = 0.5 * (1 / smoothing);
+                const double y = smoothing * (state + shift);
+                double f = 0;
+                if (y < 0) f = offset;
+                else if (y <= delta) f = 0.5 * y * y + offset;
+                else  f = delta * (y - 0.5 * delta) + offset;
+                return scale * (f/smoothing + offset * (1.0 - 1.0/smoothing));
+            };
+        }
     } else {
         m_conditional = [](const double& cond, const double& left,
-                                const double& right, const double&) {
+                const double& right, const double& smoothing, const int&) {
             if (cond <= 0) {
                 return left;
             } else {
                 return right;
             }
         };
+        m_tanh_conditional = m_conditional;
     }
 }
 
@@ -354,6 +376,10 @@ void Bhargava2004Metabolics::calcMetabolicRate(
         const double fastTwitchExcitation =
             (1 - muscleParameter.get_ratio_slow_twitch_fibers())
             * (1 - cos(SimTK::Pi/2 * excitation));
+        // This small constant is added to the fiber velocity to prevent
+        // dividing by 0 (in case the actual fiber velocity is null) when using
+        // the Huber loss smoothing approach, thereby preventing singularities.
+        const double eps = 1e-16;
 
         // Get the unnormalized total active force, isometricTotalActiveForce
         // that 'would' be developed at the current activation and fiber length
@@ -391,23 +417,33 @@ void Bhargava2004Metabolics::calcMetabolicRate(
         //     fiberVelocity>0 as lengthening.
         // ---------------------------------------------------------
         double alpha;
-        if (get_use_force_dependent_shortening_prop_constant())
-        {
-            alpha = m_conditional(fiberVelocity,
+        if (get_use_force_dependent_shortening_prop_constant()) {
+            // Even when using the Huber loss smoothing approach, we still rely
+            // on a tanh approximation for the shortening heat rate when using
+            // the force dependent shortening proportional constant. This is
+            // motivated by the fact that the shortening heat rate is defined
+            // by linear functions but with different non-zero constants of
+            // proportionality for concentric and eccentric contractions. It is
+            // therefore easier to smooth the transition between both
+            // contraction types with a tanh function than with a Huber loss
+            // function.
+            alpha = m_tanh_conditional(fiberVelocity + eps,
                     (0.16 * isometricTotalActiveForce)
                     + (0.18 * fiberForceTotal),
                     0.157 * fiberForceTotal,
-                    get_velocity_smoothing());
+                    get_velocity_smoothing(),
+                    -1);
         } else {
             // This simpler value of alpha comes from Frank Anderson's 1999
             // dissertation "A Dynamic Optimization Solution for a Complete
             // Cycle of Normal Gait".
-            alpha = m_conditional(fiberVelocity,
+            alpha = m_conditional(fiberVelocity + eps,
                     0.25 * fiberForceTotal,
                     0,
-                    get_velocity_smoothing());
+                    get_velocity_smoothing(),
+                    -1);
         }
-        shorteningHeatRate = -alpha * fiberVelocity;
+        shorteningHeatRate = -alpha * (fiberVelocity + eps);
 
         // MECHANICAL WORK RATE for the contractile element of the muscle (W).
         // --> note that we define fiberVelocity<0 as shortening and
@@ -417,10 +453,11 @@ void Bhargava2004Metabolics::calcMetabolicRate(
         {
             mechanicalWorkRate = -fiberForceActive * fiberVelocity;
         } else {
-            mechanicalWorkRate = m_conditional(fiberVelocity,
+            mechanicalWorkRate = m_conditional(fiberVelocity + eps,
                     -fiberForceActive * fiberVelocity,
                     0,
-                    get_velocity_smoothing());
+                    get_velocity_smoothing(),
+                    -1);
         }
 
         // NAN CHECKING
@@ -449,7 +486,8 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                         -Edot_W_beforeClamp,
                         0,
                         Edot_W_beforeClamp,
-                        get_power_smoothing());
+                        get_power_smoothing(),
+                        1);
                 shorteningHeatRate -= Edot_W_beforeClamp_smoothed;
             } else {
                 if (Edot_W_beforeClamp < 0)
@@ -473,7 +511,8 @@ void Bhargava2004Metabolics::calcMetabolicRate(
                         -totalHeatRate + 1.0 * muscleParameter.getMuscleMass(),
                         totalHeatRate,
                         1.0 * muscleParameter.getMuscleMass(),
-                        get_heat_rate_smoothing());
+                        get_heat_rate_smoothing(),
+                        1);
             }
         } else {
             if (get_enforce_minimum_heat_rate_per_muscle()

@@ -5,8 +5,8 @@
  * -------------------------------------------------------------------------- *
  * Copyright (c) 2019 Stanford University and the Authors                     *
  *                                                                            *
- * Author(s): Antoine Falisse                                                 *
- * Contributors: Tim Dorn, Thomas Uchida, Christopher Dembia                  *
+ * Author(s): Antoine Falisse, Christopher Dembia, Nick Bianco                *
+ * Contributors: Tim Dorn, Thomas Uchida                                      *
  *                                                                            *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may    *
  * not use this file except in compliance with the License. You may obtain a  *
@@ -181,23 +181,30 @@ public:
             "An optional flag that allows the user to explicitly specify "
             "whether a smooth approximation of the metabolic energy model "
             "should be used (default is false).");
+    OpenSim_DECLARE_OPTIONAL_PROPERTY(smoothing_type, std::string,
+            "An optional flag that allows the user to explicitly specify "
+            "what type of smoothing to use ('tanh' or 'huber'; default is "
+            "'tanh').");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(velocity_smoothing, double,
             "The parameter that determines the smoothness of the transition "
-            "of the tanh used to smooth the conditions related to contraction "
-            "type (concentric or eccentric). The larger the steeper the "
-            "transition but the worse for optimization (default is 10).");
+            "of the tanh or Huber loss function used to smooth the conditions "
+            "related to contraction type (concentric or eccentric). Note that "
+            "when computing the shortening heat rate while using the force "
+            "dependent shortening proportionality constant, a tanh "
+            "approximation is used even when using the Huber loss smoothing "
+            "approach. The larger the steeper the transition but the worse "
+            "for optimization (default is 10).");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(power_smoothing, double,
             "The parameter that determines the smoothness of the transition "
-            "of the tanh used to smooth the condition enforcing non-negative "
-            "total power. The larger the steeper the transition but the worse "
-            "for optimization (default is 10).");
+            "of the tanh or Huber loss function used to smooth the condition "
+            "enforcing non-negative total power. The larger the steeper the "
+            "transition but the worse for optimization (default is 10).");
     OpenSim_DECLARE_OPTIONAL_PROPERTY(heat_rate_smoothing, double,
             "The parameter that determines the smoothness of the transition "
-            "of the tanh used to smooth the condition enforcing total heat "
-            "rate larger than 1 (W/kg) for a give muscle. The larger the "
-            "steeper the transition but the worse for optimization (default "
-            "is 10).");
-
+            "of the tanh or Huber loss function used to smooth the condition "
+            "enforcing total heat rate larger than 1 (W/kg) for a give muscle "
+            ". The larger the steeper the transition but the worse for "
+            "optimization (default is 10).");
     OpenSim_DECLARE_LIST_PROPERTY(
             muscle_parameters, Bhargava2004Metabolics_MuscleParameters,
             "Metabolic parameters for each muscle.");
@@ -262,9 +269,11 @@ private:
             SimTK::Vector& mechanicalWorkRatesForMuscles) const;
     mutable std::unordered_map<std::string, int> m_muscleIndices;
     using ConditionalFunction =
-            double(const double&, const double&, const double&, const double&);
+            double(const double&, const double&, const double&, const double&,
+                    const int&);
     PiecewiseLinearFunction m_fiberLengthDepCurve;
     mutable std::function<ConditionalFunction> m_conditional;
+    mutable std::function<ConditionalFunction> m_tanh_conditional;
 };
 
 } // namespace OpenSim

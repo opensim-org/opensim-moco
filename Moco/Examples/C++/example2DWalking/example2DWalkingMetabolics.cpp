@@ -111,7 +111,7 @@ void gaitTrackingMetabolics() {
     track.setModel(modelprocessor);
     track.setStatesReference(
             TableProcessor("referenceCoordinates.sto") | TabOpLowPassFilter(6));
-    track.set_states_global_tracking_weight(10.0);
+    track.set_states_global_tracking_weight(30.0);
     track.set_allow_unused_references(true);
     track.set_track_reference_position_derivatives(true);
     track.set_apply_tracked_states_to_guess(true);
