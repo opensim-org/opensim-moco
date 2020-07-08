@@ -179,7 +179,6 @@ void Bhargava2004Metabolics::extendFinalizeFromProperties() {
         m_tanh_conditional = [](const double& cond, const double& left,
                 const double& right, const double& smoothing, const int&) {
             const double smoothed_binary = 0.5 + 0.5 * tanh(smoothing * cond);
-            std::cout << "tanh" << std::endl;
             return left + (-left + right) * smoothed_binary;
         };
         if (get_smoothing_type().compare("tanh") == 0) {
