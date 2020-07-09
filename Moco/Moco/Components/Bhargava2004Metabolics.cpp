@@ -1,7 +1,7 @@
 /* -------------------------------------------------------------------------- *
  * OpenSim Moco: Bhargava2004Metabolics.cpp                                   *
  * -------------------------------------------------------------------------- *
- * Copyright (c) 2019 Stanford University and the Authors                     *
+ * Copyright (c) 2020 Stanford University and the Authors                     *
  *                                                                            *
  * Author(s): Antoine Falisse, Christopher Dembia, Nick Bianco                *
  * Contributors: Tim Dorn, Thomas Uchida                                      *

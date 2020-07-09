@@ -42,7 +42,7 @@ TEST_CASE("Bhargava2004Metabolics basics") {
     model.addComponent(musclePtr);
     auto& muscle = model.getComponent<DeGrooteFregly2016Muscle>("muscle");
 
-    // Add non-smooth metabolics
+    // Add non-smooth metabolics.
     auto metabolicsPtr_nonSmooth = new Bhargava2004Metabolics();
     metabolicsPtr_nonSmooth->setName("metabolics_nonSmooth");
     metabolicsPtr_nonSmooth->set_include_negative_mechanical_work(false);
@@ -72,7 +72,7 @@ TEST_CASE("Bhargava2004Metabolics basics") {
             model.getComponent<Bhargava2004Metabolics>(
                     "metabolics_negativeWork_nonSmooth");
 
-    // Add smooth (using tanh function) metabolics
+    // Add smooth (using tanh function) metabolics.
     auto metabolicsPtr_smooth_tanh = new Bhargava2004Metabolics();
     metabolicsPtr_smooth_tanh->setName("metabolics_smooth_tanh");
     metabolicsPtr_smooth_tanh->set_use_smoothing(true);
@@ -121,7 +121,7 @@ TEST_CASE("Bhargava2004Metabolics basics") {
     auto& metabolics_negativeWork_smooth_tanh =
             model.getComponent<Bhargava2004Metabolics>(
                     "metabolics_negativeWork_smooth_tanh");
-    // Add smooth (using Huber loss function) metabolics
+    // Add smooth (using Huber loss function) metabolics.
     auto metabolicsPtr_smooth_huber = new Bhargava2004Metabolics();
     metabolicsPtr_smooth_huber->setName("metabolics_smooth_huber");
     metabolicsPtr_smooth_huber->set_use_smoothing(true);
@@ -315,7 +315,7 @@ TEST_CASE("Bhargava2004Metabolics basics") {
             "concentric and eccentric contractions when negative mechanical "
             "work rate is allowed") {
 
-            // Concentric contraction
+            // Concentric contraction.
             double speed = -0.1;
             coord.setSpeedValue(state, speed);
 
@@ -353,7 +353,7 @@ TEST_CASE("Bhargava2004Metabolics basics") {
                     metabolics_negativeWork_smooth_huber.
                             getTotalMechanicalWorkRate(state));
 
-            // Eccentric contraction
+            // Eccentric contraction.
             speed = 0.1;
             coord.setSpeedValue(state, speed);
 

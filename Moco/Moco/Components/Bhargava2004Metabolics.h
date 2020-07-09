@@ -3,7 +3,7 @@
 /* -------------------------------------------------------------------------- *
  * OpenSim Moco: Bhargava2004Metabolics.h                                     *
  * -------------------------------------------------------------------------- *
- * Copyright (c) 2019 Stanford University and the Authors                     *
+ * Copyright (c) 2020 Stanford University and the Authors                     *
  *                                                                            *
  * Author(s): Antoine Falisse, Christopher Dembia, Nick Bianco                *
  * Contributors: Tim Dorn, Thomas Uchida                                      *
@@ -80,27 +80,51 @@ private:
 };
 
 /// This class implements the metabolic energy model of Bhargava et al (2004)
-/// and provides an option to use a smooth (i.e., twice continuously
-/// differentiable) approximation. This approximation might be better suited
+/// and provides an option to use smooth (i.e., twice continuously
+/// differentiable) approximations. These approximations might be better suited
 /// for gradient-based optimization algorithms.
-/// In the proposed smooth implementation, conditional if statements were
-/// approximated by using hyperbolic tangent functions (tanh). For example, the
-/// following if statement:
-/// <pre>     y = 0, if x < d </pre>
-/// <pre>     y = a, if x >= d </pre>
+/// We propose two smooth implementations. In the first implementation,
+/// conditional if statements were approximated by using hyperbolic tangent
+/// functions (tanh). For example, the following if statement:
+/// <pre>     y = left, if x <= d </pre>
+/// <pre>     y = right, if x > d </pre>
 /// can be approximated by:
 /// <pre>     f = 0.5 + 0.5 tanh(b(x-d)) </pre>
-/// <pre>     y = a f </pre>
+/// <pre>     y = left + (-left + right) f </pre>
+/// where b is a parameter that determines the smoothness of the transition. In
+/// the second implementation, conditional if statements were approximated by
+/// using Huber loss functions. The Huber loss function has the following form:
+/// <pre>     L(f(x)) = 0.5 f(x)^2, if f(x) <= delta </pre>
+/// <pre>     L(f(x)) = delta(f(x) - 0.5 delta), otherwise. </pre>
+/// This function is quadratic for f(x) <= delta and linear otherwise, with
+/// equal value and slopes of the different sections at the points where
+/// f(x) = delta (https://en.wikipedia.org/wiki/Huber_loss). Conditional if
+/// statements of the form described above can be approximated using a Huber
+/// loss function as follows:
+/// <pre>     shift = 0.5 (1/b) </pre>
+/// <pre>     f = b ((x-d) + shift) </pre>
+/// <pre>     c = left, if f < 0 </pre>
+/// <pre>     c = 0.5 y^2 + left, if f <= delta </pre>
+/// <pre>     c = delta (f - 0.5 delta) + left, otherwise </pre>
+/// <pre>     scale = (right - left) / (x-d) </pre>
+/// <pre>     y = scale (c/b + left (1-1/b)) </pre>
 /// where b is a parameter that determines the smoothness of the transition.
+/// Note that this approximation is piecewise but still continuous.
 ///
 /// The metabolic energy model includes components for activation heat rate,
 /// maintenance heat rate, shortening heat rate, and mechanical work rate.
 ///
 /// The shortening heat rate model differs between concentric contractions and
 /// eccentric contractions. We smoothed the transition between both contraction
-/// types using our smoothing function. The difference between the original
-/// (non-smooth) and the smooth implementations is illustrated in the following
-/// figure:
+/// types using our smoothing functions. Note that when using the force
+/// dependent shortening proportional constant, we only provide the tanh
+/// smoothing option. This is motivated by the fact that the shortening heat
+/// rate is defined by linear functions but with different non-zero constants
+/// of proportionality for concentric and eccentric contractions. It is
+/// therefore easier to smooth the transition between both contraction types
+/// with a tanh function than with a Huber loss function. The difference
+/// between the original (non-smooth) and the smooth implementations is
+/// illustrated in the following figure:
 ///
 /// \htmlonly <style>div.image img[src="SmoothShorteningHeatRate.png"]{width:750px;}</style> \endhtmlonly
 /// @image html SmoothShorteningHeatRate.png "Curves produced using isometricTotalActiveForce=350, fiberForceTotal=250, velocity_smoothing=10"
@@ -110,7 +134,7 @@ private:
 /// if specified by the user, the model only takes positive mechanical work
 /// rate (i.e., work rate resulting from concentric contraction) into account.
 /// In such case, we smoothed the transition between positive rate and zero
-/// using our smoothing function. The difference between the original
+/// using our smoothing functions. The difference between the original
 /// (non-smooth) and the smooth implementations is illustrated in the following
 /// figure:
 ///
@@ -121,7 +145,7 @@ private:
 /// that prevents the total metabolic rate (i.e., total metabolic power) to be
 /// negative. This clamping is done by increasing the shortening heat rate. We
 /// smoothed the transition between positive and negative total metabolic rate
-/// using our smoothing function. The difference between the original
+/// using our smoothing functions. The difference between the original
 /// (non-smooth) and the smooth implementations is illustrated in the following
 /// figure:
 ///
@@ -135,7 +159,7 @@ private:
 /// clamping will cause the sum of the reported individual heat rates and work
 /// rate to differ from the reported metabolic rate. We smoothed the transition
 /// between total heat rate higher and lower than 1.0 W/kg using our smoothing
-/// function. The difference between the original (non-smooth) and the smooth
+/// functions. The difference between the original (non-smooth) and the smooth
 /// implementations is illustrated in the following figure:
 ///
 /// \htmlonly <style>div.image img[src="ClampingTotalHeatRate.png"]{width:750px;}</style> \endhtmlonly
