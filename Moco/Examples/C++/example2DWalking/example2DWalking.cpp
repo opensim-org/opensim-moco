@@ -198,7 +198,7 @@ MocoSolution gaitTracking(double controlEffortWeight = 10,
     writeTableToFile(externalForcesTableFlat,
             "gaitTracking_solutionGRF_fullcycle.sto");
 
-    // moco.visualize(solution);
+    // study.visualize(solution);
 
     return solution;
 }

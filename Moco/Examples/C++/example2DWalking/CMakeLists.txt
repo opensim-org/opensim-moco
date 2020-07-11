@@ -5,7 +5,8 @@ set(EXAMPLE_2D_WALKING_FILES
         referenceGRF.xml)
 
 MocoAddExampleCXX(NAME example2DWalking
-                  RESOURCES "${EXAMPLE_2D_WALKING_FILES}")
+        EXECUTABLES example2DWalking example2DWalkingMetabolics
+        RESOURCES "${EXAMPLE_2D_WALKING_FILES}")
 
 file(GLOB GEOMETRY "${CMAKE_SOURCE_DIR}/opensim-models/Geometry/*"
         "${CMAKE_SOURCE_DIR}/opensim-models/Models/RajagopalModel/Geometry/*")

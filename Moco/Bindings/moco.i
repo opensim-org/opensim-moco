@@ -225,5 +225,6 @@ moco_unique_ptr(OpenSim::PositionMotion);
 
 %include <Moco/Components/ModelFactory.h>
 %include <Moco/Components/MultivariatePolynomialFunction.h>
+%include <Moco/Components/Bhargava2004Metabolics.h>
 
 %include <Moco/ModelOperators.h>

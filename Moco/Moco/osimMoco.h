@@ -25,6 +25,7 @@
 #include "Components/ModelFactory.h"
 #include "Components/MultivariatePolynomialFunction.h"
 #include "Components/PositionMotion.h"
+#include "Components/Bhargava2004Metabolics.h"
 #include "Components/StationPlaneContactForce.h"
 #include "MocoBounds.h"
 #include "MocoCasADiSolver/MocoCasADiSolver.h"

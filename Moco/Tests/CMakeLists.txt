@@ -59,3 +59,5 @@ MocoAddTest(NAME testMocoTrack RESOURCES
 # MocoAddTest(NAME testMultivariatePolynomial)
 
 MocoAddTest(NAME testMocoAnalytic)
+
+MocoAddTest(NAME testMocoMetabolics)
