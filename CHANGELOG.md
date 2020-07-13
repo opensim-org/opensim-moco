@@ -3,6 +3,11 @@ Change Log
 
 0.5.0 (in development)
 ----------------------
+- 2020-07-12: Added Bhargava2004 metabolics model with options for smooth
+              approximations; example2DWalkingMetabolics features a tracking
+              simulation of walking that includes minimization of the metabolic
+              cost of transport.
+
 - 2020-06-08: Moco uses OpenSim's new message logging system.
 
 - 2020-06-01: Introduce MocoGoal::getStageDependency() to improve efficiency of 
