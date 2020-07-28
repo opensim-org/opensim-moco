@@ -94,6 +94,29 @@ protected:
         }
     }
 
+    void setScalingUsingBounds(Var key, const Bounds& bounds) {
+        if (m_solver.getScaleVariablesUsingBounds()) {
+            const auto& lower = bounds.lower;
+            const auto& upper = bounds.upper;
+            double dilate = upper - lower;
+            double shift;
+            if (std::isinf(dilate) || std::isnan(dilate)) {
+                dilate = 1;
+                shift = 0;
+            } else if (dilate == 0) {
+                dilate = 1;
+                shift = upper;
+            } else {
+                shift = -0.5 * (upper + lower);
+            }
+            m_scale.at(key)(casadi::Slice()) = dilate;
+            m_shift.at(key)(casadi::Slice()) = shift;
+        } else {
+            m_scale.at(key)(casadi::Slice()) = 1;
+            m_shift.at(key)(casadi::Slice()) = 0;
+        }
+    }
+
     template <typename T>
     struct Constraints {
         T defects;
@@ -127,12 +150,15 @@ protected:
     casadi::MX m_duration;
 
 private:
-    VariablesMX m_vars;
+    VariablesMX m_scaledVars;
+    VariablesMX m_unscaledVars;
     casadi::MX m_paramsTrajGrid;
     casadi::MX m_paramsTrajMesh;
     casadi::MX m_paramsTrajMeshInterior;
     VariablesDM m_lowerBounds;
     VariablesDM m_upperBounds;
+    VariablesDM m_shift;
+    VariablesDM m_scale;
 
     casadi::DM m_meshIndicesMap;
     casadi::Matrix<casadi_int> m_gridIndices;
@@ -170,12 +196,24 @@ private:
 
     void transcribe();
     void setObjectiveAndEndpointConstraints();
+    // TODO document about scaling.
     void calcDefects() {
-        calcDefectsImpl(m_vars.at(states), m_xdot, m_constraints.defects);
+        calcDefectsImpl(
+                m_unscaledVars.at(states), m_xdot, m_constraints.defects);
+        if (m_solver.getScaleVariablesUsingBounds() &&
+                m_problem.getNumStates()) {
+            // TODO this is hacky:
+            const auto repRow =
+                    m_constraints.defects.rows() / m_problem.getNumStates();
+            const auto repCol = m_constraints.defects.columns();
+            m_constraints.defects /=
+                    casadi::DM::repmat(m_scale.at(states), repRow, repCol);
+        }
     }
     void calcInterpolatingControls() {
+        // TODO can use scaled controls!
         calcInterpolatingControlsImpl(
-                m_vars.at(controls), m_constraints.interp_controls);
+                m_unscaledVars.at(controls), m_constraints.interp_controls);
     }
 
     /// Use this function to ensure you iterate through variables in the same
@@ -198,17 +236,57 @@ private:
         return T::veccat(stdvec);
     }
     /// Convert the 'x' column vector into separate variables.
-    CasOC::VariablesDM expandVariables(const casadi::DM& x) const {
-        CasOC::VariablesDM out;
+    VariablesDM expandVariables(const casadi::DM& x) const {
+        VariablesDM out;
         using casadi::Slice;
         casadi_int offset = 0;
-        for (const auto& key : getSortedVarKeys(m_vars)) {
-            const auto& value = m_vars.at(key);
+        for (const auto& key : getSortedVarKeys(m_scaledVars)) {
+            const auto& value = m_scaledVars.at(key);
             // Convert a portion of the column vector into a matrix.
             out[key] = casadi::DM::reshape(
                     x(Slice(offset, offset + value.numel())), value.rows(),
                     value.columns());
             offset += value.numel();
+        }
+        return out;
+    }
+
+     /// unscaled = (upper - lower) * scaled - 0.5 * (upper + lower);
+    template <typename T>
+    Variables<T> unscaleVariables(const Variables<T>& scaledVars) {
+        using casadi::DM;
+        Variables<T> out;
+
+        for (const auto& kv : scaledVars) {
+            const auto& key = kv.first;
+            const auto& scaled = scaledVars.at(key);
+            const auto& numCols = scaled.columns();
+            // The shift and scale are column vectors. For appropriate
+            // elementwise math, we repeat the column to match the number of
+            // columns for this key.
+            const auto& shift = DM::repmat(m_shift.at(key), 1, numCols);
+            const auto& scale = DM::repmat(m_scale.at(key), 1, numCols);
+            out[key] = scaled * scale + shift;
+        }
+        return out;
+    }
+
+    // TODO scale/unscale guess!
+    template <typename T>
+    Variables<T> scaleVariables(const Variables<T>& unscaledVars) {
+        using casadi::DM;
+        Variables<T> out;
+
+        for (const auto& kv : unscaledVars) {
+            const auto& key = kv.first;
+            const auto& unscaled = unscaledVars.at(key);
+            const auto& numCols = unscaled.columns();
+            // The shift and scale are column vectors. For appropriate
+            // elementwise math, we repeat the column to match the number of
+            // columns for this key.
+            const auto& shift = DM::repmat(m_shift.at(key), 1, numCols);
+            const auto& scale = DM::repmat(m_scale.at(key), 1, numCols);
+            out[key] = (unscaled - shift) / scale;
         }
         return out;
     }
