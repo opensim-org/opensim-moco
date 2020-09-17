@@ -46,7 +46,7 @@ namespace OpenSim {
 %include <Moco/MocoGoal/MocoPeriodicityGoal.h>
 %include <Moco/MocoGoal/MocoInitialForceEquilibriumGoal.h>
 %include <Moco/MocoGoal/MocoInitialVelocityEquilibriumDGFGoal.h>
-
+%include <Moco/MocoGoal/MocoTotalMassGoal.h>
 
 // %template(MocoBoundsVector) std::vector<OpenSim::MocoBounds>;
 
@@ -64,6 +64,7 @@ namespace OpenSim {
 
 %include <Moco/MocoControlBoundConstraint.h>
 %include <Moco/MocoFrameDistanceConstraint.h>
+%include <Moco/MocoTotalMassConstraint.h>
 
 // unique_ptr
 // ----------

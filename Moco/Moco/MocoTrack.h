@@ -235,6 +235,8 @@ public:
             "The weight on the control effort minimization cost term, if it "
             "exists. Default: 0.001");
 
+    OpenSim_DECLARE_PROPERTY(solver, std::string, "tropter or casadi");
+
     MocoTrack() { constructProperties(); }
 
     /// Set the states reference TableProcessor.

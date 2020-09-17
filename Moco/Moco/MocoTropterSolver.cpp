@@ -32,6 +32,8 @@ void MocoTropterSolver::constructProperties() {
     constructProperty_optim_jacobian_approximation("exact");
     constructProperty_optim_sparsity_detection("random");
     constructProperty_exact_hessian_block_sparsity_mode();
+    constructProperty_minimize_implicit_multibody_accelerations(false);
+    constructProperty_implicit_multibody_accelerations_weight(1.0);
 }
 
 std::shared_ptr<const MocoTropterSolver::TropterProblemBase<double>>
@@ -126,6 +128,9 @@ MocoTropterSolver::createTropterSolver(
 
     // Check that the Lagrange multiplier weight is positive
     checkPropertyIsPositive(*this, getProperty_lagrange_multiplier_weight());
+    // Check that the implicit multibody acceleration weight is positive
+    checkPropertyIsPositive(*this, 
+            getProperty_implicit_multibody_accelerations_weight());
 
     // Create direct collocation solver.
     // ---------------------------------

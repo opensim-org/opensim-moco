@@ -13,6 +13,7 @@
 #include <Moco/MocoCasADiSolver/MocoCasADiSolver.h>
 #include <Moco/MocoControlBoundConstraint.h>
 #include <Moco/MocoFrameDistanceConstraint.h>
+#include <Moco/MocoTotalMassConstraint.h>
 #include <Moco/MocoGoal/MocoContactTrackingGoal.h>
 #include <Moco/MocoGoal/MocoControlGoal.h>
 #include <Moco/MocoGoal/MocoControlTrackingGoal.h>
@@ -30,6 +31,7 @@
 #include <Moco/MocoGoal/MocoStateTrackingGoal.h>
 #include <Moco/MocoGoal/MocoSumSquaredStateGoal.h>
 #include <Moco/MocoGoal/MocoTranslationTrackingGoal.h>
+#include <Moco/MocoGoal/MocoTotalMassGoal.h>
 #include <Moco/MocoInverse.h>
 #include <Moco/MocoParameter.h>
 #include <Moco/MocoProblem.h>

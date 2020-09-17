@@ -51,8 +51,7 @@ public:
             bool new_variables,
             unsigned num_constraints, double* constr) const override;
     void calc_gradient(unsigned num_variables, const double* variables,
-            bool new_variables,
-            double* grad) const override;
+            bool new_variables, double* grad) const override;
     void calc_jacobian(unsigned num_variables, const double* variables,
             bool new_variables,
             unsigned num_nonzeros, double* nonzeros) const override;
@@ -103,11 +102,13 @@ private:
     // the variables to compute the Jacobian and (b) recovers the sparse
     // Jacobian (to pass to the optimization solver) after computing finite
     // differences.
+    mutable std::vector<unsigned int> m_jacobian_nonzero_indices;
     mutable std::unique_ptr<JacobianColoring> m_jacobian_coloring;
     // Working memory.
     // TODO this could be a column vector unless we are using parallelization.
     mutable Eigen::VectorXd m_constr_pos;
     mutable Eigen::VectorXd m_constr_neg;
+    mutable Eigen::VectorXd m_constr_diff;
     mutable Eigen::MatrixXd m_jacobian_compressed;
 
     // Hessian/Lagrangian.

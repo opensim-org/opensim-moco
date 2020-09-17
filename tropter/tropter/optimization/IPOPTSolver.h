@@ -42,7 +42,9 @@ class IPOPTSolver : public Solver {
 public:
     // TODO this means the IPOPTSolver *would* get access to the Problem,
     // and we don't want that.
-    IPOPTSolver(const AbstractProblem& problem) : Solver(problem) {}
+    IPOPTSolver(const AbstractProblem& problem) : 
+        Solver(problem) {
+    }
     // TODO explain what happens if initial guess is omitted.
     // TODO cannot use temporary.
     static void print_available_options();

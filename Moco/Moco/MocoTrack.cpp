@@ -32,6 +32,7 @@
 #include <OpenSim/Common/GCVSpline.h>
 #include <OpenSim/Common/GCVSplineSet.h>
 #include <OpenSim/Simulation/MarkersReference.h>
+#include "MocoTropterSolver.h"
 
 using namespace OpenSim;
 
@@ -49,6 +50,7 @@ void MocoTrack::constructProperties() {
     constructProperty_apply_tracked_states_to_guess(false);
     constructProperty_minimize_control_effort(true);
     constructProperty_control_effort_weight(0.001);
+    constructProperty_solver("casadi");
 }
 
 MocoStudy MocoTrack::initialize() {
@@ -104,31 +106,64 @@ MocoStudy MocoTrack::initialize() {
 
     // Configure solver.
     // -----------------
-    MocoCasADiSolver& solver = study.initCasADiSolver();
-    solver.set_num_mesh_intervals(m_timeInfo.numMeshIntervals);
-    solver.set_multibody_dynamics_mode("explicit");
-    solver.set_optim_convergence_tolerance(1e-2);
-    solver.set_optim_constraint_tolerance(1e-2);
-    solver.set_optim_finite_difference_scheme("forward");
+    // TODO cleanup, avoid repetition
+    if (get_solver() == "casadi") {
+        MocoCasADiSolver& solver = study.initCasADiSolver();
+        solver.set_num_mesh_intervals(m_timeInfo.numMeshIntervals);
+        solver.set_multibody_dynamics_mode("explicit");
+        solver.set_optim_convergence_tolerance(1e-2);
+        solver.set_optim_constraint_tolerance(1e-2);
+        solver.set_optim_finite_difference_scheme("forward");
+        
+        // Set the problem guess.
+        // ----------------------
+        // If the user provided a guess file, use that guess in the solver.
+        if (!get_guess_file().empty()) {
+            solver.setGuessFile(getFilePath(get_guess_file()));
+        } else {
+            solver.setGuess("bounds");
+        }
 
-    // Set the problem guess.
-    // ----------------------
-    // If the user provided a guess file, use that guess in the solver.
-    if (!get_guess_file().empty()) {
-        solver.setGuessFile(getFilePath(get_guess_file()));
+        // Apply states from the reference data the to solver guess if specified
+        // by the user.
+        if (get_apply_tracked_states_to_guess()) {
+            auto guess = solver.getGuess();
+            applyStatesToGuess(tracked_states, guess);
+            solver.setGuess(guess);
+        }
+
+        return study;
+
+    } else if (get_solver() == "tropter") {
+        MocoTropterSolver& solver = study.initTropterSolver();
+        solver.set_num_mesh_intervals(m_timeInfo.numMeshIntervals);
+        solver.set_multibody_dynamics_mode("explicit");
+        solver.set_optim_convergence_tolerance(1e-2);
+        solver.set_optim_constraint_tolerance(1e-2);
+
+        // Set the problem guess.
+        // ----------------------
+        // If the user provided a guess file, use that guess in the solver.
+        if (!get_guess_file().empty()) {
+            solver.setGuessFile(getFilePath(get_guess_file()));
+        } else {
+            solver.setGuess("bounds");
+        }
+
+        // Apply states from the reference data the to solver guess if specified
+        // by the user.
+        if (get_apply_tracked_states_to_guess()) {
+            auto guess = solver.getGuess();
+            applyStatesToGuess(tracked_states, guess);
+            solver.setGuess(guess);
+        }
+
+        return study;
+
     } else {
-        solver.setGuess("bounds");
+        OPENSIM_THROW(Exception, "Solver type unrecognized.")
     }
-
-    // Apply states from the reference data the to solver guess if specified by
-    // the user.
-    if (get_apply_tracked_states_to_guess()) {
-        auto guess = solver.getGuess();
-        applyStatesToGuess(tracked_states, guess);
-        solver.setGuess(guess);
-    }
-
-    return study;
+    
 }
 
 MocoSolution MocoTrack::solve(bool visualize) {

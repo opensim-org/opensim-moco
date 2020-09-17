@@ -287,7 +287,7 @@ void Trapezoidal<T>::calc_constraints(
 
     // Initialize on iterate.
     // ======================
-    m_ocproblem->initialize_on_iterate(parameters);
+    m_ocproblem->initialize_on_iterate(parameters); 
 
     // Organize the constraints vector.
     ConstraintsView constr_view = make_constraints_view(constraints);

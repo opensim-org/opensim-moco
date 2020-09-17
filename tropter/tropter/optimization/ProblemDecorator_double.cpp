@@ -94,20 +94,23 @@ calc_sparsity(const Eigen::VectorXd& variables,
             };
     const auto var_names = m_problem.get_variable_names();
     const auto constr_names = m_problem.get_constraint_names();
+
     SparsityPattern jacobian_sparsity =
             calc_jacobian_sparsity_with_perturbation(variables,
                     num_jac_rows, calc_constraints, constr_names, var_names);
 
+    //jacobian_sparsity.set_dense();
     m_jacobian_coloring.reset(new JacobianColoring(jacobian_sparsity));
     m_jacobian_coloring->get_coordinate_format(jacobian_sparsity_coordinates);
     int num_jacobian_seeds = (int)m_jacobian_coloring->get_seed_matrix().cols();
     print("Number of seeds for Jacobian: %i", num_jacobian_seeds);
-    // jacobian_sparsity.write("DEBUG_findiff_jacobian_sparsity.csv");
+    jacobian_sparsity.write("DEBUG_findiff_jacobian_sparsity.csv");
 
     // Allocate memory that is used in jacobian().
     m_constr_pos.resize(num_jac_rows);
     m_constr_neg.resize(num_jac_rows);
-    m_jacobian_compressed.resize(num_jac_rows, num_jacobian_seeds);
+    m_constr_diff.resize(num_jac_rows);
+    m_jacobian_compressed.resize(num_jac_rows, num_vars);
 
     // Hessian.
     // ========
@@ -260,17 +263,21 @@ calc_gradient(unsigned num_variables, const double* x, bool /*new_x*/,
 
 void Problem<double>::Decorator::
 calc_jacobian(unsigned num_variables, const double* variables, bool /*new_x*/,
-        unsigned /*num_nonzeros*/, double* jacobian_values) const
+        unsigned num_nonzeros, double* jacobian_values) const
 {
     // TODO give error message that sparsity() must be called first.
 
     // TODO scale by magnitude of x.
+    Eigen::Map<const VectorXd> x0(variables, num_variables);
+
     const double eps = std::sqrt(Eigen::NumTraits<double>::epsilon());
     const double two_eps = 2 * eps;
     // Number of perturbation directions.
     const auto& seed = m_jacobian_coloring->get_seed_matrix();
     const Eigen::Index num_seeds = seed.cols();
-    Eigen::Map<const VectorXd> x0(variables, num_variables);
+
+    std::fill(jacobian_values, jacobian_values + num_nonzeros, 0);
+    m_x_working = Eigen::Map<const VectorXd>(variables, num_variables);
 
     // Compute the dense "compressed Jacobian" using the directions ColPack
     // told us to use.
@@ -279,15 +286,30 @@ calc_jacobian(unsigned num_variables, const double* variables, bool /*new_x*/,
     for (Eigen::Index iseed = 0; iseed < num_seeds; ++iseed) {
         const auto direction = seed.col(iseed);
         // Perturb x in the positive direction.
-        m_problem.calc_constraints(x0 + eps * direction, m_constr_pos);
+        m_x_working = x0 + (eps * direction);
+        m_problem.calc_constraints(m_x_working, m_constr_pos);
         // Perturb x in the negative direction.
-        m_problem.calc_constraints(x0 - eps * direction, m_constr_neg);
+        m_x_working = x0 - (eps * direction);
+        m_problem.calc_constraints(m_x_working, m_constr_neg);
         // Compute central difference.
         m_jacobian_compressed.col(iseed) =
                 (m_constr_pos - m_constr_neg) / two_eps;
     }
-
     m_jacobian_coloring->recover(m_jacobian_compressed, jacobian_values);
+
+    //std::fill(jacobian_values, jacobian_values + num_nonzeros, 0);
+    //for (Eigen::Index i = 0; i < num_variables; ++i) {
+    //    // Perform a central difference.
+    //    m_x_working[i] += eps;
+    //    m_problem.calc_constraints(m_x_working, m_constr_pos);
+    //    m_x_working[i] = variables[i] - eps;
+    //    m_problem.calc_constraints(m_x_working, m_constr_neg);
+    //    // Restore the original value.
+    //    m_x_working[i] = variables[i];
+    //    m_constr_diff = (m_constr_pos - m_constr_neg) / two_eps;
+    //    m_jacobian_compressed.col(i) = m_constr_diff;
+    //}
+    //m_jacobian_coloring->recover(m_jacobian_compressed, jacobian_values);
 }
 
 void Problem<double>::Decorator::

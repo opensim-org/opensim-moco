@@ -125,7 +125,7 @@ private:
     SparsityCoordinates m_hessian_sparsity;
     unsigned m_jacobian_num_nonzeros = std::numeric_limits<unsigned>::max();
     SparsityCoordinates m_jacobian_sparsity;
-
+    
     //double m_cached_obj_value = std::nan(nullptr);
     // TODO what about for lagrangian??
 };
@@ -247,10 +247,11 @@ Solution IPOPTSolver::optimize_impl(const VectorXd& guess) const {
                     "using a limited-memory Hessian approximation.");
         }
     }
-    //std::string all_options;
-    //app->Options()->PrintList(all_options);
-    //std::cout << all_options << std::endl;
+    std::string all_options;
+    app->Options()->PrintList(all_options);
+    std::cout << all_options << std::endl;
     //app->Options()->SetStringValue("derivative_test", "first-order");
+    //app->Options()->SetNumericValue("point_perturbation_radius", 1e-6);
     //app->Options()->SetStringValue("linear_solver", "ma97");
     //app->Options()->SetNumericValue("tol", 1e-5);
     Ipopt::ApplicationReturnStatus status;
@@ -293,8 +294,7 @@ Solution IPOPTSolver::optimize_impl(const VectorXd& guess) const {
 }
 
 IPOPTSolver::TNLP::TNLP(const ProblemDecorator& problem)
-        : m_problem(problem)
-{
+        : m_problem(problem) {
     m_num_variables = m_problem.get_num_variables();
     m_num_constraints = m_problem.get_num_constraints();
 }

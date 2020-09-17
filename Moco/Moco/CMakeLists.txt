@@ -56,6 +56,8 @@ set(MOCO_SOURCES
         MocoGoal/MocoInitialForceEquilibriumGoal.cpp
         MocoGoal/MocoPeriodicityGoal.h
         MocoGoal/MocoPeriodicityGoal.cpp
+        MocoGoal/MocoTotalMassGoal.h
+        MocoGoal/MocoTotalMassGoal.cpp
         MocoSolver.h
         MocoSolver.cpp
         MocoDirectCollocationSolver.h
@@ -72,6 +74,8 @@ set(MOCO_SOURCES
         MocoControlBoundConstraint.h
         MocoFrameDistanceConstraint.h
         MocoFrameDistanceConstraint.cpp
+        MocoTotalMassConstraint.h
+        MocoTotalMassConstraint.cpp
         Components/DeGrooteFregly2016Muscle.h
         Components/DeGrooteFregly2016Muscle.cpp
         Components/DiscreteController.cpp

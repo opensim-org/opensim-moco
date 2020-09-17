@@ -85,8 +85,7 @@ public:
             bool new_variables,
             unsigned num_constraints, double* constr) const = 0;
     virtual void calc_gradient(unsigned num_variables, const double* variables,
-            bool new_variables,
-            double* grad) const = 0;
+            bool new_variables, double* grad) const = 0;
     virtual void calc_jacobian(unsigned num_variables, const double* variables,
             bool new_variables,
             unsigned num_nonzeros, double* nonzeros) const = 0;

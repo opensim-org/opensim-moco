@@ -129,6 +129,9 @@ protected:
         if (m_mocoTropterSolver.get_minimize_lagrange_multipliers()) {
             m_multiplierCostIndex = this->add_cost("multipliers", 1);
         }
+        if (m_mocoTropterSolver.get_minimize_implicit_multibody_accelerations()) {
+            m_accelerationCostIndex = this->add_cost("accelerations", 1);
+        }
     }
 
     void addKinematicConstraints() {
@@ -369,6 +372,20 @@ protected:
             }
             return;
         }
+        if (cost_index == m_accelerationCostIndex) {
+            // Unpack variables.
+            const auto& adjuncts = in.adjuncts;
+            // If specified, add squared multiplers cost to the integrand.
+            const auto& accelerationWeight =
+            m_mocoTropterSolver.get_implicit_multibody_accelerations_weight();
+            const auto NU = this->m_stateDisabledConstraints.getNU();
+            const auto& w = adjuncts.segment(
+                    this->m_numKinematicConstraintEquations, NU);
+            for (int i = 0; i < NU; ++i) {
+                integrand += accelerationWeight * w[i] * w[i];
+            }
+            return;
+        }
 
         // Update the state.
         // TODO would it make sense to a vector of States, one for each mesh
@@ -389,6 +406,10 @@ protected:
     void calc_cost(int cost_index, const tropter::CostInput<T>& in,
             T& cost_value) const override {
         if (cost_index == m_multiplierCostIndex) {
+            cost_value = in.integral;
+            return;
+        }
+        if (cost_index == m_accelerationCostIndex) {
             cost_value = in.integral;
             return;
         }
@@ -425,6 +446,7 @@ protected:
     SimTK::State& m_stateDisabledConstraints;
     const bool m_implicit;
     int m_multiplierCostIndex = -1;
+    int m_accelerationCostIndex = -1;
 
     std::unique_ptr<FileDeletionThrower> m_fileDeletionThrower;
 

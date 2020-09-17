@@ -84,6 +84,14 @@ public:
             "property must be set. Note: this option only takes effect when "
             "using "
             "IPOPT.");
+    OpenSim_DECLARE_PROPERTY(minimize_implicit_multibody_accelerations, bool,
+            "Minimize the integral of the squared acceleration continuous "
+            "variables when using the implicit multibody mode. "
+            "Default: false.");
+    OpenSim_DECLARE_PROPERTY(implicit_multibody_accelerations_weight, double,
+            "The weight on the cost term added if "
+            "'minimize_implicit_multibody_accelerations' is enabled."
+            "Default: 1.0.");
     // TODO OpenSim_DECLARE_LIST_PROPERTY(enforce_constraint_kinematic_levels,
     //   std::string, "");
     // TODO must make more general for multiple phases, mesh refinement.

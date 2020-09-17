@@ -47,18 +47,31 @@ TEST_CASE("MocoTrack gait10dof18musc") {
 
     MocoTrack track;
 
-    track.setModel(ModelProcessor("testGait10dof18musc_subject01.osim") |
-            ModOpRemoveMuscles() | ModOpAddReserves(100) |
-            ModOpAddExternalLoads("walk_gait1018_subject01_grf.xml"));
+    track.setModel(ModelProcessor("subject_walk_contact_bounded_80musc_subtalar_toes_no_patella_no_contact.osim") |
+            ModOpRemoveMuscles() |
+            ModOpReplaceJointsWithWelds(
+                    {"radioulnar_r",  "radius_hand_r",
+                     "radioulnar_l", "radius_hand_l"})); // |
+            //ModOpAddExternalLoads("walk_gait1018_subject01_grf.xml"));
     track.setStatesReference(
-            TableProcessor("walk_gait1018_state_reference.mot") |
+            TableProcessor("coordinates.mot") |
             TabOpLowPassFilter(6));
     track.set_initial_time(0.01);
-    track.set_final_time(1.3);
-    track.print("testMocoTrack_setup.xml");
+    track.set_final_time(0.05);
+    track.set_allow_unused_references(true);
+    track.set_solver("tropter");
+    //track.print("testMocoTrack_setup.xml");
 
-    MocoSolution solution = track.solve();
+    MocoStudy study = track.initialize();
+    MocoProblem& problem = study.updProblem();
+    problem.addParameter("pelvis_mass", "/bodyset/pelvis", "mass", MocoBounds(5, 20));
+    MocoTropterSolver& solver = study.updSolver<MocoTropterSolver>();
+    solver.resetProblem(problem);
+    solver.setGuess(solver.createGuess("bounds"));
+    solver.set_optim_max_iterations(3);
+    MocoSolution solution = study.solve().unseal();
     solution.write("testMocoTrackGait10dof18musc_solution.sto");
+    study.visualize(solution);
 
     const auto actual = solution.getControlsTrajectory();
     MocoTrajectory std("std_testMocoTrackGait10dof18musc_solution.sto");

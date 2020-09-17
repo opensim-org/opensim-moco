@@ -46,8 +46,7 @@ public:
             bool new_variables,
             unsigned num_constraints, double* constr) const override;
     void calc_gradient(unsigned num_variables, const double* variables,
-            bool new_variables,
-            double* grad) const override;
+            bool new_variables, double* grad) const override;
     void calc_jacobian(unsigned num_variables, const double* variables,
             bool new_variables,
             unsigned num_nonzeros, double* nonzeros) const override;
