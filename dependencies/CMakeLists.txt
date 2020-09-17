@@ -185,7 +185,8 @@ SetDefaultCMakeBuildType()
 ####################### Add dependencies below.
 
 AddDependency(NAME eigen
-              URL  https://bitbucket.org/eigen/eigen/get/3.3.7.zip)
+	      GIT_URL https://gitlab.com/libeigen/eigen.git
+	      GIT_TAG 3.3.7)
 
 include(colpack.cmake)
 
