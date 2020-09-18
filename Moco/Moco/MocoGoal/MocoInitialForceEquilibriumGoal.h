@@ -19,6 +19,7 @@
  * -------------------------------------------------------------------------- */
 
 #include "MocoGoal.h"
+#include "../Components/DeGrooteFregly2016Muscle.h"
 
 namespace OpenSim {
 
@@ -51,7 +52,7 @@ protected:
         const GoalInput& input, SimTK::Vector& goal) const override;
 
 private:
-    mutable std::vector<SimTK::ReferencePtr<const Muscle>>
+    mutable std::vector<SimTK::ReferencePtr<const DeGrooteFregly2016Muscle>>
         m_muscleRefs;
 };
 

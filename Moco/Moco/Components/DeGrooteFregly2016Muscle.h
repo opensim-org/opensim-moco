@@ -94,9 +94,23 @@ public:
     OpenSim_DECLARE_PROPERTY(default_activation, double,
             "Value of activation in the default state returned by "
             "initSystem().");
+    OpenSim_DECLARE_PROPERTY(clamp_activation, bool,
+            "Clamp activations between the value set by the "
+            "'minimum_activation' property and 1.");
+    OpenSim_DECLARE_PROPERTY(minimum_activation, double, 
+            "The enforced activation lower bound if 'clamp_activation' is set "
+            "to true. Default: 0.");
     OpenSim_DECLARE_PROPERTY(default_normalized_tendon_force, double,
             "Value of normalized tendon force in the default state returned by "
             "initSystem().");
+    OpenSim_DECLARE_PROPERTY(clamp_normalized_tendon_length, bool,
+            "Clamp normalized tendon length between the value set by the "
+            "'minimum_normalized_tendon_length' and "
+            "'maximum_normalized_tendon_length' properties.");
+    OpenSim_DECLARE_PROPERTY(minimum_normalized_tendon_length, double, 
+            "Normalized tendon length lower bound. Default: 1.");
+    OpenSim_DECLARE_PROPERTY(maximum_normalized_tendon_length, double,
+            "Normalized tendon length upper bound. Default: 2.5.");
     OpenSim_DECLARE_PROPERTY(active_force_width_scale, double,
             "Scale factor for the width of the active force-length curve. "
             "Larger values make the curve wider. Default: 1.0.");
@@ -261,10 +275,13 @@ public:
 
     /// The residual (i.e. error) in the muscle-tendon equilibrium equation:
     ///         residual = tendonForce - fiberForce * cosPennationAngle
+    /// This is always computed using implicit form of the model since the 
+    /// explicit form will produce a zero residual for any guess of normalized 
+    /// tendon force.
     double getEquilibriumResidual(const SimTK::State& s) const {
-        const auto& mdi = getMuscleDynamicsInfo(s);
-        return calcEquilibriumResidual(
-                mdi.tendonForce, mdi.fiberForceAlongTendon);
+        return calcEquilibriumResidual(getLength(s), getLengtheningSpeed(s),
+                getActivation(s), getNormalizedTendonForce(s),
+                getNormalizedTendonForceDerivative(s));
     }
 
     /// The residual (i.e. error) in the time derivative of the linearized
@@ -274,13 +291,10 @@ public:
     ///                    (muscleTendonVelocity - fiberVelocityAlongTendon)
     double getLinearizedEquilibriumResidualDerivative(
             const SimTK::State& s) const {
-        const auto& muscleTendonVelocity = getLengtheningSpeed(s);
-        const FiberVelocityInfo& fvi = getFiberVelocityInfo(s);
-        const MuscleDynamicsInfo& mdi = getMuscleDynamicsInfo(s);
-
-        return calcLinearizedEquilibriumResidualDerivative(muscleTendonVelocity,
-                fvi.fiberVelocityAlongTendon, mdi.tendonStiffness,
-                mdi.fiberStiffnessAlongTendon);
+        return calcLinearizedEquilibriumResidualDerivative(getLength(s),
+                getLengtheningSpeed(s), getActivation(s),
+                getNormalizedTendonForce(s),
+                getNormalizedTendonForceDerivative(s));
     }
 
     static std::string getActivationStateName() {
@@ -578,7 +592,7 @@ public:
         // The stiffness of the fiber along the direction of the tendon. For
         // small changes in length parallel to the fiber, this quantity is
         // d_fiberForceAlongTendon / d_fiberLength =
-        //      d/d_fiberLength(fiberForce * cosPenneationAngle)
+        //      d/d_fiberLength(fiberForce * cosPennationAngle)
         return fiberStiffness * cosPennationAngle +
                fiberForce * partialCosPennationAnglePartialFiberLength;
     }
@@ -635,22 +649,47 @@ public:
     }
 
     /// @copydoc getEquilibriumResidual()
-    SimTK::Real calcEquilibriumResidual(const SimTK::Real& tendonForce,
-            const SimTK::Real& fiberForceAlongTendon) const {
+    SimTK::Real calcEquilibriumResidual(const SimTK::Real& muscleTendonLength,
+            const SimTK::Real& muscleTendonVelocity, 
+            const SimTK::Real& activation, 
+            const SimTK::Real& normTendonForce,
+            const SimTK::Real& normTendonForceDerivative) const {
 
-        return tendonForce - fiberForceAlongTendon;
+        MuscleLengthInfo mli;
+        FiberVelocityInfo fvi;
+        MuscleDynamicsInfo mdi;
+        calcMuscleLengthInfoHelper(
+                muscleTendonLength, false, mli, normTendonForce);
+        calcFiberVelocityInfoHelper(muscleTendonVelocity, activation, false,
+                false, mli, fvi, normTendonForce, 
+                normTendonForceDerivative);
+        calcMuscleDynamicsInfoHelper(activation, muscleTendonVelocity, false,
+                mli, fvi, mdi, normTendonForce);
+
+        return mdi.tendonForce - mdi.fiberForceAlongTendon;
     }
 
     /// @copydoc getLinearizedEquilibriumResidualDerivative()
     SimTK::Real calcLinearizedEquilibriumResidualDerivative(
-            const SimTK::Real muscleTendonVelocity,
-            const SimTK::Real& fiberVelocityAlongTendon,
-            const SimTK::Real& tendonStiffness,
-            const SimTK::Real& fiberStiffnessAlongTendon) const {
+            const SimTK::Real& muscleTendonLength,
+            const SimTK::Real& muscleTendonVelocity,
+            const SimTK::Real& activation, const SimTK::Real& normTendonForce,
+            const SimTK::Real& normTendonForceDerivative) const {
 
-        return fiberStiffnessAlongTendon * fiberVelocityAlongTendon -
-               tendonStiffness *
-                       (muscleTendonVelocity - fiberVelocityAlongTendon);
+        MuscleLengthInfo mli;
+        FiberVelocityInfo fvi;
+        MuscleDynamicsInfo mdi;
+        calcMuscleLengthInfoHelper(
+                muscleTendonLength, false, mli, normTendonForce);
+        calcFiberVelocityInfoHelper(muscleTendonVelocity, activation, false,
+                m_isTendonDynamicsExplicit, mli, fvi, normTendonForce, 
+                normTendonForceDerivative);
+        calcMuscleDynamicsInfoHelper(activation, muscleTendonVelocity, false,
+                mli, fvi, mdi, normTendonForce);
+
+        return mdi.fiberStiffnessAlongTendon * fvi.fiberVelocityAlongTendon -
+               mdi.tendonStiffness *
+                       (muscleTendonVelocity - fvi.fiberVelocityAlongTendon);
     }
     /// @}
 

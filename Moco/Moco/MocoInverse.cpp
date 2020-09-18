@@ -39,6 +39,8 @@ void MocoInverse::constructProperties() {
     constructProperty_constraint_tolerance(1e-3);
     constructProperty_output_paths();
     constructProperty_reserves_weight(1.0);
+    constructProperty_auxiliary_derivatives_weight(0.01);
+    constructProperty_auxiliary_derivatives_bound(10.0);
 }
 
 MocoStudy MocoInverse::initialize() const { return initializeInternal().first; }
@@ -104,7 +106,11 @@ std::pair<MocoStudy, TimeSeriesTable> MocoInverse::initializeInternal() const {
     solver.set_multibody_dynamics_mode("implicit");
     solver.set_interpolate_control_midpoints(false);
     solver.set_minimize_implicit_auxiliary_derivatives(true);
-    solver.set_implicit_auxiliary_derivatives_weight(0.01);
+    solver.set_implicit_auxiliary_derivatives_weight(
+            get_auxiliary_derivatives_weight());
+    solver.set_implicit_auxiliary_derivative_bounds(
+            {-get_auxiliary_derivatives_bound(), 
+              get_auxiliary_derivatives_bound()});
     solver.set_optim_convergence_tolerance(get_convergence_tolerance());
     solver.set_optim_constraint_tolerance(get_constraint_tolerance());
     // The sparsity detection works fine with DeGrooteFregly2016Muscle.
