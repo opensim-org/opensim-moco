@@ -1,3 +1,6 @@
+**All OpenSim Moco development has moved to the the core OpenSim repository (https://github.com/opensim-org/opensim-core), please follow all further development and issues there.**
+
+
 OpenSim Moco
 ============
 
