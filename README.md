@@ -1,10 +1,7 @@
-**All OpenSim Moco development has moved to the the core OpenSim repository (https://github.com/opensim-org/opensim-core), please follow all further development and issues there.**
-
+***All OpenSim Moco development has been moved to the core OpenSim repository (https://github.com/opensim-org/opensim-core), please follow all further development and issues there.***
 
 OpenSim Moco
 ============
-
-![Build Status with GitHub Actions][buildstatus_ghactions] [![Appveyor][buildstatus_image_appveyor]][appveyorci] [![Travis][buildstatus_image_travis]][travisci] 
 
 OpenSim Moco is a toolkit for solving optimal control problems involving
 musculoskeletal systems using the direct collocation method. Moco solves the
